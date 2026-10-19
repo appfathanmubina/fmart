@@ -10,14 +10,10 @@
     <link rel="apple-touch-icon" href="icons/fmart-180.png" sizes="180x180">
     <title>FMart</title>
     <style>
-      :root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#241b35;background:#f7f3fc;font-synthesis:none;text-rendering:optimizeLegibility}*{box-sizing:border-box}body{margin:0;min-height:100svh}.topbar{height:58px;padding:0 max(16px,env(safe-area-inset-left));display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #ece5f4}.brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:850;color:#5b21b6}.brand img{width:34px;height:34px}.install{border:0;border-radius:12px;background:#6d28d9;color:white;padding:10px 14px;font-weight:750}.install[hidden]{display:none}.app-frame{position:fixed;inset:58px 0 0;width:100%;height:calc(100svh - 58px);border:0;background:#f7f3fc}.setup{max-width:560px;margin:12vh auto;padding:24px}.setup h1{color:#5b21b6}.setup p{line-height:1.6}.setup code{overflow-wrap:anywhere}.status{position:fixed;z-index:2;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#241b35;color:#fff;border-radius:999px;padding:10px 15px;font-size:13px;box-shadow:0 8px 28px #0002}.status[hidden]{display:none}@media(min-width:900px){.app-frame{inset:58px 0 0;height:calc(100svh - 58px)}}
+      :root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#241b35;background:#f7f3fc;font-synthesis:none;text-rendering:optimizeLegibility}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;min-height:100%;overflow:hidden}.app-frame{position:fixed;inset:0;width:100%;height:100svh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);border:0;background:#f7f3fc}.setup{max-width:560px;margin:12vh auto;padding:24px}.setup h1{color:#5b21b6}.setup p{line-height:1.6}.setup code{overflow-wrap:anywhere}.status{position:fixed;z-index:2;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#241b35;color:#fff;border-radius:999px;padding:10px 15px;font-size:13px;box-shadow:0 8px 28px #0002}.status[hidden]{display:none}
     </style>
   </head>
   <body>
-    <header class="topbar">
-      <div class="brand"><img src="icons/fmart-192.png" alt=""><span>FMart</span></div>
-      <button class="install" id="installButton" hidden>Pasang aplikasi</button>
-    </header>
     <main id="setup" class="setup" hidden></main>
     <iframe id="app" class="app-frame" title="Aplikasi FMart" allow="clipboard-read; clipboard-write" hidden></iframe>
     <div id="status" class="status" role="status" hidden></div>
@@ -34,16 +30,6 @@
         setup.hidden = false;
         setup.innerHTML = '<h1>Hubungkan aplikasi FMart</h1><p>Isi URL deployment Web App Apps Script pada <code>config.js</code>, lalu terbitkan PWA ini melalui GitHub Pages atau hosting HTTPS.</p><p>Gunakan URL Apps Script yang berakhir dengan <code>/exec</code>. Setelah terhubung, FMart dapat dipasang dari menu browser di ponsel.</p>';
       }
-      let installPrompt;
-      const installButton = document.querySelector('#installButton');
-      window.addEventListener('beforeinstallprompt', event => {
-        event.preventDefault(); installPrompt = event; installButton.hidden = false;
-      });
-      installButton.addEventListener('click', async () => {
-        if (!installPrompt) return;
-        installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; installButton.hidden = true;
-      });
-      window.addEventListener('appinstalled', () => { installButton.hidden = true; });
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(() => {});
       let offlineTimer;
       function updateNetwork() {
