@@ -72,7 +72,7 @@ function login(username, password) {
   }
 
   const r = rows[targetIndex];
-  if (String(r[6]).toUpperCase() !== 'AKTIF') return {ok:false, message:'Akun tidak aktif.'};
+  if (String(r[6]).toUpperCase() !== 'AKTIF') return {ok:false, message:'Nomor HP/username atau password salah.'};
   if (!verifyPassword_(password, String(r[3]), String(r[2]))) {
     cache.put(rate, String(failures + 1), FMART.LOGIN_RATE_LIMIT_SECONDS);
     return {ok:false, message:'Nomor HP/username atau password salah.'};
@@ -907,7 +907,12 @@ function searchSantriForWaliSelf(token,query,className){
   const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
   query=String(query||'').trim().toLowerCase();
   className=String(className||'').trim().toLowerCase();
-  if(query.length===1) throw new Error('Ketik minimal 2 huruf untuk mulai mencari.');
+  if(query.length<3) throw new Error('Ketik minimal 3 huruf nama Santri untuk mulai mencari.');
+  const searchCache=CacheService.getScriptCache();
+  const searchRateKey='FMART_WALI_SANTRI_SEARCH_'+Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(session.userId))).slice(0,40);
+  const searchCount=Number(searchCache.get(searchRateKey)||0);
+  if(searchCount>=30) throw new Error('Pencarian terlalu sering. Silakan tunggu sekitar satu menit sebelum mencoba lagi.');
+  searchCache.put(searchRateKey,String(searchCount+1),60);
   const ss=getSS_(), wali=findWaliByUserId_(ss,session.userId);
   if(!wali) throw new Error('Data Wali Santri tidak ditemukan.');
   const relRows=readRows_(ss.getSheetByName('WaliSantriSantri'));
