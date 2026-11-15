@@ -85,7 +85,8 @@ function login(username, password) {
     if (!wali || !normalizePhone_(wali.noHp)) return {ok:false, message:'No. HP Wali Santri belum terdaftar. Hubungi Admin.'};
     sessionUsername = wali.noHp;
   }
-  const session = {userId:String(r[0]), username:sessionUsername, nama:String(r[4]), role:role, issuedAt:Date.now()};
+  const updatedAt = r[8] instanceof Date ? r[8].getTime() : (new Date(r[8] || 0).getTime() || 0);
+  const session = {userId:String(r[0]), username:sessionUsername, nama:String(r[4]), role:role, issuedAt:Date.now(), authUpdatedAt:updatedAt};
   CacheService.getScriptCache().put(sessionKey_(token), JSON.stringify(session), FMART.SESSION_TTL_SECONDS);
   sheet.getRange(targetIndex+2,10).setValue(new Date());
   cache.remove(rate);
@@ -168,6 +169,8 @@ function changeMyPassword(token, currentPassword, newPassword, confirmPassword) 
     const now = new Date();
     sheet.getRange(row.rowNumber, 3, 1, 2).setValues([[newHash, newSalt]]);
     sheet.getRange(row.rowNumber, 9).setValue(now);
+    session.authUpdatedAt = now.getTime();
+    CacheService.getScriptCache().put(sessionKey_(token), JSON.stringify(session), FMART.SESSION_TTL_SECONDS);
     SpreadsheetApp.flush();
 
     const verify = findRowById_(sheet, session.userId, 1);
@@ -1013,26 +1016,33 @@ function updateWaliSantri(token,waliId,nama,noHp,email,alamat){
 
 function toggleFMartUser(token,userId){
   const session=requireRole_(token,[FMART.ROLES.SUPERADMIN]);
-  const sheet=getSS_().getSheetByName('Users'); const row=findRowById_(sheet,String(userId||''),1);
-  if(!row) throw new Error('Pengguna tidak ditemukan.');
-  const role=String(row.values[5]||'').toUpperCase();
-  if(role==='SUPERADMIN') throw new Error('Status Superadmin tidak dapat diubah dari menu ini.');
-  const current=String(row.values[6]||'AKTIF').toUpperCase(); const next=current==='AKTIF'?'NONAKTIF':'AKTIF';
-  sheet.getRange(row.rowNumber,7).setValue(next); sheet.getRange(row.rowNumber,9).setValue(new Date());
-  writeAudit_(session.userId,session.role,'TOGGLE_USER','USER',String(userId),JSON.stringify({status:current}),JSON.stringify({status:next}),'Mengubah status pengguna'); SpreadsheetApp.flush();
-  return {ok:true,status:next};
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{
+    const sheet=getSS_().getSheetByName('Users'),row=findRowById_(sheet,String(userId||''),1);
+    if(!row) throw new Error('Pengguna tidak ditemukan.');
+    const role=String(row.values[5]||'').toUpperCase();
+    if(role==='SUPERADMIN') throw new Error('Status Superadmin tidak dapat diubah dari menu ini.');
+    const current=String(row.values[6]||'AKTIF').toUpperCase(),next=current==='AKTIF'?'NONAKTIF':'AKTIF',now=new Date();
+    sheet.getRange(row.rowNumber,7).setValue(next);sheet.getRange(row.rowNumber,9).setValue(now);
+    writeAudit_(session.userId,session.role,'TOGGLE_USER','USER',String(userId),JSON.stringify({status:current}),JSON.stringify({status:next}),'Mengubah status pengguna');SpreadsheetApp.flush();
+    return {ok:true,status:next};
+  }finally{lock.releaseLock();}
 }
 
 function resetFMartUserPassword(token,userId){
   const session=requireRole_(token,[FMART.ROLES.SUPERADMIN]);
-  const sheet=getSS_().getSheetByName('Users'); const row=findRowById_(sheet,String(userId||''),1);
-  if(!row) throw new Error('Pengguna tidak ditemukan.');
-  const role=String(row.values[5]||'').toUpperCase(); if(role==='SUPERADMIN') throw new Error('Password Superadmin tidak dapat direset dari menu ini.');
-  const tempPassword='FM'+Math.random().toString(36).slice(2,7).toUpperCase()+Math.floor(10+Math.random()*90);
-  const salt=Utilities.getUuid().replace(/-/g,''); const hash=hashPassword_(tempPassword,salt); const now=new Date();
-  sheet.getRange(row.rowNumber,3,1,2).setValues([[hash,salt]]); sheet.getRange(row.rowNumber,9).setValue(now);
-  writeAudit_(session.userId,session.role,'RESET_USER_PASSWORD','USER',String(userId),'',JSON.stringify({username:String(row.values[1]||''),role:role}),'Reset password pengguna'); SpreadsheetApp.flush();
-  return {ok:true,tempPassword:tempPassword,username:String(row.values[1]||'')};
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{
+    const sheet=getSS_().getSheetByName('Users'),row=findRowById_(sheet,String(userId||''),1);
+    if(!row) throw new Error('Pengguna tidak ditemukan.');
+    const role=String(row.values[5]||'').toUpperCase();if(role==='SUPERADMIN') throw new Error('Password Superadmin tidak dapat direset dari menu ini.');
+    const randomHex=Utilities.getUuid().replace(/-/g,'').toUpperCase();
+    const tempPassword='FM!'+randomHex.slice(0,20);
+    const salt=Utilities.getUuid().replace(/-/g,'');const hash=hashPassword_(tempPassword,salt),now=new Date();
+    sheet.getRange(row.rowNumber,3,1,2).setValues([[hash,salt]]);sheet.getRange(row.rowNumber,9).setValue(now);
+    writeAudit_(session.userId,session.role,'RESET_USER_PASSWORD','USER',String(userId),'',JSON.stringify({username:String(row.values[1]||''),role:role}),'Reset password pengguna');SpreadsheetApp.flush();
+    return {ok:true,tempPassword:tempPassword,username:String(row.values[1]||'')};
+  }finally{lock.releaseLock();}
 }
 
 function updateFMartUser(token,userId,nama,role){
@@ -1120,10 +1130,19 @@ function makeFMartId_(prefix){ return prefix + '-' + Utilities.getUuid().replace
 
 function requireSession_(token) {
   if (!token || typeof token !== 'string') throw new Error('Sesi tidak valid. Silakan login kembali.');
-  const raw = CacheService.getScriptCache().get(sessionKey_(token));
-  if (!raw) throw new Error('Sesi telah berakhir. Silakan login kembali.');
-  const s = JSON.parse(raw);
-  if (!s.userId || !s.role) throw new Error('Sesi tidak valid.');
+  const cache=CacheService.getScriptCache(),key=sessionKey_(token),raw=cache.get(key);
+  if(!raw) throw new Error('Sesi telah berakhir. Silakan login kembali.');
+  let s;
+  try{s=JSON.parse(raw);}catch(e){cache.remove(key);throw new Error('Sesi tidak valid. Silakan login kembali.');}
+  if(!s.userId||!s.role||!Number.isFinite(Number(s.authUpdatedAt))){cache.remove(key);throw new Error('Sesi perlu diperbarui. Silakan login kembali.');}
+  const user=findRowById_(getSS_().getSheetByName('Users'),String(s.userId),1);
+  if(!user){cache.remove(key);throw new Error('Akun tidak ditemukan. Silakan login kembali.');}
+  const role=String(user.values[5]||'').toUpperCase(),status=String(user.values[6]||'').toUpperCase();
+  const updatedAt=user.values[8] instanceof Date?user.values[8].getTime():(new Date(user.values[8]||0).getTime()||0);
+  if(status!=='AKTIF'||role!==String(s.role).toUpperCase()||updatedAt!==Number(s.authUpdatedAt)){
+    cache.remove(key);throw new Error('Akses akun telah berubah. Silakan login kembali.');
+  }
+  s.nama=String(user.values[4]||s.nama||'');
   return s;
 }
 
