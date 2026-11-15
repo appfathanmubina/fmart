@@ -119,7 +119,7 @@ function createFMartUser(username, password, nama, role) {
 
   if (!username || username.length < 4) throw new Error('Username minimal 4 karakter.');
   if (!/^[a-z0-9._-]+$/.test(username)) throw new Error('Username hanya boleh berisi huruf kecil, angka, titik, garis bawah, atau tanda minus.');
-  if (password.length < 6) throw new Error('Password minimal 6 karakter.');
+  if (password.length < 10) throw new Error('Password minimal 10 karakter.');
   if (!nama) throw new Error('Nama wajib diisi.');
   if (['WALI_SANTRI','ADMIN','KASIR','GUDANG','SUPERADMIN'].indexOf(role) === -1) throw new Error('Role tidak valid.');
 
@@ -177,7 +177,7 @@ function createInitialFMartSuperadmin(username, password, nama) {
   password = String(password || '');
   nama = String(nama || '').trim();
   if (!username || !password || !nama) throw new Error('Username, password, dan nama wajib diisi.');
-  if (password.length < 6) throw new Error('Password Superadmin minimal 6 karakter. Gunakan password yang kuat dan unik.');
+  if (password.length < 10) throw new Error('Password Superadmin minimal 10 karakter. Gunakan password yang kuat dan unik.');
 
   const lock = LockService.getScriptLock();
   lock.waitLock(15000);
