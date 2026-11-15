@@ -9,6 +9,8 @@ const FMART = Object.freeze({
   LOGIN_RATE_LIMIT_SECONDS: 300,
   LOGIN_MAX_FAILURES: 8,
   PASSWORD_MIN_LENGTH: 10,
+  PASSWORD_HASH_MODE: 'LEGACY', // Aktifkan PBKDF2 hanya setelah benchmark runtime lulus.
+  PASSWORD_HASH_ITERATIONS: 600000,
   SPREADSHEET_PROPERTY: 'FMART_SPREADSHEET_ID',
   ROLES: Object.freeze({ WALI_SANTRI:'WALI_SANTRI', ADMIN:'ADMIN', KASIR:'KASIR', GUDANG:'GUDANG', SUPERADMIN:'SUPERADMIN' })
 });
@@ -76,6 +78,31 @@ function login(username, password) {
   if (!verifyPassword_(password, String(r[3]), String(r[2]))) {
     cache.put(rate, String(failures + 1), FMART.LOGIN_RATE_LIMIT_SECONDS);
     return {ok:false, message:'Nomor HP/username atau password salah.'};
+  }
+
+  // Migrasi hash lama hanya setelah password lama terbukti benar.
+  if (FMART.PASSWORD_HASH_MODE === 'PBKDF2' && isLegacyPasswordHash_(String(r[2] || ''))) {
+    const migrationLock = LockService.getScriptLock();
+    migrationLock.waitLock(15000);
+    try {
+      const latest = findRowById_(sheet, String(r[0]), 1);
+      if (!latest || String(latest.values[6] || '').toUpperCase() !== 'AKTIF' ||
+          !verifyPassword_(password, String(latest.values[3] || ''), String(latest.values[2] || ''))) {
+        cache.put(rate, String(failures + 1), FMART.LOGIN_RATE_LIMIT_SECONDS);
+        return {ok:false, message:'Nomor HP/username atau password salah.'};
+      }
+      if (isLegacyPasswordHash_(String(latest.values[2] || ''))) {
+        const migratedSalt = Utilities.getUuid().replace(/-/g, '');
+        const migratedHash = hashPassword_(password, migratedSalt);
+        const migratedAt = new Date();
+        sheet.getRange(latest.rowNumber, 3, 1, 2).setValues([[migratedHash, migratedSalt]]);
+        sheet.getRange(latest.rowNumber, 9).setValue(migratedAt);
+        SpreadsheetApp.flush();
+        r[2] = migratedHash; r[3] = migratedSalt; r[8] = migratedAt;
+      } else {
+        for (let j = 0; j < latest.values.length; j++) r[j] = latest.values[j];
+      }
+    } finally { migrationLock.releaseLock(); }
   }
 
   const token = Utilities.getUuid() + '.' + Utilities.getUuid();
@@ -1171,12 +1198,64 @@ function sessionKey_(token) {
 }
 
 function hashPassword_(password, salt) {
+  if (FMART.PASSWORD_HASH_MODE === 'PBKDF2') {
+    return 'pbkdf2-sha256:' + FMART.PASSWORD_HASH_ITERATIONS + ':' + pbkdf2HmacSha256_(password, salt, FMART.PASSWORD_HASH_ITERATIONS);
+  }
+  return legacyHashPassword_(password, salt);
+}
+
+function verifyPassword_(password, salt, expectedHash) {
+  expectedHash = String(expectedHash || '');
+  if (expectedHash.indexOf('pbkdf2-sha256:') === 0) {
+    const parts = expectedHash.split(':');
+    const iterations = Number(parts[1]);
+    if (parts.length !== 3 || !Number.isInteger(iterations) || iterations < 100000 || iterations > 600000) return false;
+    const actual = 'pbkdf2-sha256:' + iterations + ':' + pbkdf2HmacSha256_(password, salt, iterations);
+    return constantTimeEqual_(actual, expectedHash);
+  }
+  return constantTimeEqual_(legacyHashPassword_(password, salt), expectedHash);
+}
+
+function legacyHashPassword_(password, salt) {
   const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(salt) + String(password), Utilities.Charset.UTF_8);
   return Utilities.base64EncodeWebSafe(bytes);
 }
 
-function verifyPassword_(password, salt, expectedHash) {
-  return constantTimeEqual_(hashPassword_(password,salt), expectedHash);
+function isLegacyPasswordHash_(hash) {
+  return String(hash || '').indexOf('pbkdf2-sha256:') !== 0;
+}
+
+/** PBKDF2-HMAC-SHA256 RFC 8018, satu blok keluaran 32 byte. */
+function pbkdf2HmacSha256_(password, salt, iterations) {
+  iterations = Number(iterations);
+  if (!Number.isInteger(iterations) || iterations < 1 || iterations > 600000) throw new Error('Parameter PBKDF2 tidak valid.');
+  const passwordBytes = Utilities.newBlob(String(password), 'text/plain').getBytes();
+  const saltBytes = Utilities.newBlob(String(salt), 'text/plain').getBytes();
+  const block = saltBytes.concat([0, 0, 0, 1]);
+  let u = Utilities.computeHmacSha256Signature(block, passwordBytes);
+  const derived = u.slice();
+  for (let i = 1; i < iterations; i++) {
+    u = Utilities.computeHmacSha256Signature(u, passwordBytes);
+    for (let j = 0; j < derived.length; j++) derived[j] = derived[j] ^ u[j];
+  }
+  return Utilities.base64EncodeWebSafe(derived);
+}
+
+/** Jalankan manual dari editor Apps Script untuk memeriksa vektor RFC 8018. */
+function testPbkdf2Implementation_() {
+  const actual = pbkdf2HmacSha256_('password', 'salt', 1);
+  const expected = 'Eg-2z_z4syxD5yJSVsT4N6hlSMkszDVICAWYfLcL4Xs=';
+  if (actual !== expected) throw new Error('Uji PBKDF2 gagal: ' + actual);
+  return 'Uji PBKDF2 RFC 8018 berhasil.';
+}
+
+/** Benchmark awal 10.000 iterasi; ukur sebelum mengaktifkan mode PBKDF2. */
+function benchmarkPbkdf2_() {
+  const start = Date.now();
+  pbkdf2HmacSha256_('benchmark-password', 'fmart-benchmark-salt', 10000);
+  const elapsed = Date.now() - start;
+  Logger.log('PBKDF2 10.000 iterasi: ' + elapsed + ' ms; estimasi kasar 600.000 iterasi: ' + (elapsed * 60) + ' ms.');
+  return {iterations:10000,elapsedMs:elapsed,estimated600kMs:elapsed*60};
 }
 
 function constantTimeEqual_(a,b) {
