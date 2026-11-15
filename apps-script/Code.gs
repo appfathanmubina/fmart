@@ -15,12 +15,31 @@ const FMART = Object.freeze({
   ROLES: Object.freeze({ WALI_SANTRI:'WALI_SANTRI', ADMIN:'ADMIN', KASIR:'KASIR', GUDANG:'GUDANG', SUPERADMIN:'SUPERADMIN' })
 });
 
-function doGet() {
-  return HtmlService.createTemplateFromFile('Index')
-    .evaluate()
-    .setTitle(FMART.APP_NAME)
+function doGet(e) {
+  const requestedPortal = e && e.parameter ? String(e.parameter.portal || '') : '';
+  const portalMode = requestedPortal === 'ADMINFMART16720' ? 'ADMINFMART16720' : 'BUYER';
+  const template = HtmlService.createTemplateFromFile('Index');
+  template.portalMode = portalMode;
+  return template.evaluate()
+    .setTitle(portalMode === 'ADMINFMART16720' ? 'FMart Admin' : FMART.APP_NAME)
     .addMetaTag('viewport','width=device-width, initial-scale=1, viewport-fit=cover')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function portalRoleAllowed_(role, portalMode) {
+  role = String(role || '').toUpperCase();
+  if (portalMode === 'ADMINFMART16720') {
+    return ['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(role) >= 0;
+  }
+  return role === FMART.ROLES.WALI_SANTRI;
+}
+
+function assertPortalRole_(role, portalMode) {
+  if (!portalRoleAllowed_(role, portalMode)) {
+    throw new Error(portalMode === 'ADMINFMART16720'
+      ? 'Akun ini tidak memiliki akses ke jalur Admin FMart.'
+      : 'Akun petugas tidak dapat digunakan di jalur Pembeli FMart.');
+  }
 }
 
 function getSS_() {
@@ -29,7 +48,8 @@ function getSS_() {
   return SpreadsheetApp.openById(id);
 }
 
-function login(username, password) {
+function login(username, password, portalMode) {
+  portalMode = String(portalMode || 'BUYER') === 'ADMINFMART16720' ? 'ADMINFMART16720' : 'BUYER';
   const rawLogin = String(username || '').trim();
   username = normalizeUsername_(rawLogin);
   if (!username || typeof password !== 'string' || !password) return {ok:false, message:'Nomor HP atau password tidak valid.'};
@@ -78,6 +98,10 @@ function login(username, password) {
   if (!verifyPassword_(password, String(r[3]), String(r[2]))) {
     cache.put(rate, String(failures + 1), FMART.LOGIN_RATE_LIMIT_SECONDS);
     return {ok:false, message:'Nomor HP/username atau password salah.'};
+  }
+
+  if (!portalRoleAllowed_(String(r[5] || ''), portalMode)) {
+    return {ok:false, message:'Akun ini tidak dapat digunakan pada jalur FMart tersebut.'};
   }
 
   // Migrasi hash lama hanya setelah password lama terbukti benar.
@@ -129,7 +153,7 @@ function normalizePhone_(value) {
   if (s.indexOf('+62') === 0) s = '0' + s.slice(3);
   else if (s.indexOf('62') === 0) s = '0' + s.slice(2);
   else if (s.charAt(0) === '8') s = '0' + s;
-  if (!/^08[0-9]{8,13}$/.test(s)) return '';
+  if (!/^08[0-9]{8,13}(?![\\s\\S])/.test(s)) return '';
   return s;
 }
 
@@ -147,7 +171,7 @@ function registerWaliSantri(nama, noHp, password, email, alamat) {
     if (!nama) throw new Error('Nama wajib diisi.');
     if (!noHp) throw new Error('Nomor HP tidak valid. Gunakan format 08xxxxxxxxxx.');
     if (password.length < FMART.PASSWORD_MIN_LENGTH) throw new Error('Password minimal ' + FMART.PASSWORD_MIN_LENGTH + ' karakter.');
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Format email tidak valid.');
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\\s\\S])/.test(email)) throw new Error('Format email tidak valid.');
     const ss=getSS_(), users=ss.getSheetByName('Users'), waliSheet=ss.getSheetByName('WaliSantri');
     if(!users||!waliSheet) throw new Error('Database FMart belum siap.');
     const userRows=readRows_(users), waliRows=readRows_(waliSheet);
@@ -213,8 +237,10 @@ function changeMyPassword(token, currentPassword, newPassword, confirmPassword) 
   }
 }
 
-function getSession(token) {
+function getSession(token, portalMode) {
   const s = requireSession_(token);
+  portalMode = String(portalMode || 'BUYER') === 'ADMINFMART16720' ? 'ADMINFMART16720' : 'BUYER';
+  assertPortalRole_(s.role, portalMode);
   return {ok:true,user:{userId:s.userId,username:s.username,nama:s.nama,role:s.role}};
 }
 
@@ -750,7 +776,7 @@ function getFMartReports(token, startDate, endDate) {
 
 function parseReportDate_(value,endOfDay){
   const text=String(value||'').trim();
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(text)) throw new Error('Tanggal laporan tidak valid.');
+  if(!/^\d{4}-\d{2}-\d{2}(?![\\s\\S])/.test(text)) throw new Error('Tanggal laporan tidak valid.');
   const parts=text.split('-').map(Number); const d=new Date(parts[0],parts[1]-1,parts[2],endOfDay?23:0,endOfDay?59:0,endOfDay?59:0,endOfDay?999:0);
   if(isNaN(d.getTime())) throw new Error('Tanggal laporan tidak valid.'); return d;
 }
@@ -1030,7 +1056,7 @@ function updateWaliSantri(token,waliId,nama,noHp,email,alamat){
   if(!waliId) throw new Error('Wali Santri tidak valid.');
   if(!nama) throw new Error('Nama wajib diisi.');
   if(!noHp) throw new Error('No. HP tidak valid. Gunakan format 08xxxxxxxxxx.');
-  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Format email tidak valid.');
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\\s\\S])/.test(email)) throw new Error('Format email tidak valid.');
   const lock=LockService.getScriptLock();lock.waitLock(10000);
   try{
     const ss=getSS_(), ws=ss.getSheetByName('WaliSantri'), us=ss.getSheetByName('Users');
