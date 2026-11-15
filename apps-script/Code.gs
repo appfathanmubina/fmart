@@ -170,14 +170,14 @@ function changeMyPassword(token, currentPassword, newPassword, confirmPassword) 
     const now = new Date();
     sheet.getRange(row.rowNumber, 3, 1, 2).setValues([[newHash, newSalt]]);
     sheet.getRange(row.rowNumber, 9).setValue(now);
-    session.authUpdatedAt = now.getTime();
-    CacheService.getScriptCache().put(sessionKey_(token), JSON.stringify(session), FMART.SESSION_TTL_SECONDS);
     SpreadsheetApp.flush();
 
     const verify = findRowById_(sheet, session.userId, 1);
     if (!verify || String(verify.values[2] || '') !== newHash || String(verify.values[3] || '') !== newSalt) {
-      throw new Error('Perubahan password tidak dapat diverifikasi. Tidak ada perubahan sesi yang dilakukan.');
+      throw new Error('Perubahan password tidak dapat diverifikasi. Sesi tetap perlu login ulang.');
     }
+    session.authUpdatedAt = verify.values[8] instanceof Date ? verify.values[8].getTime() : (new Date(verify.values[8] || 0).getTime() || 0);
+    CacheService.getScriptCache().put(sessionKey_(token), JSON.stringify(session), FMART.SESSION_TTL_SECONDS);
     writeAudit_(session.userId, session.role, 'CHANGE_PASSWORD', 'USER', session.userId, '', JSON.stringify({username:session.username}), 'Password berhasil diganti oleh pemilik akun');
     return {ok:true, message:'Password berhasil diganti.'};
   } finally {
