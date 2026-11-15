@@ -153,7 +153,7 @@ function normalizePhone_(value) {
   if (s.indexOf('+62') === 0) s = '0' + s.slice(3);
   else if (s.indexOf('62') === 0) s = '0' + s.slice(2);
   else if (s.charAt(0) === '8') s = '0' + s;
-  if (!/^08[0-9]{8,13}(?![\\s\\S])/.test(s)) return '';
+  if (!/^08[0-9]{8,13}(?![\s\S])/.test(s)) return '';
   return s;
 }
 
@@ -171,7 +171,7 @@ function registerWaliSantri(nama, noHp, password, email, alamat) {
     if (!nama) throw new Error('Nama wajib diisi.');
     if (!noHp) throw new Error('Nomor HP tidak valid. Gunakan format 08xxxxxxxxxx.');
     if (password.length < FMART.PASSWORD_MIN_LENGTH) throw new Error('Password minimal ' + FMART.PASSWORD_MIN_LENGTH + ' karakter.');
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\\s\\S])/.test(email)) throw new Error('Format email tidak valid.');
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) throw new Error('Format email tidak valid.');
     const ss=getSS_(), users=ss.getSheetByName('Users'), waliSheet=ss.getSheetByName('WaliSantri');
     if(!users||!waliSheet) throw new Error('Database FMart belum siap.');
     const userRows=readRows_(users), waliRows=readRows_(waliSheet);
@@ -776,7 +776,7 @@ function getFMartReports(token, startDate, endDate) {
 
 function parseReportDate_(value,endOfDay){
   const text=String(value||'').trim();
-  if(!/^\d{4}-\d{2}-\d{2}(?![\\s\\S])/.test(text)) throw new Error('Tanggal laporan tidak valid.');
+  if(!/^\d{4}-\d{2}-\d{2}(?![\s\S])/.test(text)) throw new Error('Tanggal laporan tidak valid.');
   const parts=text.split('-').map(Number); const d=new Date(parts[0],parts[1]-1,parts[2],endOfDay?23:0,endOfDay?59:0,endOfDay?59:0,endOfDay?999:0);
   if(isNaN(d.getTime())) throw new Error('Tanggal laporan tidak valid.'); return d;
 }
@@ -1056,7 +1056,7 @@ function updateWaliSantri(token,waliId,nama,noHp,email,alamat){
   if(!waliId) throw new Error('Wali Santri tidak valid.');
   if(!nama) throw new Error('Nama wajib diisi.');
   if(!noHp) throw new Error('No. HP tidak valid. Gunakan format 08xxxxxxxxxx.');
-  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\\s\\S])/.test(email)) throw new Error('Format email tidak valid.');
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) throw new Error('Format email tidak valid.');
   const lock=LockService.getScriptLock();lock.waitLock(10000);
   try{
     const ss=getSS_(), ws=ss.getSheetByName('WaliSantri'), us=ss.getSheetByName('Users');
