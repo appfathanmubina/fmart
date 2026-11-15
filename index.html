@@ -32,7 +32,9 @@
         frame.addEventListener('load', () => {
           try { frame.contentWindow.postMessage({ type: 'FMART_PARENT_INIT' }, '*'); } catch (e) {}
         });
-        frame.src = endpoint;
+        const portalUrl = new URL(endpoint);
+        portalUrl.searchParams.set('portal', 'BUYER');
+        frame.src = portalUrl.toString();
         frame.hidden = false;
       } else {
         setup.hidden = false;
