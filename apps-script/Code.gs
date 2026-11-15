@@ -864,7 +864,7 @@ function upsertStockRow_(ss,productId,variationId,qty,userId){const sheet=ss.get
 
 /** Fase 8.8/8.12.1: Manajemen pengguna dan verifikasi relasi Wali Santri. */
 function getUserManagement(token) {
-  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.SUPERADMIN]);
+  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
   const ss=getSS_();
   const usersSheet=ss.getSheetByName('Users');
   const waliSheet=ss.getSheetByName('WaliSantri');
