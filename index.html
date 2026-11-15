@@ -30,7 +30,16 @@
       const endpoint = String(window.FMART_APP_URL || '').trim();
       if (/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec(?:\?.*)?$/.test(endpoint)) {
         frame.addEventListener('load', () => {
-          try { frame.contentWindow.postMessage({ type: 'FMART_PARENT_INIT' }, '*'); } catch (e) {}
+          // Ulangi handshake untuk mengatasi redirect dan keterlambatan pemuatan HtmlService.
+          const startedAt = Date.now();
+          const sendHandshake = () => {
+            try { frame.contentWindow.postMessage({ type: 'FMART_PARENT_INIT' }, '*'); } catch (e) {}
+          };
+          sendHandshake();
+          const retry = window.setInterval(() => {
+            sendHandshake();
+            if (Date.now() - startedAt >= 12000) window.clearInterval(retry);
+          }, 500);
         });
         const portalUrl = new URL(endpoint);
         portalUrl.searchParams.set('portal', 'BUYER');
