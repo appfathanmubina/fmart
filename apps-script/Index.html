@@ -204,7 +204,7 @@
             event.origin === 'https://appfathanmubina.github.io' &&
             event.data && event.data.type === 'FMART_PARENT_INIT') {
           approved = true;
-          document.documentElement.classList.remove('fmart-frame-pending');
+          document.documentElement.classList.remove('fmart-frame-pending', 'fmart-frame-denied');
         }
       });
       window.setTimeout(function() {
