@@ -91,6 +91,7 @@ function login(username, password) {
         cache.put(rate, String(failures + 1), FMART.LOGIN_RATE_LIMIT_SECONDS);
         return {ok:false, message:'Nomor HP/username atau password salah.'};
       }
+      for (let j = 0; j < latest.values.length; j++) r[j] = latest.values[j];
       if (isLegacyPasswordHash_(String(latest.values[2] || ''))) {
         const migratedSalt = Utilities.getUuid().replace(/-/g, '');
         const migratedHash = hashPassword_(password, migratedSalt);
