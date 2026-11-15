@@ -1047,13 +1047,17 @@ function resetFMartUserPassword(token,userId){
 
 function updateFMartUser(token,userId,nama,role){
   const session=requireRole_(token,[FMART.ROLES.SUPERADMIN]);
-  const sheet=getSS_().getSheetByName('Users'); const row=findRowById_(sheet,String(userId||''),1); if(!row) throw new Error('Pengguna tidak ditemukan.');
-  const targetRole=String(row.values[5]||'').toUpperCase(); if(targetRole==='SUPERADMIN') throw new Error('Data Superadmin tidak dapat diubah dari menu ini.');
-  nama=String(nama||'').trim().slice(0,120); role=String(role||'').toUpperCase();
-  if(!nama) throw new Error('Nama wajib diisi.'); if(['ADMIN','KASIR','GUDANG','WALI_SANTRI'].indexOf(role)<0) throw new Error('Role tidak valid.');
-  const before={nama:String(row.values[4]||''),role:targetRole}; sheet.getRange(row.rowNumber,5).setValue(nama); sheet.getRange(row.rowNumber,6).setValue(role); sheet.getRange(row.rowNumber,9).setValue(new Date());
-  writeAudit_(session.userId,session.role,'UPDATE_USER','USER',String(userId),JSON.stringify(before),JSON.stringify({nama:nama,role:role}),'Mengubah data pengguna'); SpreadsheetApp.flush();
-  return {ok:true};
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{
+    const sheet=getSS_().getSheetByName('Users'),row=findRowById_(sheet,String(userId||''),1);if(!row)throw new Error('Pengguna tidak ditemukan.');
+    const targetRole=String(row.values[5]||'').toUpperCase();if(targetRole==='SUPERADMIN')throw new Error('Data Superadmin tidak dapat diubah dari menu ini.');
+    nama=String(nama||'').trim().slice(0,120);role=String(role||'').toUpperCase();
+    if(!nama)throw new Error('Nama wajib diisi.');if(['ADMIN','KASIR','GUDANG','WALI_SANTRI'].indexOf(role)<0)throw new Error('Role tidak valid.');
+    const before={nama:String(row.values[4]||''),role:targetRole},now=new Date();
+    sheet.getRange(row.rowNumber,5,1,2).setValues([[nama,role]]);sheet.getRange(row.rowNumber,9).setValue(now);
+    writeAudit_(session.userId,session.role,'UPDATE_USER','USER',String(userId),JSON.stringify(before),JSON.stringify({nama:nama,role:role}),'Mengubah data pengguna');SpreadsheetApp.flush();
+    return {ok:true};
+  }finally{lock.releaseLock();}
 }
 
 function sessionUserId_(token){return requireSession_(token).userId;}
