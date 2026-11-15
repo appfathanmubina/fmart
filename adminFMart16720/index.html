@@ -25,7 +25,13 @@
     const setup=document.querySelector("#setup"),frame=document.querySelector("#app"),status=document.querySelector("#status");
     const endpoint=String(window.FMART_APP_URL||"").trim();
     if(/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec(?:\?.*)?$/.test(endpoint)){
-      frame.addEventListener("load",()=>{try{frame.contentWindow.postMessage({type:"FMART_PARENT_INIT"},"*")}catch(e){}});
+      frame.addEventListener("load",()=>{
+        // Ulangi handshake untuk mengatasi redirect dan keterlambatan pemuatan HtmlService.
+        const startedAt=Date.now();
+        const sendHandshake=()=>{try{frame.contentWindow.postMessage({type:"FMART_PARENT_INIT"},"*")}catch(e){}};
+        sendHandshake();
+        const retry=window.setInterval(()=>{sendHandshake();if(Date.now()-startedAt>=12000)window.clearInterval(retry)},500);
+      });
       const portalUrl=new URL(endpoint);portalUrl.searchParams.set("portal","ADMINFMART16720");frame.src=portalUrl.toString();frame.hidden=false;
     }else{
       setup.hidden=false;setup.innerHTML="<h1>Panel Admin FMart</h1><p>URL deployment Apps Script belum dikonfigurasi pada <code>config.js</code>.</p>";
