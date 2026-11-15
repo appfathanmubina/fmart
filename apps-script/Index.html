@@ -191,21 +191,28 @@
     }
     @media(max-width:380px){.hero h1{font-size:23px}.section-title h2{font-size:17px}.search input{font-size:14px}.product-name{font-size:13px}.price{font-size:14px}}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
-      html.fmart-frame-denied,html.fmart-frame-denied body{background:#f7f3fc!important}html.fmart-frame-denied body>*{display:none!important}html.fmart-frame-denied body::before{content:"FMart hanya dapat dibuka melalui aplikasi resmi.";position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:28px;text-align:center;font:600 16px/1.5 system-ui;color:#5b21b6;background:#f7f3fc}
+      html.fmart-frame-pending body>* ,html.fmart-frame-denied body>*{display:none!important}html.fmart-frame-pending body::before,html.fmart-frame-denied body::before{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:28px;text-align:center;font:600 16px/1.5 system-ui;color:#5b21b6;background:#f7f3fc}html.fmart-frame-pending body::before{content:"Memverifikasi aplikasi FMart..."}html.fmart-frame-denied body::before{content:"FMart hanya dapat dibuka melalui aplikasi resmi."}
   </style>
   <script>
-    // ALLOWALL dibutuhkan oleh shell PWA; blokir iframe dari origin yang tidak dipercaya.
+    // ALLOWALL diperlukan oleh PWA; verifikasi parent melalui postMessage tepercaya.
     (function(){
-      try {
-        if (window.top !== window.self) {
-          var parentReferrer = document.referrer ? new URL(document.referrer).origin : '';
-          if (parentReferrer !== 'https://appfathanmubina.github.io') {
-            document.documentElement.classList.add('fmart-frame-denied');
-          }
+      if (window.top === window.self) return;
+      var approved = false;
+      document.documentElement.classList.add('fmart-frame-pending');
+      window.addEventListener('message', function(event) {
+        if (event.source === window.parent &&
+            event.origin === 'https://appfathanmubina.github.io' &&
+            event.data && event.data.type === 'FMART_PARENT_INIT') {
+          approved = true;
+          document.documentElement.classList.remove('fmart-frame-pending');
         }
-      } catch (e) {
-        document.documentElement.classList.add('fmart-frame-denied');
-      }
+      });
+      window.setTimeout(function() {
+        if (!approved) {
+          document.documentElement.classList.remove('fmart-frame-pending');
+          document.documentElement.classList.add('fmart-frame-denied');
+        }
+      }, 5000);
     })();
   </script>
 </head>
