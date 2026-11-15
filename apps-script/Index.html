@@ -191,7 +191,23 @@
     }
     @media(max-width:380px){.hero h1{font-size:23px}.section-title h2{font-size:17px}.search input{font-size:14px}.product-name{font-size:13px}.price{font-size:14px}}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+      html.fmart-frame-denied,html.fmart-frame-denied body{background:#f7f3fc!important}html.fmart-frame-denied body>*{display:none!important}html.fmart-frame-denied body::before{content:"FMart hanya dapat dibuka melalui aplikasi resmi.";position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:28px;text-align:center;font:600 16px/1.5 system-ui;color:#5b21b6;background:#f7f3fc}
   </style>
+  <script>
+    // ALLOWALL dibutuhkan oleh shell PWA; blokir iframe dari origin yang tidak dipercaya.
+    (function(){
+      try {
+        if (window.top !== window.self) {
+          var parentReferrer = document.referrer ? new URL(document.referrer).origin : '';
+          if (parentReferrer !== 'https://appfathanmubina.github.io') {
+            document.documentElement.classList.add('fmart-frame-denied');
+          }
+        }
+      } catch (e) {
+        document.documentElement.classList.add('fmart-frame-denied');
+      }
+    })();
+  </script>
 </head>
 <body>
   <div id="loginView" class="login-wrap">
