@@ -24,6 +24,9 @@
       const status = document.querySelector('#status');
       const endpoint = String(window.FMART_APP_URL || '').trim();
       if (/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec(?:\?.*)?$/.test(endpoint)) {
+        frame.addEventListener('load', () => {
+          try { frame.contentWindow.postMessage({ type: 'FMART_PARENT_INIT' }, '*'); } catch (e) {}
+        });
         frame.src = endpoint;
         frame.hidden = false;
       } else {
