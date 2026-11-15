@@ -167,7 +167,7 @@ function createInitialFMartSuperadmin(username, password, nama) {
     if (u.getSelectedButton() !== ui.Button.OK) return {ok:false, cancelled:true};
     const n = ui.prompt('FMart — Buat Superadmin Pertama', 'Nama Superadmin:', ui.ButtonSet.OK_CANCEL);
     if (n.getSelectedButton() !== ui.Button.OK) return {ok:false, cancelled:true};
-    const pw = ui.prompt('FMart — Buat Superadmin Pertama', 'Password Superadmin (minimal 6 karakter):', ui.ButtonSet.OK_CANCEL);
+    const pw = ui.prompt('FMart — Buat Superadmin Pertama', 'Password Superadmin (minimal 10 karakter):', ui.ButtonSet.OK_CANCEL);
     if (pw.getSelectedButton() !== ui.Button.OK) return {ok:false, cancelled:true};
     username = u.getResponseText();
     nama = n.getResponseText();
