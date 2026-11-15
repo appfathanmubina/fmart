@@ -8,6 +8,7 @@ const FMART = Object.freeze({
   SESSION_TTL_SECONDS: 21600,
   LOGIN_RATE_LIMIT_SECONDS: 300,
   LOGIN_MAX_FAILURES: 8,
+  PASSWORD_MIN_LENGTH: 10,
   SPREADSHEET_PROPERTY: 'FMART_SPREADSHEET_ID',
   ROLES: Object.freeze({ WALI_SANTRI:'WALI_SANTRI', ADMIN:'ADMIN', KASIR:'KASIR', GUDANG:'GUDANG', SUPERADMIN:'SUPERADMIN' })
 });
@@ -117,7 +118,7 @@ function registerWaliSantri(nama, noHp, password, email, alamat) {
     email = String(email || '').trim(); alamat = String(alamat || '').trim();
     if (!nama) throw new Error('Nama wajib diisi.');
     if (!noHp) throw new Error('Nomor HP tidak valid. Gunakan format 08xxxxxxxxxx.');
-    if (password.length < 6) throw new Error('Password minimal 6 karakter.');
+    if (password.length < FMART.PASSWORD_MIN_LENGTH) throw new Error('Password minimal ' + FMART.PASSWORD_MIN_LENGTH + ' karakter.');
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Format email tidak valid.');
     const ss=getSS_(), users=ss.getSheetByName('Users'), waliSheet=ss.getSheetByName('WaliSantri');
     if(!users||!waliSheet) throw new Error('Database FMart belum siap.');
@@ -148,7 +149,7 @@ function changeMyPassword(token, currentPassword, newPassword, confirmPassword) 
   newPassword = String(newPassword || '');
   confirmPassword = String(confirmPassword || '');
   if (!currentPassword || !newPassword || !confirmPassword) throw new Error('Semua kolom password wajib diisi.');
-  if (newPassword.length < 6) throw new Error('Password baru minimal 6 karakter.');
+  if (newPassword.length < FMART.PASSWORD_MIN_LENGTH) throw new Error('Password baru minimal ' + FMART.PASSWORD_MIN_LENGTH + ' karakter.');
   if (newPassword !== confirmPassword) throw new Error('Konfirmasi password baru tidak sama.');
   if (currentPassword === newPassword) throw new Error('Password baru harus berbeda dari password lama.');
 
