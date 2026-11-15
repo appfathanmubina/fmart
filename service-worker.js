@@ -1,5 +1,5 @@
-const CACHE = 'fmart-shell-v3';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './config.js', './icons/fmart-180.png', './icons/fmart-192.png', './icons/fmart-512.png'];
+const CACHE = 'fmart-shell-v4';
+const SHELL = ['./', './index.html', './adminFMart16720/', './adminFMart16720/index.html', './manifest.webmanifest', './config.js', './icons/fmart-180.png', './icons/fmart-192.png', './icons/fmart-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
 });
@@ -12,8 +12,15 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request).then(response => {
-      const copy = response.clone(); caches.open(CACHE).then(cache => cache.put('./index.html', copy)); return response;
-    }).catch(() => caches.match('./index.html')));
+      if (response && response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE).then(cache => cache.put(request, copy));
+      }
+      return response;
+    }).catch(() => {
+      const isAdminRoute = /\/adminFMart16720\/?$/i.test(url.pathname);
+      return caches.match(request).then(cached => cached || caches.match(isAdminRoute ? './adminFMart16720/' : './index.html'));
+    }));
     return;
   }
   event.respondWith(caches.match(request).then(cached => cached || fetch(request)));
