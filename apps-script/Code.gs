@@ -729,23 +729,24 @@ function addToCart(token, productId, variationId, qty) {
     if (!snap || !snap.active) throw new Error('Produk tidak tersedia.');
     const sheet = ss.getSheetByName('Keranjang');
     const rows = readRows_(sheet);
-    let foundRow = null;
+    const matchingRows = [];
     let currentQty = 0;
     for (let i=0;i<rows.length;i++) {
       const r = rows[i];
       if (String(r[1]) === session.userId && String(r[3]) === productId && String(r[4] || '') === variationId) {
-        foundRow = i + 2;
-        currentQty = Math.floor(Number(r[5]) || 0);
-        break;
+        matchingRows.push(i + 2);
+        currentQty += Math.max(0,Math.floor(Number(r[5]) || 0));
       }
     }
     const nextQty = currentQty + qty;
     if (nextQty > snap.stock) throw new Error('Jumlah melebihi stok tersedia (' + snap.stock + ').');
     const now = new Date();
-    if (foundRow) {
-      sheet.getRange(foundRow, 3).clearContent();
-      sheet.getRange(foundRow, 6, 1, 2).setValues([[nextQty, now]]);
-      sheet.getRange(foundRow, 8).setValue(now);
+    if (matchingRows.length) {
+      const keepRow = matchingRows[0];
+      sheet.getRange(keepRow, 3).clearContent();
+      sheet.getRange(keepRow, 6, 1, 2).setValues([[nextQty, now]]);
+      sheet.getRange(keepRow, 8).setValue(now);
+      matchingRows.slice(1).sort(function(a,b){return b-a;}).forEach(function(rowNumber){sheet.deleteRow(rowNumber);});
     } else {
       sheet.appendRow([makeFMartId_('CRT'),session.userId,'',productId,variationId,nextQty,now,now]);
     }
@@ -814,8 +815,16 @@ function checkoutCart(token, santriId, selectedCartIds, catatan, metodePengirima
         variationName:snap?snap.variationName:''};
     });
     if (!items.length) throw new Error('Barang yang dipilih tidak ditemukan di keranjang.');
-    const invalid=items.find(function(i){return !i.active||i.qty<1||i.qty>i.stock;});
-    if (invalid) throw new Error('Stok untuk "'+invalid.name+'" tidak mencukupi. Silakan periksa keranjang.');
+    const invalid=items.find(function(i){return !i.active||i.qty<1;});
+    if (invalid) throw new Error('Produk "'+invalid.name+'" tidak tersedia. Silakan periksa keranjang.');
+    const stockTotals={};
+    items.forEach(function(i){
+      const key=i.productId+'|'+i.variationId;
+      stockTotals[key]=(stockTotals[key]||0)+i.qty;
+      i.stockKey=key;
+    });
+    const stockIssue=items.find(function(i){return stockTotals[i.stockKey]>i.stock;});
+    if (stockIssue) throw new Error('Total jumlah "'+stockIssue.name+'" melebihi stok tersedia ('+stockIssue.stock+').');
     const subtotal=items.reduce(function(sum,i){return sum+i.unitPrice*i.qty;},0);
     const ongkir=0,diskon=0,total=subtotal+ongkir-diskon,now=new Date();
     const orderId=makeFMartId_('ORD');
