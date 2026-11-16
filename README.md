@@ -254,3 +254,22 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 - CSS diperiksa keseimbangan kurung kurawal: lulus.
 - Pemeriksaan statis memastikan role guard WALI_SANTRI, update profil berbasis sesi, pembatalan hanya untuk relasi pending milik Wali, NIS pending disamarkan, serta styling khusus portal Pembeli.
 - Belum dilakukan uji browser, uji data pada Spreadsheet aktif, akun Wali nyata, alur persetujuan Admin, atau deployment Apps Script.
+## Pengembangan Portal Wali Santri — Tahap 4
+
+### Katalog Produk, Kategori, dan Pencarian
+
+- Area katalog Wali disusun ulang dengan pengantar katalog, kolom pencarian, pilihan pengurutan, kategori, dan ringkasan hasil.
+- Kategori menampilkan jumlah produk yang termasuk pada setiap kategori; pilihan kategori memfilter daftar produk.
+- Pencarian mencakup nama produk, SKU, dan deskripsi, dengan tombol hapus pencarian serta aksi reset seluruh filter.
+- Pengurutan tersedia untuk rekomendasi (urutan sumber), nama A–Z, harga terendah/tertinggi, dan stok terbanyak.
+- Hasil kosong menampilkan informasi dan tombol untuk menampilkan kembali semua produk.
+- Navigasi Belanja membuka katalog tanpa mewajibkan pemilihan santri. Wali dapat menjelajahi produk dan membuka detail terlebih dahulu; pemilihan santri tetap diwajibkan saat menambahkan produk ke keranjang.
+- Katalog tetap menggunakan getCatalog yang memuat produk dan kategori aktif dari database FMart serta stok hasil agregasi produk/variasi. Tidak ada perubahan backend atau skema Spreadsheet pada tahap ini.
+- Perubahan visual dibatasi pada body.buyer-portal; tampilan dan menu katalog operasional Admin tidak diubah.
+
+### Pemeriksaan Tahap 4
+
+- JavaScript pada Index.html diperiksa dengan parser: lulus.
+- CSS diperiksa keseimbangan kurung kurawal: lulus.
+- Pemeriksaan statis memastikan pencarian nama/SKU/deskripsi, filter kategori, jumlah produk per kategori, pengurutan, keadaan hasil kosong, dan kewajiban memilih santri hanya pada proses keranjang.
+- Belum dilakukan pengujian browser pada perangkat, validasi data produk/stok Spreadsheet aktif, atau deployment Apps Script.
