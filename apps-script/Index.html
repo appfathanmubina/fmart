@@ -658,6 +658,37 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
     body.buyer-portal .wali-payment-alert>button strong{white-space:nowrap}
     body.buyer-portal .wali-payment-alert>button span{font-weight:800;white-space:nowrap}
 
+  
+    /* Tahap 3 Wali — profil pribadi dan status hubungan santri. */
+    body.buyer-portal .wali-profile-loading{padding:22px;text-align:center;color:#86758d;font-size:13px}
+    body.buyer-portal .wali-profile-section{padding:15px 0;border-bottom:1px solid #eee6f0}
+    body.buyer-portal .wali-profile-section:last-child{border-bottom:0}
+    body.buyer-portal .wali-profile-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+    body.buyer-portal .wali-profile-section-head h3{margin:4px 0;color:#4e2356;font-size:17px}
+    body.buyer-portal .wali-profile-section-head p{margin:0;color:#897b8e;font-size:11px;line-height:1.5}
+    body.buyer-portal .wali-profile-status,body.buyer-portal .wali-profile-count{flex:0 0 auto;padding:6px 9px;border-radius:20px;background:#f1e8f5;color:#6d2877;font-size:10px;font-weight:800}
+    body.buyer-portal .wali-profile-form{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+    body.buyer-portal .wali-profile-form .field{margin:0}
+    body.buyer-portal .wali-profile-form .field:nth-child(3),body.buyer-portal .wali-profile-form .field:nth-child(4),body.buyer-portal .wali-profile-form>button{grid-column:1/-1}
+    body.buyer-portal .wali-profile-form input:disabled{background:#f4f0f5;color:#85798a;opacity:1}
+    body.buyer-portal .wali-profile-form small{display:block;margin-top:5px;color:#918596;font-size:10px;line-height:1.4}
+    body.buyer-portal .wali-managed-children{display:grid;gap:8px}
+    body.buyer-portal .wali-managed-child{display:flex;align-items:center;gap:10px;min-width:0;padding:11px;border:1px solid #eee5f0;border-radius:14px;background:#fff}
+    body.buyer-portal .wali-managed-child.pending{background:#fffcf6;border-color:#f1e5c9}
+    body.buyer-portal .wali-managed-avatar{width:37px;height:37px;display:grid;place-items:center;flex:0 0 37px;border-radius:12px;background:#f1e7f5;color:#800080;font-size:10px;font-weight:900}
+    body.buyer-portal .wali-managed-avatar.pending{background:#fff1d6;color:#98621b}
+    body.buyer-portal .wali-managed-child-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+    body.buyer-portal .wali-managed-child-copy strong{color:#4b3151;font-size:12px;overflow-wrap:anywhere}
+    body.buyer-portal .wali-managed-child-copy small{color:#8b7d91;font-size:10px;line-height:1.4}
+    body.buyer-portal .wali-relation-badge{flex:0 0 auto;padding:5px 7px;border-radius:20px;font-size:9px;font-weight:800}
+    body.buyer-portal .wali-relation-badge.active{background:#eaf7ee;color:#26723d}
+    body.buyer-portal .wali-relation-badge.pending{background:#fff0d5;color:#94621b}
+    body.buyer-portal .wali-cancel-request{width:29px;height:29px;flex:0 0 29px;border:1px solid #f1d4d4;border-radius:9px;background:#fff;color:#a33;font-size:18px;cursor:pointer}
+    body.buyer-portal .wali-pending-title{margin:16px 0 9px;color:#72552b;font-size:12px;font-weight:800}
+    body.buyer-portal .wali-profile-empty{padding:14px;border:1px dashed #e7d9eb;border-radius:13px;color:#897b8e;font-size:11px;line-height:1.55}
+    body.buyer-portal .wali-profile-footnote{margin:12px 0 0;color:#918596;font-size:10px;line-height:1.55}
+    @media(max-width:560px){body.buyer-portal .wali-profile-form{grid-template-columns:1fr}body.buyer-portal .wali-profile-form .field,body.buyer-portal .wali-profile-form>button{grid-column:1}body.buyer-portal .wali-profile-section{padding:13px 0}body.buyer-portal .wali-managed-child{gap:8px;padding:9px}body.buyer-portal .wali-relation-badge{font-size:8px;padding:5px 6px}}
+
   </style>
 </head>
 <body>
@@ -903,6 +934,7 @@ function changeDetailQty(delta){const p=state.currentProduct;if(!p)return;const 
 async function addCurrentProduct(buyNow){const p=state.currentProduct;if(!p)return;if(!state.selectedChildId){showToast('Pilih anak terlebih dahulu.');return}if(p.variations.length&&!state.currentVariationId){showToast('Pilih variasi terlebih dahulu.');return}const v=p.variations.find(x=>String(x.id)===String(state.currentVariationId));const max=v?v.stock:p.stock;if(max<1){showToast('Produk sedang habis.');return}if(state.currentProductQty>max){showToast('Jumlah melebihi stok tersedia.');return}loading(true,'Menambahkan ke keranjang...');try{await runServer('addToCart',state.token,p.id,state.currentVariationId,state.currentProductQty,state.selectedChildId);showToast('Produk ditambahkan ke keranjang.');closeProduct();await refreshCartCount();if(buyNow)openCart()}catch(e){showToast(e.message||'Gagal menambahkan produk.')}finally{loading(false)}}
 function closeProduct(){ $('productModal').classList.add('hidden') }
 function openProfile(){
+  if(state.data?.user?.role==='WALI_SANTRI'){openWaliProfileManagement();return}
   const p=state.profile||state.data?.user||{};
   const children=(state.data?.children)||[];
   $('profileBody').innerHTML='<div class="profile-grid"><div class="profile-item"><small>Nama</small><strong>'+escapeHtml(p.nama||'-')+'</strong></div><div class="profile-item"><small>Username</small><strong>'+escapeHtml(p.username||'-')+'</strong></div><div class="profile-item"><small>Role</small><strong>'+escapeHtml(p.role||'-')+'</strong></div><div class="profile-item"><small>Status</small><strong>'+escapeHtml(p.status||'AKTIF')+'</strong></div></div>'+(p.wali?'<div class="section"><div class="section-title"><h2>Data Wali</h2></div><div class="profile-grid"><div class="profile-item"><small>No. HP</small><strong>'+escapeHtml(p.wali.noHp||'-')+'</strong></div><div class="profile-item"><small>Email</small><strong>'+escapeHtml(p.wali.email||'-')+'</strong></div><div class="profile-item" style="grid-column:1/-1"><small>Alamat</small><strong>'+escapeHtml(p.wali.alamat||'-')+'</strong></div></div></div>':'')+(state.data?.user?.role==='WALI_SANTRI'?'<button type="button" class="primary" id="profileAddChildBtn" style="width:100%;margin:4px 0 14px">👨‍👩‍👧 + Tambah / Cari Anak</button>':'')+'<div class="section"><div class="section-title"><h2>Anak terhubung</h2><span class="muted">'+children.length+' anak</span></div><div class="child-list">'+(children.length?children.map(c=>'<button class="child-card profile-child '+(String(c.id)===String(state.selectedChildId)?'selected':'')+'" data-profile-child-id="'+escapeHtml(c.id)+'"><div class="child-name">'+escapeHtml(c.name)+'</div><div class="child-meta">'+escapeHtml(c.className)+' · NIS '+escapeHtml(c.nis)+(c.hubungan?' · '+escapeHtml(relationLabelClient(c.hubungan)):'')+'</div></button>').join(''):'<div class="empty-box">Belum ada anak yang terhubung ke akun ini.</div>')+'</div></div><div id="profileStaffMenu" class="profile-menu-grid"><button class="profile-menu-btn" id="profileUsersBtn"><span class="menu-ico">👥</span><span><strong>Pengguna</strong><small class="muted" style="display:block;font-weight:500;margin-top:2px">Kelola akun dan hak akses</small></span></button><button class="profile-menu-btn" id="profileReportsBtn"><span class="menu-ico">📊</span><span><strong>Laporan</strong><small class="muted" style="display:block;font-weight:500;margin-top:2px">Laporan penjualan dan operasional</small></span></button><button class="profile-menu-btn" id="profilePaymentSettingsBtn"><span class="menu-ico">💳</span><span><strong>Pengaturan Pembayaran</strong><small class="muted" style="display:block;font-weight:500;margin-top:2px">Rekening transfer dan WhatsApp</small></span></button></div><div class="profile-actions" style="display:grid;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)"><button class="secondary" id="profileChangePasswordBtn" style="width:100%">🔐 Ganti Password</button><button class="primary" id="profileLogoutBtn" style="width:100%;background:#fff;color:#b91c1c;border-color:#fecaca">↪ Keluar dari FMart</button></div>';
@@ -952,6 +984,75 @@ function openChangePassword(){
 }
 function closeChangePassword(){$('changePasswordModal').classList.add('hidden')}
 function relationLabelClient(v){return ({AYAH:'Ayah',IBU:'Ibu',WALI:'Wali',LAINNYA:'Lainnya'})[String(v||'').toUpperCase()]||'Wali'}
+async function openWaliProfileManagement(){
+  closeProfile();
+  $('profileTitle').textContent='Profil & Data Santri';
+  $('profileBody').innerHTML='<div class="wali-profile-loading">Memuat profil dan data santri…</div>';
+  $('profileModal').classList.remove('hidden');
+  try{
+    const result=await runServer('getWaliProfileManagement',state.token);
+    if(!result||!result.ok)throw new Error('Profil Wali tidak dapat dimuat.');
+    state.waliProfileManagement=result;
+    state.profile=Object.assign({},state.profile||{},result.profile||{});
+    renderWaliProfileManagement(result);
+  }catch(e){
+    $('profileBody').innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Profil tidak dapat dimuat.')+'<button type="button" class="secondary" id="waliProfileRetry" style="margin-top:10px;width:100%">Coba lagi</button></div>';
+    if($('waliProfileRetry'))$('waliProfileRetry').onclick=openWaliProfileManagement;
+  }
+}
+function renderWaliProfileManagement(result){
+  const p=result.profile||{},items=result.relationships||[];
+  const active=items.filter(x=>x.status==='AKTIF'&&x.active);
+  const pending=items.filter(x=>x.status==='MENUNGGU_VERIFIKASI');
+  $('profileBody').innerHTML=
+    '<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">INFORMASI AKUN</div><h3>Data Wali Santri</h3><p>Perbarui informasi kontak Anda.</p></div><span class="wali-profile-status">'+escapeHtml(p.status||'AKTIF')+'</span></div>'+
+    '<form id="waliProfileForm" class="wali-profile-form">'+
+    '<div class="field"><label for="waliProfileName">Nama lengkap *</label><input id="waliProfileName" name="nama" maxlength="120" required value="'+escapeHtml(p.nama||'')+'"></div>'+
+    '<div class="field"><label for="waliProfilePhone">Nomor HP / Username</label><input id="waliProfilePhone" value="'+escapeHtml(p.noHp||p.username||'')+'" readonly disabled><small>Nomor HP digunakan untuk login. Perubahan nomor dapat dilakukan melalui Admin.</small></div>'+
+    '<div class="field"><label for="waliProfileEmail">Email</label><input id="waliProfileEmail" name="email" type="email" maxlength="160" value="'+escapeHtml(p.email||'')+'" placeholder="Alamat email (opsional)"></div>'+
+    '<div class="field"><label for="waliProfileAddress">Alamat</label><textarea id="waliProfileAddress" name="alamat" rows="3" maxlength="500" placeholder="Alamat tempat tinggal">'+escapeHtml(p.alamat||'')+'</textarea></div>'+
+    '<button type="submit" class="primary" id="waliProfileSave" style="width:100%">Simpan Perubahan Profil</button></form></section>'+
+    '<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">KELUARGA</div><h3>Manajemen Data Santri</h3><p>Santri aktif dapat dipilih untuk aktivitas belanja.</p></div><span class="wali-profile-count">'+active.length+' aktif</span></div>'+
+    '<button type="button" class="primary" id="waliProfileAddChild" style="width:100%;margin-bottom:12px">＋ Cari / Hubungkan Santri</button>'+
+    (active.length?'<div class="wali-managed-children">'+active.map(ch=>'<article class="wali-managed-child"><span class="wali-managed-avatar">FM</span><span class="wali-managed-child-copy"><strong>'+escapeHtml(ch.name)+'</strong><small>'+escapeHtml(ch.className||'Kelas belum tersedia')+' · NIS '+escapeHtml(ch.nis||'-')+'</small><small>'+escapeHtml(relationLabelClient(ch.hubungan||''))+'</small></span><span class="wali-relation-badge active">Aktif</span></article>').join('')+'</div>':'<div class="wali-profile-empty">Belum ada santri aktif yang terhubung. Cari data santri dan ajukan hubungan untuk diverifikasi Admin.</div>')+
+    (pending.length?'<div class="wali-pending-title">Pengajuan menunggu verifikasi ('+pending.length+')</div><div class="wali-managed-children">'+pending.map(ch=>'<article class="wali-managed-child pending"><span class="wali-managed-avatar pending">…</span><span class="wali-managed-child-copy"><strong>'+escapeHtml(ch.name)+'</strong><small>'+escapeHtml(ch.className||'Kelas belum tersedia')+' · NIS '+escapeHtml(ch.nis||'-')+'</small><small>'+escapeHtml(relationLabelClient(ch.hubungan))+' · '+escapeHtml(ch.requestedAt?formatDate(ch.requestedAt):'Tanggal pengajuan tidak tersedia')+'</small></span><span class="wali-relation-badge pending">Menunggu</span><button type="button" class="wali-cancel-request" data-cancel-wali-request="'+escapeHtml(ch.relationId)+'" aria-label="Batalkan pengajuan">×</button></article>').join('')+'</div>':'')+
+    '<p class="wali-profile-footnote">Persetujuan hubungan santri dan pelepasan santri yang sudah aktif dilakukan oleh Admin untuk menjaga keamanan data.</p></section>';
+  $('waliProfileForm').onsubmit=saveWaliProfile;
+  $('waliProfileAddChild').onclick=()=>openWaliLinkModal();
+  document.querySelectorAll('[data-cancel-wali-request]').forEach(btn=>btn.onclick=()=>cancelWaliProfileRequest(btn.dataset.cancelWaliRequest));
+}
+async function saveWaliProfile(event){
+  event.preventDefault();
+  const button=$('waliProfileSave');if(!button||button.disabled)return;
+  const nama=$('waliProfileName').value.trim(),email=$('waliProfileEmail').value.trim(),alamat=$('waliProfileAddress').value.trim();
+  if(!nama){showToast('Nama lengkap wajib diisi.','error');return}
+  if(email&&!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)){showToast('Format email tidak valid.','error');return}
+  button.disabled=true;loading(true,'Menyimpan profil...');
+  try{
+    const result=await runServer('updateMyWaliProfile',state.token,nama,email,alamat);
+    state.profile=Object.assign({},state.profile||{},result.profile||{});
+    if(state.data&&state.data.user){state.data.user.nama=nama}
+    $('userBtn').textContent=nama;$('greeting').textContent='Halo, '+nama;
+    showToast(result.message||'Profil berhasil diperbarui.','success');
+    const refreshed=await runServer('getWaliProfileManagement',state.token);
+    state.waliProfileManagement=refreshed;renderWaliProfileManagement(refreshed);refreshWaliDashboard();
+  }catch(e){showToast(e.message||'Profil gagal disimpan.','error')}
+  finally{loading(false);const current=$('waliProfileSave');if(current)current.disabled=false}
+}
+async function cancelWaliProfileRequest(relationId){
+  if(!confirm('Batalkan pengajuan hubungan santri ini?'))return;
+  loading(true,'Membatalkan pengajuan...');
+  try{
+    const result=await runServer('cancelMyWaliSantriRequest',state.token,relationId);
+    showToast(result.message||'Pengajuan dibatalkan.','success');
+    const refreshed=await runServer('getWaliProfileManagement',state.token);
+    state.waliProfileManagement=refreshed;renderWaliProfileManagement(refreshed);
+    const children=await runServer('getMyChildren',state.token);
+    state.data.children=children.children||[];renderChildren(state.data.children);refreshWaliDashboard();
+  }catch(e){showToast(e.message||'Pengajuan tidak dapat dibatalkan.','error')}
+  finally{loading(false)}
+}
+
 async function openWaliLinkModal(selectedChild){closeProfile();$('waliChildSearch').value='';$('waliChildSearchResults').innerHTML='<div class="muted" style="padding:10px">Memuat daftar Santri...</div>';$('waliChildRequestForm').classList.add('hidden');$('waliChildRequestForm').innerHTML='';$('waliLinkModal').classList.remove('hidden');if(selectedChild){openWaliRequestForm(selectedChild.id,selectedChild);return}try{const r=await runServer('getSantriClassesForWaliSelf',state.token);$('waliClassFilter').innerHTML='<option value="">Semua Kelas</option>'+r.classes.map(c=>'<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>').join('');await searchWaliChild(true)}catch(e){$('waliChildSearchResults').innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Gagal memuat data Santri.')+'</div>'}setTimeout(()=>$('waliChildSearch').focus(),80)}
 function closeWaliLinkModal(){$('waliLinkModal').classList.add('hidden')}
 async function searchWaliChild(auto){const q=$('waliChildSearch').value.trim(),cls=$('waliClassFilter').value;if(!auto&&q.length===1){showToast('Ketik 1 huruf lagi untuk mulai mencari.','error');return}if(!auto&&q.length<2&&!cls){showToast('Ketik minimal 2 huruf atau pilih Filter Kelas.','error');return}const box=$('waliChildSearchResults');box.innerHTML='<div class="muted" style="padding:10px">Mencari Santri...</div>';try{const r=await runServer('searchSantriForWaliSelf',state.token,q,cls);box.innerHTML=r.santri.length?'<div class="picker-table-wrap"><table class="picker-table"><thead><tr><th>No</th><th>Nama Santri</th><th>Kelas</th><th>Aksi</th></tr></thead><tbody>'+r.santri.map((c,i)=>'<tr><td>'+(i+1)+'</td><td><strong>'+escapeHtml(c.name)+'</strong><div class="muted" style="font-size:11px">NIS '+escapeHtml(c.nisMasked)+'</div></td><td>'+escapeHtml(c.className)+'</td><td><button type="button" class="secondary picker-request-btn" data-self-link-santri="'+escapeHtml(c.id)+'">Ajukan</button></td></tr>').join('')+'</tbody></table></div><div class="muted" style="font-size:11px;margin-top:7px">Menampilkan maksimal 30 Santri.</div>':'<div class="empty-box">Santri tidak ditemukan. Coba nama lain atau pilih kelas berbeda.</div>';document.querySelectorAll('[data-self-link-santri]').forEach(b=>b.onclick=()=>openWaliRequestForm(b.dataset.selfLinkSantri,r.santri.find(x=>String(x.id)===String(b.dataset.selfLinkSantri))))}catch(e){box.innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Pencarian gagal.')+'</div>'}}
