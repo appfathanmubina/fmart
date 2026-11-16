@@ -234,3 +234,23 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 - Sintaks JavaScript pada Index.html diperiksa setelah mengambil blok script: lulus.
 - Pemeriksaan statis memastikan endpoint memakai role guard WALI_SANTRI, pesanan difilter berdasarkan UserId sesi, dashboard dan tombol akses cepat tersedia, serta styling dibatasi pada portal Pembeli.
 - Belum dilakukan pengujian browser, pengujian akun Wali/relasi santri pada Spreadsheet aktif, uji data transaksi langsung, atau deployment Apps Script.
+## Pengembangan Portal Wali Santri — Tahap 3
+
+### Profil Wali dan Manajemen Data Santri
+
+- Profil Wali kini dapat menampilkan dan memperbarui nama, email, dan alamat. Nomor HP/username ditampilkan read-only karena menjadi identitas login; perubahan nomor tetap melalui Admin agar tidak memutus sesi atau menimbulkan benturan akun.
+- Endpoint getWaliProfileManagement membatasi akses ke role WALI_SANTRI dan mengambil identitas Wali dari sesi, bukan dari parameter browser.
+- Data hubungan menampilkan santri dengan relasi AKTIF serta pengajuan MENUNGGU_VERIFIKASI. NIS untuk pengajuan pending disamarkan; data santri aktif mengikuti data relasi yang diverifikasi.
+- Wali dapat membatalkan pengajuan relasi miliknya sendiri selama status masih MENUNGGU_VERIFIKASI. Wali tidak dapat membatalkan pengajuan yang sudah diproses atau melepas relasi aktif.
+- Persetujuan, penolakan, dan pelepasan relasi aktif tetap menggunakan alur Admin/Superadmin yang sudah ada.
+- Endpoint updateMyWaliProfile memperbarui data milik sesi aktif, menyinkronkan nama pada Users, menjaga nomor login tetap, memakai ScriptLock, dan mencatat AuditLog.
+- Perubahan profil dan relasi tidak mengubah struktur Spreadsheet, checkout, keranjang, pembayaran, stok, atau fitur Admin.
+- Setelah pengajuan dikirim atau dibatalkan, daftar relasi, daftar santri aktif, dan Dashboard Wali diperbarui kembali dari server.
+- UI profil dan manajemen santri menggunakan selector body.buyer-portal sehingga styling dan alur profil petugas/Admin tetap terpisah.
+
+### Pemeriksaan Tahap 3
+
+- Sintaks Code.gs dan JavaScript Index.html diperiksa dengan parser: lulus.
+- CSS diperiksa keseimbangan kurung kurawal: lulus.
+- Pemeriksaan statis memastikan role guard WALI_SANTRI, update profil berbasis sesi, pembatalan hanya untuk relasi pending milik Wali, NIS pending disamarkan, serta styling khusus portal Pembeli.
+- Belum dilakukan uji browser, uji data pada Spreadsheet aktif, akun Wali nyata, alur persetujuan Admin, atau deployment Apps Script.
