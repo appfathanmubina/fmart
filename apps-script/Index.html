@@ -1026,7 +1026,7 @@ async function saveWaliProfile(event){
   const button=$('waliProfileSave');if(!button||button.disabled)return;
   const nama=$('waliProfileName').value.trim(),email=$('waliProfileEmail').value.trim(),alamat=$('waliProfileAddress').value.trim();
   if(!nama){showToast('Nama lengkap wajib diisi.','error');return}
-  if(email&&!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)){showToast('Format email tidak valid.','error');return}
+  if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){showToast('Format email tidak valid.','error');return}
   button.disabled=true;loading(true,'Menyimpan profil...');
   try{
     const result=await runServer('updateMyWaliProfile',state.token,nama,email,alamat);
