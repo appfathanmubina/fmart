@@ -223,6 +223,37 @@ function createInitialFMartSuperadmin(username, password, nama, email) {
   } finally { lock.releaseLock(); }
 }
 
+
+/**
+ * Migrasi email untuk Superadmin lama satu kali melalui Apps Script Editor.
+ * Fungsi privat (akhiran _) dan tidak dapat dipanggil dari google.script.run.
+ * Login OTP pertama akan menandai email sebagai terverifikasi.
+ */
+function prepareExistingSuperadminEmail_() {
+  const ui=SpreadsheetApp.getUi();
+  const prompt=ui.prompt('FMart — Email Superadmin', 'Masukkan email aktif yang akan digunakan untuk login Admin:', ui.ButtonSet.OK_CANCEL);
+  if(prompt.getSelectedButton()!==ui.Button.OK) return {ok:false,cancelled:true};
+  const email=String(prompt.getResponseText()||'').trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) throw new Error('Format email tidak valid.');
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try {
+    const sheet=getSetupSpreadsheet_().getSheetByName('Users');
+    if(!sheet||sheet.getLastRow()<2) throw new Error('Data Users belum tersedia.');
+    const rows=sheet.getRange(2,1,sheet.getLastRow()-1,12).getValues();
+    const admins=rows.map(function(r,i){return {row:i+2,values:r};}).filter(function(x){return String(x.values[5]||'').toUpperCase()==='SUPERADMIN'&&String(x.values[6]||'').toUpperCase()==='AKTIF';});
+    if(admins.length!==1) throw new Error('Migrasi otomatis hanya berjalan jika tepat satu Superadmin aktif. Periksa data Users terlebih dahulu.');
+    if(rows.some(function(r){return String(r[0]||'')!==String(admins[0].values[0]||'')&&String(r[10]||'').trim().toLowerCase()===email;})) throw new Error('Email sudah digunakan akun lain.');
+    const target=admins[0],now=new Date();
+    sheet.getRange(target.row,2).setValue(email);
+    sheet.getRange(target.row,9).setValue(now);
+    sheet.getRange(target.row,11,1,2).setValues([[email,false]]);
+    SpreadsheetApp.flush();
+    const msg='Email Superadmin disimpan. Login Admin berikutnya menggunakan '+email+' dan password lama, lalu OTP akan dikirim ke alamat tersebut.';
+    ui.alert('FMart — Email Disiapkan',msg,ui.ButtonSet.OK);
+    return {ok:true,email:email,message:msg};
+  } finally {lock.releaseLock();}
+}
+
 function getSetupSpreadsheet_() {
   const id = PropertiesService.getScriptProperties().getProperty(FMART_DB.PROPERTY_SPREADSHEET_ID);
   if (id) return SpreadsheetApp.openById(id);
