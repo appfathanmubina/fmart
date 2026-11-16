@@ -73,7 +73,11 @@ function login(username, password, portalMode) {
       ? normalizeEmail_(rows[i][10])
       : normalizeUsername_(rows[i][1]);
     if (loginValue === username && (portalMode !== 'ADMINFMART16720' || ['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(rowRole) >= 0)) {
-      targetIndex=i; break;
+      if (targetIndex !== -1) {
+        recordLoginFailure_(rate);
+        return {ok:false,message:'Email atau password tidak valid.'};
+      }
+      targetIndex=i;
     }
   }
 
