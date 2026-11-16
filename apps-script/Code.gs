@@ -1073,6 +1073,16 @@ function createStaffUser(token, username, password, nama, role, email) {
 
 function upsertStockRow_(ss,productId,variationId,qty,userId){const sheet=ss.getSheetByName('Stok');const rows=readRows_(sheet);const idx=rows.findIndex(r=>String(r[1])===String(productId)&&String(r[2]||'')===String(variationId||''));const now=new Date();if(idx>=0)sheet.getRange(idx+2,4,1,2).setValues([[Math.max(0,Number(qty)||0),now]]);else sheet.appendRow([makeFMartId_('STK'),productId,variationId,Math.max(0,Number(qty)||0),0,now]);}
 
+/** Tahap 4: daftar akun petugas; data sensitif autentikasi tidak pernah dikirim ke browser. */
+function getStaffUserManagement(token) {
+  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  const rows=readRows_(getSS_().getSheetByName('Users'));
+  const users=rows.map(function(r){
+    return {userId:String(r[0]||''),username:String(r[1]||''),email:String(r[10]||r[1]||''),nama:String(r[4]||''),role:String(r[5]||''),status:String(r[6]||''),createdAt:dateIso_(r[7]),lastLoginAt:dateIso_(r[9])};
+  }).filter(function(u){return u.userId && ['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(u.role)>=0;});
+  return {ok:true,users:users,canManage:session.role==='SUPERADMIN',currentUserId:session.userId};
+}
+
 /** Fase 8.8/8.12.1: Manajemen pengguna dan verifikasi relasi Wali Santri. */
 function getUserManagement(token) {
   const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
