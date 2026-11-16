@@ -122,7 +122,7 @@ function createFMartUser(username, password, nama, role, email) {
   email = String(email || '').trim().toLowerCase();
   if (['WALI_SANTRI','ADMIN','KASIR','GUDANG','SUPERADMIN'].indexOf(role) === -1) throw new Error('Role tidak valid.');
   if (['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(role) >= 0) {
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+(?![\\s\\S])/.test(email)) throw new Error('Email staf wajib diisi dengan format yang valid.');
+    if (!/^[^\s@]+@[^\s@]+\\.[^\s@]+(?![\s\S])/.test(email)) throw new Error('Email staf wajib diisi dengan format yang valid.');
     username = email;
   } else if (!/^[a-z0-9._-]+$/.test(username)) {
     throw new Error('Username hanya boleh berisi huruf kecil, angka, titik, garis bawah, atau tanda minus.');
@@ -185,7 +185,7 @@ function createInitialFMartSuperadmin(username, password, nama, email) {
   password = String(password || '');
   nama = String(nama || '').trim();
   email = String(email || username || '').trim().toLowerCase();
-  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+(?![\\s\\S])/.test(email)) throw new Error('Email Superadmin wajib valid.');
+  if (!/^[^\s@]+@[^\s@]+\\.[^\s@]+(?![\s\S])/.test(email)) throw new Error('Email Superadmin wajib valid.');
   username = email;
   if (!username || !password || !nama) throw new Error('Email, password, dan nama wajib diisi.');
   if (password.length < 10) throw new Error('Password Superadmin minimal 10 karakter. Gunakan password yang kuat dan unik.');
