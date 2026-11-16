@@ -335,6 +335,28 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
       }
     }
 
+
+    .report-tabs{display:flex;gap:8px;padding:6px;background:#eee8fa;border-radius:14px;width:max-content;max-width:100%;margin:16px 0}
+    .report-tab{border:0;background:transparent;color:var(--muted);padding:11px 16px;border-radius:10px;font-weight:750}
+    .report-tab.active{background:#fff;color:var(--purple-dark);box-shadow:0 3px 12px #4c1d9514}
+    .report-filter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;gap:12px;align-items:end;margin:16px 0}
+    .report-filter-grid .field,.report-audit-filters .field{margin:0;min-width:0}
+    .report-filter-grid input,.report-audit-filters input,.report-audit-filters select{width:100%;min-height:44px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;color:var(--text)}
+    .report-metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+    .report-metric{background:#fff;border:1px solid var(--line);border-radius:16px;padding:17px;min-width:0;box-shadow:0 5px 18px #4c1d9509}
+    .report-metric span,.report-stock-summary span{display:block;color:var(--muted);font-size:12px}
+    .report-metric strong{display:block;margin-top:8px;color:var(--purple-dark);font-size:clamp(17px,2vw,23px);overflow-wrap:anywhere}
+    .report-two-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .report-stock-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .report-stock-summary>div{padding:14px;border:1px solid var(--line);border-radius:12px;background:#faf8ff}
+    .report-stock-summary strong{display:block;margin-top:6px}
+    .report-status-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+    .report-status-item{padding:12px;border:1px solid var(--line);border-radius:12px;display:flex;justify-content:space-between;gap:10px}
+    .report-footnote{color:var(--muted);font-size:12px;line-height:1.6;margin:14px 0}
+    .report-audit-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0}
+    .audit-table{min-width:1000px}.audit-entity-id{display:block;color:var(--muted);font-size:11px;margin-top:3px;overflow-wrap:anywhere}
+    @media(max-width:760px){.report-tabs{width:100%}.report-tab{flex:1;padding:10px 8px;font-size:13px}.report-filter-grid,.report-audit-filters,.report-two-col{grid-template-columns:1fr}.report-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.report-metric{padding:13px}}
+
     /* FMart Admin — audit lebar desktop dan responsivitas lintas halaman */
     @media (min-width:761px){
       body.admin-portal #appView.app{width:100%;max-width:none;min-width:0}
@@ -758,16 +780,79 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
     }
     async function renderOpsReports(){
       if(!['ADMIN','SUPERADMIN'].includes(state.data.user.role)){showToast('Menu laporan tidak tersedia untuk role Anda.');return;}
-      const now=new Date(), end=now.toISOString().slice(0,10), start=new Date(now.getTime()-29*86400000).toISOString().slice(0,10);
-      $('opsMainTitle').textContent='Laporan FMart';
-      $('opsMainBody').innerHTML='<div class="profile-grid"><div class="field"><label>Dari</label><input id="reportStart" type="date" value="'+start+'"></div><div class="field"><label>Sampai</label><input id="reportEnd" type="date" value="'+end+'"></div></div><button class="primary" id="runReport">Tampilkan Laporan</button><div id="reportBody" class="section"><div class="empty-box">Pilih periode lalu tampilkan laporan.</div></div><div class="section"><div class="section-title"><h2>Integrasi Tabungan</h2></div><div id="integrationBody" class="empty-box">Memuat status integrasi...</div></div>';
-      $('runReport').onclick=loadReport;
-      loadReport(); loadIntegrationStatus();
+      const now=new Date(),end=localDateInput_(now),start=localDateInput_(new Date(now.getFullYear(),now.getMonth(),now.getDate()-29));
+      $('opsMainTitle').textContent='Laporan & Aktivitas Audit';
+      $('opsMainBody').innerHTML=opsWelcomeMarkup('Laporan dan aktivitas audit','Pantau kinerja penjualan serta jejak aktivitas petugas berdasarkan data Spreadsheet.','▤')+
+        '<div class="report-tabs"><button class="report-tab active" id="reportTabSales" type="button">Laporan Penjualan</button><button class="report-tab" id="reportTabAudit" type="button">Aktivitas Audit</button></div>'+
+        '<div id="reportWorkspace"></div>';
+      $('reportTabSales').onclick=()=>{setReportTab_('sales');renderReportWorkspace()};
+      $('reportTabAudit').onclick=()=>{setReportTab_('audit');renderAuditWorkspace()};
+      setReportTab_('sales');renderReportWorkspace();
     }
-    async function loadReport(){loading(true,'Menghitung laporan...');try{const r=await runServer('getFMartReports',state.token,$('reportStart').value,$('reportEnd').value);const s=r.summary;const rows=(r.topProducts||[]).map(x=>'<tr><td>'+escapeHtml(x.name)+'</td><td>'+formatMoney(x.qty)+'</td><td>Rp '+formatMoney(x.amount)+'</td></tr>').join('');$('reportBody').innerHTML='<div class="products" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-top:14px">'+[['Pesanan',s.orders],['Omzet', 'Rp '+formatMoney(s.gross)],['Terverifikasi','Rp '+formatMoney(s.paid)],['Belum Terbayar','Rp '+formatMoney(s.unpaid)]].map(x=>'<div class="profile-item"><small>'+escapeHtml(x[0])+'</small><strong style="font-size:20px">'+escapeHtml(x[1])+'</strong></div>').join('')+'</div><div class="section"><div class="section-title"><h2>Produk terlaris</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Produk</th><th>Qty</th><th>Penjualan</th></tr></thead><tbody>'+(rows||'<tr><td colspan="3">Belum ada transaksi.</td></tr>')+'</tbody></table></div></div><div class="section"><div class="section-title"><h2>Penjualan per kategori</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Kategori</th><th>Penjualan</th></tr></thead><tbody>'+((r.categorySales||[]).map(x=>'<tr><td>'+escapeHtml(x.name)+'</td><td>Rp '+formatMoney(x.amount)+'</td></tr>').join('')||'<tr><td colspan="2">Belum ada data.</td></tr>')+'</tbody></table></div></div><div class="section"><div class="section-title"><h2>Status pesanan</h2></div><div class="profile-grid">'+Object.keys(r.statusCounts||{}).map(k=>'<div class="profile-item"><small>'+escapeHtml(statusLabel(k))+'</small><strong>'+formatMoney(r.statusCounts[k])+'</strong></div>').join('')+'</div></div><div class="muted" style="margin-top:12px">Laporan dihitung dari data Spreadsheet saat diminta. Dibuat '+escapeHtml(formatDate(r.generatedAt))+'</div>';}catch(e){showToast(e.message||'Laporan gagal dimuat.')}finally{loading(false)}}
+    let currentReportTab='sales';
+    function setReportTab_(tab){
+      currentReportTab=tab;
+      if($('reportTabSales'))$('reportTabSales').classList.toggle('active',tab==='sales');
+      if($('reportTabAudit'))$('reportTabAudit').classList.toggle('active',tab==='audit');
+    }
+    function localDateInput_(date){
+      const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');
+      return y+'-'+m+'-'+d;
+    }
+    function reportDateControls_(prefix){
+      const now=new Date(),end=localDateInput_(now),start=localDateInput_(new Date(now.getFullYear(),now.getMonth(),now.getDate()-29));
+      return '<div class="report-filter-grid"><div class="field"><label>Dari tanggal</label><input id="'+prefix+'Start" type="date" value="'+start+'"></div><div class="field"><label>Sampai tanggal</label><input id="'+prefix+'End" type="date" value="'+end+'"></div><button class="primary" id="'+prefix+'Run" type="button">Tampilkan</button></div>';
+    }
+    function renderReportWorkspace(){
+      $('reportWorkspace').innerHTML=reportDateControls_('report')+
+        '<div id="reportBody"><div class="empty-box">Memuat laporan...</div></div>'+
+        '<div class="section"><div class="section-title"><h2>Integrasi Tabungan</h2></div><div id="integrationBody" class="empty-box">Memuat status integrasi...</div></div>';
+      $('reportRun').onclick=loadReport;loadReport();loadIntegrationStatus();
+    }
+    async function loadReport(){
+      const start=$('reportStart').value,end=$('reportEnd').value;
+      if(!start||!end||end<start){showToast('Periksa kembali rentang tanggal laporan.','error');return;}
+      loading(true,'Menghitung laporan...');
+      try{
+        const r=await runServer('getFMartReports',state.token,start,end),s=r.summary||{};
+        const rows=(r.topProducts||[]).map(x=>'<tr><td>'+escapeHtml(x.name)+'</td><td>'+formatMoney(x.qty)+'</td><td>Rp '+formatMoney(x.amount)+'</td></tr>').join('');
+        const categories=(r.categorySales||[]).map(x=>'<tr><td>'+escapeHtml(x.name)+'</td><td>Rp '+formatMoney(x.amount)+'</td></tr>').join('');
+        const methods=(r.paymentMethods||[]).map(x=>'<tr><td>'+escapeHtml(x.name)+'</td><td>Rp '+formatMoney(x.amount)+'</td></tr>').join('');
+        const daily=(r.daily||[]).map(x=>'<tr><td>'+escapeHtml(x.date)+'</td><td>'+formatMoney(x.orders)+'</td><td>Rp '+formatMoney(x.amount)+'</td></tr>').join('');
+        const statuses=Object.keys(r.statusCounts||{}).sort().map(k=>'<div class="report-status-item"><span>'+escapeHtml(statusLabel(k))+'</span><strong>'+formatMoney(r.statusCounts[k])+'</strong></div>').join('');
+        $('reportBody').innerHTML=
+          '<div class="report-metric-grid">'+[['Jumlah Pesanan',formatMoney(s.orders)],['Nilai Pesanan','Rp '+formatMoney(s.gross)],['Pembayaran Terverifikasi','Rp '+formatMoney(s.paid)],['Belum Terbayar','Rp '+formatMoney(s.unpaid)],['Rata-rata Pesanan','Rp '+formatMoney(s.averageOrder)],['Pesanan Aktif',formatMoney(s.activeOrders)]].map(x=>'<article class="report-metric"><span>'+escapeHtml(x[0])+'</span><strong>'+escapeHtml(x[1])+'</strong></article>').join('')+'</div>'+
+          '<div class="report-two-col"><section class="section"><div class="section-title"><h2>Produk terlaris</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Produk</th><th>Qty</th><th>Penjualan</th></tr></thead><tbody>'+(rows||'<tr><td colspan="3">Belum ada transaksi.</td></tr>')+'</tbody></table></div></section>'+
+          '<section class="section"><div class="section-title"><h2>Penjualan per kategori</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Kategori</th><th>Penjualan</th></tr></thead><tbody>'+(categories||'<tr><td colspan="2">Belum ada data.</td></tr>')+'</tbody></table></div></section>'+
+          '<section class="section"><div class="section-title"><h2>Metode pembayaran terverifikasi</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Metode</th><th>Nominal</th></tr></thead><tbody>'+(methods||'<tr><td colspan="2">Belum ada pembayaran terverifikasi.</td></tr>')+'</tbody></table></div></section>'+
+          '<section class="section"><div class="section-title"><h2>Pergerakan stok</h2></div><div class="report-stock-summary"><div><span>Stok masuk</span><strong>'+formatMoney(s.stockIn||0)+' unit</strong></div><div><span>Stok keluar</span><strong>'+formatMoney(s.stockOut||0)+' unit</strong></div></div></section></div>'+
+          '<section class="section"><div class="section-title"><h2>Tren transaksi harian</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Tanggal</th><th>Pesanan</th><th>Nilai</th></tr></thead><tbody>'+(daily||'<tr><td colspan="3">Belum ada data.</td></tr>')+'</tbody></table></div></section>'+
+          '<section class="section"><div class="section-title"><h2>Status pesanan</h2></div><div class="report-status-grid">'+(statuses||'<span class="muted">Belum ada data.</span>')+'</div></section>'+
+          '<div class="report-footnote">Dihitung dari data Spreadsheet pada saat laporan diminta. Rentang tanggal: '+escapeHtml(start)+' s.d. '+escapeHtml(end)+'. Dibuat '+escapeHtml(formatDate(r.generatedAt))+'.</div>';
+      }catch(e){$('reportBody').innerHTML='<div class="empty-box">Laporan belum dapat dimuat. '+escapeHtml(e.message||'Silakan coba kembali.')+'</div>';}
+      finally{loading(false);}
+    }
+    function renderAuditWorkspace(){
+      $('reportWorkspace').innerHTML=reportDateControls_('audit')+
+        '<div class="report-audit-filters"><div class="field"><label>Peran</label><select id="auditRole"><option value="">Semua peran</option><option>ADMIN</option><option>SUPERADMIN</option><option>KASIR</option><option>GUDANG</option><option>SYSTEM</option></select></div><div class="field"><label>Jenis aktivitas</label><input id="auditAction" placeholder="Contoh: VERIFY_PAYMENT"></div><div class="field"><label>Pencarian</label><input id="auditSearch" placeholder="Petugas, entitas, catatan..."></div></div>'+
+        '<div class="section"><div class="section-title"><div><h2>Riwayat aktivitas</h2><span class="muted" id="auditMeta">Maksimal 200 catatan terbaru sesuai filter</span></div><button class="secondary" id="auditRefresh" type="button">Muat ulang</button></div><div id="auditRows"><div class="empty-box">Memuat aktivitas...</div></div></div>'+
+        '<div class="report-footnote">Riwayat ini bersifat baca saja. Data sebelum/sesudah perubahan tidak ditampilkan pada antarmuka.</div>';
+      $('auditRun').onclick=loadAuditLog;$('auditRefresh').onclick=loadAuditLog;loadAuditLog();
+    }
+    async function loadAuditLog(){
+      const start=$('auditStart').value,end=$('auditEnd').value;
+      if(!start||!end||end<start){showToast('Periksa kembali rentang tanggal audit.','error');return;}
+      loading(true,'Memuat aktivitas audit...');
+      try{
+        const r=await runServer('getFMartAuditLog',state.token,start,end,$('auditRole').value,$('auditAction').value,$('auditSearch').value,200);
+        $('auditMeta').textContent='Menampilkan '+r.count+' catatan · maksimal 200 hasil terbaru';
+        $('auditRows').innerHTML=r.rows.length?'<div class="table-wrap"><table class="data-table audit-table"><thead><tr><th>Waktu</th><th>Petugas</th><th>Peran</th><th>Aktivitas</th><th>Objek</th><th>Catatan</th></tr></thead><tbody>'+r.rows.map(x=>'<tr><td>'+escapeHtml(formatDate(x.createdAt))+'</td><td><strong>'+escapeHtml(x.actorName)+'</strong></td><td><span class="status-badge">'+escapeHtml(x.role||'-')+'</span></td><td>'+escapeHtml(x.action)+'</td><td>'+escapeHtml(x.entityType)+'<small class="audit-entity-id">'+escapeHtml(x.entityId)+'</small></td><td>'+escapeHtml(x.note||'-')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty-box">Tidak ada aktivitas pada periode/filter ini.</div>';
+      }catch(e){$('auditRows').innerHTML='<div class="empty-box">Aktivitas audit gagal dimuat. '+escapeHtml(e.message||'Silakan coba kembali.')+'</div>';}
+      finally{loading(false);}
+    }
     async function loadIntegrationStatus(){try{const r=await runServer('getFMartIntegrationStatus',state.token);$('integrationBody').innerHTML='<strong>'+(r.connected?'Terhubung':'Belum terhubung')+'</strong><div class="muted" style="margin-top:5px">Mode: baca saja · '+(r.spreadsheetName?escapeHtml(r.spreadsheetName):'Belum dikonfigurasi')+'</div><div class="field" style="margin-top:12px"><label>ID Spreadsheet Tabungan (opsional)</label><input id="tabunganId" placeholder="Masukkan ID Spreadsheet" value=""></div><button class="secondary" id="saveIntegration">Simpan Konfigurasi</button>';$('saveIntegration').onclick=async()=>{loading(true,'Menyimpan konfigurasi...');try{const x=await runServer('setFMartIntegrationTabunganId',state.token,$('tabunganId').value.trim());$('integrationBody').innerHTML='<strong>'+(x.connected?'Terhubung':'Belum terhubung')+'</strong><div class="muted" style="margin-top:5px">Mode: baca saja · '+(x.spreadsheetName?escapeHtml(x.spreadsheetName):'Belum dikonfigurasi')+'</div>';showToast('Konfigurasi integrasi tersimpan.')}catch(e){showToast(e.message||'Konfigurasi gagal.')}finally{loading(false)}}}catch(e){$('integrationBody').textContent='Status integrasi tidak dapat dimuat.'}}
 
-    function opsWelcomeMarkup(title,description,mark){
+        function opsWelcomeMarkup(title,description,mark){
       return '<div class="ops-welcome"><div><strong>'+escapeHtml(title)+'</strong><span>'+escapeHtml(description)+'</span></div><div class="ops-welcome-mark" aria-hidden="true">'+mark+'</div></div>';
     }
     function opsWorkflowMarkup(){
