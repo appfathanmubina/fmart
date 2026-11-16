@@ -122,7 +122,10 @@ function createFMartUser(username, password, nama, role, email) {
   if (password.length < 10) throw new Error('Password minimal 10 karakter.');
   if (!nama) throw new Error('Nama wajib diisi.');
   email = String(email || '').trim().toLowerCase();
-  if (['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(role) >= 0 && email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+(?![\\s\\S])/.test(email)) throw new Error('Format email staf tidak valid.');
+  if (['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(role) >= 0) {
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+(?![\\s\\S])/.test(email)) throw new Error('Email staf wajib diisi dengan format yang valid.');
+    username = email;
+  }
   if (['WALI_SANTRI','ADMIN','KASIR','GUDANG','SUPERADMIN'].indexOf(role) === -1) throw new Error('Role tidak valid.');
 
   const ss = getSetupSpreadsheet_();
@@ -133,6 +136,7 @@ function createFMartUser(username, password, nama, role, email) {
   if (rows.some(function(r){ return String(r[1] || '').trim().toLowerCase() === username; })) {
     throw new Error('Username sudah digunakan.');
   }
+  if (email && rows.some(function(r){ return String(r[10] || '').trim().toLowerCase() === email; })) throw new Error('Email sudah digunakan akun lain.');
 
   const userId = 'USR-' + Utilities.getUuid().replace(/-/g,'').slice(0,16).toUpperCase();
   const salt = Utilities.getUuid().replace(/-/g,'');
@@ -162,23 +166,27 @@ function createFMartUser(username, password, nama, role, email) {
  * Pemanggilan dengan parameter tetap didukung untuk kebutuhan administrasi terkontrol,
  * tetapi jangan menaruh password nyata di source code.
  */
-function createInitialFMartSuperadmin(username, password, nama) {
-  if (arguments.length === 0 || (!username && !password && !nama)) {
+function createInitialFMartSuperadmin(username, password, nama, email) {
+  if (arguments.length === 0 || (!username && !password && !nama && !email)) {
     const ui = SpreadsheetApp.getUi();
-    const u = ui.prompt('FMart — Buat Superadmin Pertama', 'Username Superadmin:', ui.ButtonSet.OK_CANCEL);
+    const u = ui.prompt('FMart — Buat Superadmin Pertama', 'Email Superadmin:', ui.ButtonSet.OK_CANCEL);
     if (u.getSelectedButton() !== ui.Button.OK) return {ok:false, cancelled:true};
     const n = ui.prompt('FMart — Buat Superadmin Pertama', 'Nama Superadmin:', ui.ButtonSet.OK_CANCEL);
     if (n.getSelectedButton() !== ui.Button.OK) return {ok:false, cancelled:true};
     const pw = ui.prompt('FMart — Buat Superadmin Pertama', 'Password Superadmin (minimal 10 karakter):', ui.ButtonSet.OK_CANCEL);
     if (pw.getSelectedButton() !== ui.Button.OK) return {ok:false, cancelled:true};
-    username = u.getResponseText();
+    email = u.getResponseText();
+    username = email;
     nama = n.getResponseText();
     password = pw.getResponseText();
   }
   username = String(username || '').trim().toLowerCase();
   password = String(password || '');
   nama = String(nama || '').trim();
-  if (!username || !password || !nama) throw new Error('Username, password, dan nama wajib diisi.');
+  email = String(email || username || '').trim().toLowerCase();
+  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+(?![\\s\\S])/.test(email)) throw new Error('Email Superadmin wajib valid.');
+  username = email;
+  if (!username || !password || !nama) throw new Error('Email, password, dan nama wajib diisi.');
   if (password.length < 10) throw new Error('Password Superadmin minimal 10 karakter. Gunakan password yang kuat dan unik.');
 
   const lock = LockService.getScriptLock();
@@ -187,7 +195,7 @@ function createInitialFMartSuperadmin(username, password, nama) {
     const ss = getSetupSpreadsheet_();
     const sheet = ss.getSheetByName('Users');
     if (!sheet) throw new Error('Sheet Users tidak ditemukan. Jalankan setupFMartDatabase() terlebih dahulu.');
-    const rows = sheet.getLastRow() > 1 ? sheet.getRange(2,1,sheet.getLastRow()-1,10).getValues() : [];
+    const rows = sheet.getLastRow() > 1 ? sheet.getRange(2,1,sheet.getLastRow()-1,12).getValues() : [];
     if (rows.some(function(r){ return String(r[5]||'').trim().toUpperCase()==='SUPERADMIN' && String(r[6]||'').trim().toUpperCase()==='AKTIF'; })) {
       throw new Error('Bootstrap dikunci: sudah ada Superadmin aktif. Gunakan manajemen pengguna setelah login.');
     }
@@ -195,10 +203,10 @@ function createInitialFMartSuperadmin(username, password, nama) {
       throw new Error('Username sudah digunakan. Pilih username lain.');
     }
 
-    const result = createFMartUser(username, password, nama, 'SUPERADMIN');
+    const result = createFMartUser(username, password, nama, 'SUPERADMIN', email);
     SpreadsheetApp.flush();
     const lastRow = sheet.getLastRow();
-    const savedRows = lastRow > 1 ? sheet.getRange(2,1,lastRow-1,10).getValues() : [];
+    const savedRows = lastRow > 1 ? sheet.getRange(2,1,lastRow-1,12).getValues() : [];
     const saved = savedRows.some(function(r){ return String(r[0]||'').trim()===String(result.userId); });
     if (!saved) throw new Error('Akun gagal diverifikasi setelah penyimpanan. Periksa Spreadsheet tujuan FMart.');
 
