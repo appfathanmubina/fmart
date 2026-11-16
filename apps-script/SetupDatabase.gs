@@ -191,7 +191,7 @@ function auditFMartDatabaseIntegrity() {
     const sheetName = sheetNameForKey_(key);
     if (!validSchema[sheetName]) return;
     const rows = rowsBySheet[sheetName];
-    const seen = {};
+    const seen = Object.create(null);
     rows.forEach(function(row, index) {
       if (!hasData(row)) return;
       const id = String(row[0] || '').trim();
@@ -237,7 +237,7 @@ function auditFMartDatabaseIntegrity() {
   }
 
   function idSet(sheetName) {
-    const result = {};
+    const result = Object.create(null);
     if (!validSchema[sheetName]) return result;
     rowsBySheet[sheetName].forEach(function(row) {
       const id = String(row[0] || '').trim();
