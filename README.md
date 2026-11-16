@@ -273,3 +273,23 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 - CSS diperiksa keseimbangan kurung kurawal: lulus.
 - Pemeriksaan statis memastikan pencarian nama/SKU/deskripsi, filter kategori, jumlah produk per kategori, pengurutan, keadaan hasil kosong, dan kewajiban memilih santri hanya pada proses keranjang.
 - Belum dilakukan pengujian browser pada perangkat, validasi data produk/stok Spreadsheet aktif, atau deployment Apps Script.
+
+## Pengembangan Portal Wali Santri — Tahap 5
+
+### Detail Produk, Foto, Stok, dan Variasi
+
+- Detail produk disusun menjadi tampilan foto dan informasi yang lebih jelas: kategori, nama, SKU, harga, deskripsi, serta ketersediaan stok.
+- Foto produk ditampilkan lebih besar dengan mode contain agar gambar tidak terpotong. Jika URL foto kosong atau tidak tersedia, area foto menampilkan placeholder.
+- Produk dengan variasi menampilkan pilihan variasi, tambahan harga, dan stok masing-masing variasi. Variasi yang stoknya habis dinonaktifkan sehingga tidak dapat dipilih.
+- Setelah variasi dipilih, harga dan stok yang ditampilkan mengikuti variasi tersebut; jumlah maksimum ikut menyesuaikan stok variasi.
+- Produk tanpa variasi menggunakan stok produk. Produk/variasi tanpa stok menonaktifkan kontrol jumlah dan tombol tambah ke keranjang/beli sekarang.
+- Jumlah pembelian dibatasi minimal satu dan maksimal stok yang tersedia. Validasi stok tetap diperiksa kembali oleh endpoint addToCart di server.
+- Pemilihan santri tetap diwajibkan sebelum menambahkan produk ke keranjang. Wali tetap dapat membuka detail produk sebelum memilih santri.
+- Backend getProductDetail dan addToCart yang sudah ada tetap digunakan. Tidak ada perubahan skema Spreadsheet, data katalog, maupun fungsi/antarmuka Admin.
+- Styling detail produk dibatasi pada body.buyer-portal.
+
+### Pemeriksaan Tahap 5
+
+- Perubahan frontend disimpan pada apps-script/Index.html; Code.gs dan struktur Spreadsheet tidak diubah.
+- Pemeriksaan statis perlu memastikan sintaks JavaScript, struktur CSS, dan selector portal Pembeli tetap valid.
+- Belum dilakukan uji browser/perangkat, pemuatan foto dari Drive/URL aktual, uji variasi dan stok pada Spreadsheet aktif, transaksi keranjang nyata, atau deployment Apps Script.
