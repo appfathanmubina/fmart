@@ -1067,7 +1067,8 @@ function adjustStock(token, productId, variationId, type, qty, note) {
   if(!productId||!Number.isFinite(qty)||qty<1||['MASUK','KELUAR'].indexOf(type)<0)throw new Error('Data mutasi stok tidak valid.');
   const lock=LockService.getScriptLock();lock.waitLock(10000);
   try{const ss=getSS_();const product=findRowById_(ss.getSheetByName('Produk'),productId,1);if(!product)throw new Error('Produk tidak ditemukan.');
-    if(variationId){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(!vr||String(vr.values[1])!==productId)throw new Error('Variasi tidak valid.');}
+    const activeVariations=readRows_(ss.getSheetByName('VariasiProduk')).filter(v=>String(v[1])===productId&&String(v[6]||'').toUpperCase()==='AKTIF');if(activeVariations.length&&!variationId)throw new Error('Pilih variasi produk yang akan dimutasi.');
+    if(variationId){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(!vr||String(vr.values[1])!==productId||String(vr.values[6]||'').toUpperCase()!=='AKTIF')throw new Error('Variasi tidak valid atau tidak aktif.');}
     const sheet=ss.getSheetByName('Stok');let row=readRows_(sheet).findIndex(r=>String(r[1])===productId&&String(r[2]||'')===variationId);const before=row>=0?Math.max(0,Number(readRows_(sheet)[row][3])||0):0;const after=type==='MASUK'?before+qty:before-qty;if(after<0)throw new Error('Stok tidak mencukupi.');const now=new Date();
     if(row>=0){sheet.getRange(row+2,4).setValue(after);sheet.getRange(row+2,6).setValue(now);}else sheet.appendRow([makeFMartId_('STK'),productId,variationId,after,Number(product.values[6])||0,now]);
     if(variationId){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(vr)ss.getRange(vr.rowNumber,6,1,3).setValues([[after,String(vr.values[6]||'AKTIF'),now]]);}
