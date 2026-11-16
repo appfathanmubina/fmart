@@ -1267,7 +1267,7 @@ function openWaliRequestForm(santriId,c){if(!c)return;$('waliChildRequestForm').
 function closeProfile(){$('profileModal').classList.add('hidden')}
 async function refreshCartCount(){
   if(!state.token||!state.data||state.data.user.role!=='WALI_SANTRI'){updateCartBadge(0);return}
-  try{const r=await runServer('getCart',state.token);state.cart=r;updateCartBadge((r.items||[]).reduce((n,i)=>n+Number(i.qty||0),0))}
+  try{const previousIds=new Set((state.cart&&state.cart.items||[]).map(i=>String(i.cartId)));const r=await runServer('getCart',state.token);if(Array.isArray(state.selectedCartIds)){const selected=new Set(state.selectedCartIds.map(String));(r.items||[]).forEach(i=>{if(!previousIds.has(String(i.cartId)))selected.add(String(i.cartId))});state.selectedCartIds=Array.from(selected)}state.cart=r;updateCartBadge((r.items||[]).reduce((n,i)=>n+Number(i.qty||0),0))}
   catch(e){updateCartBadge(0)}
 }
 function updateCartBadge(n){const b=$('cartBadge');b.textContent=String(n||0);b.classList.toggle('hidden',!n)}
