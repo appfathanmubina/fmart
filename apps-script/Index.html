@@ -153,6 +153,7 @@
     .showcase-decoration-one{width:580px;height:580px;right:-210px;top:-230px;box-shadow:0 0 0 55px #ffffff08,0 0 0 110px #ffffff05}
     .showcase-decoration-two{width:400px;height:400px;left:-220px;bottom:-260px;box-shadow:0 0 0 45px #ffffff08}
     .login-panel{min-width:0;display:flex;align-items:center;justify-content:center;padding:clamp(22px,3vw,48px);background:linear-gradient(180deg,#fff 0%,#fbf9ff 100%)}
+    .install-app-btn{width:min(430px,100%);min-height:48px;margin:14px auto 0;display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid #800080;border-radius:14px;background:#fff;color:#800080;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 8px 20px #80008012}.install-app-btn span{font-size:20px;font-weight:900}.install-app-btn:active{transform:scale(.985)}.install-app-hint{width:min(430px,100%);margin:7px auto 0;text-align:center;color:#887b91;font-size:11px;line-height:1.5}
     .login-card{width:100%;max-width:430px;padding:clamp(22px,2.2vw,34px);border:1px solid #ece5f5;border-radius:25px;box-shadow:0 24px 70px #32145a12}
     .login-brand{margin-bottom:25px}.login-brand .brand-mark,.login-brand .brand-name,.login-brand .login-subtitle{display:none}
     .login-card h1{font-size:clamp(25px,2.1vw,31px);letter-spacing:-.035em}.login-card>p{line-height:1.6}
@@ -588,6 +589,8 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
         <div class="login-help">Browser dapat menawarkan penyimpanan dan pengisian otomatis kredensial setelah login berhasil.</div>
       </form>
       </div>
+      <button type="button" id="installAppBtn" class="install-app-btn"><span aria-hidden="true">↓</span> Install Aplikasi FMart</button>
+      <p id="installAppHint" class="install-app-hint">Pasang FMart agar lebih mudah dibuka dari perangkat Anda.</p>
     </section>
   </div>
 
@@ -1248,6 +1251,9 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         }
       });
       document.addEventListener('focusin',e=>{if(e.target.matches('input,select,textarea'))e.target.scrollIntoView({block:'nearest',behavior:'smooth'})});
+      const installAppBtn=document.getElementById('installAppBtn'),installAppHint=document.getElementById('installAppHint');
+      if(installAppBtn){installAppBtn.addEventListener('click',()=>{if(window.parent!==window){window.parent.postMessage({type:'FMART_INSTALL_REQUEST'},'*')}else{installAppHint.textContent='Untuk memasang FMart, buka menu browser lalu pilih Instal aplikasi atau Tambahkan ke layar utama.'}})}
+      window.addEventListener('message',event=>{if(event.origin!=='https://appfathanmubina.github.io')return;const data=event.data||{};if(data.type==='FMART_INSTALL_STATE'&&data.available){installAppHint.textContent='FMart siap dipasang pada perangkat ini.'}else if(data.type==='FMART_INSTALL_RESULT'){installAppHint.textContent=data.status==='accepted'?'FMart berhasil ditambahkan ke perangkat.':'Jika pemasangan tidak muncul, gunakan menu browser lalu pilih Instal aplikasi atau Tambahkan ke layar utama.'}else if(data.type==='FMART_INSTALL_DONE'){installAppHint.textContent='FMart sudah terpasang di perangkat ini.'}});
       window.addEventListener('resize',()=>{document.querySelectorAll('.bottom-nav.nav-hidden').forEach(n=>{if(window.innerWidth>760)n.classList.remove('nav-hidden')})});
     })();
 
