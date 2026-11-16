@@ -241,8 +241,9 @@ function auditFMartDatabaseIntegrity() {
   function idSet(sheetName) {
     const result = Object.create(null);
     if (!validSchema[sheetName]) return result;
+    const idColumn = sheetName === 'Santri' ? 8 : 0;
     rowsBySheet[sheetName].forEach(function(row) {
-      const id = String(row[0] || '').trim();
+      const id = String(row[idColumn] || '').trim();
       if (id) result[id] = true;
     });
     return result;
