@@ -477,7 +477,7 @@ function updateMyWaliProfile(token, nama, email, alamat) {
   email = String(email || '').trim().slice(0,160);
   alamat = String(alamat || '').trim().slice(0,500);
   if (!nama) throw new Error('Nama wajib diisi.');
-  if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+(?![\\s\\S])/.test(email)) throw new Error('Format email tidak valid.');
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) throw new Error('Format email tidak valid.');
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
