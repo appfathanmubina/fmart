@@ -122,7 +122,7 @@ function createFMartUser(username, password, nama, role, email) {
   email = String(email || '').trim().toLowerCase();
   if (['WALI_SANTRI','ADMIN','KASIR','GUDANG','SUPERADMIN'].indexOf(role) === -1) throw new Error('Role tidak valid.');
   if (['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(role) >= 0) {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) throw new Error('Email staf wajib diisi dengan format yang valid.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) {
     username = email;
   } else if (!/^[a-z0-9._-]+$/.test(username)) {
     throw new Error('Username hanya boleh berisi huruf kecil, angka, titik, garis bawah, atau tanda minus.');
