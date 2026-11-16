@@ -747,12 +747,6 @@ function getWaliDashboard(token) {
     const orderId = String(row[0]);
     const status = String(row[8] || '');
     const payment = paymentMap[orderId] || null;
-    if (status === 'MENUNGGU_PEMBAYARAN') summary.unpaidOrders++;
-    if (['DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR'].indexOf(status) !== -1) summary.activeOrders++;
-    if (status === 'DITERIMA') summary.completedOrders++;
-    if (status === 'DIBATALKAN') summary.cancelledOrders++;
-    if (payment && payment.status === 'MENUNGGU_VERIFIKASI') summary.awaitingPaymentVerification++;
-    if (payment && payment.status === 'DITOLAK') summary.rejectedPayments++;
     const child = childMap[String(row[3])] || {name:'Santri',className:''};
     return {
       orderId:orderId,
@@ -776,7 +770,7 @@ function getWaliDashboard(token) {
   orderRows.forEach(function(row){
     const status = String(row[8] || '');
     const payment = paymentMap[String(row[0])] || null;
-    if (status === 'MENUNGGU_PEMBAYARAN') summary.unpaidOrders++;
+    if (status === 'MENUNGGU_PEMBAYARAN' && (!payment || payment.status === 'DITOLAK')) summary.unpaidOrders++;
     if (['DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR'].indexOf(status) !== -1) summary.activeOrders++;
     if (status === 'DITERIMA') summary.completedOrders++;
     if (status === 'DIBATALKAN') summary.cancelledOrders++;
