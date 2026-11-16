@@ -191,6 +191,28 @@
     }
     @media(max-width:380px){.hero h1{font-size:23px}.section-title h2{font-size:17px}.search input{font-size:14px}.product-name{font-size:13px}.price{font-size:14px}}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+    /* FMart Admin — Tahap 1: identitas visual portal petugas */
+    body.admin-portal{--purple:#800080;--purple-dark:#5b145f;--lilac:#f7effa;--line:#eaddec;background:#f7f2f8}
+    body.admin-portal .login-wrap{position:relative;isolation:isolate;overflow:hidden;min-height:100svh;background:radial-gradient(circle at 15% 15%,#ead5f2 0,transparent 34%),radial-gradient(circle at 88% 82%,#e8d8f1 0,transparent 30%),linear-gradient(145deg,#faf7fc 0%,#f1eaf5 100%)}
+    body.admin-portal .login-wrap:before,body.admin-portal .login-wrap:after{content:"";position:absolute;z-index:-1;border:1px solid #80008016;border-radius:50%;pointer-events:none}
+    body.admin-portal .login-wrap:before{width:420px;height:420px;top:-250px;right:-120px;box-shadow:0 0 0 34px #80008008,0 0 0 72px #80008005}
+    body.admin-portal .login-wrap:after{width:340px;height:340px;bottom:-240px;left:-110px;box-shadow:0 0 0 30px #80008008,0 0 0 64px #80008005}
+    body.admin-portal .login-card{position:relative;width:min(460px,100%);padding:34px 34px 30px;border:1px solid #eaddec;border-radius:30px;box-shadow:0 28px 80px #35113d1c,0 4px 14px #35113d0a}
+    body.admin-portal .login-brand{margin-bottom:28px}
+    body.admin-portal .login-brand:before{content:"PORTAL PETUGAS";display:inline-flex;align-items:center;min-height:25px;padding:5px 11px;border-radius:999px;background:#f3e6f5;color:#701276;font-size:10px;font-weight:900;letter-spacing:.16em}
+    body.admin-portal .login-brand .brand-mark{width:70px;height:70px;margin-top:15px;border:5px solid #f4eaf6;box-shadow:0 8px 24px #8000801c}
+    body.admin-portal .login-brand .brand-name{font-size:27px;letter-spacing:-.04em;color:#5b145f}
+    body.admin-portal .login-subtitle{max-width:300px;color:#796b7d}
+    body.admin-portal .login-card h1{font-size:27px;letter-spacing:-.035em;color:#321b37}
+    body.admin-portal .login-card>p{line-height:1.6;color:#766b7a}
+    body.admin-portal .field label{color:#49364d}
+    body.admin-portal .login-field input{border:1px solid #e6dce9;border-radius:14px;background:#fdfbfe}
+    body.admin-portal .login-field input:focus{border-color:#a35aaa;box-shadow:0 0 0 4px #80008012}
+    body.admin-portal .login-submit{border-radius:14px;background:linear-gradient(120deg,#6b176f,#800080 58%,#9b4aa0);box-shadow:0 12px 24px #8000802b}
+    body.admin-portal .login-help{padding-top:12px;border-top:1px solid #f0e8f1;color:#8a7b8d}
+    body.admin-portal .error{font-weight:650}
+    @media(max-width:760px){body.admin-portal .login-wrap{padding:22px 16px}body.admin-portal .login-card{padding:29px 22px 24px;border-radius:25px}body.admin-portal .login-brand .brand-mark{width:64px;height:64px}}
   </style>
 </head>
 <body>
@@ -292,10 +314,11 @@
 
   <script>
     const FMART_PORTAL_MODE = '<?= portalMode ?>';
+    document.body.classList.toggle('admin-portal', FMART_PORTAL_MODE === 'ADMINFMART16720');
     const state={token:sessionStorage.getItem('fmartToken')||'',adminOtpChallenge:'',data:null,profile:null,selectedChildId:sessionStorage.getItem('fmartSelectedChildId')||'',cart:null,currentProduct:null,currentVariationId:'',currentProductQty:1,currentOrderId:'',currentPaymentOrderId:''};
     const $=id=>document.getElementById(id);
     document.title = FMART_PORTAL_MODE === 'ADMINFMART16720' ? 'FMart Admin' : 'FMart';
-    if(FMART_PORTAL_MODE==='ADMINFMART16720'){ $('loginIntro').textContent='Masuk ke portal petugas FMart menggunakan email dan password.'; $('usernameLabel').textContent='Email Staf'; $('username').type='email'; $('username').inputMode='email'; $('username').placeholder='nama@fathanmubina.com'; $('usernameHint').textContent='Gunakan email staf yang sudah diverifikasi.'; $('registerBtn').classList.add('hidden'); }
+    if(FMART_PORTAL_MODE==='ADMINFMART16720'){ document.querySelector('.login-brand .brand-name').textContent='FMart Admin'; $('loginIntro').textContent='Masuk ke portal petugas FMart menggunakan email dan password.'; $('usernameLabel').textContent='Email Staf'; $('username').type='email'; $('username').inputMode='email'; $('username').placeholder='nama@fathanmubina.com'; $('usernameHint').textContent='Gunakan email staf yang sudah diverifikasi.'; $('registerBtn').classList.add('hidden'); }
     if ($('registerBtn')) $('registerBtn').classList.toggle('hidden', FMART_PORTAL_MODE === 'ADMINFMART16720');
     function loading(show,text){$('loadingText').textContent=text||'Memproses...';$('loading').classList.toggle('hidden',!show)}
     function runServer(fn,...args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args))}
