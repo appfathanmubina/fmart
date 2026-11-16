@@ -131,6 +131,35 @@
     .login-help{text-align:center;font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5}
     @media(max-width:760px){.login-wrap{padding:16px 12px}.login-card{padding:24px 18px;border-radius:24px}.login-brand{margin-bottom:21px}.login-brand .brand-mark{width:60px;height:60px}.login-brand .brand-name{font-size:23px}.login-card h1{font-size:25px}.login-card p{font-size:13px}.login-field input{min-height:52px}.login-submit{min-height:52px}}
 
+
+    /* Tahap 12 — Login dua kolom premium: showcase 70%, form 30% */
+    .login-wrap{min-height:100vh;min-height:100svh;width:100%;display:grid;grid-template-columns:minmax(0,7fr) minmax(360px,3fr);place-items:stretch;padding:0;overflow:hidden;background:#fff;position:relative}
+    .login-showcase{min-width:0;min-height:100vh;position:relative;overflow:hidden;display:flex;align-items:center;padding:clamp(38px,6vw,100px);color:#fff;background:linear-gradient(135deg,#241044 0%,#4c1d95 48%,#7136b7 100%)}
+    .showcase-content{position:relative;z-index:2;width:min(100%,820px);margin:0 auto}
+    .showcase-brand{display:flex;align-items:center;gap:14px;font-size:29px;font-weight:900;letter-spacing:-.04em}
+    .showcase-brand .brand-mark{width:58px;height:58px;border-radius:18px;border:1px solid #ffffff40;background:#ffffff18;box-shadow:0 12px 30px #16082d50}
+    .showcase-copy{max-width:760px;margin-top:clamp(55px,10vh,110px)}
+    .showcase-kicker{display:inline-flex;padding:8px 13px;border:1px solid #ffffff45;border-radius:999px;background:#ffffff12;font-size:11px;font-weight:800;letter-spacing:.16em}
+    .showcase-copy h1{max-width:720px;margin:22px 0 16px;color:#fff;font-size:clamp(34px,4.2vw,62px);line-height:1.08;letter-spacing:-.045em}
+    .showcase-copy>p{max-width:650px;margin:0;color:#e9ddfb;font-size:clamp(14px,1.25vw,18px);line-height:1.8}
+    .showcase-features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:clamp(34px,6vh,62px)}
+    .showcase-features>div{display:flex;align-items:flex-start;gap:11px;min-width:0;padding:17px 14px;border:1px solid #ffffff28;border-radius:16px;background:#ffffff10;backdrop-filter:blur(8px)}
+    .showcase-feature-icon{flex:0 0 34px;width:34px;height:34px;display:grid;place-items:center;border-radius:11px;background:#ffffff20;font-size:17px;font-weight:900}
+    .showcase-features strong,.showcase-features small{display:block}
+    .showcase-features strong{font-size:13px;color:#fff}
+    .showcase-features small{margin-top:5px;color:#e5d8f6;font-size:11px;line-height:1.5}
+    .showcase-footer{margin-top:clamp(38px,7vh,72px);color:#d8c5f2;font-size:12px;letter-spacing:.04em}
+    .showcase-decoration{position:absolute;pointer-events:none;border:1px solid #ffffff18;border-radius:50%}
+    .showcase-decoration-one{width:580px;height:580px;right:-210px;top:-230px;box-shadow:0 0 0 55px #ffffff08,0 0 0 110px #ffffff05}
+    .showcase-decoration-two{width:400px;height:400px;left:-220px;bottom:-260px;box-shadow:0 0 0 45px #ffffff08}
+    .login-panel{min-width:0;display:flex;align-items:center;justify-content:center;padding:clamp(22px,3vw,48px);background:linear-gradient(180deg,#fff 0%,#fbf9ff 100%)}
+    .login-card{width:100%;max-width:430px;padding:clamp(22px,2.2vw,34px);border:1px solid #ece5f5;border-radius:25px;box-shadow:0 24px 70px #32145a12}
+    .login-brand{margin-bottom:25px}.login-brand .brand-mark,.login-brand .brand-name,.login-brand .login-subtitle{display:none}
+    .login-card h1{font-size:clamp(25px,2.1vw,31px);letter-spacing:-.035em}.login-card>p{line-height:1.6}
+    @media(max-width:1050px) and (min-width:761px){.login-wrap{grid-template-columns:minmax(0,6fr) minmax(340px,4fr)}.login-showcase{padding:34px}.showcase-features{grid-template-columns:1fr;gap:9px;margin-top:28px}.showcase-features>div{padding:11px 13px}.showcase-copy{margin-top:48px}.showcase-copy h1{font-size:36px}}
+    @media(max-width:760px){.login-wrap{grid-template-columns:1fr;min-height:100svh;overflow:auto;background:#fbf9ff}.login-showcase{min-height:auto;padding:27px 23px 32px}.showcase-brand{font-size:23px}.showcase-brand .brand-mark{width:46px;height:46px;border-radius:14px}.showcase-copy{margin-top:27px}.showcase-kicker{font-size:9px}.showcase-copy h1{font-size:clamp(27px,7vw,36px);margin:14px 0 9px}.showcase-copy>p{font-size:13px;line-height:1.6}.showcase-features{grid-template-columns:1fr;gap:8px;margin-top:20px}.showcase-features>div{padding:10px 12px;border-radius:12px}.showcase-feature-icon{width:30px;height:30px;flex-basis:30px}.showcase-features small{font-size:10px}.showcase-footer{margin-top:20px;font-size:10px}.login-panel{padding:22px 14px 30px}.login-card{max-width:520px;padding:24px 20px;border-radius:22px}.login-brand{display:none}.login-card h1{font-size:25px}}
+    @media(max-height:700px) and (min-width:761px){.showcase-copy{margin-top:38px}.showcase-copy h1{font-size:clamp(30px,3.6vw,46px)}.showcase-features{margin-top:24px}.showcase-footer{margin-top:25px}}
+
     /* Fase 8 — Premium mobile experience: micro-interactions, motion, touch ergonomics */
     html{scroll-behavior:smooth}
     body{overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent}
@@ -509,7 +538,25 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
 </head>
 <body>
   <div id="loginView" class="login-wrap">
-    <div class="login-card">
+    <section class="login-showcase" aria-label="Informasi FMart">
+      <div class="showcase-content">
+        <div class="showcase-brand"><div class="brand-mark" role="img" aria-label="Logo FMart"></div><span>FMart</span></div>
+        <div class="showcase-copy">
+          <span class="showcase-kicker">FATHAN MUBINA DIGITAL SERVICE</span>
+          <h1>Belanja kebutuhan pesantren, lebih mudah dan nyaman.</h1>
+          <p>Platform belanja digital untuk mendukung kebutuhan santri dan wali santri Pesantren Fathan Mubina. Praktis, tertata, dan dapat diakses kapan saja.</p>
+          <div class="showcase-features">
+            <div><span class="showcase-feature-icon">▣</span><span><strong>Belanja praktis</strong><small>Pilih kebutuhan santri dalam satu platform.</small></span></div>
+            <div><span class="showcase-feature-icon">✓</span><span><strong>Transaksi terpantau</strong><small>Pantau status pesanan dan pembayaran.</small></span></div>
+            <div><span class="showcase-feature-icon">⌂</span><span><strong>Terintegrasi</strong><small>Layanan digital dalam ekosistem pesantren.</small></span></div>
+          </div>
+        </div>
+        <div class="showcase-footer">FMart · Pesantren Fathan Mubina</div>
+      </div>
+      <div class="showcase-decoration showcase-decoration-one"></div><div class="showcase-decoration showcase-decoration-two"></div>
+    </section>
+    <section class="login-panel" aria-label="Formulir masuk">
+      <div class="login-card">
       <div class="login-brand">
         <div class="brand-mark" role="img" aria-label="Logo FMart"></div>
         <div class="brand-name">FMart</div>
@@ -523,7 +570,8 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
         <button class="primary login-submit" id="loginBtn" type="submit">Masuk ke FMart</button><div id="loginError" class="error"></div><button type="button" class="secondary" id="registerBtn" style="width:100%;margin-top:10px">Daftar sebagai Wali Santri</button>
         <div class="login-help">Browser dapat menawarkan penyimpanan dan pengisian otomatis kredensial setelah login berhasil.</div>
       </form>
-    </div>
+      </div>
+    </section>
   </div>
 
   <div id="appView" class="app hidden">
