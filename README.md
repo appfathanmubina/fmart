@@ -158,3 +158,39 @@ Backend menyiapkan format versi `pbkdf2-sha256:600000:...` berbasis PBKDF2-HMAC-
 - Antarmuka Admin mendapat indikator fokus keyboard yang jelas, gulir tabel yang lebih aman pada layar sentuh, batas tinggi/gulir modal, dan aturan lebar konten untuk mengurangi overflow.
 - Tidak ada perubahan alur transaksi, struktur Spreadsheet, autentikasi, atau hak akses. Portal Pembeli tetap memakai manifest dan start URL asalnya.
 - Pemeriksaan tahap ini bersifat statis. Instalasi PWA, update service worker, mode offline, dan tampilan lintas perangkat tetap perlu diuji pada browser/perangkat nyata setelah commit dipublikasikan.
+
+## Tahap 12 — Review Alur dan Kesiapan Produksi Admin
+
+Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap ini tidak mengubah alur bisnis atau struktur Spreadsheet.
+
+### Hasil review statis
+
+- Sintaks backend `apps-script/Code.gs`: lolos pemeriksaan parser JavaScript.
+- Sintaks JavaScript frontend pada `apps-script/Index.html`: lolos setelah placeholder template Apps Script dinormalisasi untuk pemeriksaan.
+- Keseimbangan blok CSS pada antarmuka Apps Script: lolos.
+- Jalur Admin/Pembeli, portal role guard, dan pemisahan hak akses endpoint operasional diperiksa.
+- Endpoint laporan dan audit menggunakan nama fungsi `getFMartReports` dan `getFMartAuditLog`; keduanya membatasi akses pada ADMIN/SUPERADMIN.
+- Endpoint stok/mutasi membatasi akses pada GUDANG/ADMIN/SUPERADMIN; verifikasi pembayaran membatasi akses pada KASIR/ADMIN/SUPERADMIN.
+- Endpoint audit hanya mengirim metadata aktivitas; kolom BeforeData/AfterData tidak dikirim ke UI.
+- Service worker diperbarui ke cache v7. File `config.js` kini menggunakan strategi network-first saat online dan cache fallback saat offline agar URL deployment terbaru tidak tertahan cache lama.
+
+### Batasan yang masih berlaku
+
+- Daftar operasional pesanan pada dashboard masih dibatasi maksimal 60 pesanan terbaru; laporan membaca sheet transaksi untuk periode yang dipilih.
+- Tampilan audit membatasi hasil maksimal 200 catatan per permintaan dan belum menyediakan ekspor arsip penuh.
+- Login Admin masih menggunakan email + password tanpa OTP sesuai keputusan sementara. Aktifkan kembali OTP sebelum operasional produksi yang memerlukan lapisan autentikasi tambahan.
+- Hash password masih dalam mode LEGACY. PBKDF2 belum boleh diaktifkan sebelum uji vektor RFC dan benchmark 600.000 iterasi dijalankan pada runtime Apps Script sebenarnya.
+- PWA dapat menyimpan shell untuk dibuka offline, tetapi login, data, transaksi, dan sinkronisasi tetap memerlukan internet.
+- Pemeriksaan statis tidak membuktikan integritas data Spreadsheet, izin Drive, kuota Apps Script/MailApp, atau perilaku browser/perangkat nyata.
+
+### Checklist wajib sebelum produksi
+
+1. Sinkronkan file Apps Script terbaru dari repository, jalankan fungsi setup hanya bila memang diperlukan, lalu deploy versi Web App yang sesuai. Perubahan repository tidak otomatis memperbarui deployment Apps Script.
+2. Login dan uji akses menggunakan akun SUPERADMIN, ADMIN, KASIR, dan GUDANG. Pastikan role yang tidak berwenang ditolak oleh server, bukan hanya disembunyikan oleh UI. Uji juga akun staf pada jalur Pembeli dan akun Wali pada jalur Admin.
+3. Uji alur transaksi end-to-end dengan data uji yang disetujui: katalog, stok, keranjang/pesanan, bukti pembayaran, verifikasi terima/tolak, pengurangan stok satu kali, dan tahapan pemenuhan Gudang.
+4. Cocokkan laporan dengan beberapa transaksi dan mutasi stok yang diketahui; cocokkan catatan AuditLog dengan tindakan yang dilakukan.
+5. Uji instalasi PWA Admin, pembaruan service worker/cache, pembukaan ulang, mode offline shell, pemulihan koneksi, serta layar desktop/tablet/HP.
+6. Pastikan akses Spreadsheet dan folder Drive bukti pembayaran hanya diberikan kepada akun pemilik/layanan yang diperlukan; jangan membagikan spreadsheet atau folder bukti secara publik.
+7. Jalankan `testPbkdf2Implementation_()` dan `benchmarkPbkdf2_()` secara terpisah sebelum memutuskan migrasi hash. Tinjau kembali keputusan OTP Admin.
+
+**Status review: LULUS PEMERIKSAAN STATIS, BELUM DINYATAKAN SIAP PRODUKSI.** Pengujian runtime Apps Script, Spreadsheet, akun role aktual, browser, perangkat, deployment, dan transaksi nyata masih wajib dilakukan sebelum menerima transaksi operasional.
