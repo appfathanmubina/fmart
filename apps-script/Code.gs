@@ -78,7 +78,10 @@ function login(username, password, portalMode) {
       const matches = waliRows.filter(function(r){
         return normalizePhone_(r[3]) === phoneKey && String(r[6] || '').toUpperCase() === 'AKTIF';
       });
-      if (matches.length > 1) return {ok:false, message:'Nomor HP terdaftar pada lebih dari satu Wali Santri. Hubungi Admin.'};
+      if (matches.length > 1) {
+        recordLoginFailure_(rate);
+        return {ok:false, message:'Nomor HP/username atau password salah.'};
+      }
       if (matches.length === 1) {
         const userId = String(matches[0][1] || '');
         for (let i=0;i<rows.length;i++) {
@@ -89,14 +92,17 @@ function login(username, password, portalMode) {
   }
 
   if (targetIndex === -1) {
-    cache.put(rate, String(failures + 1), FMART.LOGIN_RATE_LIMIT_SECONDS);
+    recordLoginFailure_(rate);
     return {ok:false, message:'Nomor HP/username atau password salah.'};
   }
 
   const r = rows[targetIndex];
-  if (String(r[6]).toUpperCase() !== 'AKTIF') return {ok:false, message:'Nomor HP/username atau password salah.'};
+  if (String(r[6]).toUpperCase() !== 'AKTIF') {
+    recordLoginFailure_(rate);
+    return {ok:false, message:'Nomor HP/username atau password salah.'};
+  }
   if (!verifyPassword_(password, String(r[3]), String(r[2]))) {
-    cache.put(rate, String(failures + 1), FMART.LOGIN_RATE_LIMIT_SECONDS);
+    recordLoginFailure_(rate);
     return {ok:false, message:'Nomor HP/username atau password salah.'};
   }
 
@@ -1297,6 +1303,19 @@ function constantTimeEqual_(a,b) {
 function loginRateKey_(username) {
   const digest=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,'LOGIN|'+normalizeUsername_(username),Utilities.Charset.UTF_8);
   return 'FMART_LOGIN_RATE_'+Utilities.base64EncodeWebSafe(digest).slice(0,50);
+}
+
+/** Menambah hitungan gagal login secara serial agar percobaan bersamaan tidak saling menimpa. */
+function recordLoginFailure_(rateKey) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  try {
+    const cache = CacheService.getScriptCache();
+    const current = Number(cache.get(rateKey) || 0);
+    cache.put(rateKey, String(Math.min(FMART.LOGIN_MAX_FAILURES, current + 1)), FMART.LOGIN_RATE_LIMIT_SECONDS);
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function writeAudit_(userId, role, action, entityType, entityId, beforeData, afterData, note) {
