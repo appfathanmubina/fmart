@@ -38,6 +38,20 @@
         setup.innerHTML = '<h1>Hubungkan aplikasi FMart</h1><p>Isi URL deployment Web App Apps Script pada <code>config.js</code>, lalu terbitkan PWA ini melalui GitHub Pages atau hosting HTTPS.</p><p>Gunakan URL Apps Script yang berakhir dengan <code>/exec</code>. Setelah terhubung, FMart dapat dipasang dari menu browser di ponsel.</p>';
       }
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+      let deferredInstallPrompt=null;
+      function sendInstallState(){if(frame.contentWindow)frame.contentWindow.postMessage({type:'FMART_INSTALL_STATE',available:!!deferredInstallPrompt,installed:window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true},'*')}
+      frame.addEventListener('load',sendInstallState);
+      window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;sendInstallState()});
+      window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;if(frame.contentWindow)frame.contentWindow.postMessage({type:'FMART_INSTALL_DONE'},'*');sendInstallState()});
+      window.addEventListener('message',async event=>{
+        if(event.source!==frame.contentWindow)return;
+        const data=event.data||{};if(data.type!=='FMART_INSTALL_REQUEST')return;
+        if(!deferredInstallPrompt){frame.contentWindow.postMessage({type:'FMART_INSTALL_RESULT',status:'unavailable'},'*');return}
+        const promptEvent=deferredInstallPrompt;deferredInstallPrompt=null;
+        try{await promptEvent.prompt();const choice=await promptEvent.userChoice;frame.contentWindow.postMessage({type:'FMART_INSTALL_RESULT',status:choice&&choice.outcome==='accepted'?'accepted':'dismissed'},'*')}
+        catch(error){frame.contentWindow.postMessage({type:'FMART_INSTALL_RESULT',status:'unavailable'},'*')}
+        sendInstallState();
+      });
       let offlineTimer;
       function updateNetwork() {
         clearTimeout(offlineTimer);
