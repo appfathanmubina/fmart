@@ -194,3 +194,21 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 7. Jalankan `testPbkdf2Implementation_()` dan `benchmarkPbkdf2_()` secara terpisah sebelum memutuskan migrasi hash. Tinjau kembali keputusan OTP Admin.
 
 **Status review: LULUS PEMERIKSAAN STATIS, BELUM DINYATAKAN SIAP PRODUKSI.** Pengujian runtime Apps Script, Spreadsheet, akun role aktual, browser, perangkat, deployment, dan transaksi nyata masih wajib dilakukan sebelum menerima transaksi operasional.
+## Pengembangan Portal Wali Santri — Tahap 1
+
+### Login dan registrasi Wali Santri
+
+- Jalur Pembeli tetap menggunakan nomor HP dan password untuk akun WALI_SANTRI. Jalur Admin tetap menggunakan email dan password dengan tampilan serta pengaturan portal Admin tersendiri.
+- Login Wali menampilkan instruksi yang lebih spesifik, dengan identitas dan tombol yang disesuaikan untuk Wali Santri.
+- Form registrasi mandiri diperjelas: nama lengkap, nomor HP aktif, password minimal 10 karakter, konfirmasi password, email opsional, dan alamat opsional.
+- Nomor HP pada form registrasi dinormalisasi ke format 08xxxxxxxxxx; format 08, 8, 62, dan +62 diterima selama hasil akhirnya valid.
+- Validasi dasar dilakukan sebelum request server: kelengkapan data, format nomor HP, panjang password, kecocokan konfirmasi, dan format email opsional.
+- Registrasi tetap memakai endpoint registerWaliSantri yang sudah ada. Akun tidak otomatis dihubungkan ke data santri; pengaitan tetap melalui proses yang tersedia dan verifikasi Admin.
+- Styling tambahan dibatasi pada body.buyer-portal dan modal registrasi Wali agar tampilan Admin tidak ikut berubah.
+- Tidak ada perubahan pada skema Spreadsheet, autentikasi server, endpoint operasional Admin, atau hak akses role.
+
+### Pemeriksaan Tahap 1
+
+- Pemeriksaan perubahan dilakukan secara statis pada markup, CSS, dan alur JavaScript.
+- Belum dilakukan uji browser, registrasi ke Spreadsheet aktif, login akun Wali aktual, maupun deploy Apps Script.
+- Perubahan di GitHub tidak otomatis memperbarui deployment Apps Script; sinkronisasi dan deploy tetap mengikuti prosedur yang berlaku.
