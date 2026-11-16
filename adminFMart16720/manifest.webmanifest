@@ -1,10 +1,10 @@
 {
-  "id": "./",
+  "id": "/fmart/adminFMart16720/",
   "name": "FMart Admin",
   "short_name": "FMart Admin",
   "description": "Panel petugas dan operasional FMart.",
   "lang": "id",
-  "start_url": "./",
+  "start_url": "./?app=fmart-admin",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
