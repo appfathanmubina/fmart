@@ -419,6 +419,117 @@ function getMyProfile(token) {
   return {ok:true, profile:result};
 }
 
+/** Profil Wali dan status relasi santri. Identitas pengguna selalu berasal dari sesi. */
+function getWaliProfileManagement(token) {
+  const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
+  const ss = getSS_();
+  const wali = findWaliByUserId_(ss, session.userId);
+  if (!wali) throw new Error('Data Wali Santri tidak ditemukan.');
+  const santriSheet = ss.getSheetByName('Santri');
+  const santriMap = getSantriColumnMap_(santriSheet);
+  const santriById = {};
+  readSantriRows_(santriSheet).forEach(function(row) {
+    const child = santriRecord_(row, santriMap);
+    santriById[String(child.id)] = child;
+  });
+  const relationships = readRows_(ss.getSheetByName('WaliSantriSantri'))
+    .filter(function(row) {
+      return String(row[1] || '') === String(wali.waliId) &&
+        ['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(row[3] || '').toUpperCase()) !== -1;
+    })
+    .map(function(row) {
+      const child = santriById[String(row[2] || '')];
+      if (!child) return null;
+      const status = String(row[3] || '').toUpperCase();
+      return {
+        relationId:String(row[0] || ''),
+        santriId:String(row[2] || ''),
+        name:String(child.name || ''),
+        className:String(child.className || ''),
+        nis:status === 'AKTIF' ? String(child.nis || '') : maskNis_(child.nis),
+        hubungan:String(row[5] || ''),
+        status:status,
+        requestedAt:dateIso_(row[4]),
+        active:status === 'AKTIF' && String(child.status || '').toUpperCase() === 'AKTIF'
+      };
+    })
+    .filter(function(item) { return !!item; });
+  const users = getSS_().getSheetByName('Users');
+  const userRow = findRowById_(users, session.userId, 1);
+  return {
+    ok:true,
+    profile:{
+      nama:wali.nama,
+      noHp:wali.noHp,
+      email:wali.email,
+      alamat:wali.alamat,
+      status:String(wali.status || 'AKTIF'),
+      username:userRow ? String(userRow.values[1] || '') : String(wali.noHp || '')
+    },
+    relationships:relationships
+  };
+}
+
+/** Wali hanya dapat mengubah data kontak non-login miliknya sendiri. */
+function updateMyWaliProfile(token, nama, email, alamat) {
+  const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
+  nama = String(nama || '').trim().slice(0,120);
+  email = String(email || '').trim().slice(0,160);
+  alamat = String(alamat || '').trim().slice(0,500);
+  if (!nama) throw new Error('Nama wajib diisi.');
+  if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+(?![\\s\\S])/.test(email)) throw new Error('Format email tidak valid.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const ss = getSS_();
+    const waliSheet = ss.getSheetByName('WaliSantri');
+    const usersSheet = ss.getSheetByName('Users');
+    const waliRows = readRows_(waliSheet);
+    const waliIndex = waliRows.findIndex(function(row) {
+      return String(row[1] || '') === String(session.userId) && String(row[6] || '').toUpperCase() === 'AKTIF';
+    });
+    if (waliIndex < 0) throw new Error('Data Wali Santri tidak ditemukan atau tidak aktif.');
+    const waliRowNumber = waliIndex + 2;
+    const before = {nama:String(waliRows[waliIndex][2] || ''),email:String(waliRows[waliIndex][4] || ''),alamat:String(waliRows[waliIndex][5] || '')};
+    const now = new Date();
+    waliSheet.getRange(waliRowNumber,3).setValue(nama);
+    waliSheet.getRange(waliRowNumber,5,1,2).setValues([[email,alamat]]);
+    waliSheet.getRange(waliRowNumber,9).setValue(now);
+    const userRow = findRowById_(usersSheet, session.userId, 1);
+    if (!userRow) throw new Error('Data akun pengguna tidak ditemukan.');
+    usersSheet.getRange(userRow.rowNumber,5).setValue(nama);
+    writeAudit_(session.userId,session.role,'UPDATE_MY_WALI_PROFILE','WALI_SANTRI',String(waliRows[waliIndex][0] || ''),JSON.stringify(before),JSON.stringify({nama:nama,email:email,alamat:alamat}),'Wali memperbarui profil pribadi');
+    SpreadsheetApp.flush();
+    return {ok:true,message:'Profil berhasil diperbarui.',profile:{nama:nama,noHp:String(waliRows[waliIndex][3] || ''),email:email,alamat:alamat,status:'AKTIF',username:String(userRow.values[1] || '')}};
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Wali hanya dapat membatalkan pengajuan relasi miliknya yang masih menunggu. */
+function cancelMyWaliSantriRequest(token, relationId) {
+  const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
+  relationId = String(relationId || '').trim();
+  if (!relationId) throw new Error('Pengajuan tidak valid.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const ss = getSS_();
+    const wali = findWaliByUserId_(ss, session.userId);
+    if (!wali) throw new Error('Data Wali Santri tidak ditemukan.');
+    const sheet = ss.getSheetByName('WaliSantriSantri');
+    const row = findRowById_(sheet, relationId, 1);
+    if (!row || String(row.values[1] || '') !== String(wali.waliId)) throw new Error('Pengajuan tidak ditemukan.');
+    if (String(row.values[3] || '').toUpperCase() !== 'MENUNGGU_VERIFIKASI') throw new Error('Hanya pengajuan yang masih menunggu verifikasi yang dapat dibatalkan.');
+    sheet.getRange(row.rowNumber,4).setValue('NONAKTIF');
+    writeAudit_(session.userId,session.role,'CANCEL_WALI_SANTRI_REQUEST','WALI_SANTRI_SANTRI',relationId,JSON.stringify({status:'MENUNGGU_VERIFIKASI'}),JSON.stringify({status:'NONAKTIF'}),'Wali membatalkan pengajuan hubungan santri');
+    SpreadsheetApp.flush();
+    return {ok:true,message:'Pengajuan berhasil dibatalkan.'};
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 /** Mengambil ulang daftar anak dari server. Tidak menerima UserId dari browser. */
 function getMyChildren(token) {
   const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
