@@ -287,7 +287,7 @@ function verifyStaffEmail(token,challengeId,code) {
 }
 
 function normalizeEmail_(value){return String(value||'').trim().toLowerCase();}
-function isValidStaffEmail_(email){return /^[^\s@]+@[^\s@]+\\.[^\s@]+(?![\s\S])/.test(String(email||''));}
+function isValidStaffEmail_(email){return /^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(String(email||''));}
 function maskEmail_(email){const p=String(email||'').split('@');if(p.length!==2)return '';const name=p[0];return (name.length<3?name.charAt(0)+'••':name.slice(0,2)+'•••')+'@'+p[1];}
 function adminOtpHash_(challengeId,code){
   const props=PropertiesService.getScriptProperties();let secret=props.getProperty('FMART_OTP_PEPPER');
