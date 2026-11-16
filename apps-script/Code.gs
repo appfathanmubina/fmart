@@ -118,10 +118,9 @@ function login(username, password, portalMode) {
 
   if (portalMode === 'ADMINFMART16720') {
     const staffEmail = normalizeEmail_(r[10]);
-    const emailVerified = String(r[11] || '').toUpperCase() === 'TRUE' || r[11] === true;
-    if (!staffEmail || !emailVerified) {
+    if (!isValidStaffEmail_(staffEmail)) {
       recordLoginFailure_(rate);
-      return {ok:false, message:'Email akun Admin belum diverifikasi. Hubungi Superadmin.'};
+      return {ok:false, message:'Email akun Admin belum diatur. Hubungi Superadmin.'};
     }
     return issueAdminLoginOtp_(r, rate);
   }
@@ -177,7 +176,7 @@ function issueAdminLoginOtp_(userRow, rateKey) {
   const userId = String(userRow[0] || '');
   const cooldownKey = adminOtpCooldownKey_(userId);
   if (cache.get(cooldownKey)) return {ok:false,message:'Kode OTP baru saja dikirim. Periksa email atau tunggu sebelum meminta kode baru.'};
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const code = String(100000 + (parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16) % 900000));
   const challengeId = Utilities.getUuid() + Utilities.getUuid();
   const challenge = {
     userId:userId, role:String(userRow[5] || '').toUpperCase(), email:email,
@@ -233,6 +232,7 @@ function verifyAdminLoginOtp(challengeId, code, portalMode) {
     const session={userId:String(user.values[0]),username:challenge.email,nama:String(user.values[4]),role:challenge.role,issuedAt:Date.now(),authUpdatedAt:updatedAt};
     cache.put(sessionKey_(token),JSON.stringify(session),FMART.SESSION_TTL_SECONDS);
     sheet.getRange(user.rowNumber,10).setValue(new Date());
+    if (!(String(user.values[11]||'').toUpperCase()==='TRUE'||user.values[11]===true)) sheet.getRange(user.rowNumber,12).setValue(true);
     writeAudit_(session.userId,session.role,'LOGIN_SUCCESS_OTP','USER',session.userId,'',JSON.stringify({username:session.username}),'Login Admin berhasil setelah OTP email');
     return {ok:true,token:token,user:{userId:session.userId,username:session.username,nama:session.nama,role:session.role}};
   } finally {lock.releaseLock();}
@@ -252,7 +252,7 @@ function setStaffEmail(token,userId,email) {
     if(rows.some(function(r){return String(r[0]||'')!==String(userId)&&normalizeEmail_(r[10])===email;})) throw new Error('Email sudah digunakan akun lain.');
     sheet.getRange(target.rowNumber,11,1,2).setValues([[email,false]]);
     sheet.getRange(target.rowNumber,9).setValue(new Date());
-    const code=String(Math.floor(100000+Math.random()*900000)),challengeId=Utilities.getUuid()+Utilities.getUuid();
+    const code=String(100000+(parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16)%900000)),challengeId=Utilities.getUuid()+Utilities.getUuid();
     CacheService.getScriptCache().put(staffEmailVerifyKey_(challengeId),JSON.stringify({userId:String(userId),email:email,hash:adminOtpHash_(challengeId,code),createdAt:Date.now(),attempts:0}),600);
     MailApp.sendEmail({to:email,subject:'Verifikasi Email Akun FMart',body:'Kode verifikasi email FMart Anda: '+code+'\n\nKode berlaku selama 10 menit.' ,name:'FMart'});
     writeAudit_(session.userId,session.role,'SET_STAFF_EMAIL','USER',String(userId),'',JSON.stringify({email:maskEmail_(email)}),'Email staf diatur; menunggu verifikasi');
@@ -1058,6 +1058,9 @@ function createStaffUser(token, username, password, nama, role, email) {
   const session=requireRole_(token,[FMART.ROLES.SUPERADMIN]);
   const lock=LockService.getScriptLock(); lock.waitLock(10000);
   try {
+    email=normalizeEmail_(email);
+    if(!isValidStaffEmail_(email)) throw new Error('Email staf wajib diisi dengan format yang valid.');
+    username=email;
     const result=createFMartUser(username,password,nama,role,email);
     writeAudit_(session.userId,session.role,'CREATE_USER','USER',result.userId,'',JSON.stringify({username:result.username,role:result.role}),'Membuat pengguna');
     SpreadsheetApp.flush();
