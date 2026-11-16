@@ -558,15 +558,16 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
       #loginView .showcase-copy h1{max-width:360px;margin:0 auto 8px;font-size:18px;line-height:1.25;letter-spacing:-.025em}
       #loginView .showcase-copy>p{max-width:390px;margin:0 auto;color:#f0e3f5;font-size:12px;line-height:1.55}
       #loginView .showcase-features,#loginView .showcase-footer,#loginView .showcase-decoration{display:none}
-      #loginView .login-panel{position:relative;z-index:3;min-width:0;margin-top:-26px;padding:0 16px 30px;background:transparent;align-items:stretch}
-      #loginView .login-stack{width:100%;max-width:480px;margin:0 auto}
+      #loginView .login-panel{position:relative;z-index:3;min-width:0;margin-top:-26px;padding:0 16px calc(14px + env(safe-area-inset-bottom));background:transparent;align-items:stretch}
+      #loginView .login-stack{width:100%;max-width:480px;margin:0 auto;gap:0}
       #loginView .login-card{width:100%;max-width:none;padding:25px 21px 22px;border:1px solid #eee4f3;border-radius:22px;box-shadow:0 16px 42px #32145a16}
       #loginView .login-card h1{font-size:24px;line-height:1.2}
       #loginView .login-card>p{font-size:13px;line-height:1.55;margin:7px 0 20px}
       #loginView .login-field input{min-height:51px;border-radius:12px}
       #loginView .login-submit{min-height:51px;border-radius:12px}
-      #loginView .install-app-btn{min-height:48px;margin-top:12px;border-radius:13px}
-      #loginView .install-app-hint{padding:0 8px}
+      #loginView .install-app-btn{min-height:46px;margin:10px 0 0;border-radius:13px;box-shadow:0 5px 14px #80008010}
+      #loginView .install-app-hint{margin:5px 0 0;padding:0 8px;font-size:10px;line-height:1.35;min-height:0}
+      #loginView .install-app-btn:disabled{opacity:.72;cursor:default}
     }
     @media(max-width:380px){
       #loginView .login-showcase{min-height:232px;padding:20px 16px 42px}
@@ -1280,6 +1281,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       const installAppBtn=document.getElementById('installAppBtn'),installAppHint=document.getElementById('installAppHint');
       if(installAppBtn){installAppBtn.addEventListener('click',()=>{if(window.parent!==window){window.parent.postMessage({type:'FMART_INSTALL_REQUEST'},'*')}else{installAppHint.textContent='Untuk memasang FMart, buka menu browser lalu pilih Instal aplikasi atau Tambahkan ke layar utama.'}})}
       window.addEventListener('message',event=>{if(event.origin!=='https://appfathanmubina.github.io')return;const data=event.data||{};if(data.type==='FMART_INSTALL_STATE'){if(data.installed){installAppHint.textContent='FMart sudah terpasang pada perangkat ini.';installAppBtn.disabled=true;installAppBtn.textContent='FMart Sudah Terpasang'}else if(data.available){installAppHint.textContent='FMart siap dipasang pada perangkat ini.';installAppBtn.disabled=false}}else if(data.type==='FMART_INSTALL_RESULT'){if(data.status==='accepted'){installAppHint.textContent='Permintaan pemasangan diterima. Ikuti konfirmasi browser.'}else if(data.status==='unavailable'){installAppHint.textContent='Browser tidak menampilkan dialog otomatis. Pastikan FMart belum terpasang, lalu buka menu Chrome (⋮) dan pilih Instal aplikasi atau Buat pintasan.'}else{installAppHint.textContent='Pemasangan dibatalkan. Anda dapat mencobanya kembali melalui menu Chrome (⋮).'}}else if(data.type==='FMART_INSTALL_DONE'){installAppHint.textContent='FMart sudah terpasang di perangkat ini.';installAppBtn.disabled=true;installAppBtn.textContent='FMart Sudah Terpasang'}});
+      if(window.parent!==window)window.parent.postMessage({type:'FMART_INSTALL_READY'},'*');
       window.addEventListener('resize',()=>{document.querySelectorAll('.bottom-nav.nav-hidden').forEach(n=>{if(window.innerWidth>760)n.classList.remove('nav-hidden')})});
     })();
 
