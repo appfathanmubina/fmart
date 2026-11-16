@@ -293,3 +293,22 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 - Perubahan frontend disimpan pada apps-script/Index.html; Code.gs dan struktur Spreadsheet tidak diubah.
 - Pemeriksaan statis perlu memastikan sintaks JavaScript, struktur CSS, dan selector portal Pembeli tetap valid.
 - Belum dilakukan uji browser/perangkat, pemuatan foto dari Drive/URL aktual, uji variasi dan stok pada Spreadsheet aktif, transaksi keranjang nyata, atau deployment Apps Script.
+
+
+## Pengembangan Portal Wali Santri — Tahap 6
+
+### Keranjang umum per akun Wali
+
+- Keranjang kini menjadi milik akun Wali, bukan milik santri tertentu. Wali dapat menambahkan produk dari katalog tanpa memilih santri terlebih dahulu.
+- Kolom SantriId pada sheet Keranjang tetap dipertahankan untuk kompatibilitas data lama; item baru tidak mengisi kolom tersebut dan pembacaan/perubahan item dibatasi berdasarkan UserId sesi.
+- Item keranjang lama yang sebelumnya tersimpan dengan SantriId tertentu tetap dapat dibaca oleh pemilik akun Wali yang sama. Tidak ada penghapusan atau migrasi massal terhadap data lama.
+- Keranjang mendukung pemilihan seluruh atau sebagian item untuk checkout. Perhitungan subtotal dan jumlah barang mengikuti item yang dipilih; item yang tidak dipilih tetap tersimpan.
+- Pemilihan santri dilakukan pada checkout. Satu checkout membuat satu pesanan untuk satu santri dan hanya mengeluarkan item yang dipilih dari keranjang. Item lain tetap berada di keranjang untuk checkout berikutnya.
+- Backend memvalidasi relasi santri aktif, kepemilikan setiap item keranjang, status produk/variasi, harga, stok, dan jumlah terbaru di bawah ScriptLock sebelum membuat pesanan.
+- Setiap pesanan tetap menyimpan SantriId pada sheet Pesanan. Pembayaran, pemenuhan, dan riwayat tetap mengikuti PesananId sehingga setiap transaksi memiliki santri tujuan yang pasti.
+- Perubahan styling hanya menggunakan selector body.buyer-portal. Fungsi Admin, Kasir, Gudang, struktur pesanan, pembayaran, dan pengurangan stok saat verifikasi tidak diubah.
+
+### Pemeriksaan Tahap 6
+
+- Pemeriksaan statis sintaks backend/frontend, selector CSS, kepemilikan keranjang, validasi checkout, dan penghapusan hanya item terpilih perlu dilakukan.
+- Belum dilakukan uji browser, uji akun Wali/Spreadsheet aktif, transaksi checkout aktual, atau deployment Apps Script.
