@@ -152,7 +152,7 @@
     .showcase-decoration{position:absolute;pointer-events:none;border:1px solid #ffffff18;border-radius:50%}
     .showcase-decoration-one{width:580px;height:580px;right:-210px;top:-230px;box-shadow:0 0 0 55px #ffffff08,0 0 0 110px #ffffff05}
     .showcase-decoration-two{width:400px;height:400px;left:-220px;bottom:-260px;box-shadow:0 0 0 45px #ffffff08}
-    .login-panel{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:clamp(22px,3vw,48px);background:linear-gradient(180deg,#fff 0%,#fbf9ff 100%)}
+    .login-panel{min-width:0;display:flex;align-items:center;justify-content:center;padding:clamp(22px,3vw,48px);background:linear-gradient(180deg,#fff 0%,#fbf9ff 100%)}.login-stack{width:min(460px,100%);display:flex;flex-direction:column;align-items:stretch;gap:0}.login-stack .login-card{width:100%;max-width:none}.login-stack .install-app-btn,.login-stack .install-app-hint{width:100%}
     .install-app-btn{width:min(430px,100%);min-height:48px;margin:14px auto 0;display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid #800080;border-radius:14px;background:#fff;color:#800080;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 8px 20px #80008012}.install-app-btn span{font-size:20px;font-weight:900}.install-app-btn:active{transform:scale(.985)}.install-app-hint{width:min(430px,100%);margin:7px auto 0;text-align:center;color:#887b91;font-size:11px;line-height:1.5}
     .login-card{width:100%;max-width:430px;padding:clamp(22px,2.2vw,34px);border:1px solid #ece5f5;border-radius:25px;box-shadow:0 24px 70px #32145a12}
     .login-brand{margin-bottom:25px}.login-brand .brand-mark,.login-brand .brand-name,.login-brand .login-subtitle{display:none}
@@ -574,6 +574,7 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
       <div class="showcase-decoration showcase-decoration-one"></div><div class="showcase-decoration showcase-decoration-two"></div>
     </section>
     <section class="login-panel" aria-label="Formulir masuk">
+      <div class="login-stack">
       <div class="login-card">
       <div class="login-brand">
         <div class="brand-mark" role="img" aria-label="Logo FMart"></div>
@@ -591,6 +592,7 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
       </div>
       <button type="button" id="installAppBtn" class="install-app-btn"><span aria-hidden="true">↓</span> Install Aplikasi FMart</button>
       <p id="installAppHint" class="install-app-hint">Pasang FMart agar lebih mudah dibuka dari perangkat Anda.</p>
+      </div>
     </section>
   </div>
 
