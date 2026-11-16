@@ -357,6 +357,49 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
       body.admin-portal #operationsView{margin:0}
     }
 
+  
+    /* Tahap 6 — Manajemen Persediaan dan Stok */
+    body.admin-portal .stock-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:24px}
+    body.admin-portal .stock-metric{min-width:0;padding:18px;border:1px solid #eaddec;border-radius:17px;background:linear-gradient(145deg,#fff,#faf6fc);display:grid;gap:6px}
+    body.admin-portal .stock-metric span{font-size:12px;color:#796d82}
+    body.admin-portal .stock-metric strong{font-size:27px;line-height:1.2;color:#4c1d95;overflow-wrap:anywhere}
+    body.admin-portal .stock-metric small{font-size:11px;color:#82758a}
+    body.admin-portal .stock-metric-warning{background:linear-gradient(145deg,#fff,#fffbeb);border-color:#f5e6b8}
+    body.admin-portal .stock-metric-warning strong{color:#a16207}
+    body.admin-portal .stock-metric-danger{background:linear-gradient(145deg,#fff,#fff5f5);border-color:#f3d0d0}
+    body.admin-portal .stock-metric-danger strong{color:#b91c1c}
+    body.admin-portal .stock-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:20px 0 12px}
+    body.admin-portal .stock-toolbar h3{margin:0;font-size:17px;color:#382d40}
+    body.admin-portal .stock-toolbar p{margin:5px 0 0;font-size:12px;color:#82758a}
+    body.admin-portal .stock-filters{display:grid;grid-template-columns:minmax(220px,1fr) minmax(170px,240px);gap:10px;margin:14px 0}
+    body.admin-portal .stock-filters input,body.admin-portal .stock-filters select{width:100%;min-width:0;padding:12px 13px;border:1px solid #e5d9e9;border-radius:12px;background:#fff;color:#382d40}
+    body.admin-portal .stock-result-count{font-size:12px;color:#82758a;margin:8px 0}
+    body.admin-portal .stock-table-wrap{width:100%;max-width:100%;overflow:auto;border:1px solid #eaddec;border-radius:15px;background:#fff}
+    body.admin-portal .stock-table{min-width:920px;width:100%;border-collapse:collapse}
+    body.admin-portal .stock-table th,body.admin-portal .stock-table td{padding:12px 13px;white-space:nowrap}
+    body.admin-portal .stock-table td:first-child{white-space:normal;min-width:155px}
+    body.admin-portal .stock-subline{display:block;margin-top:4px;font-size:10px;color:#82758a}
+    body.admin-portal .stock-status,body.admin-portal .stock-mutation{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.02em}
+    body.admin-portal .stock-status-ok{background:#e9f8ef;color:#187343}
+    body.admin-portal .stock-status-low{background:#fff4d6;color:#946200}
+    body.admin-portal .stock-status-out{background:#feecec;color:#b42318}
+    body.admin-portal .stock-in{background:#e9f8ef;color:#187343}
+    body.admin-portal .stock-out{background:#fff0e8;color:#b54708}
+    body.admin-portal .stock-row-action{padding:7px 10px;font-size:11px;white-space:nowrap}
+    body.admin-portal .stock-history-section{margin-top:28px}
+    body.admin-portal .stock-loading{padding:42px;text-align:center;color:#82758a}
+    @media(max-width:1100px){body.admin-portal .stock-overview{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:620px){
+      body.admin-portal .stock-overview{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:18px}
+      body.admin-portal .stock-metric{padding:13px;border-radius:14px}
+      body.admin-portal .stock-metric strong{font-size:22px}
+      body.admin-portal .stock-metric small{font-size:10px}
+      body.admin-portal .stock-toolbar{align-items:flex-start;flex-wrap:wrap}
+      body.admin-portal .stock-toolbar button{width:100%}
+      body.admin-portal .stock-filters{grid-template-columns:1fr}
+      body.admin-portal .stock-table{min-width:880px}
+    }
+
   </style>
 </head>
 <body>
@@ -704,7 +747,51 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
 
     function renderOpsPayments(){const rows=(opsData.orders||[]).filter(o=>o.payment&&o.payment.status==='MENUNGGU_VERIFIKASI');$('opsMainBody').innerHTML=rows.length?'<div class="table-wrap"><table class="data-table"><thead><tr><th>Pesanan</th><th>Wali / Anak</th><th>Nominal</th><th>Bukti</th><th>Aksi</th></tr></thead><tbody>'+rows.map(o=>'<tr><td><strong>'+escapeHtml(o.number)+'</strong></td><td>'+escapeHtml(o.waliName)+'<br>'+escapeHtml(o.childName)+'</td><td>Rp '+formatMoney(o.payment.nominal)+'</td><td>'+(o.payment.buktiUrl?'<a class="secondary" target="_blank" rel="noopener" href="'+safeUrl(o.payment.buktiUrl)+'">Lihat</a>':'-')+'</td><td><button class="secondary verify-pay" data-id="'+escapeHtml(o.payment.id)+'" data-action="TERIMA">Terima</button> <button class="secondary verify-pay" data-id="'+escapeHtml(o.payment.id)+'" data-action="TOLAK">Tolak</button></td></tr>').join('')+'</tbody></table></div>':'<div class="empty-box">Tidak ada pembayaran yang menunggu verifikasi.</div>';document.querySelectorAll('.verify-pay').forEach(b=>b.onclick=()=>openVerifyPayment(b.dataset.id,b.dataset.action))}
     function renderOpsWarehouse(){const rows=(opsData.orders||[]).filter(o=>['DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR'].includes(o.status));$('opsMainBody').innerHTML=rows.length?'<div class="table-wrap"><table class="data-table"><thead><tr><th>Pesanan</th><th>Anak</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+rows.map(o=>{const next={DIBAYAR:'DIPROSES',DIPROSES:'DISIAPKAN',DISIAPKAN:'DIANTAR'}[o.status];return '<tr><td><strong>'+escapeHtml(o.number)+'</strong><br>Rp '+formatMoney(o.total)+'</td><td>'+escapeHtml(o.childName)+'<br>'+escapeHtml(o.className)+'</td><td><span class="status-badge">'+escapeHtml(statusLabel(o.status))+'</span></td><td>'+(next?'<button class="secondary warehouse-next" data-id="'+escapeHtml(o.orderId)+'" data-next="'+next+'">'+escapeHtml(statusLabel(next))+'</button>':'Menunggu konfirmasi wali')+'</td></tr>'}).join('')+'</tbody></table></div>':'<div class="empty-box">Tidak ada pesanan yang perlu diproses.</div>';$('opsMainBody').insertAdjacentHTML('afterbegin',opsWelcomeMarkup('Operasional gudang','Perbarui tahapan pesanan setelah barang selesai diproses dan disiapkan.','▤'));document.querySelectorAll('.warehouse-next').forEach(b=>b.onclick=()=>advanceWarehouse(b.dataset.id,b.dataset.next))}
-    function renderOpsStock(){const rows=opsData.products||[];$('opsMainTitle').textContent='Stok';$('opsMainBody').innerHTML='<button class="primary" id="opsAdjustStock">+ Mutasi Stok</button><div class="table-wrap" style="margin-top:14px"><table class="data-table"><thead><tr><th>Produk</th><th>SKU</th><th>Stok</th><th>Min.</th><th>Status</th></tr></thead><tbody>'+rows.map(p=>'<tr><td>'+escapeHtml(p.name)+'</td><td>'+escapeHtml(p.sku)+'</td><td><strong>'+formatMoney(p.stock)+'</strong></td><td>'+formatMoney(p.minStock)+'</td><td>'+escapeHtml(p.status)+'</td></tr>').join('')+'</tbody></table></div>';$('opsAdjustStock').onclick=openStockForm}
+    async function renderOpsStock(){
+      $('opsMainTitle').textContent='Manajemen Persediaan & Stok';
+      $('opsMainBody').innerHTML='<div class="stock-loading"><div class="loading-spinner"></div><span>Memuat data persediaan...</span></div>';
+      try{
+        const data=await runServer('getStockManagement',state.token);
+        const items=data.items||[],history=data.history||[],summary=data.summary||{};
+        const statusOf=x=>Number(x.stock)<=0?'HABIS':Number(x.stock)<=Number(x.minStock)?'MENIPIS':'AMAN';
+        const statusClass=x=>statusOf(x)==='HABIS'?'stock-status-out':statusOf(x)==='MENIPIS'?'stock-status-low':'stock-status-ok';
+        $('opsMainBody').innerHTML=
+          '<div class="stock-overview">'+
+            '<article class="stock-metric"><span>Total Item Stok</span><strong>'+formatMoney(summary.totalItems||0)+'</strong><small>Produk dan variasi terdaftar</small></article>'+
+            '<article class="stock-metric"><span>Total Unit Tersedia</span><strong>'+formatMoney(summary.totalUnits||0)+'</strong><small>Akumulasi seluruh persediaan</small></article>'+
+            '<article class="stock-metric stock-metric-warning"><span>Stok Menipis</span><strong>'+formatMoney(summary.lowStock||0)+'</strong><small>Sudah mencapai batas minimum</small></article>'+
+            '<article class="stock-metric stock-metric-danger"><span>Stok Habis</span><strong>'+formatMoney(summary.outOfStock||0)+'</strong><small>Perlu pengadaan segera</small></article>'+
+          '</div>'+
+          '<div class="stock-toolbar"><div><h3>Daftar Persediaan</h3><p>Pantau stok produk utama dan setiap variasinya.</p></div><button class="primary" id="opsAdjustStock">+ Mutasi Stok</button></div>'+
+          '<div class="stock-filters"><input id="stockSearch" type="search" placeholder="Cari nama produk, SKU, atau variasi..."><select id="stockStatusFilter"><option value="SEMUA">Semua status</option><option value="MENIPIS">Stok menipis</option><option value="HABIS">Stok habis</option><option value="AMAN">Stok aman</option></select></div>'+
+          '<div class="stock-result-count" id="stockResultCount"></div>'+
+          '<div class="table-wrap stock-table-wrap"><table class="data-table stock-table"><thead><tr><th>Produk</th><th>SKU</th><th>Kategori</th><th>Variasi</th><th>Stok</th><th>Minimum</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="stockTableBody"></tbody></table></div>'+
+          '<section class="stock-history-section"><div class="stock-toolbar"><div><h3>Riwayat Mutasi Stok</h3><p>100 mutasi terakhir, termasuk pengurangan otomatis dari transaksi terverifikasi.</p></div></div>'+
+          '<div class="table-wrap stock-table-wrap"><table class="data-table stock-table"><thead><tr><th>Waktu</th><th>Produk</th><th>Jenis</th><th>Jumlah</th><th>Sebelum</th><th>Sesudah</th><th>Keterangan</th><th>Petugas</th></tr></thead><tbody>'+
+          (history.length?history.map(h=>'<tr><td>'+escapeHtml(h.createdAt||'-')+'</td><td><strong>'+escapeHtml(h.productName)+'</strong><small class="stock-subline">'+escapeHtml(h.sku)+(h.variationName?' · '+escapeHtml(h.variationName):'')+'</small></td><td><span class="stock-mutation '+(h.type==='MASUK'?'stock-in':'stock-out')+'">'+escapeHtml(h.type)+'</span></td><td>'+formatMoney(h.qty)+'</td><td>'+formatMoney(h.before)+'</td><td><strong>'+formatMoney(h.after)+'</strong></td><td>'+escapeHtml(h.note||h.referenceId||'-')+'</td><td>'+escapeHtml(h.actor||'-')+'</td></tr>').join(''):'<tr><td colspan="8" class="muted" style="text-align:center;padding:24px">Belum ada riwayat mutasi stok.</td></tr>')+
+          '</tbody></table></div></section>';
+        const drawRows=()=>{
+          const q=$('stockSearch').value.trim().toLowerCase(),filter=$('stockStatusFilter').value;
+          const filtered=items.filter(x=>{
+            const status=statusOf(x),hay=[x.name,x.sku,x.categoryName,x.variationName].join(' ').toLowerCase();
+            return (!q||hay.includes(q))&&(filter==='SEMUA'||filter===status);
+          });
+          $('stockResultCount').textContent='Menampilkan '+formatMoney(filtered.length)+' dari '+formatMoney(items.length)+' item stok';
+          $('stockTableBody').innerHTML=filtered.length?filtered.map(x=>{
+            const st=statusOf(x);
+            return '<tr><td><strong>'+escapeHtml(x.name)+'</strong><small class="stock-subline">'+escapeHtml(x.productStatus||'-')+'</small></td><td>'+escapeHtml(x.sku||'-')+'</td><td>'+escapeHtml(x.categoryName||'-')+'</td><td>'+escapeHtml(x.variationName||'Produk utama')+'</td><td><strong>'+formatMoney(x.stock)+'</strong></td><td>'+formatMoney(x.minStock)+'</td><td><span class="stock-status '+statusClass(x)+'">'+st+'</span></td><td><button class="secondary stock-row-action" data-product="'+escapeHtml(x.productId)+'" data-variation="'+escapeHtml(x.variationId)+'">Mutasi</button></td></tr>';
+          }).join(''):'<tr><td colspan="8" class="muted" style="text-align:center;padding:24px">Tidak ada item yang sesuai dengan pencarian.</td></tr>';
+          document.querySelectorAll('.stock-row-action').forEach(b=>b.onclick=()=>openStockForm(b.dataset.product,b.dataset.variation));
+        };
+        $('stockSearch').addEventListener('input',drawRows);
+        $('stockStatusFilter').addEventListener('change',drawRows);
+        $('opsAdjustStock').onclick=()=>openStockForm();
+        drawRows();
+      }catch(e){
+        $('opsMainBody').innerHTML='<div class="empty-box">Data persediaan belum dapat dimuat. '+escapeHtml(e.message||'Silakan coba kembali.')+'</div>';
+        showToast(e.message||'Data persediaan gagal dimuat.','error');
+      }
+    }
     async function openOpsOrderDetail(id){loading(true,'Memuat detail...');try{const r=await runServer('getOperationsOrderDetail',state.token,id);$('opsModalTitle').textContent=r.order.number;$('opsModalBody').innerHTML='<div class="profile-grid"><div class="profile-item"><small>Untuk</small><strong>'+escapeHtml(r.order.childName)+'</strong><div class="muted">'+escapeHtml(r.order.className)+'</div></div><div class="profile-item"><small>Total</small><strong>Rp '+formatMoney(r.order.total)+'</strong></div></div><div class="section"><div class="order-detail-list">'+r.order.details.map(i=>'<div class="cart-item"><div class="cart-photo"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:42px;height:42px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M4 8h16l-1 12H5L4 8Z"></path><path d="M8 8a4 4 0 0 1 8 0"></path></svg></div><div><strong>'+escapeHtml(i.name)+'</strong><div class="muted">'+escapeHtml(i.variationName||'-')+' · '+i.qty+' × Rp '+formatMoney(i.price)+'</div></div><strong>Rp '+formatMoney(i.subtotal)+'</strong></div>').join('')+'</div></div>';$('opsModal').classList.remove('hidden')}catch(e){showToast(e.message||'Detail gagal dimuat.')}finally{loading(false)}}
     function openCategoryForm(item){item=item||{};$('opsModalTitle').textContent=item.id?'Edit Kategori':'Tambah Kategori';$('opsModalBody').innerHTML='<div class="field"><label>Nama kategori *</label><input id="catName" maxlength="100" value="'+escapeHtml(item.name||'')+'" placeholder="Contoh: Perlengkapan Sekolah"></div><div class="field"><label>Deskripsi</label><textarea id="catDesc" maxlength="500" rows="3" placeholder="Keterangan singkat kategori">'+escapeHtml(item.description||'')+'</textarea></div><div class="field"><label>Urutan tampil</label><input id="catOrder" type="number" min="0" step="1" value="'+(item.order||0)+'"></div><div class="field"><label>Status</label><select id="catStatus" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px"><option '+(item.status==='AKTIF'?'selected':'')+'>AKTIF</option><option '+(item.status==='NONAKTIF'?'selected':'')+'>NONAKTIF</option></select></div><div class="notice">Kategori nonaktif tidak dapat dipilih saat membuat produk baru.</div><button class="primary" id="saveCat">Simpan Kategori</button>';$('opsModal').classList.remove('hidden');$('saveCat').onclick=async()=>{const b=$('saveCat');if(b.disabled)return;if(!$('catName').value.trim()){showToast('Nama kategori wajib diisi.','error');$('catName').focus();return}b.disabled=true;loading(true,'Menyimpan kategori...');try{await runServer('saveCategory',state.token,item.id||'',$('catName').value,$('catDesc').value,$('catOrder').value,$('catStatus').value);closeOpsModal();await refreshOpsCatalogData();await renderOpsProductList();showToast('Kategori tersimpan.','success')}catch(e){showToast(e.message||'Gagal menyimpan kategori.','error')}finally{b.disabled=false;loading(false)}}}
     function openProductForm(item){item=item||{};const cats=(window._fmartCatalog?.categories||opsData?.categories||[]).filter(c=>c.status==='AKTIF');if(!cats.length){showToast('Tambahkan kategori aktif terlebih dahulu.','error');return}$('opsModalTitle').textContent=item.id?'Edit Produk':'Tambah Produk';$('opsModalBody').innerHTML='<div class="field"><label>Kategori *</label><select id="prdCat" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px">'+cats.map(c=>'<option value="'+escapeHtml(c.id)+'" '+(String(c.id)===String(item.categoryId)?'selected':'')+'>'+escapeHtml(c.name)+'</option>').join('')+'</select></div><div class="field"><label>SKU *</label><input id="prdSku" maxlength="60" value="'+escapeHtml(item.sku||'')+'" placeholder="Contoh: FM-001"></div><div class="field"><label>Nama produk *</label><input id="prdName" maxlength="150" value="'+escapeHtml(item.name||'')+'" placeholder="Nama produk"></div><div class="field"><label>Deskripsi</label><textarea id="prdDesc" maxlength="1000" rows="3" placeholder="Informasi produk">'+escapeHtml(item.description||'')+'</textarea></div><div class="field"><label>Harga (Rp) *</label><input id="prdPrice" type="number" min="0" step="1" value="'+(item.price??0)+'"></div><div class="field"><label>Stok minimum</label><input id="prdMin" type="number" min="0" step="1" value="'+(item.minStock||0)+'"></div><div class="field"><label>URL foto (opsional)</label><input id="prdPhoto" type="url" maxlength="500" value="'+escapeHtml(item.photoUrl||'')+'" placeholder="https://..."></div><div class="field"><label>Status</label><select id="prdStatus" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px"><option '+(item.status!=='NONAKTIF'?'selected':'')+'>AKTIF</option><option '+(item.status==='NONAKTIF'?'selected':'')+'>NONAKTIF</option></select></div><button class="primary" id="savePrd">Simpan Produk</button>';$('opsModal').classList.remove('hidden');$('savePrd').onclick=async()=>{const b=$('savePrd');if(b.disabled)return;const sku=$('prdSku').value.trim(),name=$('prdName').value.trim(),price=$('prdPrice').value;if(!sku||!name||price===''||!Number.isFinite(Number(price))||Number(price)<0){showToast('Lengkapi SKU, nama, dan harga dengan benar.','error');return}b.disabled=true;loading(true,'Menyimpan produk...');try{await runServer('saveProduct',state.token,{id:item.id||'',categoryId:$('prdCat').value,sku:sku,name:name,description:$('prdDesc').value,price:price,minStock:$('prdMin').value,photoUrl:$('prdPhoto').value,status:$('prdStatus').value});closeOpsModal();await refreshOpsCatalogData();await renderOpsProductList();showToast('Produk tersimpan.','success')}catch(e){showToast(e.message||'Gagal menyimpan produk.','error')}finally{b.disabled=false;loading(false)}}}
@@ -712,7 +799,43 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
     function openVerifyPayment(id,action){$('opsModalTitle').textContent=action==='TERIMA'?'Verifikasi Pembayaran':'Tolak Pembayaran';$('opsModalBody').innerHTML='<div class="notice">'+(action==='TERIMA'?'Pembayaran akan diverifikasi dan stok pesanan dikurangi.':'Pembayaran akan ditolak dan Wali Santri perlu mengajukan kembali.')+'</div><div class="field"><label>Catatan</label><input id="verifyNote" placeholder="Opsional"></div><button class="primary" id="verifyBtn">'+(action==='TERIMA'?'Terima Pembayaran':'Tolak Pembayaran')+'</button>';$('opsModal').classList.remove('hidden');$('verifyBtn').onclick=async()=>{loading(true,'Memproses pembayaran...');try{opsData=await runServer('verifyPayment',state.token,id,action,$('verifyNote').value);closeOpsModal();renderOps();showToast('Pembayaran telah diproses.')}catch(e){showToast(e.message||'Verifikasi gagal.')}finally{loading(false)}}}
     async function openVariationManager(productId){loading(true,'Memuat variasi...');try{const c=await runServer('getAdminCatalog',state.token);const p=c.products.find(x=>String(x.id)===String(productId));const vs=c.variations.filter(x=>String(x.productId)===String(productId));$('opsModalTitle').textContent='Variasi · '+(p?p.name:'Produk');$('opsModalBody').innerHTML='<div class="two-btn"><button class="primary" id="addVariation">+ Variasi</button><button class="secondary" id="closeVariationList">Tutup</button></div><div class="section"><div class="child-list">'+(vs.length?vs.map(v=>'<div class="profile-item"><strong>'+escapeHtml(v.name)+': '+escapeHtml(v.value)+'</strong><div class="muted">Tambahan Rp '+formatMoney(v.priceAddition)+' · Stok '+formatMoney(v.stock)+' · '+escapeHtml(v.status)+'</div><button class="secondary edit-variation" data-id="'+escapeHtml(v.id)+'" style="margin-top:8px">Edit</button></div>').join(''):'<div class="empty-box">Belum ada variasi.</div>')+'</div></div>';$('opsModal').classList.remove('hidden');$('addVariation').onclick=()=>openVariationForm({productId:productId});$('closeVariationList').onclick=closeOpsModal;document.querySelectorAll('.edit-variation').forEach(b=>b.onclick=()=>{const v=vs.find(x=>String(x.id)===String(b.dataset.id));openVariationForm(v)})}catch(e){showToast(e.message||'Variasi gagal dimuat.')}finally{loading(false)}}
     function openVariationForm(item){item=item||{};$('opsModalTitle').textContent=item.id?'Edit Variasi':'Tambah Variasi';$('opsModalBody').innerHTML='<div class="field"><label>Nama atribut</label><input id="varName" placeholder="Contoh: Ukuran / Warna" value="'+escapeHtml(item.name||'')+'"></div><div class="field"><label>Nilai</label><input id="varValue" placeholder="Contoh: M / Hitam" value="'+escapeHtml(item.value||'')+'"></div><div class="field"><label>Harga tambahan</label><input id="varPrice" type="number" min="0" value="'+(item.priceAddition||0)+'"></div><div class="field"><label>'+(item.id?'Stok saat ini':'Stok awal')+'</label><input id="varStock" type="number" min="0" value="'+(item.stock||0)+'" '+(item.id?'readonly title="Gunakan Mutasi Stok untuk mengubah stok"':'')+'></div><div class="field"><label>Status</label><select id="varStatus" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px"><option '+(item.status!=='NONAKTIF'?'selected':'')+'>AKTIF</option><option '+(item.status==='NONAKTIF'?'selected':'')+'>NONAKTIF</option></select></div><button class="primary" id="saveVar">Simpan Variasi</button>';$('opsModal').classList.remove('hidden');$('saveVar').onclick=async()=>{loading(true,'Menyimpan variasi...');try{await runServer('saveVariation',state.token,{id:item.id||'',productId:item.productId,name:$('varName').value,value:$('varValue').value,priceAddition:$('varPrice').value,stock:$('varStock').value,status:$('varStatus').value});closeOpsModal();await refreshOpsCatalogData();await renderOpsProductList();showToast('Variasi tersimpan.','success')}catch(e){showToast(e.message||'Gagal menyimpan variasi.')}finally{loading(false)}}}
-    async function openStockForm(){loading(true,'Memuat data stok...');try{const c=await runServer('getStockCatalog',state.token);$('opsModalTitle').textContent='Mutasi Stok';$('opsModalBody').innerHTML='<div class="field"><label>Produk</label><select id="stockProduct" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px">'+c.products.map(p=>'<option value="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+' · '+escapeHtml(p.sku)+'</option>').join('')+'</select></div><div class="field"><label>Variasi</label><select id="stockVariation" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px"><option value="">Stok utama produk</option></select></div><div class="field"><label>Jenis</label><select id="stockType" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px"><option>MASUK</option><option>KELUAR</option></select></div><div class="field"><label>Jumlah</label><input id="stockQty" type="number" min="1" value="1"></div><div class="field"><label>Keterangan</label><input id="stockNote" placeholder="Contoh: restock"></div><button class="primary" id="saveStock">Simpan Mutasi</button>';$('opsModal').classList.remove('hidden');const refreshVars=()=>{const p=c.products.find(x=>String(x.id)===String($('stockProduct').value));$('stockVariation').innerHTML='<option value="">Stok utama produk</option>'+(p?p.variations.map(v=>'<option value="'+escapeHtml(v.id)+'">'+escapeHtml(v.name)+': '+escapeHtml(v.value)+' · stok '+formatMoney(v.stock)+'</option>').join(''):'')};$('stockProduct').onchange=refreshVars;refreshVars();$('saveStock').onclick=async()=>{loading(true,'Menyimpan mutasi stok...');try{opsData=await runServer('adjustStock',state.token,$('stockProduct').value,$('stockVariation').value,$('stockType').value,$('stockQty').value,$('stockNote').value);closeOpsModal();renderOpsStock();showToast('Stok diperbarui.')}catch(e){showToast(e.message||'Mutasi stok gagal.')}finally{loading(false)}}}catch(e){showToast(e.message||'Data stok gagal dimuat.')}finally{loading(false)}}
+    async function openStockForm(productId,variationId){
+      loading(true,'Memuat data stok...');
+      try{
+        const c=await runServer('getStockCatalog',state.token);
+        if(!c.products||!c.products.length){showToast('Belum ada produk aktif yang dapat dimutasi.','error');return}
+        $('opsModalTitle').textContent='Mutasi Stok';
+        $('opsModalBody').innerHTML=
+          '<div class="notice">Gunakan stok masuk untuk barang yang diterima dan stok keluar untuk penyesuaian/pengeluaran manual. Pengurangan stok penjualan terverifikasi dicatat otomatis.</div>'+
+          '<div class="field"><label>Produk *</label><select id="stockProduct" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px">'+c.products.map(p=>'<option value="'+escapeHtml(p.id)+'" '+(String(p.id)===String(productId||'')?'selected':'')+'>'+escapeHtml(p.name)+' · '+escapeHtml(p.sku)+'</option>').join('')+'</select></div>'+
+          '<div class="field"><label>Variasi</label><select id="stockVariation" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px"><option value="">Stok utama produk</option></select></div>'+
+          '<div class="field"><label>Jenis Mutasi *</label><select id="stockType" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px"><option value="MASUK">Stok Masuk</option><option value="KELUAR">Stok Keluar</option></select></div>'+
+          '<div class="field"><label>Jumlah *</label><input id="stockQty" type="number" min="1" step="1" value="1" inputmode="numeric"></div>'+
+          '<div class="field"><label>Keterangan</label><input id="stockNote" maxlength="300" placeholder="Contoh: pembelian barang / barang rusak"></div>'+
+          '<button class="primary" id="saveStock">Simpan Mutasi</button>';
+        $('opsModal').classList.remove('hidden');
+        const refreshVars=()=>{
+          const p=c.products.find(x=>String(x.id)===String($('stockProduct').value));
+          const options='<option value="">Stok utama produk</option>'+(p?p.variations.map(v=>'<option value="'+escapeHtml(v.id)+'" '+(String(v.id)===String(variationId||'')?'selected':'')+'>'+escapeHtml(v.name)+': '+escapeHtml(v.value)+' · stok '+formatMoney(v.stock)+'</option>').join(''):'');
+          $('stockVariation').innerHTML=options;
+          if(variationId&&p&&p.variations.some(v=>String(v.id)===String(variationId)))$('stockVariation').value=String(variationId);
+        };
+        $('stockProduct').addEventListener('change',()=>{variationId='';refreshVars()});
+        refreshVars();
+        $('saveStock').onclick=async()=>{
+          const b=$('saveStock'),qty=Number($('stockQty').value);
+          if(b.disabled)return;
+          if(!Number.isInteger(qty)||qty<1){showToast('Jumlah mutasi harus berupa bilangan bulat minimal 1.','error');$('stockQty').focus();return}
+          b.disabled=true;loading(true,'Menyimpan mutasi stok...');
+          try{
+            await runServer('adjustStock',state.token,$('stockProduct').value,$('stockVariation').value,$('stockType').value,qty,$('stockNote').value);
+            closeOpsModal();showToast('Mutasi stok berhasil disimpan.','success');await renderOpsStock();
+          }catch(e){showToast(e.message||'Mutasi stok gagal.','error')}
+          finally{b.disabled=false;loading(false)}
+        };
+      }catch(e){showToast(e.message||'Data stok gagal dimuat.','error')}
+      finally{loading(false)}
+    }
     async function advanceWarehouse(id,next){loading(true,'Memperbarui status...');try{opsData=await runServer('updateOrderOperation',state.token,id,next,'', '');renderOpsWarehouse();showToast('Status pesanan diperbarui.')}catch(e){showToast(e.message||'Gagal memperbarui status.')}finally{loading(false)}}
     function closeOpsModal(){$('opsModal').classList.add('hidden')}
 
