@@ -357,6 +357,15 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
     .audit-table{min-width:1000px}.audit-entity-id{display:block;color:var(--muted);font-size:11px;margin-top:3px;overflow-wrap:anywhere}
     @media(max-width:760px){.report-tabs{width:100%}.report-tab{flex:1;padding:10px 8px;font-size:13px}.report-filter-grid,.report-audit-filters,.report-two-col{grid-template-columns:1fr}.report-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.report-metric{padding:13px}}
 
+    /* Tahap 11 — penyempurnaan aksesibilitas dan interaksi Admin */
+    body.admin-portal button:focus-visible,body.admin-portal a:focus-visible,body.admin-portal input:focus-visible,body.admin-portal select:focus-visible,body.admin-portal textarea:focus-visible{outline:3px solid #a78bfa!important;outline-offset:2px}
+    body.admin-portal #opsMainBody .table-wrap{width:100%;max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+    body.admin-portal .modal-card{max-height:min(88vh,900px);max-height:min(88dvh,900px);overflow-y:auto;overscroll-behavior:contain}
+    body.admin-portal #opsMainBody img{max-width:100%;height:auto}
+    body.admin-portal #opsMainBody .section{min-width:0}
+    @media(min-width:761px){body.admin-portal #operationsView{max-width:none!important}body.admin-portal #opsMainBody{padding-bottom:20px}}
+    @media(max-width:760px){body.admin-portal .modal-card{max-height:88vh;max-height:88dvh}body.admin-portal #opsMainBody .section{margin-left:0;margin-right:0}body.admin-portal #opsMainBody .table-wrap{border-radius:12px}}
+
     /* FMart Admin — audit lebar desktop dan responsivitas lintas halaman */
     @media (min-width:761px){
       body.admin-portal #appView.app{width:100%;max-width:none;min-width:0}
