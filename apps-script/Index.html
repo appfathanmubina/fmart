@@ -240,7 +240,31 @@
     }
     @media(min-width:761px) and (max-width:1100px){body.admin-portal #staffNav.bottom-nav{width:194px;left:12px}body.admin-portal .header-inner{padding-left:228px}body.admin-portal #operationsView{width:calc(100% - 220px);margin-left:220px;padding:24px 18px 40px!important}body.admin-portal #opsStats{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
     @media(max-width:760px){body.admin-portal .app{max-width:100%;width:100%}body.admin-portal .header-inner{padding:11px 14px}body.admin-portal .brand:after{content:"ADMIN";margin-left:2px;padding:4px 7px;border-radius:6px;background:#f5eaf6;color:#7c3282;font-size:9px;letter-spacing:.1em}body.admin-portal #operationsView{padding:4px 12px 110px!important}body.admin-portal #opsStats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px}body.admin-portal #opsStats .profile-item{padding:13px;border-radius:15px}body.admin-portal #opsStats .profile-item strong{font-size:21px!important}body.admin-portal #opsMainSection{padding:14px;border:1px solid #eaddec;border-radius:17px;background:#fff}body.admin-portal #opsTitle{font-size:22px}}
-  </style>
+      /* Tahap 3 — Dashboard Admin */
+    body.admin-portal #opsStats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:14px 0 22px}
+    body.admin-portal #opsStats .ops-stat-card{position:relative;min-height:112px;padding:18px 18px 15px;border:1px solid #eadff5;border-radius:18px;background:linear-gradient(145deg,#fff 0%,#fbf8ff 100%);box-shadow:0 7px 22px rgba(91,33,182,.055);overflow:hidden}
+    body.admin-portal #opsStats .ops-stat-card:after{content:"";position:absolute;width:76px;height:76px;right:-24px;top:-27px;border-radius:50%;background:rgba(124,58,237,.07)}
+    body.admin-portal #opsStats .ops-stat-card small{display:block;color:#776b88;font-size:12px;font-weight:650;letter-spacing:.01em}
+    body.admin-portal #opsStats .ops-stat-card strong{display:block;margin-top:10px;color:#4c1d95;font-size:27px!important;line-height:1.1;font-weight:800}
+    body.admin-portal #opsStats .ops-stat-card span{display:block;margin-top:7px;color:#988da5;font-size:11px}
+    body.admin-portal .ops-welcome{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:4px 0 18px;padding:20px 22px;border:1px solid #e9ddf5;border-radius:20px;background:linear-gradient(115deg,#f4eaff 0%,#fff 72%);color:#4c1d95}
+    body.admin-portal .ops-welcome strong{display:block;font-size:17px;font-weight:800}
+    body.admin-portal .ops-welcome span{display:block;margin-top:5px;color:#776b88;font-size:12px;line-height:1.5}
+    body.admin-portal .ops-welcome-mark{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:15px;background:#fff;color:#7c3aed;font-size:23px;box-shadow:0 5px 16px rgba(91,33,182,.09)}
+    body.admin-portal #opsMainBody>.section{margin-top:18px}
+    body.admin-portal #opsMainBody .section-title{align-items:center}
+    body.admin-portal #opsMainBody .section-title h2{font-size:16px;font-weight:800;color:#352047}
+    body.admin-portal #opsMainBody .empty-box{border:1px dashed #dfd2ed;border-radius:15px;background:#fcfaff;color:#82758f;padding:24px;text-align:center}
+    @media(max-width:760px){
+      body.admin-portal #opsStats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0 16px}
+      body.admin-portal #opsStats .ops-stat-card{min-height:100px;padding:14px;border-radius:15px}
+      body.admin-portal #opsStats .ops-stat-card strong{font-size:24px!important;margin-top:8px}
+      body.admin-portal #opsStats .ops-stat-card span{font-size:10px}
+      body.admin-portal .ops-welcome{padding:16px;border-radius:16px;margin-bottom:14px}
+      body.admin-portal .ops-welcome strong{font-size:15px}
+      body.admin-portal .ops-welcome-mark{width:42px;height:42px;flex-basis:42px}
+    }
+</style>
 </head>
 <body>
   <div id="loginView" class="login-wrap">
@@ -500,10 +524,22 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
 
     let opsData=null;
     async function loadOps(){loading(true,'Memuat dashboard operasional...');try{opsData=await runServer('getOperationsDashboard',state.token);renderOps();}catch(e){showToast(e.message||'Dashboard operasional gagal dimuat.')}finally{loading(false)}}
-    function renderOps(){if(!opsData)return;const role=state.data.user.role;const s=opsData.stats;const cards=[['Menunggu Verifikasi',s.pendingVerification],['Dibayar',s.dibayar],['Diproses',s.diproses],['Disiapkan',s.disiapkan],['Diantar',s.diantar],['Produk Aktif',s.activeProducts],['Stok Menipis',s.lowStock]];$('opsStats').innerHTML=cards.map(x=>'<div class="profile-item"><small>'+escapeHtml(x[0])+'</small><strong style="font-size:22px">'+formatMoney(x[1])+'</strong></div>').join('');
-      if(role==='ADMIN'||role==='SUPERADMIN'){$('opsMainTitle').textContent='Pesanan & Produk';renderOpsOrders();}
+    function renderOps(){
+      if(!opsData)return;
+      const role=state.data.user.role, stats=opsData.stats||{};
+      let cards=[];
+      if(role==='ADMIN'||role==='SUPERADMIN'){
+        cards=[['Menunggu Verifikasi',stats.pendingVerification,'Pembayaran'],['Menunggu Pembayaran',stats.menungguPembayaran,'Pesanan'],['Dalam Proses',(Number(stats.dibayar)||0)+(Number(stats.diproses)||0)+(Number(stats.disiapkan)||0),'Operasional'],['Produk Aktif',stats.activeProducts,'Katalog'],['Stok Menipis',stats.lowStock,'Persediaan'],['Pesanan Diterima',stats.diterima,'Selesai']];
+      }else if(role==='KASIR'){
+        cards=[['Menunggu Verifikasi',stats.pendingVerification,'Perlu diperiksa'],['Menunggu Pembayaran',stats.menungguPembayaran,'Belum dibayar'],['Sudah Dibayar',stats.dibayar,'Siap diproses']];
+      }else{
+        cards=[['Pesanan Dibayar',stats.dibayar,'Antrean gudang'],['Sedang Diproses',stats.diproses,'Operasional'],['Sedang Disiapkan',stats.disiapkan,'Pengemasan'],['Dalam Pengantaran',stats.diantar,'Menunggu konfirmasi'],['Stok Menipis',stats.lowStock,'Perlu perhatian']];
+      }
+      $('opsStats').innerHTML=cards.map(x=>'<div class="profile-item ops-stat-card"><small>'+escapeHtml(x[0])+'</small><strong>'+formatMoney(x[1])+'</strong><span>'+escapeHtml(x[2])+'</span></div>').join('');
+      if(role==='ADMIN'||role==='SUPERADMIN'){$('opsMainTitle').textContent='Ringkasan Operasional';renderOpsOrders();}
       else if(role==='KASIR'){$('opsMainTitle').textContent='Verifikasi Pembayaran';renderOpsPayments();}
-      else {$('opsMainTitle').textContent='Pesanan Gudang';renderOpsWarehouse();}}
+      else {$('opsMainTitle').textContent='Pesanan Gudang';renderOpsWarehouse();}
+    }
     async function renderOpsReports(){
       if(!['ADMIN','SUPERADMIN'].includes(state.data.user.role)){showToast('Menu laporan tidak tersedia untuk role Anda.');return;}
       const now=new Date(), end=now.toISOString().slice(0,10), start=new Date(now.getTime()-29*86400000).toISOString().slice(0,10);
