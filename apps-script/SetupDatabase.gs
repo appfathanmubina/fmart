@@ -238,7 +238,7 @@ function createInitialFMartSuperadmin(username, password, nama, email) {
 function prepareExistingSuperadminEmail_() {
   const properties = PropertiesService.getScriptProperties();
   const email = String(properties.getProperty('FMART_INITIAL_SUPERADMIN_EMAIL') || '').trim().toLowerCase();
-  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+(?![\\s\\S])/.test(email)) {
+if (!/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) {
     throw new Error('Isi Script Property FMART_INITIAL_SUPERADMIN_EMAIL dengan alamat email yang valid terlebih dahulu.');
   }
 
