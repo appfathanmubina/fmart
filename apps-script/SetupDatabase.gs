@@ -225,33 +225,82 @@ function createInitialFMartSuperadmin(username, password, nama, email) {
 
 
 /**
- * Migrasi email untuk Superadmin lama satu kali melalui Apps Script Editor.
- * Fungsi privat (akhiran _) dan tidak dapat dipanggil dari google.script.run.
- * Login OTP pertama akan menandai email sebagai terverifikasi.
+ * Migrasi email untuk Superadmin lama.
+ *
+ * Sebelum dijalankan, isi Script Property:
+ *   FMART_INITIAL_SUPERADMIN_EMAIL = alamat email Superadmin
+ *
+ * Fungsi ini tidak memakai SpreadsheetApp.getUi(), sehingga dapat dijalankan
+ * langsung dari Apps Script Editor pada project standalone.
  */
 function prepareExistingSuperadminEmail_() {
-  const ui=SpreadsheetApp.getUi();
-  const prompt=ui.prompt('FMart — Email Superadmin', 'Masukkan email aktif yang akan digunakan untuk login Admin:', ui.ButtonSet.OK_CANCEL);
-  if(prompt.getSelectedButton()!==ui.Button.OK) return {ok:false,cancelled:true};
-  const email=String(prompt.getResponseText()||'').trim().toLowerCase();
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) throw new Error('Format email tidak valid.');
-  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  const properties = PropertiesService.getScriptProperties();
+  const email = String(properties.getProperty('FMART_INITIAL_SUPERADMIN_EMAIL') || '').trim().toLowerCase();
+  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+(?![\\s\\S])/.test(email)) {
+    throw new Error('Isi Script Property FMART_INITIAL_SUPERADMIN_EMAIL dengan alamat email yang valid terlebih dahulu.');
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
   try {
-    const sheet=getSetupSpreadsheet_().getSheetByName('Users');
-    if(!sheet||sheet.getLastRow()<2) throw new Error('Data Users belum tersedia.');
-    const rows=sheet.getRange(2,1,sheet.getLastRow()-1,12).getValues();
-    const admins=rows.map(function(r,i){return {row:i+2,values:r};}).filter(function(x){return String(x.values[5]||'').toUpperCase()==='SUPERADMIN'&&String(x.values[6]||'').toUpperCase()==='AKTIF';});
-    if(admins.length!==1) throw new Error('Migrasi otomatis hanya berjalan jika tepat satu Superadmin aktif. Periksa data Users terlebih dahulu.');
-    if(rows.some(function(r){return String(r[0]||'')!==String(admins[0].values[0]||'')&&String(r[10]||'').trim().toLowerCase()===email;})) throw new Error('Email sudah digunakan akun lain.');
-    const target=admins[0],now=new Date();
-    sheet.getRange(target.row,2).setValue(email);
-    sheet.getRange(target.row,9).setValue(now);
-    sheet.getRange(target.row,11,1,2).setValues([[email,false]]);
+    const ss = getSetupSpreadsheet_();
+    const sheet = ss.getSheetByName('Users');
+    if (!sheet || sheet.getLastRow() < 2) throw new Error('Data Users belum tersedia.');
+    const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).getValues();
+    const admins = rows.map(function(r, i) {
+      return {row: i + 2, values: r};
+    }).filter(function(x) {
+      return String(x.values[5] || '').trim().toUpperCase() === 'SUPERADMIN' &&
+        String(x.values[6] || '').trim().toUpperCase() === 'AKTIF';
+    });
+
+    if (admins.length !== 1) {
+      throw new Error('Migrasi hanya berjalan jika tepat satu Superadmin aktif. Periksa data Users terlebih dahulu.');
+    }
+
+    const target = admins[0];
+    const targetId = String(target.values[0] || '');
+    const duplicate = rows.some(function(r) {
+      if (String(r[0] || '') === targetId) return false;
+      const username = String(r[1] || '').trim().toLowerCase();
+      const existingEmail = String(r[10] || '').trim().toLowerCase();
+      return username === email || existingEmail === email;
+    });
+    if (duplicate) throw new Error('Email sudah digunakan sebagai username atau email akun lain.');
+
+    const now = new Date();
+    sheet.getRange(target.row, 2).setValue(email);
+    sheet.getRange(target.row, 9).setValue(now);
+    sheet.getRange(target.row, 11, 1, 2).setValues([[email, false]]);
     SpreadsheetApp.flush();
-    const msg='Email Superadmin disimpan. Login Admin berikutnya menggunakan '+email+' dan password lama, lalu OTP akan dikirim ke alamat tersebut.';
-    ui.alert('FMart — Email Disiapkan',msg,ui.ButtonSet.OK);
-    return {ok:true,email:email,message:msg};
-  } finally {lock.releaseLock();}
+
+    const saved = sheet.getRange(target.row, 2, 1, 11).getValues()[0];
+    if (String(saved[0] || '').trim().toLowerCase() !== email ||
+        String(saved[9] || '').trim().toLowerCase() !== email ||
+        saved[10] !== false) {
+      throw new Error('Perubahan email belum berhasil diverifikasi pada sheet Users.');
+    }
+
+    properties.deleteProperty('FMART_INITIAL_SUPERADMIN_EMAIL');
+    const message = 'Email Superadmin berhasil disiapkan. Login Admin berikutnya menggunakan email tersebut dan password lama. OTP akan dikirim ke alamat email ini.';
+    return {
+      ok: true,
+      email: email,
+      userId: targetId,
+      emailVerified: false,
+      spreadsheetName: ss.getName(),
+      message: message
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Fungsi publik untuk dijalankan dari daftar fungsi Apps Script Editor.
+ */
+function prepareExistingSuperadminEmail() {
+  return prepareExistingSuperadminEmail_();
 }
 
 function getSetupSpreadsheet_() {
