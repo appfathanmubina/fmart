@@ -300,6 +300,75 @@ function auditFMartDatabaseIntegrity() {
 }
 
 
+
+/**
+ * Memperbaiki hanya header metadata FMart pada kolom I-L.
+ * Delapan kolom sumber FMPay wajib cocok persis dan tidak pernah disentuh.
+ * Sel metadata yang sudah berisi header lain akan menyebabkan fungsi berhenti.
+ */
+function repairFMartSantriMasterHeaders() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const ss = getSetupSpreadsheet_();
+    const sheet = ss.getSheetByName('Santri');
+    if (!sheet) throw new Error('Sheet Santri tidak ditemukan.');
+
+    const sourceHeaders = ['nis','nama_santri','kelas','asrama','saldo_fpay','limit_harian','nama_wali','no_wa_wali'];
+    const actualSource = sheet.getRange(1,1,1,8).getDisplayValues()[0]
+      .map(function(value){return String(value || '').trim();});
+    const sourceMismatch = [];
+    sourceHeaders.forEach(function(expected,index){
+      if (actualSource[index] !== expected) {
+        sourceMismatch.push({column:index+1,expected:expected,actual:actualSource[index] || ''});
+      }
+    });
+    if (sourceMismatch.length) {
+      throw new Error('Perbaikan dihentikan. Delapan header sumber FMPay tidak sesuai: ' + JSON.stringify(sourceMismatch));
+    }
+
+    if (sheet.getMaxColumns() < 12) {
+      sheet.insertColumnsAfter(sheet.getMaxColumns(), 12 - sheet.getMaxColumns());
+    }
+
+    const metadataHeaders = ['SantriId','Status','CreatedAt','UpdatedAt'];
+    const current = sheet.getRange(1,9,1,4).getDisplayValues()[0]
+      .map(function(value){return String(value || '').trim();});
+    const conflicts = [];
+    current.forEach(function(value,index){
+      if (value && value !== metadataHeaders[index]) {
+        conflicts.push({column:index+9,expected:metadataHeaders[index],actual:value});
+      }
+    });
+    if (conflicts.length) {
+      throw new Error('Perbaikan dihentikan. Ada header lain pada kolom metadata: ' + JSON.stringify(conflicts));
+    }
+
+    const repaired = [];
+    metadataHeaders.forEach(function(header,index){
+      if (!current[index]) {
+        sheet.getRange(1,index+9).setValue(header);
+        repaired.push({column:index+9,header:header});
+      }
+    });
+    sheet.getRange(1,9,1,4).setFontWeight('bold').setBackground('#eadcff').setFontColor('#4c1d95');
+    sheet.setFrozenRows(1);
+    SpreadsheetApp.flush();
+
+    const result = {
+      ok:true,
+      spreadsheetName:ss.getName(),
+      sourceColumnsPreserved:true,
+      repairedHeaders:repaired,
+      message:repaired.length ? 'Empat header metadata telah diperiksa dan header kosong dilengkapi.' : 'Semua header metadata sudah sesuai.'
+    };
+    Logger.log(JSON.stringify(result,null,2));
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 /**
  * Audit khusus master Santri bersama FMart/FMPay. Read-only.
  * Jalankan setelah setupFMartDatabase() menambahkan 4 header internal di ujung kanan.
