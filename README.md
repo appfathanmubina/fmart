@@ -212,3 +212,24 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 - Pemeriksaan perubahan dilakukan secara statis pada markup, CSS, dan alur JavaScript.
 - Belum dilakukan uji browser, registrasi ke Spreadsheet aktif, login akun Wali aktual, maupun deploy Apps Script.
 - Perubahan di GitHub tidak otomatis memperbarui deployment Apps Script; sinkronisasi dan deploy tetap mengikuti prosedur yang berlaku.
+## Pengembangan Portal Wali Santri — Tahap 2
+
+### Dashboard Wali Santri
+
+- Dashboard Wali ditambahkan pada area utama portal Pembeli, tepat setelah sambutan akun dan sebelum katalog produk.
+- Ringkasan akun menampilkan nama Wali, jumlah santri terhubung, pesanan aktif, pesanan yang belum dibayar, dan pembayaran yang menunggu verifikasi.
+- Daftar santri menampilkan maksimal empat pilihan awal; pemilihan santri tetap menggunakan mekanisme relasi Wali yang sudah ada.
+- Pesanan terbaru menampilkan maksimal lima transaksi dengan nomor pesanan, santri, tanggal, nominal, dan status. Tombol baris membuka detail melalui endpoint pesanan yang sudah ada.
+- Akses cepat disediakan untuk Mulai Belanja, Pesanan Saya, Keranjang, dan Data Santri/Profil.
+- Tombol muat ulang mengambil ringkasan terbaru tanpa memuat ulang seluruh aplikasi. Dashboard juga diperbarui saat Wali kembali ke Beranda.
+- Endpoint getWaliDashboard hanya mengizinkan role WALI_SANTRI, mengambil UserId dari sesi tervalidasi, dan membatasi pesanan pada UserId sesi tersebut. Data santri berasal dari relasi aktif WaliSantri dan WaliSantriSantri.
+- Ringkasan pembayaran menggunakan pembayaran terbaru per pesanan. Pesanan yang memiliki pengajuan pembayaran menunggu verifikasi tidak dihitung sebagai tagihan yang belum dibayar.
+- CSS dan markup dashboard dibatasi pada portal Pembeli melalui selector body.buyer-portal. Tampilan dan fungsi portal Admin tidak diubah.
+- Tidak ada perubahan skema Spreadsheet dan tidak ada perubahan pada proses checkout, verifikasi pembayaran, stok, atau pemenuhan pesanan.
+
+### Pemeriksaan Tahap 2
+
+- Sintaks Code.gs diperiksa dengan parser JavaScript: lulus.
+- Sintaks JavaScript pada Index.html diperiksa setelah mengambil blok script: lulus.
+- Pemeriksaan statis memastikan endpoint memakai role guard WALI_SANTRI, pesanan difilter berdasarkan UserId sesi, dashboard dan tombol akses cepat tersedia, serta styling dibatasi pada portal Pembeli.
+- Belum dilakukan pengujian browser, pengujian akun Wali/relasi santri pada Spreadsheet aktif, uji data transaksi langsung, atau deployment Apps Script.
