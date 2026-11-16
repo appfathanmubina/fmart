@@ -205,7 +205,7 @@ function verifyAdminLoginOtp(challengeId, code, portalMode) {
   if (String(portalMode || '') !== 'ADMINFMART16720') return {ok:false,message:'Permintaan login tidak valid.'};
   challengeId=String(challengeId || '').trim();
   code=String(code || '').trim();
-  if (!/^[0-9]{6}(?![\\s\\S])/.test(code) || !challengeId) return {ok:false,message:'Kode OTP tidak valid.'};
+  if (!/^[0-9]{6}(?![\s\S])/.test(code) || !challengeId) return {ok:false,message:'Kode OTP tidak valid.'};
   const lock=LockService.getScriptLock();lock.waitLock(10000);
   try {
     const cache=CacheService.getScriptCache(),key=adminOtpChallengeKey_(challengeId),raw=cache.get(key);
@@ -264,7 +264,7 @@ function setStaffEmail(token,userId,email) {
 function verifyStaffEmail(token,challengeId,code) {
   const session=requireRole_(token,[FMART.ROLES.SUPERADMIN]);
   challengeId=String(challengeId||'');code=String(code||'').trim();
-  if(!/^[0-9]{6}(?![\\s\\S])/.test(code)) throw new Error('Kode verifikasi tidak valid.');
+  if(!/^[0-9]{6}(?![\s\S])/.test(code)) throw new Error('Kode verifikasi tidak valid.');
   const lock=LockService.getScriptLock();lock.waitLock(10000);
   try {
     const cache=CacheService.getScriptCache(),key=staffEmailVerifyKey_(challengeId),raw=cache.get(key);
@@ -287,7 +287,7 @@ function verifyStaffEmail(token,challengeId,code) {
 }
 
 function normalizeEmail_(value){return String(value||'').trim().toLowerCase();}
-function isValidStaffEmail_(email){return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+(?![\\s\\S])/.test(String(email||''));}
+function isValidStaffEmail_(email){return /^[^\s@]+@[^\s@]+\\.[^\s@]+(?![\s\S])/.test(String(email||''));}
 function maskEmail_(email){const p=String(email||'').split('@');if(p.length!==2)return '';const name=p[0];return (name.length<3?name.charAt(0)+'••':name.slice(0,2)+'•••')+'@'+p[1];}
 function adminOtpHash_(challengeId,code){
   const props=PropertiesService.getScriptProperties();let secret=props.getProperty('FMART_OTP_PEPPER');
