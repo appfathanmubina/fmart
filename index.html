@@ -45,7 +45,11 @@
       window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;if(frame.contentWindow)frame.contentWindow.postMessage({type:'FMART_INSTALL_DONE'},'*');sendInstallState()});
       window.addEventListener('message',async event=>{
         if(event.source!==frame.contentWindow)return;
-        const data=event.data||{};if(data.type!=='FMART_INSTALL_REQUEST')return;
+        const data=event.data||{};
+
+        if(data.type==='FMART_INSTALL_READY'){sendInstallState();return}
+
+        if(data.type!=='FMART_INSTALL_REQUEST')return;
         if(!deferredInstallPrompt){frame.contentWindow.postMessage({type:'FMART_INSTALL_RESULT',status:'unavailable'},'*');return}
         const promptEvent=deferredInstallPrompt;deferredInstallPrompt=null;
         try{await promptEvent.prompt();const choice=await promptEvent.userChoice;frame.contentWindow.postMessage({type:'FMART_INSTALL_RESULT',status:choice&&choice.outcome==='accepted'?'accepted':'dismissed'},'*')}
