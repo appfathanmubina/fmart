@@ -283,7 +283,7 @@ function auditFMartDatabaseIntegrity() {
   checkReference('Notifikasi', 1, 'Users', 'UserId notifikasi', false);
   checkReference('Notifikasi', 2, 'Pesanan', 'PesananId notifikasi', true);
 
-  return {
+  const report = {
     ok: issues.length === 0,
     spreadsheetName: ss.getName(),
     checkedAt: new Date().toISOString(),
@@ -292,6 +292,8 @@ function auditFMartDatabaseIntegrity() {
     truncated: issues.length >= maxIssues,
     issues: issues
   };
+  Logger.log(JSON.stringify(report, null, 2));
+  return report;
 }
 
 /**
