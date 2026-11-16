@@ -318,12 +318,13 @@ function auditFMartSantriMaster() {
   if (headerIssues.length) return {ok:false, checkedAt:new Date().toISOString(), headerIssues:headerIssues, rowCount:Math.max(0,sheet.getLastRow()-1), issues:[]};
 
   const rows = sheet.getLastRow() > 1 ? sheet.getRange(2,1,sheet.getLastRow()-1,expected.length).getValues() : [];
+  const displayRows = sheet.getLastRow() > 1 ? sheet.getRange(2,1,sheet.getLastRow()-1,expected.length).getDisplayValues() : [];
   const seenNis = Object.create(null), seenIds = Object.create(null), issues = [];
   let eligible = 0, alreadyPrepared = 0, blankRows = 0;
   rows.forEach(function(row,index) {
     const rowNumber = index + 2;
-    const nis = String(row[0] || '').trim();
-    const name = String(row[1] || '').trim();
+    const nis = String(displayRows[index][0] || '').trim();
+    const name = String(displayRows[index][1] || '').trim();
     const id = String(row[8] || '').trim();
     const status = String(row[9] || '').trim();
     const hasData = row.slice(0,8).some(function(value){return value !== '' && value !== null;});
@@ -375,35 +376,36 @@ function migrateFMartSantriMaster() {
     const headers = sheet.getRange(1,1,1,sheet.getLastColumn()).getDisplayValues()[0].map(function(v){return String(v||'').trim().toLowerCase();});
     const col = {};
     headers.forEach(function(value,index){if(value)col[value]=index;});
-    const range = sheet.getRange(2,1,lastRow-1,sheet.getLastColumn());
-    const rows = range.getValues();
+    const metadataRange = sheet.getRange(2, 9, lastRow - 1, 4);
+    const metadataRows = metadataRange.getValues();
+    const sourceDisplay = sheet.getRange(2, 1, lastRow - 1, 2).getDisplayValues();
     const now = new Date();
     let createdIds = 0, activated = 0, timestamped = 0, skipped = 0;
-    rows.forEach(function(row) {
-      const nis = String(row[col.nis] || '').trim();
-      const name = String(row[col.nama_santri] || '').trim();
+    metadataRows.forEach(function(row,index) {
+      const nis = String(sourceDisplay[index][0] || '').trim();
+      const name = String(sourceDisplay[index][1] || '').trim();
       if (!nis || !name) { skipped++; return; }
-      if (!String(row[col.santriid] || '').trim()) {
-        row[col.santriid] = makeSetupSantriId_(nis);
+      if (!String(row[0] || '').trim()) {
+        row[0] = makeSetupSantriId_(nis);
         createdIds++;
       }
-      if (!String(row[col.status] || '').trim()) {
-        row[col.status] = 'AKTIF';
+      if (!String(row[1] || '').trim()) {
+        row[1] = 'AKTIF';
         activated++;
       }
-      if (!row[col.createdat]) { row[col.createdat] = now; timestamped++; }
-      if (!row[col.updatedat]) { row[col.updatedat] = now; timestamped++; }
+      if (!row[2]) { row[2] = now; timestamped++; }
+      if (!row[3]) { row[3] = now; timestamped++; }
     });
     const ids = Object.create(null);
-    rows.forEach(function(row,index){
-      const id=String(row[col.santriid]||'').trim();
+    metadataRows.forEach(function(row,index){
+      const id=String(row[0]||'').trim();
       if(!id)return;
       if(ids[id]) throw new Error('Migrasi dibatalkan: SantriId duplikat pada baris ' + (index+2) + '.');
       ids[id]=true;
     });
-    range.setValues(rows);
+    metadataRange.setValues(metadataRows);
     SpreadsheetApp.flush();
-    const result = {ok:true,createdIds:createdIds,activated:activated,timestampedCells:timestamped,skippedIncomplete:skipped,totalRows:rows.length};
+    const result = {ok:true,createdIds:createdIds,activated:activated,timestampedCells:timestamped,skippedIncomplete:skipped,totalRows:metadataRows.length};
     Logger.log(JSON.stringify(result,null,2));
     return result;
   } finally {
