@@ -5,11 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#5b21b6">
   <meta name="description" content="Panel petugas FMart.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="../icons/fmart-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="../icons/fmart-180.png" sizes="180x180">
   <title>FMart Admin</title>
   <style>
     :root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#241b35;background:#f7f3fc;font-synthesis:none;text-rendering:optimizeLegibility}
     *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;min-height:100%;overflow:hidden}
-    .app-frame{position:fixed;inset:0;width:100%;height:100svh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);border:0;background:#f7f3fc}
+    .app-frame{position:fixed;inset:0;width:100%;height:100vh;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);border:0;background:#f7f3fc}@supports(height:100dvh){.app-frame{height:100dvh}}
     .setup{max-width:560px;margin:12vh auto;padding:24px}.setup h1{color:#5b21b6}.setup p{line-height:1.6}.setup code{overflow-wrap:anywhere}
     .status{position:fixed;z-index:2;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#241b35;color:#fff;border-radius:999px;padding:10px 15px;font-size:13px;box-shadow:0 8px 28px #0002}.status[hidden]{display:none}
     html.fmart-shell-framed body>*{display:none!important}html.fmart-shell-framed body::before{content:"Panel FMart tidak dapat disematkan di situs lain.";position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:28px;text-align:center;font:600 16px/1.5 system-ui;color:#5b21b6;background:#f7f3fc}
@@ -25,13 +28,6 @@
     const setup=document.querySelector("#setup"),frame=document.querySelector("#app"),status=document.querySelector("#status");
     const endpoint=String(window.FMART_APP_URL||"").trim();
     if(/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec(?:\?.*)?$/.test(endpoint)){
-      frame.addEventListener("load",()=>{
-        // Ulangi handshake untuk mengatasi redirect dan keterlambatan pemuatan HtmlService.
-        const startedAt=Date.now();
-        const sendHandshake=()=>{try{frame.contentWindow.postMessage({type:"FMART_PARENT_INIT"},"*")}catch(e){}};
-        sendHandshake();
-        const retry=window.setInterval(()=>{sendHandshake();if(Date.now()-startedAt>=12000)window.clearInterval(retry)},500);
-      });
       const portalUrl=new URL(endpoint);portalUrl.searchParams.set("portal","ADMINFMART16720");frame.src=portalUrl.toString();frame.hidden=false;
     }else{
       setup.hidden=false;setup.innerHTML="<h1>Panel Admin FMart</h1><p>URL deployment Apps Script belum dikonfigurasi pada <code>config.js</code>.</p>";
@@ -39,7 +35,7 @@
     if("serviceWorker" in navigator)navigator.serviceWorker.register("../service-worker.js").catch(()=>{});
     let offlineTimer;
     function updateNetwork(){clearTimeout(offlineTimer);if(!navigator.onLine){status.textContent="Anda sedang offline. Koneksi ke layanan FMart diperlukan.";status.hidden=false}else if(!status.hidden){status.textContent="Koneksi kembali";offlineTimer=setTimeout(()=>status.hidden=true,2200)}}
-    window.addEventListener("online",updateNetwork);window.addEventListener("offline",updateNetwork);
+    window.addEventListener("online",updateNetwork);window.addEventListener("offline",updateNetwork);updateNetwork();
   </script>
 </body>
 </html>
