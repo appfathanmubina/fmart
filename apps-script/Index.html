@@ -213,6 +213,33 @@
     body.admin-portal .login-help{padding-top:12px;border-top:1px solid #f0e8f1;color:#8a7b8d}
     body.admin-portal .error{font-weight:650}
     @media(max-width:760px){body.admin-portal .login-wrap{padding:22px 16px}body.admin-portal .login-card{padding:29px 22px 24px;border-radius:25px}body.admin-portal .login-brand .brand-mark{width:64px;height:64px}}
+
+    /* FMart Admin — Tahap 2: kerangka navigasi dan ruang kerja */
+    @media(min-width:761px){
+      body.admin-portal .app{max-width:none;width:100%;min-height:100vh}
+      body.admin-portal .header{position:sticky;top:0;left:0;width:100%;background:rgba(255,255,255,.96);border-bottom-color:#eaddec}
+      body.admin-portal .header-inner{max-width:none;padding:13px 28px 13px 270px}
+      body.admin-portal .brand{color:#5b145f}
+      body.admin-portal .brand:after{content:"PANEL OPERASIONAL";margin-left:4px;padding:5px 9px;border-radius:7px;background:#f5eaf6;color:#7c3282;font-size:9px;letter-spacing:.13em;font-weight:900}
+      body.admin-portal #staffNav.bottom-nav{position:fixed;z-index:30;top:84px;left:18px;right:auto;bottom:18px;transform:none;width:224px;height:auto;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:7px;padding:16px 12px;border:1px solid #eaddec;border-radius:22px;background:rgba(255,255,255,.97);box-shadow:0 16px 42px #35113d12;overflow-y:auto}
+      body.admin-portal #staffNav .nav-btn{flex:0 0 auto;width:100%;min-height:48px;justify-content:flex-start;flex-direction:row;gap:12px;padding:10px 13px;border-radius:13px;color:#75677a;font-size:13px;text-align:left}
+      body.admin-portal #staffNav .nav-btn .nav-icon{width:30px;height:30px;flex:0 0 30px;background:#f7f0f8;color:#815188}
+      body.admin-portal #staffNav .nav-btn.active{background:#f4e9f5;color:#68166f;box-shadow:inset 3px 0 #800080}
+      body.admin-portal #staffNav .nav-btn.active .nav-icon{background:#ead5ed;color:#68166f}
+      body.admin-portal #operationsView{width:calc(100% - 260px);max-width:1580px;margin:0 auto 0 260px;padding:28px 30px 48px!important}
+      body.admin-portal #operationsView>.section-title{margin:0 0 22px!important;align-items:center}
+      body.admin-portal #opsTitle{font-size:28px;letter-spacing:-.04em;color:#321b37}
+      body.admin-portal #opsStats{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:14px;margin-bottom:24px!important}
+      body.admin-portal #opsStats .profile-item{min-height:104px;padding:18px;border:1px solid #eaddec;border-radius:18px;background:linear-gradient(145deg,#fff 0%,#fcf8fd 100%);box-shadow:0 7px 22px #35113d08}
+      body.admin-portal #opsStats .profile-item small{display:block;margin-bottom:10px;color:#7c6c80;font-size:12px;font-weight:700}
+      body.admin-portal #opsStats .profile-item strong{color:#68166f!important;font-size:27px!important;letter-spacing:-.04em}
+      body.admin-portal #opsMainSection{margin-top:0;padding:22px;border:1px solid #eaddec;border-radius:20px;background:#fff;box-shadow:0 8px 28px #35113d08}
+      body.admin-portal #opsMainTitle{font-size:19px;color:#321b37}
+      body.admin-portal #opsMainBody .table-wrap{border:1px solid #eee6ef;border-radius:14px;background:#fff}
+      body.admin-portal #opsMainBody .data-table th{background:#f8f2f9;color:#5f4864}
+    }
+    @media(min-width:761px) and (max-width:1100px){body.admin-portal #staffNav.bottom-nav{width:194px;left:12px}body.admin-portal .header-inner{padding-left:228px}body.admin-portal #operationsView{width:calc(100% - 220px);margin-left:220px;padding:24px 18px 40px!important}body.admin-portal #opsStats{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+    @media(max-width:760px){body.admin-portal .app{max-width:100%;width:100%}body.admin-portal .header-inner{padding:11px 14px}body.admin-portal .brand:after{content:"ADMIN";margin-left:2px;padding:4px 7px;border-radius:6px;background:#f5eaf6;color:#7c3282;font-size:9px;letter-spacing:.1em}body.admin-portal #operationsView{padding:4px 12px 110px!important}body.admin-portal #opsStats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px}body.admin-portal #opsStats .profile-item{padding:13px;border-radius:15px}body.admin-portal #opsStats .profile-item strong{font-size:21px!important}body.admin-portal #opsMainSection{padding:14px;border:1px solid #eaddec;border-radius:17px;background:#fff}body.admin-portal #opsTitle{font-size:22px}}
   </style>
 </head>
 <body>
