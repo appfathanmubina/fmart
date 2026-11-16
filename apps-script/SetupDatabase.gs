@@ -370,7 +370,11 @@ function migrateFMartSantriMaster() {
     const sheet = ss.getSheetByName('Santri');
     if (!sheet) throw new Error('Sheet Santri tidak ditemukan.');
     const audit = auditFMartSantriMaster();
-    if (!audit.ok) throw new Error('Migrasi dibatalkan. Perbaiki temuan audit master Santri terlebih dahulu.');
+    if (!audit || audit.ok !== true) {
+      const auditDetail = audit ? JSON.stringify(audit, null, 2) : 'Audit tidak mengembalikan laporan.';
+      Logger.log('AUDIT MASTER SANTRI GAGAL:\n' + auditDetail);
+      throw new Error('Migrasi dibatalkan karena audit master Santri belum lolos. Detail audit: ' + auditDetail);
+    }
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) return {ok:true,updated:0,message:'Belum ada data Santri untuk dimigrasikan.'};
     const headers = sheet.getRange(1,1,1,sheet.getLastColumn()).getDisplayValues()[0].map(function(v){return String(v||'').trim().toLowerCase();});
