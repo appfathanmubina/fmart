@@ -146,3 +146,15 @@ Backend menyiapkan format versi `pbkdf2-sha256:600000:...` berbasis PBKDF2-HMAC-
 - Angka laporan dihitung dari data yang tersedia pada Spreadsheet saat diminta. Nilai penjualan mengecualikan pesanan batal; angka pembayaran mengacu pada pembayaran berstatus TERVERIFIKASI. Pastikan konsistensi tanggal transaksi dan pembayaran saat membandingkan angka.
 - Pemeriksaan tahap ini bersifat statis. Sinkronisasi Apps Script, deployment, dan uji data aktual per role tetap diperlukan.
 
+
+
+## Tahap 11 — Penyempurnaan UI/UX dan PWA Admin
+
+- Jalur Admin memiliki manifest PWA terpisah pada `/adminFMart16720/manifest.webmanifest`, dengan nama aplikasi, ikon, scope, dan start URL khusus Admin. Instalasi dari jalur Admin tidak diarahkan ke halaman Pembeli.
+- Shell Admin menautkan manifest, favicon, dan ikon Apple Touch; iframe menggunakan dynamic viewport height dengan fallback agar area aman perangkat mobile tidak menambah overflow vertikal.
+- Status koneksi langsung diperiksa saat shell dibuka, selain saat event online/offline. Pesan offline menjelaskan bahwa shell dapat dibuka, tetapi login dan data tetap memerlukan koneksi.
+- Handshake postMessage berulang di shell dihapus karena gate handshake tidak lagi digunakan oleh backend. Ini menghindari timer dan pesan lintas origin yang tidak diperlukan.
+- Service worker diperbarui ke cache v6 dan menyertakan manifest Admin untuk dukungan pembukaan shell Admin secara offline.
+- Antarmuka Admin mendapat indikator fokus keyboard yang jelas, gulir tabel yang lebih aman pada layar sentuh, batas tinggi/gulir modal, dan aturan lebar konten untuk mengurangi overflow.
+- Tidak ada perubahan alur transaksi, struktur Spreadsheet, autentikasi, atau hak akses. Portal Pembeli tetap memakai manifest dan start URL asalnya.
+- Pemeriksaan tahap ini bersifat statis. Instalasi PWA, update service worker, mode offline, dan tampilan lintas perangkat tetap perlu diuji pada browser/perangkat nyata setelah commit dipublikasikan.
