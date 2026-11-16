@@ -109,7 +109,7 @@ function seedSettings_(sheet) {
  * Jalankan dari editor Apps Script, lalu hapus data sensitif dari riwayat/log Anda sendiri.
  * Password tidak pernah ditulis ke Spreadsheet dalam bentuk plaintext.
  */
-function createFMartUser(username, password, nama, role) {
+function createFMartUser(username, password, nama, role, email) {
   const lock = LockService.getScriptLock(); lock.waitLock(10000);
   try {
   username = String(username || '').trim().toLowerCase();
@@ -121,13 +121,15 @@ function createFMartUser(username, password, nama, role) {
   if (!/^[a-z0-9._-]+$/.test(username)) throw new Error('Username hanya boleh berisi huruf kecil, angka, titik, garis bawah, atau tanda minus.');
   if (password.length < 10) throw new Error('Password minimal 10 karakter.');
   if (!nama) throw new Error('Nama wajib diisi.');
+  email = String(email || '').trim().toLowerCase();
+  if (['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(role) >= 0 && email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+(?![\\s\\S])/.test(email)) throw new Error('Format email staf tidak valid.');
   if (['WALI_SANTRI','ADMIN','KASIR','GUDANG','SUPERADMIN'].indexOf(role) === -1) throw new Error('Role tidak valid.');
 
   const ss = getSetupSpreadsheet_();
   const sheet = ss.getSheetByName('Users');
   if (!sheet) throw new Error('Jalankan setupFMartDatabase() terlebih dahulu.');
 
-  const rows = sheet.getLastRow() > 1 ? sheet.getRange(2,1,sheet.getLastRow()-1,10).getValues() : [];
+  const rows = sheet.getLastRow() > 1 ? sheet.getRange(2,1,sheet.getLastRow()-1,12).getValues() : [];
   if (rows.some(function(r){ return String(r[1] || '').trim().toLowerCase() === username; })) {
     throw new Error('Username sudah digunakan.');
   }
@@ -136,7 +138,7 @@ function createFMartUser(username, password, nama, role) {
   const salt = Utilities.getUuid().replace(/-/g,'');
   const hash = hashPassword_(password, salt);
   const now = new Date();
-  sheet.appendRow([userId,username,hash,salt,nama,role,'AKTIF',now,now,'']);
+  sheet.appendRow([userId,username,hash,salt,nama,role,'AKTIF',now,now,'',email,false]);
   SpreadsheetApp.flush();
   return {ok:true,userId:userId,username:username,role:role};
   } finally { lock.releaseLock(); }
