@@ -135,3 +135,14 @@ Backend menyiapkan format versi `pbkdf2-sha256:600000:...` berbasis PBKDF2-HMAC-
 - Tidak ada perubahan struktur Spreadsheet atau endpoint backend pada tahap ini.
 - Layout antrean menggunakan tabel responsif dengan gulir horizontal pada layar sempit dan ringkasan kartu yang menyesuaikan lebar layar.
 - Pemeriksaan statis JavaScript/CSS dilakukan; uji browser, alur aktual tiap role, dan runtime Apps Script tetap diperlukan setelah sinkronisasi/deployment.
+
+## Tahap 10 — Laporan dan Aktivitas Audit
+
+- Menu Laporan dan Aktivitas Audit tersedia untuk Admin dan Superadmin.
+- Laporan dapat difilter berdasarkan tanggal dan menampilkan jumlah pesanan, nilai pesanan non-batal, pembayaran terverifikasi, belum terbayar, rata-rata pesanan, pesanan aktif, produk terlaris, penjualan per kategori, metode pembayaran terverifikasi, pergerakan stok, tren harian, dan status pesanan.
+- Aktivitas Audit dapat difilter berdasarkan tanggal, peran, jenis aktivitas, dan pencarian; endpoint hanya mengirim metadata aktivitas yang diperlukan untuk tampilan. Kolom BeforeData/AfterData tidak dikirim ke browser.
+- Riwayat audit dibatasi maksimal 200 catatan terbaru per permintaan agar antarmuka tetap ringan. Ini bukan ekspor arsip audit penuh.
+- Endpoint audit bersifat read-only dan memerlukan role ADMIN/SUPERADMIN. Tidak ada perubahan struktur Spreadsheet atau data transaksi pada tahap ini.
+- Angka laporan dihitung dari data yang tersedia pada Spreadsheet saat diminta. Nilai penjualan mengecualikan pesanan batal; angka pembayaran mengacu pada pembayaran berstatus TERVERIFIKASI. Pastikan konsistensi tanggal transaksi dan pembayaran saat membandingkan angka.
+- Pemeriksaan tahap ini bersifat statis. Sinkronisasi Apps Script, deployment, dan uji data aktual per role tetap diperlukan.
+
