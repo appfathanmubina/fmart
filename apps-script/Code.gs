@@ -928,6 +928,36 @@ function getFMartReports(token, startDate, endDate) {
   return {ok:true,period:{start:start.toISOString(),end:end.toISOString()},summary:{orders:orders.length,activeOrders:orders.filter(r=>!['DITERIMA','DIBATALKAN'].includes(String(r[8]||'').toUpperCase())).length,gross:gross,paid:paid,unpaid:Math.max(0,gross-paid),averageOrder:orders.length?Math.round(gross/orders.length):0,stockIn:stockIn,stockOut:stockOut},statusCounts:statusCounts,categorySales:Object.keys(categorySales).map(k=>({name:k,amount:categorySales[k]})).sort((a,b)=>b.amount-a.amount),paymentMethods:Object.keys(paymentMethods).map(k=>({name:k,amount:paymentMethods[k]})).sort((a,b)=>b.amount-a.amount),daily:Object.keys(daily).sort().map(k=>daily[k]),topProducts:topProducts,generatedAt:new Date().toISOString(),generatedBy:{userId:session.userId,nama:session.nama}};
 }
 
+/** Laporan audit untuk Admin/Superadmin. Hanya metadata aman yang dikirim ke UI; BeforeData/AfterData tidak diekspos. */
+function getFMartAuditLog(token, startDate, endDate, roleFilter, actionFilter, searchText, limit) {
+  requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  const start=parseReportDate_(startDate,false), end=parseReportDate_(endDate,true);
+  if(end<start) throw new Error('Periode audit tidak valid.');
+  const role=String(roleFilter||'').trim().toUpperCase();
+  const action=String(actionFilter||'').trim().toUpperCase();
+  const query=String(searchText||'').trim().toLowerCase().slice(0,100);
+  const max=Math.max(1,Math.min(200,Number(limit)||100));
+  const ss=getSS_();
+  const users=readRows_(ss.getSheetByName('Users'));
+  const userMap={};
+  users.forEach(r=>{userMap[String(r[0])]={name:String(r[4]||''),username:String(r[1]||'')};});
+  const rows=readRows_(ss.getSheetByName('AuditLog')).filter(r=>{
+    if(!inReportRange_(r[9],start,end)) return false;
+    if(role && String(r[2]||'').toUpperCase()!==role) return false;
+    if(action && String(r[3]||'').toUpperCase().indexOf(action)<0) return false;
+    if(query){
+      const actor=userMap[String(r[1])]||{};
+      const hay=[r[0],r[1],r[2],r[3],r[4],r[5],r[8],actor.name,actor.username].join(' ').toLowerCase();
+      if(hay.indexOf(query)<0) return false;
+    }
+    return true;
+  }).sort((a,b)=>new Date(b[9]||0).getTime()-new Date(a[9]||0).getTime()).slice(0,max);
+  return {ok:true,rows:rows.map(r=>{
+    const actor=userMap[String(r[1])]||{};
+    return {id:String(r[0]||''),actorId:String(r[1]||''),actorName:actor.name||actor.username||(String(r[2]||'')==='SYSTEM'?'Sistem':'Petugas'),role:String(r[2]||''),action:String(r[3]||''),entityType:String(r[4]||''),entityId:String(r[5]||''),note:String(r[8]||'').slice(0,300),createdAt:dateIso_(r[9])};
+  }),count:rows.length,limit:max,generatedAt:new Date().toISOString()};
+}
+
 function parseReportDate_(value,endOfDay){
   const text=String(value||'').trim();
   if(!/^\d{4}-\d{2}-\d{2}(?![\s\S])/.test(text)) throw new Error('Tanggal laporan tidak valid.');
