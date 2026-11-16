@@ -312,3 +312,150 @@ function getSetupSpreadsheet_() {
   if (!ss) throw new Error('Spreadsheet FMart tidak ditemukan.');
   return ss;
 }
+
+
+/**
+ * Mengganti Superadmin lama melalui Apps Script Editor tanpa dialog dan tanpa
+ * Script Property kredensial. Data sementara dimasukkan pada sheet khusus.
+ *
+ * Jalankan pertama kali untuk membuat sheet FMart_AdminSetup.
+ * Isi B2 (email), B3 (nama), B4 (password), lalu jalankan fungsi ini lagi.
+ * Setelah akun baru berhasil diverifikasi dan Superadmin lama dinonaktifkan,
+ * nilai B2:B4 dikosongkan otomatis.
+ */
+function replaceFMartSuperadminFromEditor() {
+  const ss = getSetupSpreadsheet_();
+  const setupName = 'FMart_AdminSetup';
+  let inputSheet = ss.getSheetByName(setupName);
+
+  if (!inputSheet) {
+    inputSheet = ss.insertSheet(setupName);
+    inputSheet.getRange('A1:B4').setValues([
+      ['FMart — Penggantian Superadmin', 'Isi kolom B, lalu jalankan fungsi lagi'],
+      ['Email Superadmin baru', ''],
+      ['Nama Superadmin baru', ''],
+      ['Password baru (minimal 10 karakter)', '']
+    ]);
+    inputSheet.getRange('A1:B1').setFontWeight('bold').setBackground('#eadcff').setFontColor('#4c1d95');
+    inputSheet.setColumnWidth(1, 260);
+    inputSheet.setColumnWidth(2, 360);
+    inputSheet.setFrozenRows(1);
+    return {
+      ok: true,
+      readyForInput: true,
+      spreadsheetName: ss.getName(),
+      sheetName: setupName,
+      message: 'Sheet FMart_AdminSetup telah dibuat. Isi B2 dengan email, B3 dengan nama, dan B4 dengan password baru. Setelah itu jalankan replaceFMartSuperadminFromEditor() sekali lagi.'
+    };
+  }
+
+  const email = String(inputSheet.getRange('B2').getDisplayValue() || '').trim().toLowerCase();
+  const nama = String(inputSheet.getRange('B3').getDisplayValue() || '').trim();
+  const password = String(inputSheet.getRange('B4').getValue() || '');
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) {
+    throw new Error('Isi B2 pada sheet FMart_AdminSetup dengan alamat email yang valid.');
+  }
+  if (!nama) throw new Error('Isi B3 pada sheet FMart_AdminSetup dengan nama Superadmin baru.');
+  if (password.length < 10) throw new Error('Isi B4 dengan password minimal 10 karakter.');
+
+  const users = ss.getSheetByName('Users');
+  if (!users || users.getLastRow() < 2) throw new Error('Sheet Users belum tersedia atau belum memiliki data.');
+  const beforeRows = users.getRange(2, 1, users.getLastRow() - 1, 12).getValues();
+  const activeOld = beforeRows.map(function(row, index) {
+    return {rowNumber: index + 2, values: row};
+  }).filter(function(item) {
+    return String(item.values[5] || '').trim().toUpperCase() === 'SUPERADMIN' &&
+      String(item.values[6] || '').trim().toUpperCase() === 'AKTIF';
+  });
+
+  if (activeOld.length !== 1) {
+    throw new Error('Penggantian dibatalkan: harus ada tepat satu Superadmin lama yang aktif. Tidak ada akun yang diubah.');
+  }
+
+  const oldUserId = String(activeOld[0].values[0] || '');
+  const oldUsername = String(activeOld[0].values[1] || '');
+  const newUsername = email;
+
+  if (oldUsername.toLowerCase() === newUsername) {
+    throw new Error('Email baru sama dengan username akun lama. Gunakan email berbeda untuk akun pengganti.');
+  }
+
+  // createFMartUser mengelola lock-nya sendiri. Akun lama tetap aktif sampai
+  // akun baru tersimpan dan diverifikasi.
+  const created = createFMartUser(newUsername, password, nama, 'SUPERADMIN', email);
+  SpreadsheetApp.flush();
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const latestLastRow = users.getLastRow();
+    const latestRows = latestLastRow > 1 ? users.getRange(2, 1, latestLastRow - 1, 12).getValues() : [];
+    const newRowIndex = latestRows.findIndex(function(row) {
+      return String(row[0] || '') === String(created.userId) &&
+        String(row[1] || '').trim().toLowerCase() === email &&
+        String(row[5] || '').trim().toUpperCase() === 'SUPERADMIN' &&
+        String(row[6] || '').trim().toUpperCase() === 'AKTIF' &&
+        String(row[10] || '').trim().toLowerCase() === email;
+    });
+    if (newRowIndex < 0) {
+      throw new Error('Akun baru belum dapat diverifikasi. Superadmin lama tetap aktif; periksa sheet Users.');
+    }
+
+    const oldRowIndex = latestRows.findIndex(function(row) {
+      return String(row[0] || '') === oldUserId &&
+        String(row[5] || '').trim().toUpperCase() === 'SUPERADMIN' &&
+        String(row[6] || '').trim().toUpperCase() === 'AKTIF';
+    });
+    if (oldRowIndex < 0) {
+      throw new Error('Akun baru berhasil dibuat, tetapi akun lama berubah selama proses. Periksa sheet Users sebelum melanjutkan.');
+    }
+
+    const oldSheetRow = oldRowIndex + 2;
+    const now = new Date();
+    users.getRange(oldSheetRow, 7).setValue('NONAKTIF');
+    users.getRange(oldSheetRow, 9).setValue(now);
+    SpreadsheetApp.flush();
+
+    const savedOld = users.getRange(oldSheetRow, 1, 1, 12).getValues()[0];
+    const savedNew = users.getRange(newRowIndex + 2, 1, 1, 12).getValues()[0];
+    if (String(savedOld[6] || '').trim().toUpperCase() !== 'NONAKTIF' ||
+        String(savedNew[6] || '').trim().toUpperCase() !== 'AKTIF') {
+      throw new Error('Verifikasi akhir belum berhasil. Periksa status kedua akun pada sheet Users.');
+    }
+
+    const audit = ss.getSheetByName('AuditLog');
+    if (audit) {
+      audit.appendRow([
+        'AUD-' + Utilities.getUuid().replace(/-/g, '').slice(0, 16).toUpperCase(),
+        '',
+        'SYSTEM',
+        'REPLACE_SUPERADMIN',
+        'USER',
+        oldUserId,
+        JSON.stringify({username: oldUsername, role: 'SUPERADMIN', status: 'AKTIF'}),
+        JSON.stringify({username: oldUsername, role: 'SUPERADMIN', status: 'NONAKTIF', replacementUserId: created.userId}),
+        'Akun Superadmin diganti melalui Apps Script Editor.',
+        now
+      ]);
+    }
+
+    inputSheet.getRange('B2:B4').clearContent();
+    SpreadsheetApp.flush();
+
+    return {
+      ok: true,
+      oldUserId: oldUserId,
+      oldStatus: 'NONAKTIF',
+      newUserId: created.userId,
+      newUsername: email,
+      newRole: 'SUPERADMIN',
+      newStatus: 'AKTIF',
+      emailVerified: false,
+      spreadsheetName: ss.getName(),
+      message: 'Superadmin baru berhasil dibuat dan diverifikasi. Akun lama telah dinonaktifkan. Data input sementara sudah dikosongkan. Login berikutnya menggunakan email, password baru, dan OTP email.'
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
