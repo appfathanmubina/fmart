@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>FMart</title>
   <style>
-    :root{--purple:#7c3aed;--purple-dark:#5b21b6;--lilac:#f5f0ff;--text:#241b35;--muted:#756b85;--line:#e9e2f2;--card:#fff;--danger:#b91c1c;}
+    :root{--purple:#800080;--purple-dark:#5b145f;--lilac:#f5f0ff;--text:#241b35;--muted:#756b85;--line:#e9e2f2;--card:#fff;--danger:#b91c1c;}
     *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#f8f4ff 0,#f4effb 100%);color:var(--text)}
     button,input{font:inherit}button{cursor:pointer}.hidden{display:none!important}
     .app{max-width:1180px;margin:auto;min-height:100vh}.header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
@@ -134,13 +134,13 @@
 
     /* Tahap 12 — Login dua kolom premium: showcase 70%, form 30% */
     .login-wrap{min-height:100vh;min-height:100svh;width:100%;display:grid;grid-template-columns:minmax(0,7fr) minmax(360px,3fr);place-items:stretch;padding:0;overflow:hidden;background:#fff;position:relative}
-    .login-showcase{min-width:0;min-height:100vh;position:relative;overflow:hidden;display:flex;align-items:center;padding:clamp(38px,6vw,100px);color:#fff;background:linear-gradient(135deg,#241044 0%,#4c1d95 48%,#7136b7 100%)}
+    .login-showcase{min-width:0;min-height:100vh;position:relative;overflow:hidden;display:flex;align-items:center;padding:clamp(38px,6vw,100px);color:#fff;background:linear-gradient(135deg,#3f0040 0%,#800080 52%,#a64ca6 100%)}
     .showcase-content{position:relative;z-index:2;width:min(100%,820px);margin:0 auto}
     .showcase-brand{display:flex;align-items:center;gap:14px;font-size:29px;font-weight:900;letter-spacing:-.04em}
     .showcase-brand .brand-mark{width:58px;height:58px;border-radius:18px;border:1px solid #ffffff40;background-color:#ffffff18;box-shadow:0 12px 30px #16082d50}
     .showcase-copy{max-width:760px;margin-top:clamp(55px,10vh,110px)}
     .showcase-kicker{display:inline-flex;padding:8px 13px;border:1px solid #ffffff45;border-radius:999px;background:#ffffff12;font-size:11px;font-weight:800;letter-spacing:.16em}
-    .showcase-copy h1{max-width:720px;margin:22px 0 16px;color:#fff;font-size:clamp(34px,4.2vw,62px);line-height:1.08;letter-spacing:-.045em}
+    .showcase-copy h1{max-width:720px;margin:22px 0 16px;color:#fff;font-size:clamp(17px,2.1vw,31px);line-height:1.08;letter-spacing:-.045em}
     .showcase-copy>p{max-width:650px;margin:0;color:#e9ddfb;font-size:clamp(14px,1.25vw,18px);line-height:1.8}
     .showcase-features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:clamp(34px,6vh,62px)}
     .showcase-features>div{display:flex;align-items:flex-start;gap:11px;min-width:0;padding:17px 14px;border:1px solid #ffffff28;border-radius:16px;background:#ffffff10;backdrop-filter:blur(8px)}
@@ -156,8 +156,8 @@
     .login-card{width:100%;max-width:430px;padding:clamp(22px,2.2vw,34px);border:1px solid #ece5f5;border-radius:25px;box-shadow:0 24px 70px #32145a12}
     .login-brand{margin-bottom:25px}.login-brand .brand-mark,.login-brand .brand-name,.login-brand .login-subtitle{display:none}
     .login-card h1{font-size:clamp(25px,2.1vw,31px);letter-spacing:-.035em}.login-card>p{line-height:1.6}
-    @media(max-width:1050px) and (min-width:761px){.login-wrap{grid-template-columns:minmax(0,6fr) minmax(340px,4fr)}.login-showcase{padding:34px}.showcase-features{grid-template-columns:1fr;gap:9px;margin-top:28px}.showcase-features>div{padding:11px 13px}.showcase-copy{margin-top:48px}.showcase-copy h1{font-size:36px}}
-    @media(max-width:760px){.login-wrap{grid-template-columns:1fr;min-height:100svh;overflow:auto;background:#fbf9ff}.login-showcase{min-height:auto;padding:27px 23px 32px}.showcase-brand{font-size:23px}.showcase-brand .brand-mark{width:46px;height:46px;border-radius:14px}.showcase-copy{margin-top:27px}.showcase-kicker{font-size:9px}.showcase-copy h1{font-size:clamp(27px,7vw,36px);margin:14px 0 9px}.showcase-copy>p{font-size:13px;line-height:1.6}.showcase-features{grid-template-columns:1fr;gap:8px;margin-top:20px}.showcase-features>div{padding:10px 12px;border-radius:12px}.showcase-feature-icon{width:30px;height:30px;flex-basis:30px}.showcase-features small{font-size:10px}.showcase-footer{margin-top:20px;font-size:10px}.login-panel{padding:22px 14px 30px}.login-card{max-width:520px;padding:24px 20px;border-radius:22px}.login-brand{display:none}.login-card h1{font-size:25px}}
+    @media(max-width:1050px) and (min-width:761px){.login-wrap{grid-template-columns:minmax(0,6fr) minmax(340px,4fr)}.login-showcase{padding:34px}.showcase-features{grid-template-columns:1fr;gap:9px;margin-top:28px}.showcase-features>div{padding:11px 13px}.showcase-copy{margin-top:48px}.showcase-copy h1{font-size:18px}}
+    @media(max-width:760px){.login-wrap{grid-template-columns:1fr;min-height:100svh;overflow:auto;background:#fbf9ff}.login-showcase{min-height:auto;padding:27px 23px 32px}.showcase-brand{font-size:23px}.showcase-brand .brand-mark{width:46px;height:46px;border-radius:14px}.showcase-copy{margin-top:27px}.showcase-kicker{font-size:9px}.showcase-copy h1{font-size:clamp(14px,3.5vw,18px);margin:14px 0 9px}.showcase-copy>p{font-size:13px;line-height:1.6}.showcase-features{grid-template-columns:1fr;gap:8px;margin-top:20px}.showcase-features>div{padding:10px 12px;border-radius:12px}.showcase-feature-icon{width:30px;height:30px;flex-basis:30px}.showcase-features small{font-size:10px}.showcase-footer{margin-top:20px;font-size:10px}.login-panel{padding:22px 14px 30px}.login-card{max-width:520px;padding:24px 20px;border-radius:22px}.login-brand{display:none}.login-card h1{font-size:25px}}
     @media(max-height:700px) and (min-width:761px){.showcase-copy{margin-top:38px}.showcase-copy h1{font-size:clamp(30px,3.6vw,46px)}.showcase-features{margin-top:24px}.showcase-footer{margin-top:25px}}
 
     /* Fase 8 — Premium mobile experience: micro-interactions, motion, touch ergonomics */
@@ -539,7 +539,7 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
     .login-showcase .showcase-brand{flex-direction:column;align-items:flex-start;gap:18px}
     .login-showcase .showcase-brand .brand-mark{
       display:block;width:290px;height:290px;min-width:290px;flex:0 0 290px;
-      border-radius:30px;border:8px solid #fff;background-color:#fff;
+      border-radius:30px;border:8px solid #800080;background-color:#800080;
       background-size:contain;background-position:center;background-repeat:no-repeat;
       box-shadow:0 22px 55px #16082d55;
     }
