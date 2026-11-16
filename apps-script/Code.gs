@@ -686,48 +686,45 @@ function getCatalog(token) {
   };
 }
 
-/** Fase 3: keranjang per Wali Santri + anak. Semua harga/stok dihitung ulang di server. */
-function getCart(token, santriId) {
+/** Tahap Wali: keranjang umum per akun. Santri dipilih saat checkout. */
+function getCart(token) {
   const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
   const ss = getSS_();
-  const child = assertWaliChild_(ss, session.userId, santriId);
   const rows = readRows_(ss.getSheetByName('Keranjang'));
   const items = [];
   let subtotal = 0;
   rows.forEach(function(r) {
-    if (String(r[1]) !== String(session.userId) || String(r[2]) !== String(child.id)) return;
+    if (String(r[1]) !== String(session.userId)) return;
     const qty = Math.max(0, Math.floor(Number(r[5]) || 0));
     if (!qty) return;
     const snap = getProductSnapshot_(ss, r[3], r[4]);
-    const requested = qty;
     const available = snap ? Math.max(0, snap.stock) : 0;
-    const lineSubtotal = snap ? snap.unitPrice * requested : 0;
+    const lineSubtotal = snap ? snap.unitPrice * qty : 0;
     subtotal += lineSubtotal;
     items.push({
       cartId:String(r[0]), productId:String(r[3]), variationId:String(r[4] || ''),
       name:snap ? snap.name : 'Produk tidak tersedia',
       variationName:snap ? snap.variationName : '', sku:snap ? snap.sku : '',
       photoUrl:snap ? snap.photoUrl : '', unitPrice:snap ? snap.unitPrice : 0,
-      qty:requested, stock:available, subtotal:lineSubtotal,
+      qty:qty, stock:available, subtotal:lineSubtotal,
       available:snap ? snap.active : false,
-      exceedsStock:requested > available
+      exceedsStock:qty > available
     });
   });
-  return {ok:true,child:child,items:items,subtotal:subtotal,total:subtotal,canCheckout:items.length>0 && items.every(function(i){return i.available && !i.exceedsStock;})};
+  return {ok:true,items:items,subtotal:subtotal,total:subtotal,
+    canCheckout:items.length>0 && items.every(function(i){return i.available && !i.exceedsStock;})};
 }
 
-function addToCart(token, productId, variationId, qty, santriId) {
+function addToCart(token, productId, variationId, qty) {
   const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
   productId = String(productId || '').trim();
   variationId = String(variationId || '').trim();
-  santriId = String(santriId || '').trim();
   qty = Math.floor(Number(qty));
-  if (!productId || !santriId || !Number.isFinite(qty) || qty < 1) throw new Error('Data keranjang tidak valid.');
+  if (!productId || !Number.isFinite(qty) || qty < 1) throw new Error('Data keranjang tidak valid.');
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
     const ss = getSS_();
-    assertWaliChild_(ss, session.userId, santriId);
     const snap = getProductSnapshot_(ss, productId, variationId);
     if (!snap || !snap.active) throw new Error('Produk tidak tersedia.');
     const sheet = ss.getSheetByName('Keranjang');
@@ -736,7 +733,7 @@ function addToCart(token, productId, variationId, qty, santriId) {
     let currentQty = 0;
     for (let i=0;i<rows.length;i++) {
       const r = rows[i];
-      if (String(r[1]) === session.userId && String(r[2]) === santriId && String(r[3]) === productId && String(r[4] || '') === variationId) {
+      if (String(r[1]) === session.userId && String(r[3]) === productId && String(r[4] || '') === variationId) {
         foundRow = i + 2;
         currentQty = Math.floor(Number(r[5]) || 0);
         break;
@@ -745,75 +742,96 @@ function addToCart(token, productId, variationId, qty, santriId) {
     const nextQty = currentQty + qty;
     if (nextQty > snap.stock) throw new Error('Jumlah melebihi stok tersedia (' + snap.stock + ').');
     const now = new Date();
-    if (foundRow) sheet.getRange(foundRow, 6, 1, 2).setValues([[nextQty, now]]);
-    else sheet.appendRow([makeFMartId_('CRT'),session.userId,santriId,productId,variationId,nextQty,now,now]);
-    return getCart(token, santriId);
+    if (foundRow) {
+      sheet.getRange(foundRow, 3).clearContent();
+      sheet.getRange(foundRow, 6, 1, 2).setValues([[nextQty, now]]);
+      sheet.getRange(foundRow, 8).setValue(now);
+    } else {
+      sheet.appendRow([makeFMartId_('CRT'),session.userId,'',productId,variationId,nextQty,now,now]);
+    }
+    return getCart(token);
   } finally { lock.releaseLock(); }
 }
 
-function updateCartItem(token, cartId, qty, santriId) {
+function updateCartItem(token, cartId, qty) {
   const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
-  cartId = String(cartId || '').trim(); santriId = String(santriId || '').trim(); qty = Math.floor(Number(qty));
-  if (!cartId || !santriId || !Number.isFinite(qty) || qty < 0) throw new Error('Data keranjang tidak valid.');
+  cartId = String(cartId || '').trim();
+  qty = Math.floor(Number(qty));
+  if (!cartId || !Number.isFinite(qty) || qty < 0) throw new Error('Data keranjang tidak valid.');
   const lock = LockService.getScriptLock(); lock.waitLock(10000);
   try {
-    const ss = getSS_(); assertWaliChild_(ss, session.userId, santriId);
-    const sheet = ss.getSheetByName('Keranjang'); const row = findRowById_(sheet, cartId, 1);
-    if (!row || String(row.values[1]) !== session.userId || String(row.values[2]) !== santriId) throw new Error('Item keranjang tidak ditemukan.');
-    if (qty === 0) sheet.deleteRow(row.rowNumber);
-    else {
+    const ss = getSS_();
+    const sheet = ss.getSheetByName('Keranjang');
+    const row = findRowById_(sheet, cartId, 1);
+    if (!row || String(row.values[1]) !== session.userId) throw new Error('Item keranjang tidak ditemukan.');
+    if (qty === 0) {
+      sheet.deleteRow(row.rowNumber);
+    } else {
       const snap = getProductSnapshot_(ss, row.values[3], row.values[4]);
       if (!snap || !snap.active) throw new Error('Produk sudah tidak tersedia.');
       if (qty > snap.stock) throw new Error('Jumlah melebihi stok tersedia (' + snap.stock + ').');
+      sheet.getRange(row.rowNumber, 3).clearContent();
       sheet.getRange(row.rowNumber, 6, 1, 2).setValues([[qty,new Date()]]);
     }
-    return getCart(token, santriId);
+    return getCart(token);
   } finally { lock.releaseLock(); }
 }
 
-function removeCartItem(token, cartId, santriId) { return updateCartItem(token, cartId, 0, santriId); }
+function removeCartItem(token, cartId) { return updateCartItem(token, cartId, 0); }
 
-/** Checkout membuat pesanan MENUNGGU_PEMBAYARAN. Pembayaran ditangani Fase 4. */
-function checkoutCart(token, santriId, catatan, metodePengiriman, tujuan) {
+/** Satu checkout menghasilkan satu pesanan untuk satu santri dan hanya item terpilih. */
+function checkoutCart(token, santriId, selectedCartIds, catatan, metodePengiriman, tujuan) {
   const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
   santriId = String(santriId || '').trim();
+  selectedCartIds = Array.isArray(selectedCartIds) ? selectedCartIds.map(function(id){return String(id || '').trim();}).filter(Boolean) : [];
   catatan = String(catatan || '').trim().slice(0,500);
   metodePengiriman = String(metodePengiriman || 'AMBIL_FMART').trim().toUpperCase();
   tujuan = String(tujuan || '').trim().slice(0,500);
-  if (!santriId) throw new Error('Anak tujuan belum dipilih.');
+  if (!santriId) throw new Error('Santri tujuan belum dipilih.');
+  if (!selectedCartIds.length) throw new Error('Pilih minimal satu barang untuk checkout.');
   if (['AMBIL_FMART','ANTAR_PESANTREN'].indexOf(metodePengiriman) === -1) throw new Error('Metode pengiriman tidak valid.');
+  const selectedMap = {};
+  selectedCartIds.forEach(function(id){selectedMap[id]=true;});
   const lock = LockService.getScriptLock(); lock.waitLock(15000);
   try {
-    const ss = getSS_(); const child = assertWaliChild_(ss, session.userId, santriId);
-    const cart = buildCartSnapshot_(ss, session.userId, santriId);
-    if (!cart.items.length) throw new Error('Keranjang masih kosong.');
-    const invalid = cart.items.find(function(i){return !i.active || i.qty > i.stock;});
-    if (invalid) throw new Error('Stok untuk "' + invalid.name + '" tidak mencukupi. Silakan periksa keranjang.');
-    const subtotal = cart.items.reduce(function(sum,i){return sum + i.unitPrice * i.qty;},0);
-    const ongkir = 0, diskon = 0, total = subtotal + ongkir - diskon;
-    const now = new Date();
-    const orderId = makeFMartId_('ORD');
-    const nomorPesanan = 'FM-' + Utilities.formatDate(now, FMART_DB.TIMEZONE, 'yyyyMMdd-HHmmss') + '-' + Math.floor(1000 + Math.random()*9000);
-    const orderSheet = ss.getSheetByName('Pesanan');
-    orderSheet.appendRow([orderId,nomorPesanan,session.userId,santriId,subtotal,ongkir,diskon,total,'MENUNGGU_PEMBAYARAN',catatan,now,now]);
-    const detailSheet = ss.getSheetByName('DetailPesanan');
-    cart.items.forEach(function(i){
-      detailSheet.appendRow([makeFMartId_('DTL'),orderId,i.productId,i.variationId,i.sku,i.name,i.variationName,i.unitPrice,i.qty,i.unitPrice*i.qty]);
-    });
-    ss.getSheetByName('Pengiriman').appendRow([makeFMartId_('SHP'),orderId,metodePengiriman,tujuan || child.name,'MENUNGGU','','',session.userId,now]);
+    const ss = getSS_();
+    const child = assertWaliChild_(ss, session.userId, santriId);
     const cartSheet = ss.getSheetByName('Keranjang');
     const cartRows = readRows_(cartSheet);
-    for (let i=cartRows.length-1;i>=0;i--) {
-      const r=cartRows[i];
-      if (String(r[1])===session.userId && String(r[2])===santriId) cartSheet.deleteRow(i+2);
-    }
-    writeAudit_(session.userId,session.role,'CREATE_ORDER','PESANAN',orderId,'',JSON.stringify({number:nomorPesanan,santriId:santriId,total:total,itemCount:cart.items.length,shippingMethod:metodePengiriman}),'Checkout membuat pesanan');
+    const selectedRows = [];
+    cartRows.forEach(function(r,index){
+      if (String(r[1]) === session.userId && selectedMap[String(r[0])]) {
+        selectedRows.push({rowNumber:index+2,row:r});
+      }
+    });
+    if (selectedRows.length !== Object.keys(selectedMap).length) throw new Error('Sebagian barang keranjang tidak ditemukan. Muat ulang keranjang.');
+    const items = selectedRows.map(function(entry){
+      const r=entry.row, qty=Math.max(0,Math.floor(Number(r[5])||0));
+      const snap=getProductSnapshot_(ss,r[3],r[4]);
+      return {cartId:String(r[0]),rowNumber:entry.rowNumber,productId:String(r[3]),variationId:String(r[4]||''),
+        qty:qty,active:!!(snap&&snap.active),stock:snap?Math.max(0,snap.stock):0,
+        unitPrice:snap?snap.unitPrice:0,sku:snap?snap.sku:'',name:snap?snap.name:'Produk tidak tersedia',
+        variationName:snap?snap.variationName:''};
+    });
+    if (!items.length) throw new Error('Barang yang dipilih tidak ditemukan di keranjang.');
+    const invalid=items.find(function(i){return !i.active||i.qty<1||i.qty>i.stock;});
+    if (invalid) throw new Error('Stok untuk "'+invalid.name+'" tidak mencukupi. Silakan periksa keranjang.');
+    const subtotal=items.reduce(function(sum,i){return sum+i.unitPrice*i.qty;},0);
+    const ongkir=0,diskon=0,total=subtotal+ongkir-diskon,now=new Date();
+    const orderId=makeFMartId_('ORD');
+    const nomorPesanan='FM-'+Utilities.formatDate(now,FMART_DB.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Math.floor(1000+Math.random()*9000);
+    ss.getSheetByName('Pesanan').appendRow([orderId,nomorPesanan,session.userId,santriId,subtotal,ongkir,diskon,total,'MENUNGGU_PEMBAYARAN',catatan,now,now]);
+    const detailSheet=ss.getSheetByName('DetailPesanan');
+    items.forEach(function(i){
+      detailSheet.appendRow([makeFMartId_('DTL'),orderId,i.productId,i.variationId,i.sku,i.name,i.variationName,i.unitPrice,i.qty,i.unitPrice*i.qty]);
+    });
+    ss.getSheetByName('Pengiriman').appendRow([makeFMartId_('SHP'),orderId,metodePengiriman,tujuan||child.name,'MENUNGGU','','',session.userId,now]);
+    selectedRows.sort(function(a,b){return b.rowNumber-a.rowNumber;}).forEach(function(entry){cartSheet.deleteRow(entry.rowNumber);});
+    writeAudit_(session.userId,session.role,'CREATE_ORDER','PESANAN',orderId,'',JSON.stringify({number:nomorPesanan,santriId:santriId,total:total,itemCount:items.length,shippingMethod:metodePengiriman}),'Checkout membuat pesanan dari item terpilih');
     SpreadsheetApp.flush();
-    return {ok:true,orderId:orderId,nomorPesanan:nomorPesanan,total:total,status:'MENUNGGU_PEMBAYARAN',child:child};
+    return {ok:true,orderId:orderId,nomorPesanan:nomorPesanan,total:total,status:'MENUNGGU_PEMBAYARAN',child:child,itemCount:items.length};
   } finally { lock.releaseLock(); }
 }
-
-
 
 /** Fase 4: pesanan dan pembayaran Wali Santri. */
 /** Dashboard ringkas Wali: hanya membaca pesanan dan relasi milik sesi aktif. */
