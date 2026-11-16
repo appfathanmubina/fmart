@@ -359,69 +359,88 @@ function replaceFMartSuperadminFromEditor() {
   if (!nama) throw new Error('Isi B3 pada sheet FMart_AdminSetup dengan nama Superadmin baru.');
   if (password.length < 10) throw new Error('Isi B4 dengan password minimal 10 karakter.');
 
-  const users = ss.getSheetByName('Users');
-  if (!users || users.getLastRow() < 2) throw new Error('Sheet Users belum tersedia atau belum memiliki data.');
-  const beforeRows = users.getRange(2, 1, users.getLastRow() - 1, 12).getValues();
-  const activeOld = beforeRows.map(function(row, index) {
-    return {rowNumber: index + 2, values: row};
-  }).filter(function(item) {
-    return String(item.values[5] || '').trim().toUpperCase() === 'SUPERADMIN' &&
-      String(item.values[6] || '').trim().toUpperCase() === 'AKTIF';
-  });
-
-  if (activeOld.length !== 1) {
-    throw new Error('Penggantian dibatalkan: harus ada tepat satu Superadmin lama yang aktif. Tidak ada akun yang diubah.');
-  }
-
-  const oldUserId = String(activeOld[0].values[0] || '');
-  const oldUsername = String(activeOld[0].values[1] || '');
-  const newUsername = email;
-
-  if (oldUsername.toLowerCase() === newUsername) {
-    throw new Error('Email baru sama dengan username akun lama. Gunakan email berbeda untuk akun pengganti.');
-  }
-
-  // createFMartUser mengelola lock-nya sendiri. Akun lama tetap aktif sampai
-  // akun baru tersimpan dan diverifikasi.
-  const created = createFMartUser(newUsername, password, nama, 'SUPERADMIN', email);
-  SpreadsheetApp.flush();
-
   const lock = LockService.getScriptLock();
   lock.waitLock(15000);
+  let oldRowNumber = 0;
+  let oldUsername = '';
+  let oldEmail = '';
+  let oldUpdatedAt = null;
+  let oldUserId = '';
+  let newRowNumber = 0;
+  let newUserId = '';
+  let oldTemporarilyChanged = false;
+
   try {
-    const latestLastRow = users.getLastRow();
-    const latestRows = latestLastRow > 1 ? users.getRange(2, 1, latestLastRow - 1, 12).getValues() : [];
-    const newRowIndex = latestRows.findIndex(function(row) {
-      return String(row[0] || '') === String(created.userId) &&
-        String(row[1] || '').trim().toLowerCase() === email &&
-        String(row[5] || '').trim().toUpperCase() === 'SUPERADMIN' &&
-        String(row[6] || '').trim().toUpperCase() === 'AKTIF' &&
-        String(row[10] || '').trim().toLowerCase() === email;
+    const users = ss.getSheetByName('Users');
+    if (!users || users.getLastRow() < 2) throw new Error('Sheet Users belum tersedia atau belum memiliki data.');
+    const rows = users.getRange(2, 1, users.getLastRow() - 1, 12).getValues();
+    const activeOld = rows.map(function(row, index) {
+      return {rowNumber: index + 2, values: row};
+    }).filter(function(item) {
+      return String(item.values[5] || '').trim().toUpperCase() === 'SUPERADMIN' &&
+        String(item.values[6] || '').trim().toUpperCase() === 'AKTIF';
     });
-    if (newRowIndex < 0) {
-      throw new Error('Akun baru belum dapat diverifikasi. Superadmin lama tetap aktif; periksa sheet Users.');
+
+    if (activeOld.length !== 1) {
+      throw new Error('Penggantian dibatalkan: harus ada tepat satu Superadmin lama yang aktif. Tidak ada akun yang diubah.');
     }
 
-    const oldRowIndex = latestRows.findIndex(function(row) {
-      return String(row[0] || '') === oldUserId &&
-        String(row[5] || '').trim().toUpperCase() === 'SUPERADMIN' &&
-        String(row[6] || '').trim().toUpperCase() === 'AKTIF';
+    const old = activeOld[0];
+    oldRowNumber = old.rowNumber;
+    oldUserId = String(old.values[0] || '');
+    oldUsername = String(old.values[1] || '');
+    oldEmail = String(old.values[10] || '');
+    oldUpdatedAt = old.values[8];
+
+    // Email boleh sama dengan milik Superadmin lama, tetapi tidak boleh dipakai akun lain.
+    const duplicateOtherUser = rows.some(function(row) {
+      if (String(row[0] || '') === oldUserId) return false;
+      const username = String(row[1] || '').trim().toLowerCase();
+      const existingEmail = String(row[10] || '').trim().toLowerCase();
+      return username === email || existingEmail === email;
     });
-    if (oldRowIndex < 0) {
-      throw new Error('Akun baru berhasil dibuat, tetapi akun lama berubah selama proses. Periksa sheet Users sebelum melanjutkan.');
+    if (duplicateOtherUser) {
+      throw new Error('Email tersebut sudah digunakan akun lain selain Superadmin lama.');
     }
 
-    const oldSheetRow = oldRowIndex + 2;
     const now = new Date();
-    users.getRange(oldSheetRow, 7).setValue('NONAKTIF');
-    users.getRange(oldSheetRow, 9).setValue(now);
+    const archiveTag = Utilities.getUuid().replace(/-/g, '').slice(0, 12).toLowerCase();
+    const archivedUsername = 'superadmin-lama-' + archiveTag;
+    const archivedEmail = 'nonaktif-' + archiveTag + '@fmart.invalid';
+
+    // Pindahkan sementara identitas login lama agar alamat email lama dapat
+    // dipakai akun baru. Jika proses berikut gagal, data lama dipulihkan.
+    users.getRange(oldRowNumber, 2).setValue(archivedUsername);
+    users.getRange(oldRowNumber, 9).setValue(now);
+    users.getRange(oldRowNumber, 11).setValue(archivedEmail);
+    users.getRange(oldRowNumber, 12).setValue(false);
+    SpreadsheetApp.flush();
+    oldTemporarilyChanged = true;
+
+    newUserId = 'USR-' + Utilities.getUuid().replace(/-/g, '').slice(0, 16).toUpperCase();
+    const salt = Utilities.getUuid().replace(/-/g, '');
+    const hash = hashPassword_(password, salt);
+    users.appendRow([newUserId, email, hash, salt, nama, 'SUPERADMIN', 'AKTIF', now, now, '', email, false]);
+    SpreadsheetApp.flush();
+    newRowNumber = users.getLastRow();
+
+    const savedNew = users.getRange(newRowNumber, 1, 1, 12).getValues()[0];
+    if (String(savedNew[0] || '') !== newUserId ||
+        String(savedNew[1] || '').trim().toLowerCase() !== email ||
+        String(savedNew[5] || '').trim().toUpperCase() !== 'SUPERADMIN' ||
+        String(savedNew[6] || '').trim().toUpperCase() !== 'AKTIF' ||
+        String(savedNew[10] || '').trim().toLowerCase() !== email ||
+        !savedNew[2] || !savedNew[3]) {
+      throw new Error('Akun baru belum dapat diverifikasi. Proses penggantian dibatalkan.');
+    }
+
+    users.getRange(oldRowNumber, 7).setValue('NONAKTIF');
+    users.getRange(oldRowNumber, 9).setValue(new Date());
     SpreadsheetApp.flush();
 
-    const savedOld = users.getRange(oldSheetRow, 1, 1, 12).getValues()[0];
-    const savedNew = users.getRange(newRowIndex + 2, 1, 1, 12).getValues()[0];
-    if (String(savedOld[6] || '').trim().toUpperCase() !== 'NONAKTIF' ||
-        String(savedNew[6] || '').trim().toUpperCase() !== 'AKTIF') {
-      throw new Error('Verifikasi akhir belum berhasil. Periksa status kedua akun pada sheet Users.');
+    const savedOld = users.getRange(oldRowNumber, 1, 1, 12).getValues()[0];
+    if (String(savedOld[6] || '').trim().toUpperCase() !== 'NONAKTIF') {
+      throw new Error('Status akun lama belum berhasil dinonaktifkan.');
     }
 
     const audit = ss.getSheetByName('AuditLog');
@@ -433,10 +452,10 @@ function replaceFMartSuperadminFromEditor() {
         'REPLACE_SUPERADMIN',
         'USER',
         oldUserId,
-        JSON.stringify({username: oldUsername, role: 'SUPERADMIN', status: 'AKTIF'}),
-        JSON.stringify({username: oldUsername, role: 'SUPERADMIN', status: 'NONAKTIF', replacementUserId: created.userId}),
+        JSON.stringify({username: oldUsername, email: oldEmail, role: 'SUPERADMIN', status: 'AKTIF'}),
+        JSON.stringify({username: archivedUsername, email: archivedEmail, role: 'SUPERADMIN', status: 'NONAKTIF', replacementUserId: newUserId}),
         'Akun Superadmin diganti melalui Apps Script Editor.',
-        now
+        new Date()
       ]);
     }
 
@@ -447,14 +466,33 @@ function replaceFMartSuperadminFromEditor() {
       ok: true,
       oldUserId: oldUserId,
       oldStatus: 'NONAKTIF',
-      newUserId: created.userId,
+      newUserId: newUserId,
       newUsername: email,
       newRole: 'SUPERADMIN',
       newStatus: 'AKTIF',
       emailVerified: false,
       spreadsheetName: ss.getName(),
-      message: 'Superadmin baru berhasil dibuat dan diverifikasi. Akun lama telah dinonaktifkan. Data input sementara sudah dikosongkan. Login berikutnya menggunakan email, password baru, dan OTP email.'
+      message: 'Superadmin baru berhasil dibuat menggunakan email yang sama dengan akun lama. Akun lama dinonaktifkan dan identitas loginnya diarsipkan. Data input sementara sudah dikosongkan.'
     };
+  } catch (error) {
+    // Pemulihan identitas akun lama jika penggantian belum selesai.
+    if (oldTemporarilyChanged && oldRowNumber) {
+      try {
+        const users = ss.getSheetByName('Users');
+        if (newRowNumber && newRowNumber > 1 && newUserId) {
+          const candidate = users.getRange(newRowNumber, 1, 1, 1).getValue();
+          if (String(candidate || '') === newUserId) users.deleteRow(newRowNumber);
+        }
+        users.getRange(oldRowNumber, 2).setValue(oldUsername);
+        users.getRange(oldRowNumber, 7).setValue('AKTIF');
+        users.getRange(oldRowNumber, 9).setValue(oldUpdatedAt);
+        users.getRange(oldRowNumber, 11).setValue(oldEmail);
+        SpreadsheetApp.flush();
+      } catch (rollbackError) {
+        throw new Error('Penggantian gagal dan pemulihan otomatis perlu diperiksa manual pada sheet Users. Penyebab: ' + error.message + '. Pemulihan: ' + rollbackError.message);
+      }
+    }
+    throw error;
   } finally {
     lock.releaseLock();
   }
