@@ -547,9 +547,34 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
     @media(max-width:1050px) and (min-width:761px){
       .login-showcase .showcase-brand .brand-mark{width:220px;height:220px;min-width:220px;flex-basis:220px}
     }
+    /* Tampilan login HP: header ringkas dan form menjadi fokus utama */
     @media(max-width:760px){
-      .login-showcase .showcase-brand{gap:12px}
-      .login-showcase .showcase-brand .brand-mark{width:230px;height:230px;min-width:230px;flex-basis:230px;border-radius:25px}
+      #loginView.login-wrap{display:grid;grid-template-columns:minmax(0,1fr);align-content:start;min-height:100svh;overflow-x:hidden;overflow-y:auto;background:#f7f2fb}
+      #loginView .login-showcase{min-height:252px;height:auto;padding:24px 20px 48px;align-items:flex-start;border-radius:0 0 28px 28px}
+      #loginView .showcase-content{width:100%;text-align:center}
+      #loginView .showcase-brand{width:100%;justify-content:center;gap:0}
+      #loginView .showcase-brand .brand-mark{width:88px;height:88px;min-width:88px;flex:0 0 88px;border-radius:22px;border:3px solid #800080;background-color:#800080;box-shadow:0 10px 28px #25002545}
+      #loginView .showcase-copy{max-width:420px;margin:17px auto 0}
+      #loginView .showcase-copy h1{max-width:360px;margin:0 auto 8px;font-size:18px;line-height:1.25;letter-spacing:-.025em}
+      #loginView .showcase-copy>p{max-width:390px;margin:0 auto;color:#f0e3f5;font-size:12px;line-height:1.55}
+      #loginView .showcase-features,#loginView .showcase-footer,#loginView .showcase-decoration{display:none}
+      #loginView .login-panel{position:relative;z-index:3;min-width:0;margin-top:-26px;padding:0 16px 30px;background:transparent;align-items:stretch}
+      #loginView .login-stack{width:100%;max-width:480px;margin:0 auto}
+      #loginView .login-card{width:100%;max-width:none;padding:25px 21px 22px;border:1px solid #eee4f3;border-radius:22px;box-shadow:0 16px 42px #32145a16}
+      #loginView .login-card h1{font-size:24px;line-height:1.2}
+      #loginView .login-card>p{font-size:13px;line-height:1.55;margin:7px 0 20px}
+      #loginView .login-field input{min-height:51px;border-radius:12px}
+      #loginView .login-submit{min-height:51px;border-radius:12px}
+      #loginView .install-app-btn{min-height:48px;margin-top:12px;border-radius:13px}
+      #loginView .install-app-hint{padding:0 8px}
+    }
+    @media(max-width:380px){
+      #loginView .login-showcase{min-height:232px;padding:20px 16px 42px}
+      #loginView .showcase-brand .brand-mark{width:76px;height:76px;min-width:76px;flex-basis:76px;border-radius:19px}
+      #loginView .showcase-copy{margin-top:14px}
+      #loginView .showcase-copy h1{font-size:16px}
+      #loginView .login-panel{padding-left:12px;padding-right:12px}
+      #loginView .login-card{padding:22px 17px 20px}
     }
 
   </style>
