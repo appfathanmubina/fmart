@@ -105,6 +105,196 @@ function seedSettings_(sheet) {
 }
 
 /**
+ * Audit read-only untuk memeriksa struktur dan relasi database FMart.
+ * Fungsi ini tidak mengubah sheet, header, maupun isi data.
+ * Jalankan dari Apps Script Editor: auditFMartDatabaseIntegrity()
+ */
+function auditFMartDatabaseIntegrity() {
+  const ss = getSetupSpreadsheet_();
+  const issues = [];
+  const rowsBySheet = {};
+  const validSchema = {};
+  const counts = {};
+  const maxIssues = 500;
+
+  function addIssue(code, sheetName, rowNumber, detail) {
+    if (issues.length >= maxIssues) return;
+    issues.push({
+      code: code,
+      sheet: sheetName,
+      row: rowNumber || '',
+      detail: detail || ''
+    });
+  }
+
+  function hasData(row) {
+    return row.some(function(value) {
+      return value !== '' && value !== null;
+    });
+  }
+
+  Object.keys(FMART_DB.SHEETS).forEach(function(key) {
+    const sheetName = sheetNameForKey_(key);
+    const expected = FMART_DB.SHEETS[key];
+    const sheet = ss.getSheetByName(sheetName);
+
+    if (!sheet) {
+      addIssue('MISSING_SHEET', sheetName, '', 'Sheet wajib belum tersedia.');
+      validSchema[sheetName] = false;
+      rowsBySheet[sheetName] = [];
+      counts[sheetName] = 0;
+      return;
+    }
+
+    const actual = sheet.getRange(1, 1, 1, expected.length).getDisplayValues()[0]
+      .map(function(value) { return String(value || '').trim(); });
+    const mismatches = [];
+    expected.forEach(function(header, index) {
+      if (actual[index] !== header) {
+        mismatches.push({
+          column: index + 1,
+          expected: header,
+          actual: actual[index]
+        });
+      }
+    });
+
+    if (mismatches.length) {
+      addIssue('HEADER_MISMATCH', sheetName, 1, JSON.stringify(mismatches));
+    }
+
+    const lastColumn = sheet.getLastColumn();
+    if (lastColumn > expected.length) {
+      const extraHeaders = sheet.getRange(1, expected.length + 1, 1, lastColumn - expected.length)
+        .getDisplayValues()[0]
+        .map(function(value, index) {
+          return String(value || '').trim() ? {
+            column: expected.length + index + 1,
+            header: String(value).trim()
+          } : null;
+        })
+        .filter(function(value) { return value !== null; });
+      if (extraHeaders.length) {
+        addIssue('UNEXPECTED_COLUMNS', sheetName, 1, JSON.stringify(extraHeaders));
+      }
+    }
+
+    validSchema[sheetName] = mismatches.length === 0;
+    const dataRows = sheet.getLastRow() > 1
+      ? sheet.getRange(2, 1, sheet.getLastRow() - 1, expected.length).getValues()
+      : [];
+    rowsBySheet[sheetName] = dataRows;
+    counts[sheetName] = dataRows.filter(hasData).length;
+  });
+
+  Object.keys(FMART_DB.SHEETS).forEach(function(key) {
+    const sheetName = sheetNameForKey_(key);
+    if (!validSchema[sheetName]) return;
+    const rows = rowsBySheet[sheetName];
+    const seen = {};
+    rows.forEach(function(row, index) {
+      if (!hasData(row)) return;
+      const id = String(row[0] || '').trim();
+      const rowNumber = index + 2;
+      if (!id) {
+        addIssue('EMPTY_PRIMARY_ID', sheetName, rowNumber, 'Kolom ID utama kosong.');
+      } else if (seen[id]) {
+        addIssue('DUPLICATE_PRIMARY_ID', sheetName, rowNumber, 'ID utama duplikat; baris pertama ' + seen[id] + '.');
+      } else {
+        seen[id] = rowNumber;
+      }
+    });
+  });
+
+  function checkUnique(sheetName, columnIndex, label, normalize) {
+    if (!validSchema[sheetName]) return;
+    const seen = {};
+    rowsBySheet[sheetName].forEach(function(row, index) {
+      if (!hasData(row)) return;
+      const value = normalize ? normalize(row[columnIndex]) : String(row[columnIndex] || '').trim();
+      if (!value) return;
+      if (seen[value]) {
+        addIssue('DUPLICATE_' + label, sheetName, index + 2, label + ' duplikat; baris pertama ' + seen[value] + '.');
+      } else {
+        seen[value] = index + 2;
+      }
+    });
+  }
+
+  checkUnique('Users', 1, 'USERNAME', function(value) { return String(value || '').trim().toLowerCase(); });
+  checkUnique('Users', 10, 'EMAIL', function(value) { return String(value || '').trim().toLowerCase(); });
+  checkUnique('WaliSantri', 1, 'WALI_USER_ID', function(value) { return String(value || '').trim(); });
+  checkUnique('WaliSantri', 3, 'WALI_PHONE', function(value) { return normalizePhone_(value) || String(value || '').trim(); });
+
+  if (validSchema.Users) {
+    const activeSuperadmins = rowsBySheet.Users.filter(function(row) {
+      return String(row[5] || '').trim().toUpperCase() === 'SUPERADMIN' &&
+        String(row[6] || '').trim().toUpperCase() === 'AKTIF';
+    }).length;
+    if (activeSuperadmins === 0) {
+      addIssue('NO_ACTIVE_SUPERADMIN', 'Users', '', 'Tidak ditemukan akun Superadmin aktif.');
+    }
+  }
+
+  function idSet(sheetName) {
+    const result = {};
+    if (!validSchema[sheetName]) return result;
+    rowsBySheet[sheetName].forEach(function(row) {
+      const id = String(row[0] || '').trim();
+      if (id) result[id] = true;
+    });
+    return result;
+  }
+
+  function checkReference(sourceName, sourceColumn, targetName, label, optional) {
+    if (!validSchema[sourceName] || !validSchema[targetName]) return;
+    const targets = idSet(targetName);
+    rowsBySheet[sourceName].forEach(function(row, index) {
+      if (!hasData(row)) return;
+      const value = String(row[sourceColumn] || '').trim();
+      if (!value && optional) return;
+      if (!value || !targets[value]) {
+        addIssue('BROKEN_REFERENCE', sourceName, index + 2,
+          label + ' tidak ditemukan pada sheet ' + targetName + '.');
+      }
+    });
+  }
+
+  checkReference('WaliSantri', 1, 'Users', 'UserId WaliSantri', false);
+  checkReference('WaliSantriSantri', 1, 'WaliSantri', 'WaliId relasi', false);
+  checkReference('WaliSantriSantri', 2, 'Santri', 'SantriId relasi', false);
+  checkReference('Produk', 1, 'Kategori', 'KategoriId produk', false);
+  checkReference('VariasiProduk', 1, 'Produk', 'ProdukId variasi', false);
+  checkReference('Stok', 1, 'Produk', 'ProdukId stok', false);
+  checkReference('Stok', 2, 'VariasiProduk', 'VariasiId stok', true);
+  checkReference('MutasiStok', 1, 'Produk', 'ProdukId mutasi stok', false);
+  checkReference('MutasiStok', 2, 'VariasiProduk', 'VariasiId mutasi stok', true);
+  checkReference('Keranjang', 1, 'Users', 'UserId keranjang', false);
+  checkReference('Keranjang', 2, 'Santri', 'SantriId keranjang', false);
+  checkReference('Keranjang', 3, 'Produk', 'ProdukId keranjang', false);
+  checkReference('Keranjang', 4, 'VariasiProduk', 'VariasiId keranjang', true);
+  checkReference('Pesanan', 2, 'Users', 'UserId pesanan', false);
+  checkReference('Pesanan', 3, 'Santri', 'SantriId pesanan', false);
+  checkReference('DetailPesanan', 1, 'Pesanan', 'PesananId detail', false);
+  checkReference('DetailPesanan', 2, 'Produk', 'ProdukId detail', false);
+  checkReference('DetailPesanan', 3, 'VariasiProduk', 'VariasiId detail', true);
+  checkReference('Pembayaran', 1, 'Pesanan', 'PesananId pembayaran', false);
+  checkReference('Pengiriman', 1, 'Pesanan', 'PesananId pengiriman', false);
+  checkReference('Notifikasi', 1, 'Users', 'UserId notifikasi', false);
+  checkReference('Notifikasi', 2, 'Pesanan', 'PesananId notifikasi', true);
+
+  return {
+    ok: issues.length === 0,
+    spreadsheetName: ss.getName(),
+    checkedAt: new Date().toISOString(),
+    sheetCounts: counts,
+    issueCount: issues.length,
+    truncated: issues.length >= maxIssues,
+    issues: issues
+  };
+}
+
+/**
  * Membuat akun awal secara manual.
  * Jalankan dari editor Apps Script, lalu hapus data sensitif dari riwayat/log Anda sendiri.
  * Password tidak pernah ditulis ke Spreadsheet dalam bentuk plaintext.
