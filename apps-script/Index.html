@@ -768,6 +768,16 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
     body.buyer-portal .buyer-detail-actions button:disabled{opacity:.45;cursor:not-allowed}
     @media(max-width:760px){body.buyer-portal .buyer-detail-layout{grid-template-columns:1fr;gap:16px}body.buyer-portal .buyer-detail-photo{height:250px;min-height:220px;border-radius:17px}body.buyer-portal .buyer-detail-name{font-size:21px}body.buyer-portal .buyer-detail-price{font-size:23px}body.buyer-portal .buyer-variation-list{grid-template-columns:1fr 1fr}}
     @media(max-width:390px){body.buyer-portal .buyer-variation-list{grid-template-columns:1fr}body.buyer-portal .buyer-detail-actions{grid-template-columns:1fr}}
+
+/* Tahap Wali: keranjang umum per akun Wali */
+body.buyer-portal .buyer-cart-note{padding:12px 14px;margin-bottom:12px;border:1px solid #e9d5ff;background:#faf5ff;border-radius:13px;color:#6b21a8;font-size:12px;line-height:1.5}
+body.buyer-portal .buyer-cart-select-all{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;padding:10px 12px;background:#f8fafc;border-radius:12px;font-size:12px;color:#475569}
+body.buyer-portal .buyer-cart-select-all label{display:flex;align-items:center;gap:8px;font-weight:700}
+body.buyer-portal .buyer-cart-select-all input,.buyer-cart-select input{width:18px;height:18px;accent-color:#800080}
+body.buyer-portal .buyer-general-cart-item{display:grid;grid-template-columns:24px 64px minmax(0,1fr);align-items:start;gap:10px}
+body.buyer-portal .buyer-cart-select{display:flex;align-items:center;justify-content:center;padding-top:22px}
+body.buyer-portal .buyer-cart-select input{width:18px;height:18px;margin:0;accent-color:#800080}
+@media(max-width:520px){body.buyer-portal .buyer-general-cart-item{grid-template-columns:22px 54px minmax(0,1fr);gap:8px}body.buyer-portal .buyer-cart-select-all{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
@@ -1116,7 +1126,6 @@ function changeDetailQty(delta){
 }
 async function addCurrentProduct(buyNow){
   const p=state.currentProduct;if(!p)return;
-  if(!state.selectedChildId){openChildPicker(true);showToast('Pilih santri tujuan belanja terlebih dahulu.');return}
   if(p.variations.length&&!state.currentVariationId){showToast('Pilih variasi terlebih dahulu.');return}
   const v=getCurrentDetailVariation();
   const max=v?Math.max(0,Number(v.stock)||0):Math.max(0,Number(p.stock)||0);
@@ -1125,7 +1134,7 @@ async function addCurrentProduct(buyNow){
   if(qty<1||qty>max){showToast('Jumlah harus sesuai stok yang tersedia.');syncDetailStockUI();return}
   loading(true,'Menambahkan ke keranjang...');
   try{
-    await runServer('addToCart',state.token,p.id,state.currentVariationId,qty,state.selectedChildId);
+    await runServer('addToCart',state.token,p.id,state.currentVariationId,qty);
     showToast('Produk ditambahkan ke keranjang.');closeProduct();await refreshCartCount();if(buyNow)openCart();
   }catch(e){showToast(e.message||'Gagal menambahkan produk.')}
   finally{loading(false)}
@@ -1256,16 +1265,95 @@ function closeWaliLinkModal(){$('waliLinkModal').classList.add('hidden')}
 async function searchWaliChild(auto){const q=$('waliChildSearch').value.trim(),cls=$('waliClassFilter').value;if(!auto&&q.length===1){showToast('Ketik 1 huruf lagi untuk mulai mencari.','error');return}if(!auto&&q.length<2&&!cls){showToast('Ketik minimal 2 huruf atau pilih Filter Kelas.','error');return}const box=$('waliChildSearchResults');box.innerHTML='<div class="muted" style="padding:10px">Mencari Santri...</div>';try{const r=await runServer('searchSantriForWaliSelf',state.token,q,cls);box.innerHTML=r.santri.length?'<div class="picker-table-wrap"><table class="picker-table"><thead><tr><th>No</th><th>Nama Santri</th><th>Kelas</th><th>Aksi</th></tr></thead><tbody>'+r.santri.map((c,i)=>'<tr><td>'+(i+1)+'</td><td><strong>'+escapeHtml(c.name)+'</strong><div class="muted" style="font-size:11px">NIS '+escapeHtml(c.nisMasked)+'</div></td><td>'+escapeHtml(c.className)+'</td><td><button type="button" class="secondary picker-request-btn" data-self-link-santri="'+escapeHtml(c.id)+'">Ajukan</button></td></tr>').join('')+'</tbody></table></div><div class="muted" style="font-size:11px;margin-top:7px">Menampilkan maksimal 30 Santri.</div>':'<div class="empty-box">Santri tidak ditemukan. Coba nama lain atau pilih kelas berbeda.</div>';document.querySelectorAll('[data-self-link-santri]').forEach(b=>b.onclick=()=>openWaliRequestForm(b.dataset.selfLinkSantri,r.santri.find(x=>String(x.id)===String(b.dataset.selfLinkSantri))))}catch(e){box.innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Pencarian gagal.')+'</div>'}}
 function openWaliRequestForm(santriId,c){if(!c)return;$('waliChildRequestForm').innerHTML='<div class="profile-item"><small>Santri dipilih</small><strong>'+escapeHtml(c.name)+'</strong><div class="muted">'+escapeHtml(c.className)+' · NIS '+escapeHtml(c.nisMasked)+'</div></div><div class="field" style="margin-top:10px"><label>Hubungan</label><select id="waliHubungan"><option value="AYAH">Ayah</option><option value="IBU">Ibu</option><option value="WALI">Wali</option><option value="LAINNYA">Lainnya</option></select></div><button type="button" class="primary" id="submitWaliRequest" style="width:100%">Ajukan Hubungan</button><div class="muted" style="margin-top:8px;font-size:12px">Akses belanja untuk Santri ini aktif setelah Admin menyetujui.</div>';$('waliChildRequestForm').classList.remove('hidden');$('submitWaliRequest').onclick=async()=>{const b=$('submitWaliRequest');if(b.disabled)return;b.disabled=true;loading(true,'Mengirim pengajuan...');try{const r=await runServer('requestWaliSantriLink',state.token,santriId,$('waliHubungan').value);showToast(r.message||'Pengajuan berhasil dikirim.','success');closeWaliLinkModal();const profileRefresh=await runServer('getWaliProfileManagement',state.token);state.waliProfileManagement=profileRefresh;if($('profileModal')&&!$('profileModal').classList.contains('hidden'))renderWaliProfileManagement(profileRefresh);const childrenRefresh=await runServer('getMyChildren',state.token);state.data.children=childrenRefresh.children||[];renderChildren(state.data.children);refreshWaliDashboard()}catch(e){showToast(e.message||'Pengajuan gagal dikirim.','error')}finally{b.disabled=false;loading(false)}}}
 function closeProfile(){$('profileModal').classList.add('hidden')}
-async function refreshCartCount(){if(!state.token||!state.selectedChildId||!state.data||state.data.user.role!=='WALI_SANTRI'){updateCartBadge(0);return}try{const r=await runServer('getCart',state.token,state.selectedChildId);state.cart=r;updateCartBadge((r.items||[]).reduce((n,i)=>n+Number(i.qty||0),0))}catch(e){updateCartBadge(0)}}
+async function refreshCartCount(){
+  if(!state.token||!state.data||state.data.user.role!=='WALI_SANTRI'){updateCartBadge(0);return}
+  try{const r=await runServer('getCart',state.token);state.cart=r;updateCartBadge((r.items||[]).reduce((n,i)=>n+Number(i.qty||0),0))}
+  catch(e){updateCartBadge(0)}
+}
 function updateCartBadge(n){const b=$('cartBadge');b.textContent=String(n||0);b.classList.toggle('hidden',!n)}
-async function openCart(){if(!ensureChildSelected())return;if(!state.selectedChildId){openChildPicker(true);showToast('Pilih santri tujuan belanja terlebih dahulu.');return}loading(true,'Memuat keranjang...');try{const r=await runServer('getCart',state.token,state.selectedChildId);state.cart=r;renderCart(r);$('cartModal').classList.remove('hidden')}catch(e){showToast(e.message||'Gagal memuat keranjang.')}finally{loading(false)}}
-function renderCart(cart){const child=cart.child||{};if(!cart.items||!cart.items.length){$('cartBody').innerHTML='<div class="empty-box">Keranjang untuk <strong>'+escapeHtml(child.name||'anak ini')+'</strong> masih kosong.</div>';return}const itemHtml=cart.items.map(i=>'<div class="cart-item"><div class="cart-photo">'+(i.photoUrl?'<img src="'+safeUrl(i.photoUrl)+'" alt="" loading="lazy">':'<svg viewBox="0 0 24 24" aria-hidden="true" style="width:42px;height:42px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M4 8h16l-1 12H5L4 8Z"></path><path d="M8 8a4 4 0 0 1 8 0"></path></svg>')+'</div><div class="cart-info"><div class="cart-name">'+escapeHtml(i.name)+'</div>'+(i.variationName?'<div class="muted">'+escapeHtml(i.variationName)+'</div>':'')+'<div class="price">Rp '+formatMoney(i.unitPrice)+'</div>'+(i.exceedsStock?'<div class="danger-text">Stok tersedia hanya '+formatMoney(i.stock)+'</div>':'')+'<div class="cart-actions"><div class="qty-control"><button type="button" data-cart-minus="'+escapeHtml(i.cartId)+'">−</button><input type="number" value="'+escapeHtml(i.qty)+'" min="1" data-cart-qty="'+escapeHtml(i.cartId)+'" inputmode="numeric"><button type="button" data-cart-plus="'+escapeHtml(i.cartId)+'">+</button></div><button type="button" class="secondary" style="padding:8px 10px" data-cart-remove="'+escapeHtml(i.cartId)+'">Hapus</button></div></div></div>').join('');$('cartBody').innerHTML='<div class="muted" style="margin-bottom:10px">Untuk: <strong>'+escapeHtml(child.name||'-')+'</strong> · '+escapeHtml(child.className||'')+'</div><div class="cart-list">'+itemHtml+'</div><div class="cart-summary"><div class="summary-row"><span>Subtotal</span><strong>Rp '+formatMoney(cart.subtotal)+'</strong></div><div class="summary-row"><span>Ongkir</span><span>Rp 0</span></div><div class="summary-row summary-total"><span>Total</span><span>Rp '+formatMoney(cart.total)+'</span></div></div><button type="button" class="primary" id="goCheckout" style="margin-top:12px" '+(cart.canCheckout?'':'disabled')+'>Lanjut checkout</button>';
-document.querySelectorAll('[data-cart-minus]').forEach(b=>b.onclick=()=>changeCartQty(b.dataset.cartMinus,-1));document.querySelectorAll('[data-cart-plus]').forEach(b=>b.onclick=()=>changeCartQty(b.dataset.cartPlus,1));document.querySelectorAll('[data-cart-qty]').forEach(inp=>inp.onchange=()=>setCartQty(inp.dataset.cartQty,inp.value));document.querySelectorAll('[data-cart-remove]').forEach(b=>b.onclick=()=>setCartQty(b.dataset.cartRemove,0));if($('goCheckout'))$('goCheckout').onclick=openCheckout}
+async function openCart(){
+  if(!state.data||state.data.user.role!=='WALI_SANTRI')return;
+  loading(true,'Memuat keranjang...');
+  try{
+    const r=await runServer('getCart',state.token);
+    state.cart=r;
+    const ids=(r.items||[]).map(i=>String(i.cartId));
+    if(!Array.isArray(state.selectedCartIds))state.selectedCartIds=ids.slice();
+    else state.selectedCartIds=state.selectedCartIds.filter(id=>ids.includes(String(id)));
+    renderCart(r);
+    $('cartModal').classList.remove('hidden');
+  }catch(e){showToast(e.message||'Gagal memuat keranjang.')}
+  finally{loading(false)}
+}
+function getSelectedCartItems(){
+  const selected=new Set((state.selectedCartIds||[]).map(String));
+  return (state.cart&&state.cart.items||[]).filter(i=>selected.has(String(i.cartId)));
+}
+function renderCart(cart){
+  const items=cart.items||[];
+  if(!items.length){$('cartBody').innerHTML='<div class="empty-box">Keranjang belanja Anda masih kosong. Silakan pilih produk dari katalog.</div>';return}
+  const validIds=items.map(i=>String(i.cartId));
+  if(!Array.isArray(state.selectedCartIds))state.selectedCartIds=validIds.slice();
+  else state.selectedCartIds=state.selectedCartIds.filter(id=>validIds.includes(String(id)));
+  const selected=getSelectedCartItems();
+  const selectedTotal=selected.reduce((sum,i)=>sum+Number(i.subtotal||0),0);
+  const selectedValid=selected.length>0&&selected.every(i=>i.available&&!i.exceedsStock);
+  const itemHtml=items.map(i=>'<div class="cart-item buyer-general-cart-item"><label class="buyer-cart-select"><input type="checkbox" data-cart-select="'+escapeHtml(i.cartId)+'" '+(state.selectedCartIds.includes(String(i.cartId))?'checked':'')+' aria-label="Pilih '+escapeHtml(i.name)+' untuk checkout"><span></span></label><div class="cart-photo">'+(i.photoUrl?'<img src="'+safeUrl(i.photoUrl)+'" alt="" loading="lazy">':'<span aria-hidden="true">▧</span>')+'</div><div class="cart-info"><div class="cart-name">'+escapeHtml(i.name)+'</div>'+(i.variationName?'<div class="muted">'+escapeHtml(i.variationName)+'</div>':'')+'<div class="price">Rp '+formatMoney(i.unitPrice)+'</div>'+(i.exceedsStock?'<div class="danger-text">Stok tersedia hanya '+formatMoney(i.stock)+'</div>':(!i.available?'<div class="danger-text">Produk tidak tersedia</div>':''))+'<div class="cart-actions"><div class="qty-control"><button type="button" data-cart-minus="'+escapeHtml(i.cartId)+'">−</button><input type="number" value="'+escapeHtml(i.qty)+'" min="1" data-cart-qty="'+escapeHtml(i.cartId)+'" inputmode="numeric"><button type="button" data-cart-plus="'+escapeHtml(i.cartId)+'">+</button></div><button type="button" class="secondary" style="padding:8px 10px" data-cart-remove="'+escapeHtml(i.cartId)+'">Hapus</button></div></div></div>').join('');
+  $('cartBody').innerHTML='<div class="buyer-cart-note">Keranjang ini berlaku untuk akun Wali. Pilih barang yang akan dibeli untuk satu santri; barang lainnya tetap tersimpan.</div><div class="buyer-cart-select-all"><label><input type="checkbox" id="cartSelectAll" '+(selected.length===items.length?'checked':'')+'> Pilih semua barang</label><span>'+selected.length+' dari '+items.length+' barang dipilih</span></div><div class="cart-list">'+itemHtml+'</div><div class="cart-summary"><div class="summary-row"><span>Subtotal pilihan</span><strong>Rp '+formatMoney(selectedTotal)+'</strong></div><div class="summary-row"><span>Jumlah barang</span><span>'+selected.reduce((n,i)=>n+Number(i.qty||0),0)+' unit</span></div></div><button type="button" class="primary" id="goCheckout" style="margin-top:12px" '+(selectedValid?'':'disabled')+'>Checkout barang terpilih</button>';
+  document.querySelectorAll('[data-cart-select]').forEach(b=>b.onchange=()=>{const id=String(b.dataset.cartSelect);const set=new Set((state.selectedCartIds||[]).map(String));if(b.checked)set.add(id);else set.delete(id);state.selectedCartIds=Array.from(set);renderCart(state.cart)});
+  if($('cartSelectAll'))$('cartSelectAll').onchange=()=>{state.selectedCartIds=$('cartSelectAll').checked?validIds.slice():[];renderCart(state.cart)};
+  document.querySelectorAll('[data-cart-minus]').forEach(b=>b.onclick=()=>changeCartQty(b.dataset.cartMinus,-1));
+  document.querySelectorAll('[data-cart-plus]').forEach(b=>b.onclick=()=>changeCartQty(b.dataset.cartPlus,1));
+  document.querySelectorAll('[data-cart-qty]').forEach(inp=>inp.onchange=()=>setCartQty(inp.dataset.cartQty,inp.value));
+  document.querySelectorAll('[data-cart-remove]').forEach(b=>b.onclick=()=>setCartQty(b.dataset.cartRemove,0));
+  if($('goCheckout'))$('goCheckout').onclick=openCheckout;
+}
 async function changeCartQty(cartId,delta){const item=(state.cart.items||[]).find(i=>String(i.cartId)===String(cartId));if(!item)return;await setCartQty(cartId,Math.max(0,Number(item.qty||0)+delta))}
-async function setCartQty(cartId,qty){loading(true,'Memperbarui keranjang...');try{const r=await runServer('updateCartItem',state.token,cartId,Math.floor(Number(qty)||0),state.selectedChildId);state.cart=r;renderCart(r);updateCartBadge((r.items||[]).reduce((n,i)=>n+Number(i.qty||0),0))}catch(e){showToast(e.message||'Gagal memperbarui keranjang.')}finally{loading(false)}}
+async function setCartQty(cartId,qty){
+  loading(true,'Memperbarui keranjang...');
+  try{
+    const r=await runServer('updateCartItem',state.token,cartId,Math.floor(Number(qty)||0));
+    state.cart=r;
+    if(!r.items.some(i=>String(i.cartId)===String(cartId)))state.selectedCartIds=(state.selectedCartIds||[]).filter(id=>String(id)!==String(cartId));
+    renderCart(r);
+    updateCartBadge((r.items||[]).reduce((n,i)=>n+Number(i.qty||0),0));
+  }catch(e){showToast(e.message||'Gagal memperbarui keranjang.')}
+  finally{loading(false)}
+}
 function closeCart(){$('cartModal').classList.add('hidden')}
-function openCheckout(){if(!state.cart||!state.cart.items.length){showToast('Keranjang masih kosong.');return}if(!state.cart.canCheckout){showToast('Periksa stok atau produk yang bermasalah terlebih dahulu.');return}const child=state.cart.child||{};$('checkoutBody').innerHTML='<div class="profile-item"><small>Belanja untuk</small><strong>'+escapeHtml(child.name||'-')+' · '+escapeHtml(child.className||'')+'</strong></div><div class="section"><div class="section-title"><h2>Pengambilan</h2></div><div class="radio-grid"><label class="radio-card"><input type="radio" name="shippingMethod" value="ANTAR_PESANTREN" checked><span><strong>Antar ke pesantren</strong><div class="muted">Pesanan disiapkan untuk anak di pesantren.</div></span></label><label class="radio-card"><input type="radio" name="shippingMethod" value="AMBIL_FMART"><span><strong>Ambil di FMart</strong><div class="muted">Pesanan diambil oleh wali sesuai ketentuan FMart.</div></span></label></div></div><div class="field" style="margin-top:16px"><label for="checkoutTujuan">Tujuan / keterangan pengambilan</label><textarea id="checkoutTujuan" rows="3" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px;resize:vertical" placeholder="Contoh: Titip melalui bagian pengasuhan atau keterangan lain"></textarea></div><div class="field"><label for="checkoutCatatan">Catatan pesanan (opsional)</label><textarea id="checkoutCatatan" rows="2" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px;resize:vertical" placeholder="Catatan untuk FMart"></textarea></div><div class="cart-summary"><div class="summary-row"><span>Subtotal</span><strong>Rp '+formatMoney(state.cart.subtotal)+'</strong></div><div class="summary-row"><span>Ongkir</span><span>Rp 0</span></div><div class="summary-row summary-total"><span>Total</span><span>Rp '+formatMoney(state.cart.total)+'</span></div></div><button type="button" class="primary" id="submitCheckout" style="margin-top:12px">Buat pesanan</button>';$('checkoutModal').classList.remove('hidden');$('submitCheckout').onclick=submitCheckout}
-async function submitCheckout(){const btn=$('submitCheckout');if(!btn)return;btn.disabled=true;loading(true,'Memproses checkout...');try{const method=document.querySelector('input[name="shippingMethod"]:checked')?.value||'ANTAR_PESANTREN';const r=await runServer('checkoutCart',state.token,state.selectedChildId,$('checkoutCatatan').value,method,$('checkoutTujuan').value);state.cart=null;closeCheckout();closeCart();updateCartBadge(0);$('successBody').innerHTML='<div class="empty-box" style="text-align:center"><div style="font-size:34px;margin-bottom:8px">✓</div><strong style="font-size:18px">Pesanan berhasil dibuat</strong><p class="muted">Nomor pesanan: <strong>'+escapeHtml(r.nomorPesanan)+'</strong></p><p class="muted">Status saat ini: <strong>Menunggu Pembayaran</strong></p><p class="muted">Anda dapat membuka menu Pesanan untuk melihat rincian dan mengajukan pembayaran.</p></div><button type="button" class="primary" id="successCloseBtn" style="margin-top:12px">Selesai</button>';$('successModal').classList.remove('hidden');$('successCloseBtn').onclick=closeSuccess}catch(e){showToast(e.message||'Checkout gagal.');await openCart()}finally{btn.disabled=false;loading(false)}}
+function openCheckout(){
+  const selected=getSelectedCartItems();
+  if(!selected.length){showToast('Pilih barang yang akan di-checkout.');return}
+  const invalid=selected.find(i=>!i.available||i.exceedsStock);
+  if(invalid){showToast('Periksa ketersediaan stok '+invalid.name+'.');return}
+  const children=(state.data&&state.data.children||[]);
+  if(!children.length){showToast('Belum ada santri aktif yang terhubung. Hubungkan santri melalui menu Profil.');return}
+  const total=selected.reduce((sum,i)=>sum+Number(i.subtotal||0),0);
+  $('checkoutBody').innerHTML='<div class="notice">Satu pesanan hanya untuk satu santri. Jika berbelanja untuk santri lain, lakukan checkout terpisah dari keranjang.</div><div class="field"><label for="checkoutSantriId">Pilih santri tujuan <strong style="color:#b91c1c">*</strong></label><select id="checkoutSantriId" required><option value="">Pilih santri</option>'+children.map(c=>'<option value="'+escapeHtml(c.id)+'">'+escapeHtml(c.name)+' · '+escapeHtml(c.className||'')+'</option>').join('')+'</select></div><div class="section"><div class="section-title"><h2>Pengambilan</h2></div><div class="radio-grid"><label class="radio-card"><input type="radio" name="shippingMethod" value="ANTAR_PESANTREN" checked><span><strong>Antar ke pesantren</strong><div class="muted">Pesanan disiapkan untuk santri yang dipilih.</div></span></label><label class="radio-card"><input type="radio" name="shippingMethod" value="AMBIL_FMART"><span><strong>Ambil di FMart</strong><div class="muted">Pesanan diambil oleh Wali sesuai ketentuan FMart.</div></span></label></div></div><div class="field" style="margin-top:16px"><label for="checkoutTujuan">Tujuan / keterangan pengambilan</label><textarea id="checkoutTujuan" rows="3" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px;resize:vertical" placeholder="Contoh: Titip melalui bagian pengasuhan atau keterangan lain"></textarea></div><div class="field"><label for="checkoutCatatan">Catatan pesanan (opsional)</label><textarea id="checkoutCatatan" rows="2" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px;resize:vertical" placeholder="Catatan untuk FMart"></textarea></div><div class="cart-summary"><div class="summary-row"><span>Barang dipilih</span><strong>'+selected.length+' jenis</strong></div><div class="summary-row"><span>Subtotal</span><strong>Rp '+formatMoney(total)+'</strong></div><div class="summary-row"><span>Ongkir</span><span>Rp 0</span></div><div class="summary-row summary-total"><span>Total</span><span>Rp '+formatMoney(total)+'</span></div></div><button type="button" class="primary" id="submitCheckout" style="margin-top:12px">Buat pesanan</button>';
+  $('checkoutModal').classList.remove('hidden');
+  $('submitCheckout').onclick=submitCheckout;
+}
+async function submitCheckout(){
+  const btn=$('submitCheckout');if(!btn)return;
+  const santriId=$('checkoutSantriId').value;
+  if(!santriId){showToast('Pilih santri tujuan terlebih dahulu.');$('checkoutSantriId').focus();return}
+  const selectedIds=getSelectedCartItems().map(i=>String(i.cartId));
+  if(!selectedIds.length){showToast('Pilih minimal satu barang.');return}
+  btn.disabled=true;loading(true,'Memproses checkout...');
+  try{
+    const method=document.querySelector('input[name="shippingMethod"]:checked')?.value||'ANTAR_PESANTREN';
+    const r=await runServer('checkoutCart',state.token,santriId,selectedIds,$('checkoutCatatan').value,method,$('checkoutTujuan').value);
+    state.cart=await runServer('getCart',state.token);
+    state.selectedCartIds=(state.selectedCartIds||[]).filter(id=>(state.cart.items||[]).some(i=>String(i.cartId)===String(id)));
+    renderCart(state.cart);
+    updateCartBadge((state.cart.items||[]).reduce((n,i)=>n+Number(i.qty||0),0));
+    closeCheckout();closeCart();
+    $('successBody').innerHTML='<div class="empty-box" style="text-align:center"><div style="font-size:34px;margin-bottom:8px">✓</div><strong style="font-size:18px">Pesanan berhasil dibuat</strong><p class="muted">Nomor pesanan: <strong>'+escapeHtml(r.nomorPesanan)+'</strong></p><p class="muted">Untuk santri: <strong>'+escapeHtml(r.child&&r.child.name||'Santri terpilih')+'</strong></p><p class="muted">Status saat ini: <strong>Menunggu Pembayaran</strong></p><p class="muted">Anda dapat membuka menu Pesanan untuk melihat rincian dan mengajukan pembayaran.</p></div><button type="button" class="primary" id="successCloseBtn" style="margin-top:12px">Selesai</button>';
+    $('successModal').classList.remove('hidden');$('successCloseBtn').onclick=closeSuccess;
+    refreshWaliDashboard();
+  }catch(e){showToast(e.message||'Checkout gagal.');await openCart()}
+  finally{btn.disabled=false;loading(false)}
+}
 function closeCheckout(){$('checkoutModal').classList.add('hidden')}
 function closeSuccess(){$('successModal').classList.add('hidden')}
 function showToast(text,type='info'){const t=$('toast');const kind=type==='error'?'toast-error':type==='success'?'toast-success':'';const icon=type==='error'?'⚠':type==='success'?'✓':'i';t.className='toast '+kind;t.innerHTML='<span class="toast-icon">'+icon+'</span><span class="toast-text">'+escapeHtml(text||'')+'</span>';t.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>t.classList.remove('show'),3200)}
