@@ -33,6 +33,20 @@
       setup.hidden=false;setup.innerHTML="<h1>Panel Admin FMart</h1><p>URL deployment Apps Script belum dikonfigurasi pada <code>config.js</code>.</p>";
     }
     if("serviceWorker" in navigator)navigator.serviceWorker.register("../service-worker.js").catch(()=>{});
+    let deferredInstallPrompt=null;
+    function sendInstallState(){if(frame.contentWindow)frame.contentWindow.postMessage({type:'FMART_INSTALL_STATE',available:!!deferredInstallPrompt,installed:window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true},'*')}
+    frame.addEventListener('load',sendInstallState);
+    window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;sendInstallState()});
+    window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;if(frame.contentWindow)frame.contentWindow.postMessage({type:'FMART_INSTALL_DONE'},'*');sendInstallState()});
+    window.addEventListener('message',async event=>{
+      if(event.source!==frame.contentWindow)return;
+      const data=event.data||{};if(data.type!=='FMART_INSTALL_REQUEST')return;
+      if(!deferredInstallPrompt){frame.contentWindow.postMessage({type:'FMART_INSTALL_RESULT',status:'unavailable'},'*');return}
+      const promptEvent=deferredInstallPrompt;deferredInstallPrompt=null;
+      try{await promptEvent.prompt();const choice=await promptEvent.userChoice;frame.contentWindow.postMessage({type:'FMART_INSTALL_RESULT',status:choice&&choice.outcome==='accepted'?'accepted':'dismissed'},'*')}
+      catch(error){frame.contentWindow.postMessage({type:'FMART_INSTALL_RESULT',status:'unavailable'},'*')}
+      sendInstallState();
+    });
     let offlineTimer;
     function updateNetwork(){clearTimeout(offlineTimer);if(!navigator.onLine){status.textContent="Anda sedang offline. Koneksi ke layanan FMart diperlukan.";status.hidden=false}else if(!status.hidden){status.textContent="Koneksi kembali";offlineTimer=setTimeout(()=>status.hidden=true,2200)}}
     window.addEventListener("online",updateNetwork);window.addEventListener("offline",updateNetwork);updateNetwork();
