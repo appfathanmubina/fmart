@@ -465,7 +465,7 @@ function getChildrenForWali_(ss, userId) {
   if (!wali) return [];
   const santriIds = readRows_(ss.getSheetByName('WaliSantriSantri')).filter(function(r){return String(r[1])===String(wali[0]) && String(r[3]).toUpperCase()==='AKTIF';}).map(function(r){return String(r[2]);});
   const santriSheet = ss.getSheetByName('Santri'), santriMap = getSantriColumnMap_(santriSheet);
-  return readRows_(santriSheet).map(function(r){return santriRecord_(r,santriMap);}).filter(function(r){return santriIds.indexOf(r.id)!==-1 && r.status.toUpperCase()==='AKTIF';});
+  return readSantriRows_(santriSheet).map(function(r){return santriRecord_(r,santriMap);}).filter(function(r){return santriIds.indexOf(r.id)!==-1 && r.status.toUpperCase()==='AKTIF';});
 }
 
 
@@ -872,7 +872,7 @@ function getOperationsDashboard(token) {
   const payments = readRows_(ss.getSheetByName('Pembayaran'));
   const shipments = readRows_(ss.getSheetByName('Pengiriman'));
   const users = readRows_(ss.getSheetByName('Users'));
-  const santri = readRows_(ss.getSheetByName('Santri'));
+  const santri = readSantriRows_(ss.getSheetByName('Santri'));
   const products = readRows_(ss.getSheetByName('Produk'));
   const stockRows = readRows_(ss.getSheetByName('Stok'));
   const cats = readRows_(ss.getSheetByName('Kategori'));
@@ -914,7 +914,7 @@ function getFMartReports(token, startDate, endDate) {
   const orders=readRows_(ss.getSheetByName('Pesanan')).filter(r=>inReportRange_(r[10],start,end));
   const details=readRows_(ss.getSheetByName('DetailPesanan'));
   const payments=readRows_(ss.getSheetByName('Pembayaran')).filter(r=>inReportRange_(r[8],start,end));
-  const santri=readRows_(ss.getSheetByName('Santri')); const users=readRows_(ss.getSheetByName('Users')); const products=readRows_(ss.getSheetByName('Produk')); const cats=readRows_(ss.getSheetByName('Kategori')); const mutasi=readRows_(ss.getSheetByName('MutasiStok')).filter(r=>inReportRange_(r[10],start,end));
+  const santri=readSantriRows_(ss.getSheetByName('Santri')); const users=readRows_(ss.getSheetByName('Users')); const products=readRows_(ss.getSheetByName('Produk')); const cats=readRows_(ss.getSheetByName('Kategori')); const mutasi=readRows_(ss.getSheetByName('MutasiStok')).filter(r=>inReportRange_(r[10],start,end));
   const santriMap=getSantriColumnMap_(ss.getSheetByName('Santri'));
   const childMap={};santri.forEach(r=>{const child=santriRecord_(r,santriMap);if(child.id)childMap[child.id]=child.name;});
   const userMap={};users.forEach(r=>userMap[String(r[0])]=String(r[4]||''));
@@ -1089,7 +1089,7 @@ function getUserManagement(token) {
   if(!usersSheet) throw new Error('Data pengguna belum siap. Sheet Users tidak ditemukan.');
   if(!waliSheet) throw new Error('Data Wali Santri belum siap. Sheet WaliSantri tidak ditemukan.');
   const santriSheet=ss.getSheetByName('Santri'), santriColumnMap=getSantriColumnMap_(santriSheet);
-  const userRows=readRows_(usersSheet), waliRows=readRows_(waliSheet), relRows=relSheet?readRows_(relSheet):[], santriRows=readRows_(santriSheet);
+  const userRows=readRows_(usersSheet), waliRows=readRows_(waliSheet), relRows=relSheet?readRows_(relSheet):[], santriRows=readSantriRows_(santriSheet);
   const userMap={};
   userRows.forEach(function(r){const uid=String(r[0]||'');if(uid) userMap[uid]={userId:uid,username:String(r[1]||''),nama:String(r[4]||''),role:String(r[5]||''),status:String(r[6]||''),createdAt:dateIso_(r[7]),lastLoginAt:dateIso_(r[9])};});
   const santriMap={};
@@ -1115,7 +1115,7 @@ function getSantriClassesForWaliSelf(token){
   const relRows=readRows_(ss.getSheetByName('WaliSantriSantri'));
   const blocked={};
   relRows.forEach(function(r){if(String(r[1]||'')===String(wali.waliId) && ['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(r[3]||'').toUpperCase())>=0) blocked[String(r[2]||'')]=true;});
-  const santriSheet=ss.getSheetByName('Santri'), santriMap=getSantriColumnMap_(santriSheet), rows=readRows_(santriSheet), classes={};
+  const santriSheet=ss.getSheetByName('Santri'), santriMap=getSantriColumnMap_(santriSheet), rows=readSantriRows_(santriSheet), classes={};
   rows.forEach(function(r){const child=santriRecord_(r,santriMap),id=child.id,cls=child.className.trim();if(!id||!cls||child.status.toUpperCase()!=='AKTIF'||blocked[id])return;classes[cls]=true;});
   return {ok:true,classes:Object.keys(classes).sort(function(a,b){return a.localeCompare(b,'id',{numeric:true,sensitivity:'base'});})};
 }
@@ -1136,7 +1136,7 @@ function searchSantriForWaliSelf(token,query,className){
   const relRows=readRows_(ss.getSheetByName('WaliSantriSantri'));
   const blocked={};
   relRows.forEach(function(r){if(String(r[1]||'')===String(wali.waliId) && ['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(r[3]||'').toUpperCase())>=0) blocked[String(r[2]||'')]=true;});
-  const santriSheet=ss.getSheetByName('Santri'), santriMap=getSantriColumnMap_(santriSheet), rows=readRows_(santriSheet), result=[];
+  const santriSheet=ss.getSheetByName('Santri'), santriMap=getSantriColumnMap_(santriSheet), rows=readSantriRows_(santriSheet), result=[];
   rows.forEach(function(r){
     const child=santriRecord_(r,santriMap),id=child.id,nis=child.nis,name=child.name,cls=child.className;
     if(!id||child.status.toUpperCase()!=='AKTIF'||blocked[id])return;
@@ -1176,7 +1176,7 @@ function searchSantriForWali(token,waliId,query){
   waliId=String(waliId||'').trim();query=String(query||'').trim().toLowerCase();if(!waliId)throw new Error('Wali Santri tidak valid.');
   const ss=getSS_(),wali=findRowById_(ss.getSheetByName('WaliSantri'),waliId,1);if(!wali)throw new Error('Data Wali Santri tidak ditemukan.');
   const relRows=readRows_(ss.getSheetByName('WaliSantriSantri')),linked={};relRows.forEach(function(r){if(String(r[1]||'')===waliId&&['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(r[3]||'').toUpperCase())>=0)linked[String(r[2]||'')]=true;});
-  const santriSheet=ss.getSheetByName('Santri'),santriMap=getSantriColumnMap_(santriSheet),rows=readRows_(santriSheet),result=[];rows.forEach(function(r){const child=santriRecord_(r,santriMap),id=child.id,nis=child.nis,name=child.name,cls=child.className;if(!id||child.status.toUpperCase()!=='AKTIF'||linked[id])return;const hay=(nis+' '+name+' '+cls).toLowerCase();if(query&&hay.indexOf(query)===-1)return;result.push({id:id,nis:nis,name:name,className:cls});});
+  const santriSheet=ss.getSheetByName('Santri'),santriMap=getSantriColumnMap_(santriSheet),rows=readSantriRows_(santriSheet),result=[];rows.forEach(function(r){const child=santriRecord_(r,santriMap),id=child.id,nis=child.nis,name=child.name,cls=child.className;if(!id||child.status.toUpperCase()!=='AKTIF'||linked[id])return;const hay=(nis+' '+name+' '+cls).toLowerCase();if(query&&hay.indexOf(query)===-1)return;result.push({id:id,nis:nis,name:name,className:cls});});
   return {ok:true,santri:result.slice(0,50),searched:query};
 }
 
@@ -1375,6 +1375,11 @@ function santriField_(row, map, key) {
   return index === undefined ? '' : row[index];
 }
 
+function readSantriRows_(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getDisplayValues();
+}
+
 function santriRecord_(row, map) {
   return {
     id: String(santriField_(row, map, 'SantriId') || ''),
@@ -1393,7 +1398,7 @@ function findSantriRowById_(sheet, santriId) {
   for (let i = 0; i < values.length; i++) {
     if (String(values[i][0] || '') === String(santriId || '')) {
       const rowNumber = i + 2;
-      return { rowNumber: rowNumber, values: sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0] };
+      return { rowNumber: rowNumber, values: sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getDisplayValues()[0] };
     }
   }
   return null;
