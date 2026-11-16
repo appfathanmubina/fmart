@@ -907,17 +907,19 @@ function getFMartReports(token, startDate, endDate) {
   if(end<start) throw new Error('Periode laporan tidak valid.');
   const orders=readRows_(ss.getSheetByName('Pesanan')).filter(r=>inReportRange_(r[10],start,end));
   const details=readRows_(ss.getSheetByName('DetailPesanan'));
-  const payments=readRows_(ss.getSheetByName('Pembayaran')).filter(r=>inReportRange_(r[8],start,end));
+  const allPayments=readRows_(ss.getSheetByName('Pembayaran'));
+  const payments=allPayments.filter(r=>inReportRange_(r[8],start,end));
   const santri=readSantriRows_(ss.getSheetByName('Santri')); const users=readRows_(ss.getSheetByName('Users')); const products=readRows_(ss.getSheetByName('Produk')); const cats=readRows_(ss.getSheetByName('Kategori')); const mutasi=readRows_(ss.getSheetByName('MutasiStok')).filter(r=>inReportRange_(r[10],start,end));
   const santriMap=getSantriColumnMap_(ss.getSheetByName('Santri'));
   const childMap={};santri.forEach(r=>{const child=santriRecord_(r,santriMap);if(child.id)childMap[child.id]=child.name;});
   const userMap={};users.forEach(r=>userMap[String(r[0])]=String(r[4]||''));
   const productMap={};products.forEach(r=>productMap[String(r[0])]=String(r[3]||''));
   const catMap={};cats.forEach(r=>catMap[String(r[0])]=String(r[1]||''));
-  const paidOrderIds={};payments.forEach(r=>{if(String(r[5]||'').toUpperCase()==='TERVERIFIKASI')paidOrderIds[String(r[1])]=true;});
+  const paidOrderIds={};allPayments.forEach(r=>{if(String(r[5]||'').toUpperCase()==='TERVERIFIKASI')paidOrderIds[String(r[1])]=true;});
   const statusCounts={}; orders.forEach(r=>{const st=String(r[8]||'').toUpperCase();statusCounts[st]=(statusCounts[st]||0)+1;});
-  const gross=orders.filter(r=>String(r[8]||'').toUpperCase()!=='DIBATALKAN').reduce((n,r)=>n+(Number(r[7])||0),0);
-  const paid=orders.filter(r=>paidOrderIds[String(r[0])]).reduce((n,r)=>n+(Number(r[7])||0),0);
+  const salesOrders=orders.filter(r=>String(r[8]||'').toUpperCase()!=='DIBATALKAN');
+  const gross=salesOrders.reduce((n,r)=>n+(Number(r[7])||0),0);
+  const paid=salesOrders.filter(r=>paidOrderIds[String(r[0])]).reduce((n,r)=>n+(Number(r[7])||0),0);
   const categorySales={}; const productSales={};
   details.forEach(d=>{const order=orders.find(o=>String(o[0])===String(d[1])); if(!order || String(order[8]||'').toUpperCase()==='DIBATALKAN') return; const qty=Math.max(0,Number(d[8])||0), sub=Math.max(0,Number(d[9])||0), pid=String(d[2]||''), p=products.find(x=>String(x[0])===pid); const cat=p?String(p[1]||''):''; const cn=catMap[cat]||'Tanpa Kategori'; categorySales[cn]=(categorySales[cn]||0)+sub; const pn=productMap[pid]||String(d[5]||'Produk'); if(!productSales[pn])productSales[pn]={name:pn,qty:0,amount:0}; productSales[pn].qty+=qty;productSales[pn].amount+=sub;});
   const paymentMethods={}; payments.filter(r=>String(r[5]||'').toUpperCase()==='TERVERIFIKASI').forEach(r=>{const m=String(r[2]||'Lainnya');paymentMethods[m]=(paymentMethods[m]||0)+(Number(r[3])||0);});
@@ -925,7 +927,7 @@ function getFMartReports(token, startDate, endDate) {
   const stockOut=mutasi.filter(r=>String(r[3]||'').toUpperCase()==='KELUAR').reduce((n,r)=>n+(Number(r[4])||0),0);
   const daily={}; orders.forEach(r=>{if(String(r[8]||'').toUpperCase()==='DIBATALKAN')return;const key=formatReportDay_(r[10]);if(!daily[key])daily[key]={date:key,orders:0,amount:0};daily[key].orders++;daily[key].amount+=Number(r[7])||0;});
   const topProducts=Object.keys(productSales).map(k=>productSales[k]).sort((a,b)=>b.amount-a.amount).slice(0,10);
-  return {ok:true,period:{start:start.toISOString(),end:end.toISOString()},summary:{orders:orders.length,activeOrders:orders.filter(r=>!['DITERIMA','DIBATALKAN'].includes(String(r[8]||'').toUpperCase())).length,gross:gross,paid:paid,unpaid:Math.max(0,gross-paid),averageOrder:orders.length?Math.round(gross/orders.length):0,stockIn:stockIn,stockOut:stockOut},statusCounts:statusCounts,categorySales:Object.keys(categorySales).map(k=>({name:k,amount:categorySales[k]})).sort((a,b)=>b.amount-a.amount),paymentMethods:Object.keys(paymentMethods).map(k=>({name:k,amount:paymentMethods[k]})).sort((a,b)=>b.amount-a.amount),daily:Object.keys(daily).sort().map(k=>daily[k]),topProducts:topProducts,generatedAt:new Date().toISOString(),generatedBy:{userId:session.userId,nama:session.nama}};
+  return {ok:true,period:{start:start.toISOString(),end:end.toISOString()},summary:{orders:orders.length,activeOrders:orders.filter(r=>!['DITERIMA','DIBATALKAN'].includes(String(r[8]||'').toUpperCase())).length,gross:gross,paid:paid,unpaid:Math.max(0,gross-paid),averageOrder:salesOrders.length?Math.round(gross/salesOrders.length):0,stockIn:stockIn,stockOut:stockOut},statusCounts:statusCounts,categorySales:Object.keys(categorySales).map(k=>({name:k,amount:categorySales[k]})).sort((a,b)=>b.amount-a.amount),paymentMethods:Object.keys(paymentMethods).map(k=>({name:k,amount:paymentMethods[k]})).sort((a,b)=>b.amount-a.amount),daily:Object.keys(daily).sort().map(k=>daily[k]),topProducts:topProducts,generatedAt:new Date().toISOString(),generatedBy:{userId:session.userId,nama:session.nama}};
 }
 
 /** Laporan audit untuk Admin/Superadmin. Hanya metadata aman yang dikirim ke UI; BeforeData/AfterData tidak diekspos. */
