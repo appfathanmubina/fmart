@@ -1019,6 +1019,48 @@ function getStockCatalog(token) {
   return {ok:true,products:products.map(p=>{const pid=String(p[0]);const vs=vars.filter(v=>String(v[1])===pid).map(v=>{const sr=stocks.find(r=>String(r[1])===pid&&String(r[2]||'')===String(v[0]));return {id:String(v[0]),name:String(v[2]||''),value:String(v[3]||''),stock:sr?Number(sr[3])||0:Number(v[5])||0};});const sr=stocks.find(r=>String(r[1])===pid&&!r[2]);return {id:pid,name:String(p[3]||''),sku:String(p[2]||''),stock:sr?Number(sr[3])||0:0,variations:vs};})};
 }
 
+
+/** Data persediaan lengkap untuk panel Admin dan Gudang. Endpoint ini hanya membaca database. */
+function getStockManagement(token) {
+  requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  const ss=getSS_();
+  const productRows=readRows_(ss.getSheetByName('Produk'));
+  const categoryRows=readRows_(ss.getSheetByName('Kategori'));
+  const variationRows=readRows_(ss.getSheetByName('VariasiProduk'));
+  const stockRows=readRows_(ss.getSheetByName('Stok'));
+  const mutationRows=readRows_(ss.getSheetByName('MutasiStok'));
+  const userRows=readRows_(ss.getSheetByName('Users'));
+  const categoryMap={};categoryRows.forEach(function(r){categoryMap[String(r[0])]=String(r[1]||'-');});
+  const userMap={};userRows.forEach(function(r){userMap[String(r[0])]=String(r[4]||r[1]||'-');});
+  const stockMap={};stockRows.forEach(function(r){stockMap[String(r[1])+'|'+String(r[2]||'')]=r;});
+  const variationsByProduct={};
+  variationRows.forEach(function(r){const pid=String(r[1]);if(!variationsByProduct[pid])variationsByProduct[pid]=[];variationsByProduct[pid].push(r);});
+  const items=[];
+  productRows.forEach(function(p){
+    const pid=String(p[0]||'');if(!pid)return;
+    const vars=variationsByProduct[pid]||[];
+    const baseMin=Math.max(0,Number(p[6])||0);
+    if(vars.length){
+      vars.forEach(function(v){
+        const vid=String(v[0]||'');const sr=stockMap[pid+'|'+vid];
+        const qty=sr?Math.max(0,Number(sr[3])||0):Math.max(0,Number(v[5])||0);
+        const min=sr?Math.max(0,Number(sr[4])||0):baseMin;
+        items.push({key:pid+'|'+vid,productId:pid,variationId:vid,name:String(p[3]||''),sku:String(p[2]||''),categoryName:categoryMap[String(p[1])]||'-',variationName:[String(v[2]||''),String(v[3]||'')].filter(Boolean).join(': '),stock:qty,minStock:min,productStatus:String(p[8]||''),variationStatus:String(v[6]||'')});
+      });
+    }else{
+      const sr=stockMap[pid+'|'];const qty=sr?Math.max(0,Number(sr[3])||0):0;const min=sr?Math.max(0,Number(sr[4])||0):baseMin;
+      items.push({key:pid+'|',productId:pid,variationId:'',name:String(p[3]||''),sku:String(p[2]||''),categoryName:categoryMap[String(p[1])]||'-',variationName:'',stock:qty,minStock:min,productStatus:String(p[8]||''),variationStatus:''});
+    }
+  });
+  const history=mutationRows.map(function(m){
+    const pid=String(m[1]||'');const vid=String(m[2]||'');const product=productRows.find(function(p){return String(p[0])===pid;});const variation=vid?variationRows.find(function(v){return String(v[0])===vid;}):null;
+    return {id:String(m[0]||''),productName:product?String(product[3]||''):'Produk tidak ditemukan',sku:product?String(product[2]||''):'-',variationName:variation?[String(variation[2]||''),String(variation[3]||'')].filter(Boolean).join(': '):'',type:String(m[3]||''),qty:Number(m[4])||0,before:Number(m[5])||0,after:Number(m[6])||0,referenceId:String(m[7]||''),note:String(m[8]||''),actor:userMap[String(m[9])]||'-',createdAt:dateIso_(m[10]),sortAt:m[10] instanceof Date?m[10].getTime():new Date(m[10]||0).getTime()};
+  }).sort(function(a,b){return b.sortAt-a.sortAt;}).slice(0,100).map(function(x){delete x.sortAt;return x;});
+  let totalUnits=0,lowStock=0,outOfStock=0;
+  items.forEach(function(x){totalUnits+=x.stock;if(x.stock<=0)outOfStock++;if(x.stock<=x.minStock)lowStock++;});
+  return {ok:true,summary:{totalItems:items.length,totalUnits:totalUnits,lowStock:lowStock,outOfStock:outOfStock},items:items,history:history};
+}
+
 function adjustStock(token, productId, variationId, type, qty, note) {
   const session=requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
   productId=String(productId||'').trim(); variationId=String(variationId||'').trim(); type=String(type||'').toUpperCase(); qty=Math.floor(Number(qty)); note=String(note||'').trim().slice(0,300);
