@@ -16,7 +16,7 @@ const FMART_DB = Object.freeze({
   APP_NAME: 'FMart',
   TIMEZONE: 'Asia/Jakarta',
   SHEETS: {
-    USERS: ['UserId','Username','PasswordHash','PasswordSalt','Nama','Role','Status','CreatedAt','UpdatedAt','LastLoginAt'],
+    USERS: ['UserId','Username','PasswordHash','PasswordSalt','Nama','Role','Status','CreatedAt','UpdatedAt','LastLoginAt','Email','EmailVerified'],
     WALI_SANTRI: ['WaliId','UserId','NamaWali','NoHP','Email','Alamat','Status','CreatedAt','UpdatedAt'],
     SANTRI: ['SantriId','NIS','NamaSantri','Kelas','Status','CreatedAt','UpdatedAt'],
     WALI_SANTRI_SANTRI: ['RelasiId','WaliId','SantriId','Status','CreatedAt','Hubungan'],
