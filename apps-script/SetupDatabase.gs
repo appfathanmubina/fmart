@@ -18,7 +18,7 @@ const FMART_DB = Object.freeze({
   SHEETS: {
     USERS: ['UserId','Username','PasswordHash','PasswordSalt','Nama','Role','Status','CreatedAt','UpdatedAt','LastLoginAt','Email','EmailVerified'],
     WALI_SANTRI: ['WaliId','UserId','NamaWali','NoHP','Email','Alamat','Status','CreatedAt','UpdatedAt'],
-    SANTRI: ['SantriId','NIS','NamaSantri','Kelas','Status','CreatedAt','UpdatedAt'],
+    SANTRI: ['nis','nama_santri','kelas','asrama','saldo_fpay','limit_harian','nama_wali','no_wa_wali','SantriId','Status','CreatedAt','UpdatedAt'],
     WALI_SANTRI_SANTRI: ['RelasiId','WaliId','SantriId','Status','CreatedAt','Hubungan'],
     KATEGORI: ['KategoriId','NamaKategori','Deskripsi','Urutan','Status','CreatedAt','UpdatedAt'],
     PRODUK: ['ProdukId','KategoriId','SKU','NamaProduk','Deskripsi','Harga','StokMinimum','FotoUrl','Status','CreatedAt','UpdatedAt'],
@@ -194,7 +194,8 @@ function auditFMartDatabaseIntegrity() {
     const seen = Object.create(null);
     rows.forEach(function(row, index) {
       if (!hasData(row)) return;
-      const id = String(row[0] || '').trim();
+      const idColumn = sheetName === 'Santri' ? 8 : 0;
+      const id = String(row[idColumn] || '').trim();
       const rowNumber = index + 2;
       if (!id) {
         addIssue('EMPTY_PRIMARY_ID', sheetName, rowNumber, 'Kolom ID utama kosong.');
@@ -221,6 +222,7 @@ function auditFMartDatabaseIntegrity() {
     });
   }
 
+  checkUnique('Santri', 0, 'NIS', function(value) { return String(value || '').trim().toUpperCase(); });
   checkUnique('Users', 1, 'USERNAME', function(value) { return String(value || '').trim().toLowerCase(); });
   checkUnique('Users', 10, 'EMAIL', function(value) { return String(value || '').trim().toLowerCase(); });
   checkUnique('WaliSantri', 1, 'WALI_USER_ID', function(value) { return String(value || '').trim(); });
@@ -295,6 +297,124 @@ function auditFMartDatabaseIntegrity() {
   Logger.log(JSON.stringify(report, null, 2));
   return report;
 }
+
+
+/**
+ * Audit khusus master Santri bersama FMart/FMPay. Read-only.
+ * Jalankan setelah setupFMartDatabase() menambahkan 4 header internal di ujung kanan.
+ */
+function auditFMartSantriMaster() {
+  const ss = getSetupSpreadsheet_();
+  const sheet = ss.getSheetByName('Santri');
+  if (!sheet) throw new Error('Sheet Santri tidak ditemukan.');
+  const expected = FMART_DB.SHEETS.SANTRI;
+  const headers = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), expected.length)).getDisplayValues()[0]
+    .map(function(value) { return String(value || '').trim(); });
+  const headerIssues = [];
+  expected.forEach(function(header, index) {
+    if (headers[index] !== header) headerIssues.push({column:index + 1, expected:header, actual:headers[index] || ''});
+  });
+  if (headerIssues.length) return {ok:false, checkedAt:new Date().toISOString(), headerIssues:headerIssues, rowCount:Math.max(0,sheet.getLastRow()-1), issues:[]};
+
+  const rows = sheet.getLastRow() > 1 ? sheet.getRange(2,1,sheet.getLastRow()-1,expected.length).getValues() : [];
+  const seenNis = Object.create(null), seenIds = Object.create(null), issues = [];
+  let eligible = 0, alreadyPrepared = 0, blankRows = 0;
+  rows.forEach(function(row,index) {
+    const rowNumber = index + 2;
+    const nis = String(row[0] || '').trim();
+    const name = String(row[1] || '').trim();
+    const id = String(row[8] || '').trim();
+    const status = String(row[9] || '').trim();
+    const hasData = row.slice(0,8).some(function(value){return value !== '' && value !== null;});
+    if (!hasData) { blankRows++; return; }
+    if (!nis) issues.push({code:'EMPTY_NIS',row:rowNumber,detail:'Data Santri memiliki isi tetapi NIS kosong.'});
+    else if (seenNis[nis]) issues.push({code:'DUPLICATE_NIS',row:rowNumber,detail:'NIS duplikat; baris pertama ' + seenNis[nis] + '.'});
+    else seenNis[nis] = rowNumber;
+    if (!name) issues.push({code:'EMPTY_NAME',row:rowNumber,detail:'Nama santri kosong.'});
+    if (id && seenIds[id]) issues.push({code:'DUPLICATE_SANTRI_ID',row:rowNumber,detail:'SantriId duplikat; baris pertama ' + seenIds[id] + '.'});
+    else if (id) seenIds[id] = rowNumber;
+    if (nis && name) {
+      if (id && status) alreadyPrepared++;
+      else eligible++;
+    }
+  });
+  const report = {
+    ok:issues.length === 0,
+    spreadsheetName:ss.getName(),
+    checkedAt:new Date().toISOString(),
+    rowCount:rows.filter(function(row){return row.some(function(value){return value !== '' && value !== null;});}).length,
+    blankRows:blankRows,
+    readyForMigration:eligible,
+    alreadyPrepared:alreadyPrepared,
+    issueCount:issues.length,
+    issues:issues.slice(0,500),
+    truncated:issues.length > 500
+  };
+  Logger.log(JSON.stringify(report,null,2));
+  return report;
+}
+
+/**
+ * Menyiapkan ID dan metadata internal Santri tanpa mengubah 8 kolom sumber FMPay.
+ * Jalankan hanya setelah auditFMartSantriMaster() menunjukkan tidak ada masalah.
+ * Status awal AKTIF diberikan untuk baris yang memiliki NIS dan nama; tinjau kembali
+ * jika master sumber ternyata juga memuat alumni atau santri nonaktif.
+ */
+function migrateFMartSantriMaster() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const ss = getSetupSpreadsheet_();
+    const sheet = ss.getSheetByName('Santri');
+    if (!sheet) throw new Error('Sheet Santri tidak ditemukan.');
+    const audit = auditFMartSantriMaster();
+    if (!audit.ok) throw new Error('Migrasi dibatalkan. Perbaiki temuan audit master Santri terlebih dahulu.');
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return {ok:true,updated:0,message:'Belum ada data Santri untuk dimigrasikan.'};
+    const headers = sheet.getRange(1,1,1,sheet.getLastColumn()).getDisplayValues()[0].map(function(v){return String(v||'').trim().toLowerCase();});
+    const col = {};
+    headers.forEach(function(value,index){if(value)col[value]=index;});
+    const range = sheet.getRange(2,1,lastRow-1,sheet.getLastColumn());
+    const rows = range.getValues();
+    const now = new Date();
+    let createdIds = 0, activated = 0, timestamped = 0, skipped = 0;
+    rows.forEach(function(row) {
+      const nis = String(row[col.nis] || '').trim();
+      const name = String(row[col.nama_santri] || '').trim();
+      if (!nis || !name) { skipped++; return; }
+      if (!String(row[col.santriid] || '').trim()) {
+        row[col.santriid] = makeSetupSantriId_(nis);
+        createdIds++;
+      }
+      if (!String(row[col.status] || '').trim()) {
+        row[col.status] = 'AKTIF';
+        activated++;
+      }
+      if (!row[col.createdat]) { row[col.createdat] = now; timestamped++; }
+      if (!row[col.updatedat]) { row[col.updatedat] = now; timestamped++; }
+    });
+    const ids = Object.create(null);
+    rows.forEach(function(row,index){
+      const id=String(row[col.santriid]||'').trim();
+      if(!id)return;
+      if(ids[id]) throw new Error('Migrasi dibatalkan: SantriId duplikat pada baris ' + (index+2) + '.');
+      ids[id]=true;
+    });
+    range.setValues(rows);
+    SpreadsheetApp.flush();
+    const result = {ok:true,createdIds:createdIds,activated:activated,timestampedCells:timestamped,skippedIncomplete:skipped,totalRows:rows.length};
+    Logger.log(JSON.stringify(result,null,2));
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function makeSetupSantriId_(nis) {
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, 'FMART_SANTRI|' + String(nis).trim(), Utilities.Charset.UTF_8);
+  return 'SNT-' + Utilities.base64EncodeWebSafe(digest).replace(/[^A-Z0-9]/gi,'').slice(0,20).toUpperCase();
+}
+
 
 /**
  * Membuat akun awal secara manual.
