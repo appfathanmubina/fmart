@@ -321,6 +321,20 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
 @media(max-width:900px){body.admin-portal .catalog-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){body.admin-portal .catalog-overview{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}body.admin-portal .catalog-metric{padding:11px}body.admin-portal .catalog-metric strong{font-size:21px}body.admin-portal .catalog-category-grid,body.admin-portal .catalog-product-grid{grid-template-columns:1fr}body.admin-portal .catalog-toolbar{align-items:flex-start;flex-wrap:wrap}body.admin-portal .catalog-toolbar button{width:100%}body.admin-portal .catalog-filters{grid-template-columns:1fr 1fr}body.admin-portal .catalog-filters input{grid-column:1/-1}body.admin-portal .catalog-product-actions button{min-height:40px}}
 
+    /* Perbaikan header Admin: konten header mulai dari tepi kiri area konten, bukan mengikuti offset sidebar. */
+    @media (min-width:761px){
+      body.admin-portal .header-inner{
+        padding-left:28px!important;
+        padding-right:28px!important;
+      }
+    }
+    @media (min-width:761px) and (max-width:1100px){
+      body.admin-portal .header-inner{
+        padding-left:20px!important;
+        padding-right:20px!important;
+      }
+    }
+
     /* FMart Admin — audit lebar desktop dan responsivitas lintas halaman */
     @media (min-width:761px){
       body.admin-portal #appView.app{width:100%;max-width:none;min-width:0}
