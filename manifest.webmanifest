@@ -1,10 +1,10 @@
 {
-  "id": ".",
+  "id": "/fmart/",
   "name": "FMart",
   "short_name": "FMart",
   "description": "Belanja kebutuhan santri dengan mudah.",
   "lang": "id",
-  "start_url": "./",
+  "start_url": "./?app=fmart-buyer",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
