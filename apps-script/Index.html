@@ -578,6 +578,27 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
       #loginView .login-card{padding:22px 17px 20px}
     }
 
+  
+    /* Tahap 1 Wali — penyempurnaan login dan registrasi khusus portal pembeli. */
+    body.buyer-portal{--purple:#800080;--purple-dark:#5b145f;--line:#eaddec}
+    body.buyer-portal .login-card h1{color:#5b145f}
+    body.buyer-portal .login-submit{background:linear-gradient(135deg,#800080,#a64ca6);box-shadow:0 10px 22px #80008025}
+    body.buyer-portal .login-card .field input:focus,
+    body.buyer-portal .buyer-register-modal .field input:focus{border-color:#a64ca6;box-shadow:0 0 0 3px #80008014}
+    body.buyer-portal .buyer-register-modal .modal-card{width:min(560px,100%);max-height:min(88svh,820px);padding:clamp(18px,3vw,28px);border-radius:22px}
+    body.buyer-portal .buyer-register-modal .notice{padding:14px 16px;border:1px solid #ead8ef;border-radius:14px;background:#fbf5fc;color:#66546e;font-size:13px;line-height:1.6;margin-bottom:18px}
+    body.buyer-portal .buyer-register-modal .field{margin-bottom:15px}
+    body.buyer-portal .buyer-register-modal .field input{min-height:47px}
+    body.buyer-portal .buyer-register-modal .required-mark{color:#c62828;font-weight:800}
+    body.buyer-portal .buyer-register-modal #saveRegister{margin-top:4px;min-height:49px;background:linear-gradient(135deg,#800080,#a64ca6)}
+    body.buyer-portal .buyer-register-modal .error{padding:0 2px;line-height:1.5}
+    @media(max-width:760px){
+      body.buyer-portal .buyer-register-modal{padding:12px}
+      body.buyer-portal .buyer-register-modal .modal-card{max-height:calc(100svh - 24px);padding:18px 16px;border-radius:20px}
+      body.buyer-portal .buyer-register-modal .modal-head{margin-bottom:12px}
+      body.buyer-portal .buyer-register-modal .field input{min-height:49px}
+    }
+
   </style>
 </head>
 <body>
@@ -606,7 +627,7 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
         <div class="brand-name">FMart</div>
         <p class="login-subtitle">Belanja kebutuhan putra-putri Anda di pesantren dengan mudah dan nyaman.</p>
       </div>
-      <h1>Selamat datang</h1>
+      <h1 id="loginTitle">Selamat datang</h1>
       <p id="loginIntro">Silakan masuk menggunakan nomor HP Wali Santri dan password Anda.</p>
       <form id="loginForm" autocomplete="on">
         <div class="field login-field"><label id="usernameLabel" for="username">No. HP Wali Santri</label><input id="username" name="username" type="tel" inputmode="tel" autocomplete="username" placeholder="Contoh: 081234567890" required><div class="field-hint" id="usernameHint">Nomor HP yang terdaftar pada data Wali Santri.</div></div>
@@ -655,7 +676,7 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
       <div id="productBody"></div>
     </div>
   </div>
-  <div id="registerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="registerTitle"><div class="modal-card"><div class="modal-head"><div><div class="eyebrow">Akun Baru</div><h2 id="registerTitle">Daftar Wali Santri</h2></div><button class="icon-btn" id="closeRegister" aria-label="Tutup">×</button></div><div class="notice">Nomor HP disimpan dalam format standar dan digunakan untuk login. Setelah mendaftar, anak dapat dihubungkan oleh Admin.</div><div class="field"><label>Nama lengkap</label><input id="regNama" autocomplete="name" placeholder="Nama Wali Santri"></div><div class="field"><label>No. HP</label><input id="regPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="081234567890"></div><div class="field"><label>Password</label><input id="regPassword" type="password" autocomplete="new-password" placeholder="Minimal 10 karakter"></div><div class="field"><label>Ulangi password</label><input id="regConfirm" type="password" autocomplete="new-password" placeholder="Ulangi password"></div><div class="field"><label>Email <span class="muted">(opsional)</span></label><input id="regEmail" type="email" autocomplete="email" placeholder="nama@email.com"></div><div class="field"><label>Alamat <span class="muted">(opsional)</span></label><input id="regAlamat" autocomplete="street-address" placeholder="Alamat"></div><button class="primary" id="saveRegister" type="button">Daftar</button><div id="registerError" class="error"></div></div></div>
+  <div id="registerModal" class="modal hidden buyer-register-modal" role="dialog" aria-modal="true" aria-labelledby="registerTitle"><div class="modal-card"><div class="modal-head"><div><div class="eyebrow">Akun Baru</div><h2 id="registerTitle">Daftar Wali Santri</h2></div><button class="icon-btn" id="closeRegister" aria-label="Tutup">×</button></div><div class="notice"><strong>Daftar akun Wali Santri.</strong><br>Nomor HP menjadi username untuk login. Setelah akun aktif, Admin dapat membantu menghubungkan data putra/putri Anda.</div><div class="field"><label for="regNama">Nama lengkap <span class="required-mark">*</span></label><input id="regNama" autocomplete="name" placeholder="Nama lengkap sesuai data pesantren" maxlength="120" required></div><div class="field"><label for="regPhone">Nomor HP aktif <span class="required-mark">*</span></label><input id="regPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08xxxxxxxxxx" maxlength="18" required><div class="field-hint">Gunakan nomor yang aktif dan dapat dihubungi. Format +62 juga diterima.</div></div><div class="field"><label for="regPassword">Password <span class="required-mark">*</span></label><input id="regPassword" type="password" autocomplete="new-password" placeholder="Minimal 10 karakter" minlength="10" required></div><div class="field"><label for="regConfirm">Ulangi password <span class="required-mark">*</span></label><input id="regConfirm" type="password" autocomplete="new-password" placeholder="Masukkan ulang password" minlength="10" required></div><div class="field"><label for="regEmail">Email <span class="muted">(opsional)</span></label><input id="regEmail" type="email" autocomplete="email" placeholder="nama@email.com" maxlength="160"></div><div class="field"><label for="regAlamat">Alamat <span class="muted">(opsional)</span></label><input id="regAlamat" autocomplete="street-address" placeholder="Alamat domisili" maxlength="500"></div><button class="primary" id="saveRegister" type="button">Buat Akun FMart</button><div id="registerError" class="error" role="alert" aria-live="polite"></div></div></div>
   <div id="childPickerModal" class="modal hidden child-picker-modal" role="dialog" aria-modal="true" aria-labelledby="childPickerTitle">
     <div class="modal-card">
       <div class="modal-head"><div><div class="eyebrow">Belanja FMart</div><h2 id="childPickerTitle">Pilih Anak</h2></div><button class="icon-btn" id="closeChildPicker" aria-label="Tutup">×</button></div>
@@ -702,11 +723,18 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
   <script>
     const FMART_PORTAL_MODE = '<?= portalMode ?>';
     document.body.classList.toggle('admin-portal', FMART_PORTAL_MODE === 'ADMINFMART16720');
+    document.body.classList.toggle('buyer-portal', FMART_PORTAL_MODE !== 'ADMINFMART16720');
     const state={token:sessionStorage.getItem('fmartToken')||'',data:null,profile:null,selectedChildId:sessionStorage.getItem('fmartSelectedChildId')||'',cart:null,currentProduct:null,currentVariationId:'',currentProductQty:1,currentOrderId:'',currentPaymentOrderId:''};
     const $=id=>document.getElementById(id);
     document.title = FMART_PORTAL_MODE === 'ADMINFMART16720' ? 'FMart Admin' : 'FMart';
     if(FMART_PORTAL_MODE==='ADMINFMART16720'){ document.querySelector('.login-brand .brand-name').textContent='FMart Admin'; $('loginIntro').textContent='Masuk ke portal petugas FMart menggunakan email dan password.'; $('usernameLabel').textContent='Email Staf'; $('username').type='email'; $('username').inputMode='email'; $('username').placeholder='nama@fathanmubina.com'; $('usernameHint').textContent='Gunakan alamat email akun staf FMart.'; $('registerBtn').classList.add('hidden'); }
     if ($('registerBtn')) $('registerBtn').classList.toggle('hidden', FMART_PORTAL_MODE === 'ADMINFMART16720');
+    if(FMART_PORTAL_MODE!=='ADMINFMART16720'){
+      document.querySelector('.login-card h1').textContent='Selamat datang, Wali Santri';
+      $('loginIntro').textContent='Masuk menggunakan nomor HP yang terdaftar dan password akun FMart Anda.';
+      $('registerBtn').textContent='Buat Akun Wali Santri';
+      $('loginBtn').textContent='Masuk ke FMart';
+    }
     function loading(show,text){$('loadingText').textContent=text||'Memproses...';$('loading').classList.toggle('hidden',!show)}
     function runServer(fn,...args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args))}
     function showLogin(message){$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginError').textContent=message||''}
@@ -1239,7 +1267,8 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
     function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
     function openRegister(){ $('registerError').textContent=''; $('registerModal').classList.remove('hidden'); $('regNama').focus(); }
     function closeRegister(){ $('registerModal').classList.add('hidden'); }
-    async function submitRegister(){const btn=$('saveRegister');if(btn.disabled)return;const nama=$('regNama').value.trim(),phone=$('regPhone').value.trim(),pw=$('regPassword').value,cf=$('regConfirm').value,email=$('regEmail').value.trim(),alamat=$('regAlamat').value.trim();$('registerError').textContent='';if(!nama||!phone||!pw||!cf){$('registerError').textContent='Nama, No. HP, dan password wajib diisi.';return}if(pw.length<10){$('registerError').textContent='Password minimal 10 karakter.';return}if(pw!==cf){$('registerError').textContent='Konfirmasi password tidak sama.';return}btn.disabled=true;loading(true,'Mendaftarkan akun...');try{const r=await runServer('registerWaliSantri',nama,phone,pw,email,alamat);if(!r.ok)throw new Error(r.message||'Pendaftaran gagal.');closeRegister();$('username').value=phone;$('password').value=pw;$('loginError').textContent='Pendaftaran berhasil. Silakan klik Masuk ke FMart.';$('username').focus()}catch(e){$('registerError').textContent=e.message||'Pendaftaran gagal.'}finally{btn.disabled=false;loading(false)}}
+    function normalizeBuyerPhoneInput(value){let phone=String(value||'').trim().replace(/[^0-9]/g,'');if(phone.indexOf('62')===0)phone='0'+phone.slice(2);else if(phone.charAt(0)==='8')phone='0'+phone;return phone;}
+    async function submitRegister(){const btn=$('saveRegister');if(btn.disabled)return;const nama=$('regNama').value.trim(),rawPhone=$('regPhone').value,phone=normalizeBuyerPhoneInput(rawPhone),pw=$('regPassword').value,cf=$('regConfirm').value,email=$('regEmail').value.trim(),alamat=$('regAlamat').value.trim();$('registerError').textContent='';if(!nama||!rawPhone||!pw||!cf){$('registerError').textContent='Nama, nomor HP, dan password wajib diisi.';return}if(!/^08[0-9]{8,13}$/.test(phone)){$('registerError').textContent='Nomor HP tidak valid. Gunakan format 08xxxxxxxxxx atau +628xxxxxxxxxx.';$('regPhone').focus();return}if(pw.length<10){$('registerError').textContent='Password minimal 10 karakter.';$('regPassword').focus();return}if(pw!==cf){$('registerError').textContent='Konfirmasi password tidak sama.';$('regConfirm').focus();return}if(email&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){$('registerError').textContent='Format email belum valid.';$('regEmail').focus();return}$('regPhone').value=phone;btn.disabled=true;loading(true,'Mendaftarkan akun...');try{const r=await runServer('registerWaliSantri',nama,phone,pw,email,alamat);if(!r.ok)throw new Error(r.message||'Pendaftaran gagal.');closeRegister();$('username').value=phone;$('password').value='';$('loginError').textContent='Akun berhasil dibuat. Silakan masuk menggunakan nomor HP dan password Anda.';$('password').focus()}catch(e){$('registerError').textContent=e.message||'Pendaftaran gagal.'}finally{btn.disabled=false;loading(false)}}
     const togglePassword=$('togglePassword');
   if(togglePassword) togglePassword.addEventListener('click',()=>{const input=$('password');const visible=input.type==='text';input.type=visible?'password':'text';togglePassword.textContent=visible?'◉':'◉';togglePassword.setAttribute('aria-label',visible?'Tampilkan password':'Sembunyikan password');togglePassword.title=visible?'Tampilkan password':'Sembunyikan password';input.focus()});
   $('loginForm').addEventListener('submit',async e=>{e.preventDefault();if($('loginBtn').disabled)return;$('loginBtn').disabled=true;loading(true,'Memeriksa akun...');$('loginError').textContent='';try{const r=await runServer('login',$('username').value,$('password').value,FMART_PORTAL_MODE);if(!r.ok){$('loginError').textContent=r.message||'Login gagal.';return}state.token=r.token;sessionStorage.setItem('fmartToken',r.token);await loadInitial()}catch(err){$('loginError').textContent=err.message||'Tidak dapat menghubungi server.'}finally{$('loginBtn').disabled=false;loading(false)}});$('registerBtn').addEventListener('click',openRegister);$('closeRegister').addEventListener('click',closeRegister);$('registerModal').addEventListener('click',e=>{if(e.target.id==='registerModal')closeRegister()});$('saveRegister').addEventListener('click',submitRegister);
