@@ -705,6 +705,94 @@ function checkoutCart(token, santriId, catatan, metodePengiriman, tujuan) {
 
 
 /** Fase 4: pesanan dan pembayaran Wali Santri. */
+/** Dashboard ringkas Wali: hanya membaca pesanan dan relasi milik sesi aktif. */
+function getWaliDashboard(token) {
+  const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
+  const ss = getSS_();
+  const children = getChildrenForWali_(ss, session.userId);
+  const childMap = {};
+  children.forEach(function(child){ childMap[String(child.id)] = child; });
+
+  const orderRows = readRows_(ss.getSheetByName('Pesanan'))
+    .filter(function(row){ return String(row[2]) === String(session.userId); })
+    .sort(function(a,b){ return new Date(b[10] || 0).getTime() - new Date(a[10] || 0).getTime(); });
+
+  const ownedOrders = {};
+  orderRows.forEach(function(row){ ownedOrders[String(row[0])] = true; });
+  const paymentMap = {};
+  readRows_(ss.getSheetByName('Pembayaran')).forEach(function(row){
+    const orderId = String(row[1] || '');
+    if (!ownedOrders[orderId]) return;
+    const created = new Date(row[8] || 0).getTime() || 0;
+    if (!paymentMap[orderId] || created >= paymentMap[orderId].created) {
+      paymentMap[orderId] = {
+        created:created,
+        status:String(row[5] || ''),
+        method:String(row[2] || ''),
+        nominal:Number(row[3]) || 0
+      };
+    }
+  });
+
+  const summary = {
+    totalOrders:orderRows.length,
+    activeOrders:0,
+    unpaidOrders:0,
+    awaitingPaymentVerification:0,
+    rejectedPayments:0,
+    completedOrders:0,
+    cancelledOrders:0
+  };
+  const recentOrders = orderRows.slice(0,5).map(function(row){
+    const orderId = String(row[0]);
+    const status = String(row[8] || '');
+    const payment = paymentMap[orderId] || null;
+    if (status === 'MENUNGGU_PEMBAYARAN') summary.unpaidOrders++;
+    if (['DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR'].indexOf(status) !== -1) summary.activeOrders++;
+    if (status === 'DITERIMA') summary.completedOrders++;
+    if (status === 'DIBATALKAN') summary.cancelledOrders++;
+    if (payment && payment.status === 'MENUNGGU_VERIFIKASI') summary.awaitingPaymentVerification++;
+    if (payment && payment.status === 'DITOLAK') summary.rejectedPayments++;
+    const child = childMap[String(row[3])] || {name:'Santri',className:''};
+    return {
+      orderId:orderId,
+      number:String(row[1] || ''),
+      childName:String(child.name || ''),
+      className:String(child.className || ''),
+      total:Number(row[7]) || 0,
+      status:status,
+      paymentStatus:payment ? payment.status : '',
+      createdAt:dateIso_(row[10])
+    };
+  });
+
+  // Hitung ringkasan seluruh pesanan, bukan hanya lima pesanan terbaru.
+  summary.activeOrders = 0;
+  summary.unpaidOrders = 0;
+  summary.awaitingPaymentVerification = 0;
+  summary.rejectedPayments = 0;
+  summary.completedOrders = 0;
+  summary.cancelledOrders = 0;
+  orderRows.forEach(function(row){
+    const status = String(row[8] || '');
+    const payment = paymentMap[String(row[0])] || null;
+    if (status === 'MENUNGGU_PEMBAYARAN') summary.unpaidOrders++;
+    if (['DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR'].indexOf(status) !== -1) summary.activeOrders++;
+    if (status === 'DITERIMA') summary.completedOrders++;
+    if (status === 'DIBATALKAN') summary.cancelledOrders++;
+    if (payment && payment.status === 'MENUNGGU_VERIFIKASI') summary.awaitingPaymentVerification++;
+    if (payment && payment.status === 'DITOLAK') summary.rejectedPayments++;
+  });
+
+  return {
+    ok:true,
+    account:{name:String(session.nama || ''),username:String(session.username || '')},
+    children:children,
+    summary:summary,
+    recentOrders:recentOrders
+  };
+}
+
 function getMyOrders(token) {
   const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
   const ss = getSS_();
