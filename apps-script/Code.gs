@@ -120,14 +120,8 @@ function login(username, password, portalMode) {
     return {ok:false, message:'Akun ini tidak dapat digunakan pada jalur FMart tersebut.'};
   }
 
-  if (portalMode === 'ADMINFMART16720') {
-    const staffEmail = normalizeEmail_(r[10]);
-    if (!isValidStaffEmail_(staffEmail)) {
-      recordLoginFailure_(rate);
-      return {ok:false, message:'Email akun Admin belum diatur. Hubungi Superadmin.'};
-    }
-    return issueAdminLoginOtp_(r, rate);
-  }
+  // OTP email Admin dinonaktifkan sementara. Email tetap menjadi username staf;
+  // password, status akun, pembatasan percobaan, dan role guard tetap berlaku.
 
   // Migrasi hash lama hanya setelah password lama terbukti benar.
   if (FMART.PASSWORD_HASH_MODE === 'PBKDF2' && isLegacyPasswordHash_(String(r[2] || ''))) {
