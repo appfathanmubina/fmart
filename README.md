@@ -12,7 +12,7 @@ Repositori ini berisi shell PWA mobile dan salinan antarmuka/backend Google Apps
 
 ## Integrasi PWA
 
-Web App Apps Script tetap memakai `ALLOWALL` karena PWA memuatnya di dalam iframe lintas domain. Google Apps Script tidak menyediakan konfigurasi allowlist origin untuk header frame pada `HtmlOutput`; `DEFAULT` akan memblokir integrasi iframe. Sebagai mitigasi tambahan, shell PWA menolak dirinya sendiri jika disematkan oleh situs lain. Shell mengirim handshake `postMessage` saat iframe Apps Script selesai dimuat; halaman Apps Script hanya membuka UI jika pesan berasal dari parent langsung dengan origin `https://appfathanmubina.github.io`. Iframe Apps Script yang dibuka oleh origin lain atau tidak menerima handshake akan diblokir pada sisi antarmuka. Ini mengurangi risiko clickjacking umum, tetapi bukan pengganti header `frame-ancestors`/`X-Frame-Options` dan tidak melindungi jika origin PWA tepercaya diambil alih. Jika domain hosting berubah, allowlist di `apps-script/Index.html` dan konfigurasi iframe harus diperbarui bersamaan. Jangan mengubah `ALLOWALL` menjadi `DEFAULT` tanpa memindahkan arsitektur PWA dari iframe.
+Web App Apps Script tetap memakai `ALLOWALL` karena PWA memuatnya di dalam iframe lintas domain. Google Apps Script tidak menyediakan konfigurasi allowlist origin untuk header frame pada `HtmlOutput`; `DEFAULT` akan memblokir integrasi iframe. Sebagai mitigasi tambahan, shell PWA menolak dirinya sendiri jika disematkan oleh situs lain. Gate handshake di halaman Apps Script telah dihapus karena tidak andal pada redirect lintas domain Apps Script; otorisasi tetap ditegakkan di backend melalui pemeriksaan portal, role, dan sesi. Mitigasi shell ini bukan pengganti header `frame-ancestors`/`X-Frame-Options` dan tidak melindungi jika origin PWA tepercaya diambil alih. Jangan mengubah `ALLOWALL` menjadi `DEFAULT` tanpa memindahkan arsitektur PWA dari iframe.
 
 URL deployment disimpan di `config.js`. Host shell melalui HTTPS (misalnya GitHub Pages dari root branch utama). PWA menyimpan shell untuk dibuka offline, tetapi login dan data FMart tetap memerlukan koneksi.
 
@@ -28,3 +28,15 @@ URL deployment disimpan di `config.js`. Host shell melalui HTTPS (misalnya GitHu
 ## Migrasi hash password (bertahap)
 
 Backend menyiapkan format versi `pbkdf2-sha256:600000:...` berbasis PBKDF2-HMAC-SHA256, dengan kompatibilitas verifikasi hash SHA-256 lama dan migrasi otomatis setelah login berhasil. Mode tetap `LEGACY` secara default agar waktu login tidak berubah sebelum benchmark pada runtime Apps Script sebenarnya. Jalankan `testPbkdf2Implementation_()` dan `benchmarkPbkdf2_()` dari editor Apps Script; aktifkan `PASSWORD_HASH_MODE: 'PBKDF2'` hanya setelah vektor uji RFC 8018 lolos dan estimasi 600.000 iterasi memenuhi target waktu login (disarankan kurang dari 1 detik). Setelah mode diaktifkan dan deployment diperbarui, akun lama dimigrasikan saat login sukses; akun baru, reset password, dan perubahan password langsung memakai PBKDF2. Jangan menghapus kompatibilitas SHA-256 sebelum seluruh akun lama selesai bermigrasi atau sudah diwajibkan reset password.
+
+
+## Login Admin dengan OTP email
+
+- Jalur Admin menggunakan alamat email staf sebagai username untuk role `ADMIN`, `SUPERADMIN`, `KASIR`, dan `GUDANG`. Jalur Pembeli tetap menggunakan nomor HP Wali Santri.
+- Login Admin dilakukan dalam dua langkah: email + password, lalu kode OTP 6 digit yang dikirim melalui email. Sesi Admin hanya dibuat setelah OTP berhasil diverifikasi.
+- OTP login berlaku 5 menit, hanya dapat dipakai sekali, dibatasi maksimal 5 percobaan, dan pengiriman ulang dibatasi jeda 60 detik. Kode disimpan sebagai HMAC hash dengan secret di Script Properties.
+- Kolom tambahan pada sheet `Users`: `Email` dan `EmailVerified`. Jalankan `setupFMartDatabase()` untuk melengkapi header yang belum ada; fungsi setup tidak menghapus data lama.
+- Bootstrap Superadmin pertama meminta alamat email. Untuk akun staf yang sudah ada, isi kolom `Email` dengan alamat unik yang dapat diakses staf. Pada login OTP pertama yang berhasil, sistem menandai `EmailVerified` sebagai TRUE. Jangan mengaktifkan akun Admin tanpa email yang benar.
+- Fungsi backend `setStaffEmail(token,userId,email)` dan `verifyStaffEmail(token,challengeId,code)` tersedia untuk alur pengelolaan/verifikasi email oleh Superadmin. Integrasi form pengelolaan staf akan diselesaikan pada tahap manajemen pengguna.
+- OTP memakai layanan email Apps Script (`MailApp`) dan tunduk pada kuota pengiriman Google. OneSignal tetap digunakan untuk push notification, bukan OTP.
+- Setelah pembaruan, sinkronkan file Apps Script dari repository dan deploy versi Web App baru. Perubahan pada repository saja tidak otomatis memperbarui deployment Apps Script.
