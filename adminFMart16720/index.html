@@ -23,9 +23,12 @@
   <main id="setup" class="setup" hidden></main>
   <iframe id="app" class="app-frame" title="Panel Admin FMart" allow="clipboard-read; clipboard-write" referrerpolicy="strict-origin" hidden></iframe>
   <div id="status" class="status" role="status" hidden></div>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script src="../config.js"></script>
   <script>
     const setup=document.querySelector("#setup"),frame=document.querySelector("#app"),status=document.querySelector("#status");
+    window.OneSignalDeferred=window.OneSignalDeferred||[];let fmartOneSignalExternalId="";
+    window.OneSignalDeferred.push(async function(OneSignal){await OneSignal.init({appId:"45d38692-f97f-4e94-8d71-6b3e9a4c8c5f",safari_web_id:"web.onesignal.auto.56dcd4fd-a138-4c52-be69-7f4de2370515",serviceWorkerPath:"/fmart/service-worker.js",serviceWorkerParam:{scope:"/fmart/"},notifyButton:{enable:false}});window.FMART_ONESIGNAL_READY=true});
     const endpoint=String(window.FMART_APP_URL||"").trim();
     if(/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec(?:\?.*)?$/.test(endpoint)){
       const portalUrl=new URL(endpoint);portalUrl.searchParams.set("portal","ADMINFMART16720");frame.src=portalUrl.toString();frame.hidden=false;
@@ -41,7 +44,9 @@
     window.addEventListener('message',async event=>{
       if(event.source!==frame.contentWindow)return;
       const data=event.data||{};
-
+      if(data.type==='FMART_ONESIGNAL_LOGIN'){fmartOneSignalExternalId=String(data.externalId||"");window.OneSignalDeferred.push(async OneSignal=>{if(fmartOneSignalExternalId)await OneSignal.login(fmartOneSignalExternalId)});return;}
+      if(data.type==='FMART_ONESIGNAL_LOGOUT'){fmartOneSignalExternalId="";window.OneSignalDeferred.push(async OneSignal=>{await OneSignal.logout()});return;}
+      if(data.type==='FMART_ONESIGNAL_ENABLE'){window.OneSignalDeferred.push(async OneSignal=>{try{if(!OneSignal.Notifications.isPushSupported())throw new Error("Perangkat atau browser ini belum mendukung notifikasi push.");const granted=await OneSignal.Notifications.requestPermission();if(granted)await OneSignal.User.PushSubscription.optIn();frame.contentWindow.postMessage({type:"FMART_ONESIGNAL_STATUS",status:granted?"enabled":"denied"},"*")}catch(error){frame.contentWindow.postMessage({type:"FMART_ONESIGNAL_STATUS",status:"error",message:error&&error.message?error.message:"Notifikasi belum dapat diaktifkan."},"*")}});return;}
       if(data.type==='FMART_INSTALL_READY'){sendInstallState();return}
 
       if(data.type!=='FMART_INSTALL_REQUEST')return;
