@@ -2243,7 +2243,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       const counts={DIBAYAR:0,DIPROSES:0,DISIAPKAN:0,DIANTAR:0};rows.forEach(o=>{if(counts[o.status]!==undefined)counts[o.status]++});
       $('opsMainTitle').textContent='Pemenuhan Pesanan';
       $('opsMainBody').innerHTML=opsWelcomeMarkup('Antrean pemenuhan Gudang','Proses pesanan hanya setelah pembayaran terverifikasi. Buka rincian barang sebelum menandai tahap selesai.','▤')+
-        '<div class="fulfillment-metrics">'+[['Menunggu Diproses',counts.DIBAYAR],['Sedang Diproses',counts.DIPROSES],['Siap Diserahkan',counts.DISIAPKAN],['Dalam Pengantaran',counts.DIANTAR]].map(x=>'<div class="fulfillment-metric"><span>'+x[0]+'</span><strong>'+formatMoney(x[1])+'</strong></div>').join('')+'</div>'+
+        '<div class="fulfillment-metrics warehouse-fulfillment-metrics">'+[['Menunggu Diproses',counts.DIBAYAR],['Sedang Diproses',counts.DIPROSES],['Siap Diserahkan',counts.DISIAPKAN],['Dalam Pengantaran',counts.DIANTAR]].map(x=>'<div class="fulfillment-metric"><span>'+x[0]+'</span><strong>'+formatMoney(x[1])+'</strong></div>').join('')+'</div>'+
         '<section class="section warehouse-workspace"><div class="section-title"><div><h2>Antrean pesanan</h2><span class="muted">Urut berdasarkan data pesanan terbaru</span></div><button class="secondary" id="warehouseRefresh" type="button">↻ Muat ulang</button></div>'+
         '<div class="warehouse-filter-grid"><input id="warehouseSearch" type="search" placeholder="Cari nomor pesanan, Wali, atau Santri"><select id="warehouseStatus"><option value="">Semua tahapan</option><option value="DIBAYAR">Menunggu Diproses</option><option value="DIPROSES">Diproses</option><option value="DISIAPKAN">Disiapkan</option><option value="DIANTAR">Diantar</option></select></div>'+
         '<div class="table-wrap"><table class="data-table fulfillment-table"><thead><tr><th>Pesanan</th><th>Wali / Santri</th><th>Total</th><th>Tahapan</th><th>Tindakan</th></tr></thead><tbody id="warehouseRows"></tbody></table></div></section>';
@@ -2618,7 +2618,7 @@ body.admin-portal .warehouse-home-panel,body.admin-portal .warehouse-report-work
 body.admin-portal .warehouse-home-section-head button{flex:0 0 auto}
 body.admin-portal .warehouse-home-stock-row,body.admin-portal .warehouse-home-history-row{min-width:0}
 body.admin-portal .warehouse-home-order-status{max-width:45%;overflow-wrap:anywhere;white-space:normal;text-align:center}
-body.admin-portal .fulfillment-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+body.admin-portal .warehouse-fulfillment-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
 body.admin-portal .warehouse-filter-grid{grid-template-columns:minmax(0,2fr) minmax(180px,1fr)}
 body.admin-portal .warehouse-workspace .section-title{align-items:center;gap:12px;flex-wrap:wrap}
 body.admin-portal .warehouse-workspace .section-title>div{min-width:0}
@@ -2639,11 +2639,10 @@ body.admin-portal .warehouse-home-actions button:focus-visible,body.admin-portal
 @media(max-width:980px){
  body.admin-portal .warehouse-home-flow{grid-template-columns:repeat(2,minmax(0,1fr))}
  body.admin-portal .warehouse-home-grid{grid-template-columns:1fr}
- body.admin-portal .fulfillment-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.admin-portal .warehouse-fulfillment-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
  body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 @media(max-width:620px){
- body.admin-portal #opsMainBody{padding-left:0;padding-right:0}
  body.admin-portal .warehouse-home-intro{padding:17px;border-radius:16px;gap:10px}
  body.admin-portal .warehouse-home-intro h2{font-size:21px}
  body.admin-portal .warehouse-home-intro p{font-size:12px}
@@ -2661,10 +2660,10 @@ body.admin-portal .warehouse-home-actions button:focus-visible,body.admin-portal
  body.admin-portal .warehouse-home-section-head h3{font-size:14px}
  body.admin-portal .warehouse-home-section-head p{font-size:11px;line-height:1.45}
  body.admin-portal .warehouse-home-section-head .text-button{font-size:11px;padding:5px 0}
- body.admin-portal .fulfillment-metrics{gap:8px}
- body.admin-portal .fulfillment-metric{padding:12px;border-radius:13px}
- body.admin-portal .fulfillment-metric span{font-size:11px;line-height:1.4}
- body.admin-portal .fulfillment-metric strong{font-size:21px}
+ body.admin-portal .warehouse-fulfillment-metrics{gap:8px}
+ body.admin-portal .warehouse-fulfillment-metrics .fulfillment-metric{padding:12px;border-radius:13px}
+ body.admin-portal .warehouse-fulfillment-metrics .fulfillment-metric span{font-size:11px;line-height:1.4}
+ body.admin-portal .warehouse-fulfillment-metrics .fulfillment-metric strong{font-size:21px}
  body.admin-portal .warehouse-filter-grid{grid-template-columns:1fr;gap:8px}
  body.admin-portal .warehouse-filter-grid input,body.admin-portal .warehouse-filter-grid select{min-height:46px}
  body.admin-portal .warehouse-workspace{padding:13px;margin-top:14px}
