@@ -2001,7 +2001,7 @@ function submitDeliveryProof(token, assignmentId, fileName, mimeType, dataUrl, n
     proofSheet.appendRow([proofId,orderId,assignmentId,createdFile.getId(),createdFile.getUrl(),fileName,mimeType,bytes.length,note,session.userId,now]);
     confirmSheet.appendRow([makeFMartId_('KPG'),orderId,now,deadline,'MENUNGGU_KONFIRMASI','','','',false,now]);
     const waliId=String(order.values[2]||'');
-    if(waliId) ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),waliId,orderId,'Bukti pengantaran tersedia','Petugas telah mengunggah bukti pengantaran pesanan '+String(order.values[1]||orderId)+'. Silakan periksa dan konfirmasi penerimaan.','PENGANTARAN',false,now]);
+    if(waliId) ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),waliId,orderId,'Bukti pengantaran tersedia','Petugas telah mengunggah foto bukti pengantaran untuk pesanan '+String(order.values[1]||orderId)+'. Bukti akan ditampilkan pada detail pesanan.','PENGANTARAN',false,now]);
     recordDeliveryHistory_(ss,assignmentId,orderId,session,'UNGGAH_BUKTI','DALAM_PERJALANAN','MENUNGGU_KONFIRMASI',note||'Bukti foto pengantaran diunggah');
     writeAudit_(session.userId,session.role,'UPLOAD_DELIVERY_PROOF','BUKTI_PENGANTARAN',proofId,'',JSON.stringify({orderId:orderId,assignmentId:assignmentId,mimeType:mimeType,sizeBytes:bytes.length,confirmationDeadline:deadline.toISOString()}),'Mengunggah bukti foto pengantaran');
     SpreadsheetApp.flush();
