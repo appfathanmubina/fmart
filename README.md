@@ -413,3 +413,23 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 
 - Pemeriksaan statis dilakukan pada tampilan notifikasi, pembatasan UserId, operasi tandai dibaca, profil, pusat bantuan, dan CSS buyer-only.
 - Belum dilakukan pengujian browser, akun Wali aktif, data notifikasi Spreadsheet, WhatsApp, atau deployment Apps Script.
+
+
+## Pengembangan Portal Wali Santri — Tahap 12
+
+### Penyempurnaan UI/UX, PWA, Responsivitas, dan Audit Alur
+
+- Warna tema browser dan PWA Buyer/Admin diselaraskan dengan identitas FMart `#800080`; ID dan scope manifest Buyer serta Admin tetap terpisah.
+- Cache shell PWA dinaikkan ke `fmart-shell-v11` agar perubahan shell, manifest, dan aset terbaru dapat diambil setelah service worker diperbarui.
+- Aksesibilitas portal Wali diperkuat dengan indikator fokus keyboard yang terlihat, batas tinggi modal yang mengikuti viewport dinamis, area tabel yang dapat digulir horizontal, dan batas lebar gambar.
+- Audit statis alur Wali mencakup login/registrasi, dashboard, profil/relasi santri, katalog dan pencarian, detail produk/variasi/stok, keranjang umum, checkout satu santri per pesanan, pembayaran QRIS saja, riwayat/detail, pelacakan dan konfirmasi penerimaan, notifikasi, pengaturan akun, serta pusat bantuan.
+- Shell Buyer dan Admin tetap memakai manifest, start URL, dan rute portal yang berbeda. Handshake tombol instalasi dari iframe ke shell diperiksa pada kedua portal.
+- Service worker menyimpan shell statis untuk pembukaan offline, tetapi login, data, transaksi, QRIS, dan unggah bukti tetap membutuhkan koneksi internet karena aplikasi utama berjalan melalui Google Apps Script.
+- Styling tambahan Tahap 12 pada antarmuka Wali dibatasi dengan selector `body.buyer-portal`. Tidak ada perubahan skema Spreadsheet atau proses operasional Admin/Kasir/Gudang.
+
+### Hasil audit dan batas pengujian
+
+- Pemeriksaan statis memastikan guard role portal, kebijakan QRIS-only pada backend, endpoint konfirmasi penerimaan, endpoint notifikasi milik Wali, pemisahan manifest Buyer/Admin, handshake instalasi, dan versi cache service worker.
+- Pemeriksaan CSS menemukan media query untuk desktop, tablet, dan mobile serta dukungan `prefers-reduced-motion`; aturan fokus keyboard tambahan diterapkan pada kontrol Wali.
+- Belum dilakukan uji browser lintas perangkat, instalasi PWA aktual, Lighthouse, uji offline/online nyata, akun multi-role, transaksi Spreadsheet/Drive, pembayaran QRIS aktual, atau deployment Apps Script. Karena itu hasil ini merupakan audit statis repository, bukan sertifikasi siap produksi.
+- Sebelum penggunaan produksi, sinkronkan file Apps Script dari repository dan deploy versi terbaru; kemudian uji akun Wali dan semua role petugas, alur pesanan end-to-end, unggah bukti, konfirmasi penerimaan, serta instalasi Buyer dan Admin pada perangkat nyata.
