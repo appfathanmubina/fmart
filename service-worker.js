@@ -1,4 +1,4 @@
-const CACHE = 'fmart-shell-v11';
+const CACHE = 'fmart-shell-v12';
 const SHELL = ['./', './index.html', './adminFMart16720/', './adminFMart16720/index.html', './adminFMart16720/manifest.webmanifest', './manifest.webmanifest', './config.js', './icons/fmart-180.png', './icons/fmart-192.png', './icons/fmart-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
