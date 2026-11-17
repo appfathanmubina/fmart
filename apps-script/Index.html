@@ -2253,7 +2253,6 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
           const next={DIBAYAR:'DIPROSES',DIPROSES:'DISIAPKAN',DISIAPKAN:'DIANTAR'}[o.status];
           return '<tr><td><strong>'+escapeHtml(o.number)+'</strong><small class="fulfillment-subline">'+escapeHtml(formatDate(o.createdAt))+'</small></td><td>'+escapeHtml(o.waliName||'-')+'<br><strong>'+escapeHtml(o.childName||'-')+'</strong><small class="fulfillment-subline">'+escapeHtml(o.className||'-')+'</small></td><td>Rp '+formatMoney(o.total)+'</td><td><span class="status-badge">'+escapeHtml(statusLabel(o.status))+'</span></td><td><div class="fulfillment-actions"><button class="primary warehouse-detail" data-id="'+escapeHtml(o.orderId)+'" type="button">Buka Rincian & Proses</button></div></td></tr>';
         }).join(''):'<tr><td colspan="5"><div class="empty-box">Tidak ada pesanan pada tahapan ini.</div></td></tr>';
-        document.querySelectorAll('.warehouse-next').forEach(btn=>btn.onclick=()=>advanceWarehouse(btn.dataset.id,btn.dataset.next));
         document.querySelectorAll('.warehouse-detail').forEach(btn=>btn.onclick=()=>openOpsOrderDetail(btn.dataset.id));
       };
       $('warehouseSearch').addEventListener('input',draw);$('warehouseStatus').addEventListener('change',draw);$('warehouseRefresh').onclick=async()=>{await loadOps();renderOpsWarehouse()};draw();
