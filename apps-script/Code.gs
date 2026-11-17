@@ -613,6 +613,7 @@ function getProductDetail(token, productId) {
 
 function getCatalog(token) {
   const session = requireSession_(token);
+  if (session.role === FMART.ROLES.PETUGAS_PENGANTAR) throw new Error('Petugas Pengantar hanya memiliki akses ke modul pengantaran.');
   const ss = getSS_();
   const categorySheet = ss.getSheetByName('Kategori');
   const productSheet = ss.getSheetByName('Produk');
