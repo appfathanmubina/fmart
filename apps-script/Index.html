@@ -1429,21 +1429,19 @@ body.buyer-portal #profileModal .modal-card{
           state.data={user:session.user};showApp();
           $('waliNotificationBtn').classList.add('hidden');$('headerCartBtn').classList.add('hidden');$('headerOrdersBtn').classList.add('hidden');
           showStaffApp();
-          document.querySelectorAll('#staffNav .nav-btn').forEach(function(btn){btn.classList.add('hidden');btn.classList.remove('active');});
-          $('staffDashboard').classList.remove('hidden');$('staffDashboard').classList.add('active');$('staffDelivery').classList.remove('hidden');
           $('opsRefresh').classList.add('hidden');$('opsStats').classList.add('hidden');renderDeliveryWorkspace();loading(false);return;
         }
         const catalog=await runServer('getCatalog',state.token);
         if(!catalog||!catalog.ok)throw new Error('Data FMart tidak dapat dimuat.');
         state.data=catalog;
         state.data.user=session.user;
-        if(window.parent!==window)window.parent.postMessage({type:'FMART_ONESIGNAL_LOGIN',externalId:String(session.user.userId||'')},'*');
+        if(window.parent!==window)window.parent.postMessage({type:'FMART_ONESIGNAL_LOGIN',externalId:String(session.user.userId||'')},'https://appfathanmubina.github.io');
 
         // Tampilkan aplikasi segera setelah data inti tersedia. Profil dan operasi
         // tambahan tidak boleh menghalangi pengguna melihat halaman utama.
         showApp();
         $('waliNotificationBtn').classList.toggle('hidden',session.user.role!=='WALI_SANTRI');
-        $('headerCartBtn').classList.toggle('hidden',session.user.role!=='WALI_SANTRI');$('headerOrdersBtn').classList.toggle('hidden',session.user.role!=='WALI_SANTRI');$('staffReceiving').classList.toggle('hidden',!['ADMIN','GUDANG','SUPERADMIN'].includes(session.user.role));$('staffDeliveryAssign').classList.toggle('hidden',!['ADMIN','GUDANG','SUPERADMIN'].includes(session.user.role));$('staffWarehouseReports').classList.toggle('hidden',!['ADMIN','GUDANG','SUPERADMIN'].includes(session.user.role));$('staffDeliveryComplaints').classList.toggle('hidden',!['ADMIN','SUPERADMIN'].includes(session.user.role));
+        $('headerCartBtn').classList.toggle('hidden',session.user.role!=='WALI_SANTRI');$('headerOrdersBtn').classList.toggle('hidden',session.user.role!=='WALI_SANTRI');
         if(session.user.role==='WALI_SANTRI'){
           state.selectedChildId='';
           sessionStorage.removeItem('fmartSelectedChildId');
@@ -1504,7 +1502,25 @@ async function openWaliProfilePage(){
     if($('waliProfilePageRetry'))$('waliProfilePageRetry').onclick=()=>{state.waliProfileManagement=null;openWaliProfilePage()};
   }
 }
-    function showStaffApp(){$('customerNav').classList.add('hidden');$('staffNav').classList.remove('hidden');$('operationsView').classList.remove('hidden');$('appView').querySelector('.main').classList.add('hidden');$('userBtn').textContent=state.data.user.nama||'Petugas';$('greeting').textContent='Operasional FMart'}
+    function configureStaffNavigation(role){
+  const permissions={
+    SUPERADMIN:['staffDashboard','staffOrders','staffCatalog','staffStock','staffReceiving','staffWarehouseReports','staffDeliveryAssign','staffDeliveryComplaints'],
+    ADMIN:['staffDashboard','staffOrders','staffCatalog','staffStock','staffReceiving','staffWarehouseReports','staffDeliveryAssign','staffDeliveryComplaints'],
+    KASIR:['staffDashboard','staffOrders'],
+    GUDANG:['staffDashboard','staffOrders','staffStock','staffReceiving','staffWarehouseReports','staffDeliveryAssign'],
+    PETUGAS_PENGANTAR:['staffDashboard','staffDelivery']
+  };
+  const allowed=permissions[String(role||'').toUpperCase()]||[];
+  document.querySelectorAll('#staffNav .nav-btn').forEach(function(btn){
+    const visible=allowed.indexOf(btn.id)>=0;
+    btn.classList.toggle('hidden',!visible);
+    btn.classList.remove('active');
+    btn.setAttribute('aria-hidden',visible?'false':'true');
+    btn.tabIndex=visible?0:-1;
+  });
+  const home=$('staffDashboard');if(home&&allowed.includes('staffDashboard'))home.classList.add('active');
+}
+function showStaffApp(){$('customerNav').classList.add('hidden');$('staffNav').classList.remove('hidden');$('operationsView').classList.remove('hidden');$('appView').querySelector('.main').classList.add('hidden');$('userBtn').textContent=state.data.user.nama||'Petugas';$('greeting').textContent='Operasional FMart';configureStaffNavigation(state.data.user.role)}
     let deliveryDashboardData=null;
     let deliveryAssignmentData=null;
 async function renderDeliveryAssignmentWorkspace(){
@@ -1775,7 +1791,7 @@ function openProfile(){
   $('profileLogoutBtn').onclick=async()=>{
     closeProfile();
     loading(true,'Keluar...');
-    if(window.parent!==window)window.parent.postMessage({type:'FMART_ONESIGNAL_LOGOUT'},'*');
+    if(window.parent!==window)window.parent.postMessage({type:'FMART_ONESIGNAL_LOGOUT'},'https://appfathanmubina.github.io');
     try{await runServer('logout',state.token)}catch(e){}
     finally{sessionStorage.clear();state.token='';state.data=null;state.profile=null;state.selectedChildId='';state.cart=null;updateCartBadge(0);loading(false);showLogin('Anda telah keluar dari FMart.')}
   };
@@ -1878,7 +1894,7 @@ function renderWaliProfileManagement(result){
     '<p class="wali-profile-footnote">Persetujuan hubungan santri dan pelepasan santri yang sudah aktif dilakukan oleh Admin untuk menjaga keamanan data.</p></section>'+
 '<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">PREFERENSI & BANTUAN</div><h3>Pengaturan dan Bantuan</h3></div></div><div class="wali-help-actions"><button type="button" class="secondary" id="waliEnablePush">♧ Aktifkan Notifikasi</button><button type="button" class="secondary" id="waliOpenNotifications">♧ Lihat Notifikasi</button><button type="button" class="secondary" id="waliOpenHelp">Pusat Bantuan</button><button type="button" class="secondary" id="waliChangePassword">Ganti Password</button></div></section>';
   $('waliProfileForm').onsubmit=saveWaliProfile;
-  $('waliEnablePush').onclick=()=>{if(window.parent!==window)window.parent.postMessage({type:'FMART_ONESIGNAL_ENABLE'},'*');else showToast('Aktifkan notifikasi melalui aplikasi FMart.','info')};
+  $('waliEnablePush').onclick=()=>{if(window.parent!==window)window.parent.postMessage({type:'FMART_ONESIGNAL_ENABLE'},'https://appfathanmubina.github.io');else showToast('Aktifkan notifikasi melalui aplikasi FMart.','info')};
   $('waliOpenNotifications').onclick=()=>{closeProfile();openWaliNotifications()};$('waliOpenHelp').onclick=openWaliHelp;$('waliChangePassword').onclick=()=>openChangePassword();
   $('waliProfileAddChild').onclick=()=>openWaliLinkModal();
   document.querySelectorAll('[data-cancel-wali-request]').forEach(btn=>btn.onclick=()=>cancelWaliProfileRequest(btn.dataset.cancelWaliRequest));
@@ -2713,9 +2729,9 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
       });
       document.addEventListener('focusin',e=>{if(e.target.matches('input,select,textarea'))e.target.scrollIntoView({block:'nearest',behavior:'smooth'})});
       const installAppBtn=document.getElementById('installAppBtn'),installAppHint=document.getElementById('installAppHint');
-      if(installAppBtn){installAppBtn.addEventListener('click',()=>{if(window.parent!==window){window.parent.postMessage({type:'FMART_INSTALL_REQUEST'},'*')}else{installAppHint.textContent='Untuk memasang FMart, buka menu browser lalu pilih Instal aplikasi atau Tambahkan ke layar utama.'}})}
-      window.addEventListener('message',event=>{if(event.origin!=='https://appfathanmubina.github.io')return;const data=event.data||{};if(data.type==='FMART_ONESIGNAL_STATUS'){if(data.status==='enabled')showToast('Notifikasi perangkat berhasil diaktifkan.','success');else if(data.status==='denied')showToast('Izin notifikasi belum diberikan. Ubah izin melalui pengaturan browser.','error');else showToast(data.message||'Notifikasi belum dapat diaktifkan.','error')}else if(data.type==='FMART_INSTALL_STATE'){if(data.installed){installAppHint.textContent='FMart sudah terpasang pada perangkat ini.';installAppBtn.disabled=true;installAppBtn.textContent='FMart Sudah Terpasang'}else if(data.available){installAppHint.textContent='FMart siap dipasang pada perangkat ini.';installAppBtn.disabled=false}}else if(data.type==='FMART_INSTALL_RESULT'){if(data.status==='accepted'){installAppHint.textContent='Permintaan pemasangan diterima. Ikuti konfirmasi browser.'}else if(data.status==='unavailable'){installAppHint.textContent='Browser tidak menampilkan dialog otomatis. Pastikan FMart belum terpasang, lalu buka menu Chrome (⋮) dan pilih Instal aplikasi atau Buat pintasan.'}else{installAppHint.textContent='Pemasangan dibatalkan. Anda dapat mencobanya kembali melalui menu Chrome (⋮).'}}else if(data.type==='FMART_INSTALL_DONE'){installAppHint.textContent='FMart sudah terpasang di perangkat ini.';installAppBtn.disabled=true;installAppBtn.textContent='FMart Sudah Terpasang'}});
-      if(window.parent!==window)window.parent.postMessage({type:'FMART_INSTALL_READY'},'*');
+      if(installAppBtn){installAppBtn.addEventListener('click',()=>{if(window.parent!==window){window.parent.postMessage({type:'FMART_INSTALL_REQUEST'},'https://appfathanmubina.github.io')}else{installAppHint.textContent='Untuk memasang FMart, buka menu browser lalu pilih Instal aplikasi atau Tambahkan ke layar utama.'}})}
+      window.addEventListener('message',event=>{if(window.parent===window||event.source!==window.parent||event.origin!=='https://appfathanmubina.github.io')return;const data=event.data||{};if(data.type==='FMART_ONESIGNAL_STATUS'){if(data.status==='enabled')showToast('Notifikasi perangkat berhasil diaktifkan.','success');else if(data.status==='denied')showToast('Izin notifikasi belum diberikan. Ubah izin melalui pengaturan browser.','error');else showToast(data.message||'Notifikasi belum dapat diaktifkan.','error')}else if(data.type==='FMART_INSTALL_STATE'){if(data.installed){installAppHint.textContent='FMart sudah terpasang pada perangkat ini.';installAppBtn.disabled=true;installAppBtn.textContent='FMart Sudah Terpasang'}else if(data.available){installAppHint.textContent='FMart siap dipasang pada perangkat ini.';installAppBtn.disabled=false}}else if(data.type==='FMART_INSTALL_RESULT'){if(data.status==='accepted'){installAppHint.textContent='Permintaan pemasangan diterima. Ikuti konfirmasi browser.'}else if(data.status==='unavailable'){installAppHint.textContent='Browser tidak menampilkan dialog otomatis. Pastikan FMart belum terpasang, lalu buka menu Chrome (⋮) dan pilih Instal aplikasi atau Buat pintasan.'}else{installAppHint.textContent='Pemasangan dibatalkan. Anda dapat mencobanya kembali melalui menu Chrome (⋮).'}}else if(data.type==='FMART_INSTALL_DONE'){installAppHint.textContent='FMart sudah terpasang di perangkat ini.';installAppBtn.disabled=true;installAppBtn.textContent='FMart Sudah Terpasang'}});
+      if(window.parent!==window)window.parent.postMessage({type:'FMART_INSTALL_READY'},'https://appfathanmubina.github.io');
       window.addEventListener('resize',()=>{document.querySelectorAll('.bottom-nav.nav-hidden').forEach(n=>{if(window.innerWidth>760)n.classList.remove('nav-hidden')})});
     })();
 
