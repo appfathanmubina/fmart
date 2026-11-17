@@ -2091,7 +2091,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         '<div class="order-overview-grid">'+[['Menunggu Pembayaran',stats.menungguPembayaran||0],['Dalam Proses',(Number(stats.dibayar)||0)+(Number(stats.diproses)||0)+(Number(stats.disiapkan)||0)],['Dalam Pengantaran',stats.diantar||0],['Selesai',stats.diterima||0]].map(x=>'<div class="order-overview-card"><span>'+escapeHtml(x[0])+'</span><strong>'+formatMoney(x[1])+'</strong></div>').join('')+'</div>'+
         '<div class="section order-management-panel"><div class="section-title"><div><h2>Daftar pesanan</h2><span class="muted">Data terbaru yang tersedia · '+rows.length+' transaksi</span></div><button class="secondary" id="refreshOrderList" type="button">↻ Muat ulang</button></div>'+
         '<div class="order-filter-grid"><div class="field"><label for="orderSearch">Cari pesanan</label><input id="orderSearch" type="search" placeholder="Nomor, nama wali, anak, atau kelas"></div><div class="field"><label for="orderStatusFilter">Status pesanan</label><select id="orderStatusFilter"><option value="">Semua status</option>'+statuses.map(s=>'<option value="'+s+'">'+escapeHtml(statusLabel(s))+'</option>').join('')+'</select></div><div class="field"><label for="orderDateFrom">Dari tanggal</label><input id="orderDateFrom" type="date"></div><div class="field"><label for="orderDateTo">Sampai tanggal</label><input id="orderDateTo" type="date"></div></div>'+
-        '<div class="order-list-meta"><span id="orderResultCount">Menampilkan '+rows.length+' pesanan</span><button class="text-button" id="resetOrderFilters" type="button">Reset filter</button></div>'+
+        '<div class="order-list-meta"><span id="orderResultCount">Menampilkan '+rows.length+' pesanan</span></div>'+
         '<div class="table-wrap"><table class="data-table order-data-table"><thead><tr><th>Nomor / Tanggal</th><th>Wali Santri</th><th>Santri</th><th>Total</th><th>Pembayaran</th><th>Status Pesanan</th><th>Aksi</th></tr></thead><tbody id="orderRowsBody"></tbody></table></div></div>';
       const draw=()=>{
         const q=$('orderSearch').value.trim().toLowerCase(),status=$('orderStatusFilter').value,from=$('orderDateFrom').value,to=$('orderDateTo').value;
@@ -2104,7 +2104,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         document.querySelectorAll('.ops-detail').forEach(b=>b.onclick=()=>openOpsOrderDetail(b.dataset.id));
       };
       ['orderSearch','orderStatusFilter','orderDateFrom','orderDateTo'].forEach(id=>$(id).addEventListener(id==='orderSearch'?'input':'change',draw));
-      $('resetOrderFilters').onclick=()=>{['orderSearch','orderStatusFilter','orderDateFrom','orderDateTo'].forEach(id=>$(id).value='');draw()};
+      
       $('refreshOrderList').onclick=async()=>{await loadOps();renderOpsOrderList()};
       draw();
     }
