@@ -12,7 +12,7 @@ const FMART = Object.freeze({
   PASSWORD_HASH_MODE: 'LEGACY', // Aktifkan PBKDF2 hanya setelah benchmark runtime lulus.
   PASSWORD_HASH_ITERATIONS: 600000,
   SPREADSHEET_PROPERTY: 'FMART_SPREADSHEET_ID',
-  ROLES: Object.freeze({ WALI_SANTRI:'WALI_SANTRI', ADMIN:'ADMIN', KASIR:'KASIR', GUDANG:'GUDANG', SUPERADMIN:'SUPERADMIN' })
+  ROLES: Object.freeze({ WALI_SANTRI:'WALI_SANTRI', ADMIN:'ADMIN', KASIR:'KASIR', GUDANG:'GUDANG', PETUGAS_PENGANTAR:'PETUGAS_PENGANTAR', SUPERADMIN:'SUPERADMIN' })
 });
 
 function doGet(e) {
@@ -29,7 +29,7 @@ function doGet(e) {
 function portalRoleAllowed_(role, portalMode) {
   role = String(role || '').toUpperCase();
   if (portalMode === 'ADMINFMART16720') {
-    return ['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(role) >= 0;
+    return ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'].indexOf(role) >= 0;
   }
   return role === FMART.ROLES.WALI_SANTRI;
 }
@@ -72,7 +72,7 @@ function login(username, password, portalMode) {
     const loginValue = portalMode === 'ADMINFMART16720'
       ? normalizeEmail_(rows[i][10])
       : normalizeUsername_(rows[i][1]);
-    if (loginValue === username && (portalMode !== 'ADMINFMART16720' || ['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(rowRole) >= 0)) {
+    if (loginValue === username && (portalMode !== 'ADMINFMART16720' || ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'].indexOf(rowRole) >= 0)) {
       if (targetIndex !== -1) {
         recordLoginFailure_(rate);
         return {ok:false,message:'Email atau password tidak valid.'};
@@ -1556,6 +1556,8 @@ function createStaffUser(token, username, password, nama, role, email) {
     email=normalizeEmail_(email);
     if(!isValidStaffEmail_(email)) throw new Error('Email staf wajib diisi dengan format yang valid.');
     username=email;
+    role=String(role||'').trim().toUpperCase();
+    if(['ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'].indexOf(role)<0) throw new Error('Peran petugas tidak valid.');
     const result=createFMartUser(username,password,nama,role,email);
     writeAudit_(session.userId,session.role,'CREATE_USER','USER',result.userId,'',JSON.stringify({username:result.username,role:result.role}),'Membuat pengguna');
     SpreadsheetApp.flush();
@@ -1571,7 +1573,7 @@ function getStaffUserManagement(token) {
   const rows=readRows_(getSS_().getSheetByName('Users'));
   const users=rows.map(function(r){
     return {userId:String(r[0]||''),username:String(r[1]||''),email:String(r[10]||r[1]||''),nama:String(r[4]||''),role:String(r[5]||''),status:String(r[6]||''),createdAt:dateIso_(r[7]),lastLoginAt:dateIso_(r[9])};
-  }).filter(function(u){return u.userId && ['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(u.role)>=0;});
+  }).filter(function(u){return u.userId && ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'].indexOf(u.role)>=0;});
   return {ok:true,users:users,canManage:session.role==='SUPERADMIN',currentUserId:session.userId};
 }
 
@@ -1773,7 +1775,7 @@ function updateFMartUser(token,userId,nama,role){
     const sheet=getSS_().getSheetByName('Users'),row=findRowById_(sheet,String(userId||''),1);if(!row)throw new Error('Pengguna tidak ditemukan.');
     const targetRole=String(row.values[5]||'').toUpperCase();if(targetRole==='SUPERADMIN')throw new Error('Data Superadmin tidak dapat diubah dari menu ini.');
     nama=String(nama||'').trim().slice(0,120);role=String(role||'').toUpperCase();
-    if(!nama)throw new Error('Nama wajib diisi.');if(['ADMIN','KASIR','GUDANG','WALI_SANTRI'].indexOf(role)<0)throw new Error('Role tidak valid.');
+    if(!nama)throw new Error('Nama wajib diisi.');if(['ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','WALI_SANTRI'].indexOf(role)<0)throw new Error('Role tidak valid.');
     const before={nama:String(row.values[4]||''),role:targetRole},now=new Date();
     sheet.getRange(row.rowNumber,5,1,2).setValues([[nama,role]]);sheet.getRange(row.rowNumber,9).setValue(now);
     writeAudit_(session.userId,session.role,'UPDATE_USER','USER',String(userId),JSON.stringify(before),JSON.stringify({nama:nama,role:role}),'Mengubah data pengguna');SpreadsheetApp.flush();
