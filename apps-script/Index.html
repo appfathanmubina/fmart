@@ -2355,8 +2355,12 @@ async function openOpsOrderDetail(id){
         $('opsModalBody').innerHTML='<div class="order-detail-summary"><div><span>Nomor pesanan</span><strong>'+escapeHtml(o.number)+'</strong></div><div><span>Status</span><strong>'+escapeHtml(statusLabel(o.status))+'</strong></div><div><span>Tanggal dibuat</span><strong>'+escapeHtml(formatDate(o.createdAt))+'</strong></div><div><span>Untuk santri</span><strong>'+escapeHtml(o.childName)+'</strong><small>'+escapeHtml(o.className||'-')+'</small></div></div>'+
           '<div class="section"><div class="section-title"><h3>Rincian barang</h3><span class="muted">'+o.details.length+' item</span></div><div class="order-detail-list">'+o.details.map(i=>'<div class="order-detail-line"><div><strong>'+escapeHtml(i.name)+'</strong><div class="muted">'+escapeHtml(i.sku||'')+(i.variationName?' · '+escapeHtml(i.variationName):'')+'</div><div class="muted">'+formatMoney(i.qty)+' × Rp '+formatMoney(i.price)+'</div></div><strong>Rp '+formatMoney(i.subtotal)+'</strong></div>').join('')+'</div></div>'+
           '<div class="order-total-panel"><div><span>Subtotal</span><strong>Rp '+formatMoney(o.subtotal)+'</strong></div><div><span>Pengiriman</span><strong>Rp '+formatMoney(o.shipping)+'</strong></div><div><span>Diskon</span><strong>Rp '+formatMoney(o.discount)+'</strong></div><div class="order-grand-total"><span>Total pesanan</span><strong>Rp '+formatMoney(o.total)+'</strong></div></div>'+
-          '<div class="notice order-note"><strong>Catatan pesanan</strong><br>'+escapeHtml(o.note||'Tidak ada catatan.')+'</div>';
+          '<div class="order-detail-summary"><div><span>Pembayaran</span><strong>'+escapeHtml(o.payment?statusLabel(o.payment.status):'Belum diajukan')+'</strong><small>'+(o.payment?escapeHtml(o.payment.method)+' · Rp '+formatMoney(o.payment.nominal):'Belum ada data pembayaran')+'</small></div><div><span>Metode pemenuhan</span><strong>'+escapeHtml(o.shipment?(o.shipment.method==='AMBIL_FMART'?'Ambil di FMart':'Antar ke pesantren'):'Belum ditentukan')+'</strong><small>'+escapeHtml(o.shipment&&o.shipment.destination?o.shipment.destination:'-')+'</small></div></div>'+
+          '<div class="notice order-note"><strong>Catatan pesanan</strong><br>'+escapeHtml(o.note||'Tidak ada catatan.')+'</div>'+
+          (state.data.user.role==='GUDANG'&&({DIBAYAR:'DIPROSES',DIPROSES:'DISIAPKAN',DISIAPKAN:'DIANTAR'}[o.status])?'<div class="warehouse-detail-action"><div><strong>Tahap berikutnya</strong><span>'+escapeHtml(statusLabel(({DIBAYAR:'DIPROSES',DIPROSES:'DISIAPKAN',DISIAPKAN:'DIANTAR'}[o.status])))+'</span></div><button class="primary" id="warehouseDetailAdvance" type="button">Lanjutkan proses</button></div>':'');
         $('opsModal').classList.remove('hidden');
+        const advanceNext=({DIBAYAR:'DIPROSES',DIPROSES:'DISIAPKAN',DISIAPKAN:'DIANTAR'}[o.status]);
+        if(advanceNext&&state.data.user.role==='GUDANG'&&$('warehouseDetailAdvance'))$('warehouseDetailAdvance').onclick=()=>advanceWarehouse(o.orderId,advanceNext);
       }catch(e){showToast(e.message||'Detail pesanan gagal dimuat.','error')}
       finally{loading(false)}
     }
@@ -2520,6 +2524,14 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
     })();
 
   </script>
+<style>
+/* FMart Tahap 5 — detail pemenuhan Gudang */
+body.admin-portal .warehouse-detail-action{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:16px;border:1px solid #d9b9e2;border-radius:16px;background:#f8effa}
+body.admin-portal .warehouse-detail-action>div{display:grid;gap:4px}
+body.admin-portal .warehouse-detail-action span{font-size:13px;color:#6b4773}
+body.admin-portal .warehouse-detail-action .primary{width:auto;min-width:150px}
+@media(max-width:560px){body.admin-portal .warehouse-detail-action{align-items:stretch;flex-direction:column}body.admin-portal .warehouse-detail-action .primary{width:100%}}
+</style>
 </body>
 </html>
 
