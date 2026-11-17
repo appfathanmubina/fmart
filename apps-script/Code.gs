@@ -1872,6 +1872,58 @@ function getDeliveryDashboard(token) {
   return {ok:true,summary:summary,tasks:tasks,updatedAt:new Date().toISOString()};
 }
 
+function getDeliveryAssignmentWorkspace(token) {
+  requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
+  const ss=getSS_(), userRows=readRows_(ss.getSheetByName('Users'));
+  const drivers=userRows.filter(r=>String(r[5]||'').toUpperCase()==='PETUGAS_PENGANTAR'&&String(r[6]||'').toUpperCase()==='AKTIF').map(r=>({userId:String(r[0]),name:String(r[4]||r[1]||'Petugas'),username:String(r[1]||'')}));
+  const orders=readRows_(ss.getSheetByName('Pesanan')),payments=readRows_(ss.getSheetByName('Pembayaran')),shipments=readRows_(ss.getSheetByName('Pengiriman')),assignments=readRows_(ss.getSheetByName('Pengantaran'));
+  const latestPayment={},latestShipment={},activeAssignment={};
+  payments.forEach(r=>{const id=String(r[1]||''),old=latestPayment[id];if(id&&(!old||new Date(r[8]||0).getTime()>=new Date(old[8]||0).getTime()))latestPayment[id]=r;});
+  shipments.forEach(r=>{const id=String(r[1]||''),old=latestShipment[id];if(id&&(!old||new Date(r[8]||0).getTime()>=new Date(old[8]||0).getTime()))latestShipment[id]=r;});
+  assignments.forEach(r=>{const id=String(r[1]||''),st=String(r[3]||'').toUpperCase();if(id&&['DITUGASKAN','BARU','MENUNGGU_KONFIRMASI','DITERIMA','DITERIMA_PETUGAS','DALAM_PERJALANAN','DIANTAR'].indexOf(st)>=0)activeAssignment[id]=r;});
+  const santriSheet=ss.getSheetByName('Santri'),santriMap=getSantriColumnMap_(santriSheet),santriById={};
+  readSantriRows_(santriSheet).forEach(r=>{const x=santriRecord_(r,santriMap);if(x.id)santriById[x.id]=x;});
+  const userById={};userRows.forEach(r=>{userById[String(r[0]||'')]={name:String(r[4]||'Wali Santri'),username:String(r[1]||'')};});
+  const ready=[],assigned=[];
+  orders.forEach(r=>{
+    const id=String(r[0]||''),status=String(r[8]||'').toUpperCase();if(!id||['DISIAPKAN','DIANTAR'].indexOf(status)<0)return;
+    const pay=latestPayment[id],ship=latestShipment[id]||[];
+    if(String(pay&&pay[5]||'').toUpperCase()!=='TERVERIFIKASI'||String(ship[2]||'').toUpperCase()!=='ANTAR_PESANTREN')return;
+    const child=santriById[String(r[3]||'')]||{},wali=userById[String(r[2]||'')]||{};
+    const task={orderId:id,number:String(r[1]||id),status:status,total:Number(r[7])||0,childName:String(child.name||'Santri'),className:String(child.className||''),waliName:String(wali.name||'Wali Santri'),waliContact:String(wali.username||''),destination:String(ship[3]||''),shipmentStatus:String(ship[4]||'')};
+    const current=activeAssignment[id];
+    if(current){const driver=userById[String(current[2]||'')]||{};task.assignedAt=dateIso_(current[5]);task.driverName=String(driver.name||'Petugas');task.driverId=String(current[2]||'');task.assignmentStatus=String(current[3]||'');assigned.push(task);}
+    else if(status==='DISIAPKAN')ready.push(task);
+  });
+  ready.sort((a,b)=>a.number.localeCompare(b.number));assigned.sort((a,b)=>String(b.assignedAt||'').localeCompare(String(a.assignedAt||'')));
+  return {ok:true,drivers:drivers,ready:ready,assigned:assigned,updatedAt:new Date().toISOString()};
+}
+function assignDeliveryOrder(token,orderId,petugasUserId,note){
+  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
+  orderId=String(orderId||'').trim();petugasUserId=String(petugasUserId||'').trim();note=String(note||'').trim().slice(0,300);
+  if(!orderId||!petugasUserId)throw new Error('Pesanan dan petugas pengantar wajib dipilih.');
+  const lock=LockService.getScriptLock();lock.waitLock(15000);
+  try{
+    const ss=getSS_(),order=findRowById_(ss.getSheetByName('Pesanan'),orderId,1),assignmentSheet=ss.getSheetByName('Pengantaran');
+    if(!order)throw new Error('Pesanan tidak ditemukan.');
+    if(String(order.values[8]||'').toUpperCase()!=='DISIAPKAN')throw new Error('Pesanan harus berstatus DISIAPKAN sebelum ditugaskan.');
+    if(!assignmentSheet)throw new Error('Sheet Pengantaran belum tersedia. Jalankan setupFMartDatabase() terlebih dahulu.');
+    const users=readRows_(ss.getSheetByName('Users')),driver=users.find(r=>String(r[0]||'')===petugasUserId);
+    if(!driver||String(driver[5]||'').toUpperCase()!=='PETUGAS_PENGANTAR'||String(driver[6]||'').toUpperCase()!=='AKTIF')throw new Error('Akun Petugas Pengantar tidak ditemukan atau tidak aktif.');
+    const payment=readRows_(ss.getSheetByName('Pembayaran')).filter(r=>String(r[1]||'')===orderId).sort((a,b)=>new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime())[0];
+    if(!payment||String(payment[5]||'').toUpperCase()!=='TERVERIFIKASI')throw new Error('Pembayaran pesanan belum terverifikasi.');
+    const shipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);
+    if(!shipment||String(shipment.method||'').toUpperCase()!=='ANTAR_PESANTREN')throw new Error('Pesanan ini bukan pesanan dengan metode Antar Pesantren.');
+    const active=readRows_(assignmentSheet).find(r=>String(r[1]||'')===orderId&&['DITUGASKAN','BARU','MENUNGGU_KONFIRMASI','DITERIMA','DITERIMA_PETUGAS','DALAM_PERJALANAN','DIANTAR'].indexOf(String(r[3]||'').toUpperCase())>=0);
+    if(active)throw new Error('Pesanan sudah memiliki penugasan aktif. Muat ulang antrean.');
+    const now=new Date(),id=makeFMartId_('DLV');
+    assignmentSheet.appendRow([id,orderId,petugasUserId,'DITUGASKAN',session.userId,now,'','','','','',note,now]);
+    ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),petugasUserId,orderId,'Tugas pengantaran baru','Anda mendapat tugas pengantaran pesanan '+String(order.values[1]||orderId)+'.','PENGANTARAN',false,now]);
+    writeAudit_(session.userId,session.role,'ASSIGN_DELIVERY','PENGANTARAN',id,'',JSON.stringify({orderId:orderId,petugasUserId:petugasUserId,status:'DITUGASKAN'}),note||'Menugaskan pesanan kepada petugas pengantar');
+    SpreadsheetApp.flush();return {ok:true,assignmentId:id,message:'Pesanan berhasil ditugaskan.'};
+  }finally{lock.releaseLock();}
+}
+
 function latestShipmentForOrder_(rows, orderId) {
   const found = rows.filter(function(r){return String(r[1])===String(orderId);}).sort(function(a,b){return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime();})[0];
   return found ? {id:String(found[0]),orderId:String(found[1]),method:String(found[2]||''),destination:String(found[3]||''),status:String(found[4]||''),dikirimAt:found[5],diterimaAt:found[6],updatedBy:String(found[7]||''),updatedAt:found[8]} : null;
