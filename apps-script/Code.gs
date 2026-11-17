@@ -1184,15 +1184,14 @@ function resolveDeliveryComplaint(token,complaintId,resolution,reopenConfirmatio
       confirmationSheet.getRange(confirmation.rowNumber,5,1,6).setValues([['MENUNGGU_KONFIRMASI','','','',false,now]]);
       PropertiesService.getScriptProperties().deleteProperty(deliveryNoticePropertyKey_(confirmationId));
     } else {
-      confirmationSheet.getRange(confirmation.rowNumber,5).setValue('KOMPLAIN_SELESAI');
-      confirmationSheet.getRange(confirmation.rowNumber,9,1,2).setValues([[false,now]]);
+      confirmationSheet.getRange(confirmation.rowNumber,5,1,6).setValues([['MENUNGGU_KONFIRMASI',confirmation.values[5]||'',confirmation.values[6]||'',confirmation.values[7]||'',false,now]]);
     }
     complaintSheet.getRange(complaint.rowNumber,7,1,6).setValues([['SELESAI',complaint.values[7],session.userId,resolution,now,now]]);
-    ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(complaint.values[3]||''),orderId,'Komplain pengantaran selesai',reopen?'Admin menyelesaikan pemeriksaan. Masa konfirmasi penerimaan dibuka kembali selama 7 hari.':'Admin menyelesaikan pemeriksaan. Auto-konfirmasi tidak akan dijalankan untuk pesanan ini.','PENGANTARAN',false,now]);
-    recordDeliveryHistory_(ss,'',orderId,session,'KOMPLAIN_DISELESAIKAN','KOMPLAIN_AKTIF',reopen?'MENUNGGU_KONFIRMASI':'KOMPLAIN_SELESAI',resolution);
+    ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(complaint.values[3]||''),orderId,'Komplain pengantaran selesai',reopen?'Admin menyelesaikan pemeriksaan. Masa konfirmasi penerimaan dibuka kembali selama 7 hari.':'Admin menyelesaikan pemeriksaan. Proses konfirmasi dilanjutkan sesuai tenggat sebelumnya.','PENGANTARAN',false,now]);
+    recordDeliveryHistory_(ss,'',orderId,session,'KOMPLAIN_DISELESAIKAN','KOMPLAIN_AKTIF','MENUNGGU_KONFIRMASI',resolution);
     writeAudit_(session.userId,session.role,'RESOLVE_DELIVERY_COMPLAINT','KOMPLAIN_PENGANTARAN',complaintId,JSON.stringify({status:complaint.values[6]}),JSON.stringify({status:'SELESAI',reopenConfirmation:reopen}),'Admin menyelesaikan komplain pengantaran');
     SpreadsheetApp.flush();
-    return {ok:true,reopened:reopen,message:reopen?'Komplain selesai. Masa konfirmasi 7 hari dibuka kembali.':'Komplain selesai. Auto-konfirmasi tidak akan dijalankan untuk pesanan ini.'};
+    return {ok:true,reopened:reopen,message:reopen?'Komplain selesai. Masa konfirmasi 7 hari dibuka kembali.':'Komplain selesai. Konfirmasi dilanjutkan sesuai tenggat sebelumnya.'};
   } finally {lock.releaseLock();}
 }
 
