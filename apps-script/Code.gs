@@ -1022,8 +1022,8 @@ function submitPayment(token, orderId, method, nominal, fileName, mimeType, base
     const buktiUrl = file.getUrl();
     const now = new Date();
     const paymentId = makeFMartId_('PAY');
-    paymentSheet.appendRow([paymentId,orderId,'TRANSFER',nominal,buktiUrl,'MENUNGGU_VERIFIKASI','','',now,now,'APLIKASI',session.userId,'']);
-    writeAudit_(session.userId,session.role,'SUBMIT_PAYMENT','PEMBAYARAN',paymentId,'',JSON.stringify({orderId:orderId,method:'TRANSFER',nominal:nominal,hasProof:true,buktiSumber:'APLIKASI'}),'Pengajuan pembayaran transfer dengan bukti');
+    paymentSheet.appendRow([paymentId,orderId,method,nominal,buktiUrl,'MENUNGGU_VERIFIKASI','','',now,now,'APLIKASI',session.userId,'']);
+    writeAudit_(session.userId,session.role,'SUBMIT_PAYMENT','PEMBAYARAN',paymentId,'',JSON.stringify({orderId:orderId,method:method,nominal:nominal,hasProof:true,buktiSumber:'APLIKASI'}),'Pengajuan pembayaran '+method+' dengan bukti');
     SpreadsheetApp.flush();
     return getOrderDetail(token, orderId);
   } finally { lock.releaseLock(); }
