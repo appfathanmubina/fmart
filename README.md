@@ -369,3 +369,29 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 
 - Pemeriksaan statis dilakukan pada renderer riwayat/detail, filter, status pembayaran, dan selector CSS buyer-only.
 - Belum dilakukan pengujian browser, akun Wali nyata, data transaksi Spreadsheet aktif, atau deployment Apps Script.
+
+
+## Pembaruan Kebijakan Pembayaran FMart — QRIS Saja
+
+- Wali tidak lagi ditawari pilihan transfer bank. Pengajuan pembayaran baru hanya menerima metode `QRIS`; backend menolak metode selain QRIS.
+- Halaman pembayaran menampilkan gambar QRIS, nominal tagihan yang dapat disalin, dan tautan untuk membuka/mengunduh gambar QRIS. Wali tetap wajib mengunggah bukti pembayaran.
+- Backend memvalidasi nominal sama persis dengan total pesanan, kepemilikan pesanan, status pesanan, konfigurasi QRIS, jenis file, dan ukuran maksimal 5 MB.
+- Pengaturan pembayaran Superadmin disederhanakan menjadi URL gambar QRIS HTTPS dan WhatsApp Admin/Kasir opsional. Pengaturan rekening bank lama tetap tersimpan di sheet tetapi tidak digunakan pada alur pembayaran baru.
+- Pembayaran lama yang pernah tercatat sebagai Transfer tetap ditampilkan sebagai histori; tidak diubah atau dihapus.
+
+## Pengembangan Portal Wali Santri — Tahap 10
+
+### Pelacakan Pemenuhan Pesanan dan Konfirmasi Penerimaan
+
+- Detail pesanan kini menampilkan timeline dari pesanan dibuat, pembayaran diverifikasi, diproses, disiapkan, dalam pengantaran/siap diserahkan, hingga diterima.
+- Timeline memakai status pesanan dan timestamp pembayaran/pengiriman yang sudah dicatat sistem. Tahap yang belum dicapai ditampilkan sebagai belum selesai; waktu tidak direkayasa jika belum tersedia.
+- Untuk pesanan yang dibatalkan, Wali mendapat keterangan pembatalan, bukan timeline penyelesaian normal.
+- Tombol konfirmasi penerimaan hanya muncul saat status pesanan `DIANTAR`. Backend `markOrderReceived` tetap memvalidasi sesi Wali, kepemilikan pesanan, dan status sebelum mengubahnya menjadi `DITERIMA`, mencatat waktu penerimaan, notifikasi, dan AuditLog.
+- Setelah konfirmasi, riwayat dan detail dimuat ulang agar status terbaru terlihat.
+- Tidak ada perubahan skema Spreadsheet atau alur perubahan status Gudang. Tahap operasional tetap DIBAYAR → DIPROSES → DISIAPKAN → DIANTAR.
+
+### Pemeriksaan Tahap 10 dan QRIS
+
+- Pemeriksaan statis dilakukan pada frontend pembayaran, pembatasan metode QRIS backend, pengaturan QRIS, timeline, dan CSS buyer-only.
+- Belum dilakukan uji browser, unduh QRIS pada perangkat nyata, salin nominal pada browser perangkat, unggah bukti ke Drive, pemindaian/pembayaran QRIS aktual, maupun uji transaksi penerimaan pada Spreadsheet aktif.
+- Tautan gambar QRIS harus dapat diakses tanpa login. Atribut unduh dapat diperlakukan browser sebagai buka gambar pada tab baru jika server gambar tidak mengizinkan unduhan lintas-origin; Wali tetap dapat menyimpan gambar dari tab tersebut.
