@@ -1529,7 +1529,7 @@ function drawDeliveryAssignmentWorkspace(){
   });
 }
 
-function renderDeliveryWorkspace(){
+async function renderDeliveryWorkspace(){
       if(!state.data||state.data.user.role!=='PETUGAS_PENGANTAR')return;
       $('opsTitle').textContent='Pengantaran';$('opsMainTitle').textContent='Dashboard Pengantaran';$('opsStats').classList.add('hidden');$('opsRefresh').classList.add('hidden');
       $('opsMainBody').innerHTML='<div class="panel-loading"><span class="spinner"></span><span>Memuat antrean pengantaran...</span></div>';
