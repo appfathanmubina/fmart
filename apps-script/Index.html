@@ -1588,6 +1588,12 @@ function openWaliHelp(){
 async function openWaliProfileManagement(){
   closeProfile();
   $('profileTitle').textContent='Profil & Data Santri';
+  const cached=state.waliProfileManagement;
+  if(cached&&cached.ok){
+    renderWaliProfileManagement(cached);
+    $('profileModal').classList.remove('hidden');
+    return;
+  }
   $('profileBody').innerHTML='<div class="wali-profile-loading">Memuat profil dan data santri…</div>';
   $('profileModal').classList.remove('hidden');
   try{
@@ -1598,7 +1604,7 @@ async function openWaliProfileManagement(){
     renderWaliProfileManagement(result);
   }catch(e){
     $('profileBody').innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Profil tidak dapat dimuat.')+'<button type="button" class="secondary" id="waliProfileRetry" style="margin-top:10px;width:100%">Coba lagi</button></div>';
-    if($('waliProfileRetry'))$('waliProfileRetry').onclick=openWaliProfileManagement;
+    if($('waliProfileRetry'))$('waliProfileRetry').onclick=()=>{state.waliProfileManagement=null;openWaliProfileManagement()};
   }
 }
 function renderWaliProfileManagement(result){
@@ -1606,19 +1612,18 @@ function renderWaliProfileManagement(result){
   const active=items.filter(x=>x.status==='AKTIF'&&x.active);
   const pending=items.filter(x=>x.status==='MENUNGGU_VERIFIKASI');
   $('profileBody').innerHTML=
-    '<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">INFORMASI AKUN</div><h3>Data Wali Santri</h3><p>Perbarui informasi kontak Anda.</p></div><span class="wali-profile-status">'+escapeHtml(p.status||'AKTIF')+'</span></div>'+
+    '<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">INFORMASI AKUN</div><h3>Data Wali Santri</h3></div><span class="wali-profile-status">'+escapeHtml(p.status||'AKTIF')+'</span></div>'+
     '<form id="waliProfileForm" class="wali-profile-form">'+
     '<div class="field"><label for="waliProfileName">Nama lengkap *</label><input id="waliProfileName" name="nama" maxlength="120" required value="'+escapeHtml(p.nama||'')+'"></div>'+
-    '<div class="field"><label for="waliProfilePhone">Nomor HP / Username</label><input id="waliProfilePhone" value="'+escapeHtml(p.noHp||p.username||'')+'" readonly disabled><small>Nomor HP digunakan untuk login. Perubahan nomor dapat dilakukan melalui Admin.</small></div>'+
+    '<div class="field"><label for="waliProfilePhone">Nomor HP / Username</label><input id="waliProfilePhone" value="'+escapeHtml(p.noHp||p.username||'')+'" readonly disabled></div>'+
     '<div class="field"><label for="waliProfileEmail">Email</label><input id="waliProfileEmail" name="email" type="email" maxlength="160" value="'+escapeHtml(p.email||'')+'" placeholder="Alamat email (opsional)"></div>'+
-    '<div class="field"><label for="waliProfileAddress">Alamat</label><textarea id="waliProfileAddress" name="alamat" rows="3" maxlength="500" placeholder="Alamat tempat tinggal">'+escapeHtml(p.alamat||'')+'</textarea></div>'+
     '<button type="submit" class="primary" id="waliProfileSave" style="width:100%">Simpan Perubahan Profil</button></form></section>'+
     '<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">KELUARGA</div><h3>Manajemen Data Santri</h3><p>Santri aktif dapat dipilih untuk aktivitas belanja.</p></div><span class="wali-profile-count">'+active.length+' aktif</span></div>'+
     '<button type="button" class="primary" id="waliProfileAddChild" style="width:100%;margin-bottom:12px">＋ Cari / Hubungkan Santri</button>'+
     (active.length?'<div class="wali-managed-children">'+active.map(ch=>'<article class="wali-managed-child"><span class="wali-managed-avatar">FM</span><span class="wali-managed-child-copy"><strong>'+escapeHtml(ch.name)+'</strong><small>'+escapeHtml(ch.className||'Kelas belum tersedia')+' · NIS '+escapeHtml(ch.nis||'-')+'</small><small>'+escapeHtml(relationLabelClient(ch.hubungan||''))+'</small></span><span class="wali-relation-badge active">Aktif</span></article>').join('')+'</div>':'<div class="wali-profile-empty">Belum ada santri aktif yang terhubung. Cari data santri dan ajukan hubungan untuk diverifikasi Admin.</div>')+
     (pending.length?'<div class="wali-pending-title">Pengajuan menunggu verifikasi ('+pending.length+')</div><div class="wali-managed-children">'+pending.map(ch=>'<article class="wali-managed-child pending"><span class="wali-managed-avatar pending">…</span><span class="wali-managed-child-copy"><strong>'+escapeHtml(ch.name)+'</strong><small>'+escapeHtml(ch.className||'Kelas belum tersedia')+' · NIS '+escapeHtml(ch.nis||'-')+'</small><small>'+escapeHtml(relationLabelClient(ch.hubungan))+' · '+escapeHtml(ch.requestedAt?formatDate(ch.requestedAt):'Tanggal pengajuan tidak tersedia')+'</small></span><span class="wali-relation-badge pending">Menunggu</span><button type="button" class="wali-cancel-request" data-cancel-wali-request="'+escapeHtml(ch.relationId)+'" aria-label="Batalkan pengajuan">×</button></article>').join('')+'</div>':'')+
     '<p class="wali-profile-footnote">Persetujuan hubungan santri dan pelepasan santri yang sudah aktif dilakukan oleh Admin untuk menjaga keamanan data.</p></section>'+
-'<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">PREFERENSI & BANTUAN</div><h3>Pengaturan dan Bantuan</h3><p>Kelola keamanan akun atau hubungi petugas FMart.</p></div></div><div class="wali-help-actions"><button type="button" class="secondary" id="waliEnablePush">♧ Aktifkan Notifikasi Perangkat</button><button type="button" class="secondary" id="waliOpenNotifications">♧ Lihat Notifikasi</button><button type="button" class="secondary" id="waliOpenHelp">Pusat Bantuan</button><button type="button" class="secondary" id="waliChangePassword">Ganti Password</button></div></section>';
+'<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">PREFERENSI & BANTUAN</div><h3>Pengaturan dan Bantuan</h3></div></div><div class="wali-help-actions"><button type="button" class="secondary" id="waliEnablePush">♧ Aktifkan Notifikasi</button><button type="button" class="secondary" id="waliOpenNotifications">♧ Lihat Notifikasi</button><button type="button" class="secondary" id="waliOpenHelp">Pusat Bantuan</button><button type="button" class="secondary" id="waliChangePassword">Ganti Password</button></div></section>';
   $('waliProfileForm').onsubmit=saveWaliProfile;
   $('waliEnablePush').onclick=()=>{if(window.parent!==window)window.parent.postMessage({type:'FMART_ONESIGNAL_ENABLE'},'*');else showToast('Aktifkan notifikasi melalui aplikasi FMart.','info')};
   $('waliOpenNotifications').onclick=()=>{closeProfile();openWaliNotifications()};$('waliOpenHelp').onclick=openWaliHelp;$('waliChangePassword').onclick=()=>openChangePassword();
@@ -1628,7 +1633,7 @@ function renderWaliProfileManagement(result){
 async function saveWaliProfile(event){
   event.preventDefault();
   const button=$('waliProfileSave');if(!button||button.disabled)return;
-  const nama=$('waliProfileName').value.trim(),email=$('waliProfileEmail').value.trim(),alamat=$('waliProfileAddress').value.trim();
+  const nama=$('waliProfileName').value.trim(),email=$('waliProfileEmail').value.trim(),alamat=String(state.waliProfileManagement?.profile?.alamat||'');
   if(!nama){showToast('Nama lengkap wajib diisi.','error');return}
   if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){showToast('Format email tidak valid.','error');return}
   button.disabled=true;loading(true,'Menyimpan profil...');
