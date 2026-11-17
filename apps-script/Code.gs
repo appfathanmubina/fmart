@@ -1791,6 +1791,87 @@ function latestPaymentForOrder_(rows, orderId) {
   const found = rows.filter(function(r){return String(r[1])===String(orderId);}).sort(function(a,b){return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime();})[0];
   return found ? {id:String(found[0]),orderId:String(found[1]),method:String(found[2]||''),nominal:Number(found[3])||0,buktiUrl:String(found[4]||''),status:String(found[5]||''),verifiedBy:String(found[6]||''),verifiedAt:found[7],createdAt:found[8],updatedAt:found[9],buktiSumber:String(found[10]||''),submittedBy:String(found[11]||''),catatan:String(found[12]||'')} : null;
 }
+/**
+ * Tahap 4: Dashboard dan antrean khusus Petugas Pengantar.
+ * Hanya mengembalikan penugasan milik sesi aktif; endpoint bersifat read-only.
+ */
+function getDeliveryDashboard(token) {
+  const session = requireRole_(token, [FMART.ROLES.PETUGAS_PENGANTAR]);
+  const ss = getSS_();
+  const assignmentSheet = ss.getSheetByName('Pengantaran');
+  if (!assignmentSheet) throw new Error('Struktur Pengantaran belum tersedia. Jalankan setupFMartDatabase() terlebih dahulu.');
+  const assignments = readRows_(assignmentSheet);
+  const orders = readRows_(ss.getSheetByName('Pesanan'));
+  const users = readRows_(ss.getSheetByName('Users'));
+  const santriSheet = ss.getSheetByName('Santri');
+  const santriMap = getSantriColumnMap_(santriSheet);
+  const santriRows = readSantriRows_(santriSheet);
+  const santriById = {};
+  santriRows.forEach(function(row) {
+    const child = santriRecord_(row, santriMap);
+    if (child.id) santriById[child.id] = child;
+  });
+  const userById = {};
+  users.forEach(function(row) {
+    const id = String(row[0] || '');
+    if (id) userById[id] = {name:String(row[4] || ''), username:String(row[1] || '')};
+  });
+  const orderById = {};
+  orders.forEach(function(row) {
+    const id = String(row[0] || '');
+    if (id) orderById[id] = row;
+  });
+  const shipments = readRows_(ss.getSheetByName('Pengiriman'));
+  const shipmentByOrder = {};
+  shipments.forEach(function(row) {
+    const id = String(row[1] || '');
+    if (id) {
+      const previous = shipmentByOrder[id];
+      if (!previous || new Date(row[8] || 0).getTime() >= new Date(previous[8] || 0).getTime()) shipmentByOrder[id] = row;
+    }
+  });
+  const tasks = assignments.filter(function(row) {
+    return String(row[2] || '') === String(session.userId);
+  }).map(function(row) {
+    const orderId = String(row[1] || '');
+    const order = orderById[orderId];
+    if (!order) return null;
+    const child = santriById[String(order[3] || '')] || {};
+    const wali = userById[String(order[2] || '')] || {};
+    const shipment = shipmentByOrder[orderId] || [];
+    return {
+      assignmentId:String(row[0] || ''),
+      orderId:orderId,
+      orderNumber:String(order[1] || orderId),
+      assignmentStatus:String(row[3] || 'DITUGASKAN').toUpperCase(),
+      assignedAt:dateIso_(row[5]),
+      acceptedAt:dateIso_(row[6]),
+      startedAt:dateIso_(row[7]),
+      completedAt:dateIso_(row[8]),
+      failureReason:String(row[10] || ''),
+      notes:String(row[11] || ''),
+      orderStatus:String(order[8] || '').toUpperCase(),
+      childName:String(child.name || 'Santri'),
+      className:String(child.className || ''),
+      recipientName:String(wali.name || 'Wali Santri'),
+      recipientContact:String(wali.username || ''),
+      destination:String(shipment[3] || ''),
+      shipmentStatus:String(shipment[4] || '')
+    };
+  }).filter(Boolean).sort(function(a,b) {
+    return new Date(b.assignedAt || 0).getTime() - new Date(a.assignedAt || 0).getTime();
+  }).slice(0,200);
+  const summary = {total:tasks.length,newTasks:0,accepted:0,inProgress:0,completed:0,failed:0};
+  tasks.forEach(function(task) {
+    if (['DITUGASKAN','BARU','MENUNGGU_KONFIRMASI'].indexOf(task.assignmentStatus) >= 0) summary.newTasks++;
+    else if (['DITERIMA','DITERIMA_PETUGAS'].indexOf(task.assignmentStatus) >= 0) summary.accepted++;
+    else if (['DALAM_PERJALANAN','DIANTAR'].indexOf(task.assignmentStatus) >= 0) summary.inProgress++;
+    else if (['SELESAI','DITERIMA_WALI'].indexOf(task.assignmentStatus) >= 0) summary.completed++;
+    else if (['GAGAL','DITOLAK'].indexOf(task.assignmentStatus) >= 0) summary.failed++;
+  });
+  return {ok:true,summary:summary,tasks:tasks,updatedAt:new Date().toISOString()};
+}
+
 function latestShipmentForOrder_(rows, orderId) {
   const found = rows.filter(function(r){return String(r[1])===String(orderId);}).sort(function(a,b){return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime();})[0];
   return found ? {id:String(found[0]),orderId:String(found[1]),method:String(found[2]||''),destination:String(found[3]||''),status:String(found[4]||''),dikirimAt:found[5],diterimaAt:found[6],updatedBy:String(found[7]||''),updatedAt:found[8]} : null;
