@@ -886,7 +886,82 @@ body.buyer-portal .buyer-cart-select input{width:18px;height:18px;margin:0;accen
     body.buyer-portal .header{background:linear-gradient(105deg,#4f0054 0%,#800080 58%,#a64ca6 100%)}
     body.buyer-portal .bottom-nav{background:linear-gradient(110deg,#4f0054 0%,#800080 65%,#a64ca6 100%)}
     @media(max-width:760px){.main{padding-left:12px;padding-right:12px}.section{padding:13px;border-radius:17px}.hero{border-radius:20px;padding:21px}.bottom-nav{bottom:calc(10px + env(safe-area-inset-bottom));width:calc(100% - 18px)}}
-</style>
+
+
+    /* FMart spacing system — perapihan jarak teks, kontrol, dan kartu lintas portal. */
+    :root{--space-card:16px;--space-content:12px}
+    .section-title{gap:12px;align-items:flex-start}
+    .section-title>div{min-width:0}
+    .section-title h2,.section-title h3{line-height:1.35}
+    .section-title .muted{display:block;line-height:1.5;margin-top:4px}
+    .field label{line-height:1.45}
+    .field input,.field select,.field textarea{margin-top:2px}
+    .modal-card>*+*{margin-top:12px}
+    .modal-head{margin-bottom:18px}
+    .modal-head h2{line-height:1.3}
+    .notice,.order-note,.payment-panel,.order-total-panel{line-height:1.55}
+    .notice strong,.order-note strong{display:inline-block;margin-bottom:4px}
+    .table-wrap,.table-responsive{max-width:100%;overflow-x:auto}
+    .table-wrap table,.table-responsive table{min-width:620px}
+    body.buyer-portal .main{padding-left:14px;padding-right:14px}
+    body.buyer-portal .buyer-catalog-section{padding:0 4px 28px}
+    body.buyer-portal .buyer-catalog-intro{margin:0 0 18px;padding:20px 18px}
+    body.buyer-portal .buyer-catalog-intro h2{line-height:1.28;margin:8px 0 7px}
+    body.buyer-portal .buyer-catalog-intro p{line-height:1.55}
+    body.buyer-portal .buyer-search-toolbar{margin:0 2px 24px}
+    body.buyer-portal .buyer-category-heading{margin:0 10px 14px;min-height:38px}
+    body.buyer-portal .buyer-category-heading h3,
+    body.buyer-portal .buyer-results-heading h3{line-height:1.35}
+    body.buyer-portal .buyer-category-heading .muted{margin-top:5px;line-height:1.5}
+    body.buyer-portal .buyer-categories{margin:0 8px;padding:3px 2px 12px;gap:10px}
+    body.buyer-portal .buyer-categories .chip{min-height:42px;padding:10px 14px}
+    body.buyer-portal .buyer-results-heading{margin:22px 10px 14px;min-height:38px}
+    body.buyer-portal .buyer-results-heading .muted{margin-top:5px;line-height:1.5}
+    body.buyer-portal .buyer-search-summary{margin:0 10px 14px;line-height:1.5}
+    body.buyer-portal #products{padding:0 8px;gap:14px}
+    body.buyer-portal #products>.product{min-width:0}
+    body.buyer-portal .product-body{padding:15px}
+    body.buyer-portal .product-name{line-height:1.45}
+    body.buyer-portal .price{margin-top:9px;line-height:1.4}
+    body.buyer-portal #childrenSection{padding:16px 12px 22px}
+    body.buyer-portal #childrenSection>.section-title{margin-bottom:14px}
+    body.admin-portal #operationsView{padding-left:18px!important;padding-right:18px!important}
+    body.admin-portal #operationsView>.section-title{margin:22px 0 16px;align-items:center}
+    body.admin-portal #operationsView .section{padding:16px;margin-top:18px;border:1px solid #eaddec;border-radius:18px;background:#fff}
+    body.admin-portal #operationsView .section-title{margin-bottom:14px}
+    body.admin-portal #operationsView .section-title h2,
+    body.admin-portal #operationsView .section-title h3{line-height:1.35}
+    body.admin-portal #operationsView .section-title .muted{margin-top:5px;line-height:1.5}
+    body.admin-portal #operationsView .field{margin-bottom:16px}
+    body.admin-portal #operationsView .field label{margin-bottom:8px}
+    body.admin-portal #operationsView .catalog-toolbar{margin:20px 0 14px}
+    body.admin-portal #operationsView .catalog-filters{margin:16px 0}
+    body.admin-portal #operationsView .catalog-product-grid,
+    body.admin-portal #operationsView .catalog-category-grid{gap:14px}
+    body.admin-portal #operationsView .catalog-category-card,
+    body.admin-portal #operationsView .catalog-product-card{padding:17px}
+    body.admin-portal #operationsView .catalog-category-card p{line-height:1.55;margin:10px 0 13px}
+    body.admin-portal #operationsView .catalog-product-stats{margin:16px 0;padding:13px 0}
+    body.admin-portal #operationsView .notice,
+    body.admin-portal #operationsView .payment-panel{padding:13px 15px;line-height:1.55}
+    @media(max-width:760px){
+      body.buyer-portal .main{padding-left:12px;padding-right:12px}
+      body.buyer-portal .buyer-catalog-section{padding-left:0;padding-right:0}
+      body.buyer-portal .buyer-catalog-intro{padding:17px 15px;margin-bottom:16px}
+      body.buyer-portal .buyer-category-heading{margin-left:8px;margin-right:8px;margin-bottom:13px}
+      body.buyer-portal .buyer-categories{margin-left:5px;margin-right:5px;padding-bottom:13px}
+      body.buyer-portal .buyer-results-heading{margin:21px 8px 13px}
+      body.buyer-portal #products{padding:0 5px;gap:12px}
+      body.admin-portal #operationsView{padding-left:12px!important;padding-right:12px!important}
+      body.admin-portal #operationsView .section{padding:13px}
+    }
+    @media(max-width:420px){
+      body.buyer-portal .buyer-catalog-intro h2{font-size:18px;line-height:1.3}
+      body.buyer-portal .buyer-category-heading h3,
+      body.buyer-portal .buyer-results-heading h3{font-size:15px}
+    }
+
+  </style>
 </head>
 <body>
   <div id="loginView" class="login-wrap">
