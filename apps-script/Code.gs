@@ -1107,7 +1107,7 @@ function markOrderReceived(token, orderId) {
     confirmationSheet.getRange(confRow,5,1,6).setValues([['DIKONFIRMASI','MANUAL',now,session.userId,false,now]]);
     const assignments=readRows_(ss.getSheetByName('Pengantaran'));
     const active=assignments.map((x,i)=>({row:x,rowNumber:i+2})).filter(x=>String(x.row[1]||'')===orderId&&String(x.row[3]||'').toUpperCase()==='DALAM_PERJALANAN').pop();
-    if(active) ss.getSheetByName('Pengantaran').getRange(active.rowNumber,4).setValue('SELESAI');
+    if(active){const assignmentSheet=ss.getSheetByName('Pengantaran');assignmentSheet.getRange(active.rowNumber,4).setValue('SELESAI');assignmentSheet.getRange(active.rowNumber,9).setValue(now);assignmentSheet.getRange(active.rowNumber,13).setValue(now);}
     ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),session.userId,orderId,'Pesanan diterima','Pesanan '+String(orderRow.values[1])+' telah Anda konfirmasi diterima.','PESANAN',false,now]);
     writeAudit_(session.userId,session.role,'RECEIVE_ORDER','PESANAN',orderId,JSON.stringify({status:'DIANTAR',confirmationStatus:conf[4]}),JSON.stringify({status:'DITERIMA',confirmationMethod:'MANUAL'}),'Pesanan diterima dan dikonfirmasi Wali Santri');
     SpreadsheetApp.flush();
@@ -1240,7 +1240,7 @@ function processDeliveryAutoConfirmation_() {
         const shipRow=shipments.indexOf(shipment)+2;if(shipRow>1)ss.getSheetByName('Pengiriman').getRange(shipRow,5,1,5).setValues([['DITERIMA',shipment[5]||'',now,'SYSTEM',now]]);
         const assignments=readRows_(ss.getSheetByName('Pengantaran'));
         const active=assignments.map((r,i)=>({r:r,n:i+2})).filter(x=>String(x.r[1]||'')===orderId&&String(x.r[3]||'').toUpperCase()==='DALAM_PERJALANAN').pop();
-        if(active)ss.getSheetByName('Pengantaran').getRange(active.n,4).setValue('SELESAI');
+        if(active){const assignmentSheet=ss.getSheetByName('Pengantaran');assignmentSheet.getRange(active.n,4).setValue('SELESAI');assignmentSheet.getRange(active.n,9).setValue(now);assignmentSheet.getRange(active.n,13).setValue(now);}
         ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),waliId,orderId,'Pesanan dikonfirmasi otomatis','Batas 7 hari terlewati tanpa komplain aktif. Pesanan '+orderNumber+' otomatis ditandai diterima.','PENGANTARAN',false,now]);
         writeAudit_('SYSTEM','SYSTEM','AUTO_CONFIRM_DELIVERY','PESANAN',orderId,JSON.stringify({status:'DIANTAR'}),JSON.stringify({status:'DITERIMA',confirmationMethod:'OTOMATIS'}),'Auto-konfirmasi setelah 7x24 jam tanpa komplain aktif');
         sent.day7=true;autoConfirmed++;
