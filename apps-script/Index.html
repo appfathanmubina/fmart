@@ -1595,6 +1595,12 @@ function openWaliHelp(){
   runServer('getPaymentSettings',state.token).then(cfg=>{const wa=String(cfg.adminWhatsapp||'').replace(/^0/,'62').replace(/[^0-9]/g,'');$('waliHelpContact').innerHTML=wa?'<strong>Hubungi Admin/Kasir</strong><p>Untuk bantuan akun atau pesanan, hubungi petugas FMart.</p><a href="https://wa.me/'+escapeHtml(wa)+'" target="_blank" rel="noopener" class="primary" style="display:block;text-align:center;text-decoration:none">Chat WhatsApp FMart</a>':'Kontak WhatsApp belum diatur. Silakan hubungi petugas FMart melalui pesantren.'}).catch(()=>{$('waliHelpContact').textContent='Kontak bantuan belum dapat dimuat.'});
 }
 async function openWaliProfileManagement(){
+  if(!$('waliProfilePage').classList.contains('hidden')){
+    const pageProfile=state.waliProfileManagement;
+    if(pageProfile&&pageProfile.ok)renderWaliProfileManagement(pageProfile);
+    window.scrollTo({top:0,behavior:'smooth'});
+    return;
+  }
   closeProfile();
   $('profileTitle').textContent='Profil & Data Santri';
   const cached=state.waliProfileManagement;
