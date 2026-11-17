@@ -395,3 +395,21 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 - Pemeriksaan statis dilakukan pada frontend pembayaran, pembatasan metode QRIS backend, pengaturan QRIS, timeline, dan CSS buyer-only.
 - Belum dilakukan uji browser, unduh QRIS pada perangkat nyata, salin nominal pada browser perangkat, unggah bukti ke Drive, pemindaian/pembayaran QRIS aktual, maupun uji transaksi penerimaan pada Spreadsheet aktif.
 - Tautan gambar QRIS harus dapat diakses tanpa login. Atribut unduh dapat diperlakukan browser sebagai buka gambar pada tab baru jika server gambar tidak mengizinkan unduhan lintas-origin; Wali tetap dapat menyimpan gambar dari tab tersebut.
+
+
+## Pengembangan Portal Wali Santri — Tahap 11
+
+### Notifikasi, Pengaturan Akun, dan Bantuan
+
+- Header Wali memiliki ikon notifikasi dengan badge jumlah notifikasi belum dibaca.
+- Notifikasi diambil dari sheet `Notifikasi`, dibatasi berdasarkan UserId sesi aktif, diurutkan terbaru, dan ditampilkan maksimal 100 notifikasi terbaru.
+- Wali dapat menandai satu notifikasi atau seluruh notifikasi sebagai sudah dibaca. Backend memvalidasi kepemilikan notifikasi dan menggunakan ScriptLock saat memperbarui status baca.
+- Menu Profil menyediakan akses cepat ke notifikasi, pusat bantuan, dan ganti password.
+- Pusat bantuan berisi panduan pembayaran QRIS, pengiriman ulang bukti yang ditolak, pemilihan santri saat checkout, pelacakan pesanan, dan penggantian password. Kontak WhatsApp ditampilkan jika sudah dikonfigurasi.
+- Pengaturan akun memakai profil Wali yang sudah tersedia sejak Tahap 3: nama, email, alamat, dan nomor HP/username hanya-baca. Ganti password memakai endpoint yang sudah tersedia.
+- Tidak ada perubahan struktur Spreadsheet atau alur Admin/Kasir/Gudang.
+
+### Pemeriksaan Tahap 11
+
+- Pemeriksaan statis dilakukan pada tampilan notifikasi, pembatasan UserId, operasi tandai dibaca, profil, pusat bantuan, dan CSS buyer-only.
+- Belum dilakukan pengujian browser, akun Wali aktif, data notifikasi Spreadsheet, WhatsApp, atau deployment Apps Script.
