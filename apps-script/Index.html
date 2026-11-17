@@ -1187,6 +1187,64 @@ body.buyer-portal #profileModal .modal-card{
     border-radius:18px;
   }
 }
+
+    /* Tahap 2 — Dashboard Gudang */
+    body.admin-portal .warehouse-home-intro{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:24px 26px;margin:0 0 16px;border:1px solid #eaddec;border-radius:20px;background:linear-gradient(120deg,#f8effa 0%,#fff 72%);overflow:hidden}
+    body.admin-portal .warehouse-home-eyebrow{display:block;color:#8a4c91;font-size:10px;font-weight:900;letter-spacing:.15em;margin-bottom:8px}
+    body.admin-portal .warehouse-home-intro h2{margin:0;color:#3b1741;font-size:25px;letter-spacing:-.04em}
+    body.admin-portal .warehouse-home-intro p{margin:7px 0 0;color:#796b7d;font-size:13px;line-height:1.55}
+    body.admin-portal .warehouse-home-mark{display:grid;place-items:center;width:66px;height:66px;flex:0 0 66px;border-radius:20px;background:#ead5ed;color:#741c7c;font-size:30px}
+    body.admin-portal .warehouse-home-actions{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 24px}
+    body.admin-portal .warehouse-home-actions button{min-height:42px}
+    body.admin-portal .warehouse-home-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
+    body.admin-portal .warehouse-home-section-head h3{margin:0;color:#39213e;font-size:16px}
+    body.admin-portal .warehouse-home-section-head p{margin:4px 0 0;color:#8a7b8d;font-size:12px}
+    body.admin-portal .warehouse-home-flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:20px}
+    body.admin-portal .warehouse-home-flow-card{display:flex;align-items:center;gap:11px;min-width:0;padding:15px 13px;border:1px solid #eee4f0;border-radius:16px;background:#fff;text-align:left;cursor:pointer;transition:transform .18s,border-color .18s}
+    body.admin-portal .warehouse-home-flow-card:hover{transform:translateY(-2px);border-color:#cda8d2}
+    body.admin-portal .warehouse-home-flow-icon{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;border-radius:12px;background:#f4e9f6;color:#741c7c;font-size:18px;font-weight:900}
+    body.admin-portal .warehouse-home-flow-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+    body.admin-portal .warehouse-home-flow-copy small{color:#806f84;font-size:11px}
+    body.admin-portal .warehouse-home-flow-copy strong{color:#68166f;font-size:23px;line-height:1.1}
+    body.admin-portal .warehouse-home-flow-copy em{color:#9a8b9d;font-size:10px;font-style:normal;white-space:normal}
+    body.admin-portal .warehouse-home-flow-card>b{color:#9b83a0;font-size:20px}
+    body.admin-portal .warehouse-home-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+    body.admin-portal .warehouse-home-panel{min-width:0;padding:18px;border:1px solid #eaddec;border-radius:18px;background:#fff}
+    body.admin-portal .warehouse-home-list{display:flex;flex-direction:column;gap:0}
+    body.admin-portal .warehouse-home-order,.warehouse-home-stock-row,.warehouse-home-history-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f1eaf2}
+    body.admin-portal .warehouse-home-order:last-child,.warehouse-home-stock-row:last-child,.warehouse-home-history-row:last-child{border-bottom:0}
+    body.admin-portal .warehouse-home-order{width:100%;border-top:0;border-left:0;border-right:0;background:transparent;text-align:left;cursor:pointer}
+    body.admin-portal .warehouse-home-order>span:first-child,.warehouse-home-stock-copy,.warehouse-home-history-row>span:nth-child(2){display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}
+    body.admin-portal .warehouse-home-order strong,.warehouse-home-stock-copy strong,.warehouse-home-history-row strong{color:#49344d;font-size:12px}
+    body.admin-portal .warehouse-home-order small,.warehouse-home-stock-copy small,.warehouse-home-history-row small{color:#95869a;font-size:10px}
+    body.admin-portal .warehouse-home-order-status{padding:5px 8px;border-radius:8px;background:#f5edf6;color:#74357a;font-size:10px;font-weight:800;white-space:nowrap}
+    body.admin-portal .warehouse-home-order>b{color:#a08aa4}
+    body.admin-portal .warehouse-home-stock-indicator{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#d97706}
+    body.admin-portal .warehouse-home-stock-indicator.is-out{background:#dc4545}
+    body.admin-portal .warehouse-home-stock-value{display:flex;flex-direction:column;align-items:flex-end;gap:3px;color:#6d2474;font-size:13px;font-weight:900}
+    body.admin-portal .warehouse-home-stock-value small{color:#95869a;font-size:10px;font-weight:500}
+    body.admin-portal .warehouse-home-history-type{display:grid;place-items:center;width:29px;height:29px;flex:0 0 29px;border-radius:10px;font-weight:900}
+    body.admin-portal .warehouse-home-history-type.is-in{background:#e8f6ed;color:#25834b}
+    body.admin-portal .warehouse-home-history-type.is-out{background:#fff0e9;color:#c15b2c}
+    body.admin-portal .warehouse-home-history-qty{display:flex;flex-direction:column;align-items:flex-end;gap:4px;color:#49344d;font-size:12px;font-weight:800}
+    body.admin-portal .warehouse-home-history-qty small{font-weight:400}
+    body.admin-portal .warehouse-home-empty{padding:18px 10px;color:#938596;text-align:center;font-size:12px;line-height:1.5}
+    body.admin-portal .warehouse-home-activity{margin-bottom:8px}
+    @media(max-width:760px){
+      body.admin-portal .warehouse-home-intro{padding:18px 16px;border-radius:17px}
+      body.admin-portal .warehouse-home-intro h2{font-size:21px}
+      body.admin-portal .warehouse-home-mark{width:48px;height:48px;flex-basis:48px;border-radius:15px;font-size:23px}
+      body.admin-portal .warehouse-home-actions{display:grid;grid-template-columns:1fr 1fr}
+      body.admin-portal .warehouse-home-actions #warehouseHomeOrders{grid-column:1/-1}
+      body.admin-portal .warehouse-home-actions button{width:100%;font-size:12px}
+      body.admin-portal .warehouse-home-flow{grid-template-columns:1fr 1fr;gap:8px}
+      body.admin-portal .warehouse-home-flow-card{padding:12px 10px;gap:8px}
+      body.admin-portal .warehouse-home-flow-copy strong{font-size:21px}
+      body.admin-portal .warehouse-home-grid{grid-template-columns:1fr;gap:10px}
+      body.admin-portal .warehouse-home-panel{padding:14px;border-radius:16px}
+      body.admin-portal .warehouse-home-section-head h3{font-size:15px}
+    }
+
 </style>
 </head>
 <body>
@@ -1913,7 +1971,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       $('opsStats').innerHTML=cards.map(x=>'<div class="profile-item ops-stat-card"><small>'+escapeHtml(x[0])+'</small><strong>'+formatMoney(x[1])+'</strong><span>'+escapeHtml(x[2])+'</span></div>').join('');
       if(role==='ADMIN'||role==='SUPERADMIN'){$('opsMainTitle').textContent='Ringkasan Operasional';renderOpsOrders();}
       else if(role==='KASIR'){renderOpsCashier();}
-      else {$('opsMainTitle').textContent='Pesanan Gudang';renderOpsWarehouse();}
+      else {renderOpsWarehouseDashboard();}
     }
     async function renderOpsReports(){
       if(!['ADMIN','SUPERADMIN'].includes(state.data.user.role)){showToast('Menu laporan tidak tersedia untuk role Anda.');return;}
@@ -2114,6 +2172,44 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       document.querySelectorAll('.cashier-verify').forEach(b=>b.onclick=()=>openVerifyPayment(b.dataset.id,'TERIMA'));
       document.querySelectorAll('.cashier-detail').forEach(b=>b.onclick=()=>openOpsOrderDetail(b.dataset.id));
     }
+    async function renderOpsWarehouseDashboard(){
+      const stats=opsData&&opsData.stats?opsData.stats:{};
+      const rows=(opsData&&opsData.orders?opsData.orders:[]).filter(o=>['DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR'].includes(o.status));
+      const count={DIBAYAR:0,DIPROSES:0,DISIAPKAN:0,DIANTAR:0};
+      rows.forEach(o=>{if(count[o.status]!==undefined)count[o.status]++;});
+      $('opsMainTitle').textContent='Dashboard Gudang';
+      $('opsMainBody').innerHTML=
+        '<div class="warehouse-home-intro"><div><span class="warehouse-home-eyebrow">PUSAT KENDALI PERSEDIAAN</span><h2>Halo, '+escapeHtml(state.data.user.nama||'Petugas Gudang')+'</h2><p>Pantau antrean pemenuhan, kondisi stok, dan aktivitas Gudang dari satu tempat.</p></div><div class="warehouse-home-mark" aria-hidden="true">▤</div></div>'+
+        '<div class="warehouse-home-actions"><button type="button" class="primary" id="warehouseHomeOrders">Buka Antrean Pesanan <span>→</span></button><button type="button" class="secondary" id="warehouseHomeStock">Kelola Persediaan</button><button type="button" class="secondary" id="warehouseHomeRefresh">↻ Perbarui Dashboard</button></div>'+
+        '<div class="warehouse-home-section-head"><div><h3>Ringkasan pekerjaan</h3><p>Jumlah pesanan menurut tahap pemenuhan saat ini</p></div></div>'+
+        '<div class="warehouse-home-flow">'+[['DIBAYAR','Perlu diproses',count.DIBAYAR,'Menunggu tindakan Gudang'],['DIPROSES','Sedang diproses',count.DIPROSES,'Barang sedang diambil'],['DISIAPKAN','Siap diserahkan',count.DISIAPKAN,'Pemeriksaan dan pengemasan'],['DIANTAR','Dalam pengantaran',count.DIANTAR,'Menunggu konfirmasi Wali']].map((x,i)=>'<button type="button" class="warehouse-home-flow-card" data-warehouse-stage="'+x[0]+'"><span class="warehouse-home-flow-icon">'+['＋','◷','✓','➜'][i]+'</span><span class="warehouse-home-flow-copy"><small>'+x[1]+'</small><strong>'+formatMoney(x[2])+'</strong><em>'+x[3]+'</em></span><b>›</b></button>').join('')+'</div>'+
+        '<div class="warehouse-home-grid"><section class="warehouse-home-panel"><div class="warehouse-home-section-head"><div><h3>Perhatian persediaan</h3><p>Produk yang perlu segera diperiksa</p></div><button type="button" class="text-button" id="warehouseHomeSeeStock">Lihat semua</button></div><div id="warehouseHomeStockAlerts" class="warehouse-home-list"><div class="muted">Memuat kondisi stok...</div></div></section>'+
+        '<section class="warehouse-home-panel"><div class="warehouse-home-section-head"><div><h3>Pesanan terbaru</h3><p>Pesanan aktif yang perlu dipantau</p></div><button type="button" class="text-button" id="warehouseHomeSeeOrders">Lihat semua</button></div><div class="warehouse-home-list">'+(rows.length?rows.slice(0,5).map(o=>'<button type="button" class="warehouse-home-order" data-warehouse-order="'+escapeHtml(o.orderId)+'"><span><strong>'+escapeHtml(o.number)+'</strong><small>'+escapeHtml(o.childName||'-')+' · '+escapeHtml(formatDate(o.createdAt))+'</small></span><span class="warehouse-home-order-status">'+escapeHtml(statusLabel(o.status))+'</span><b>›</b></button>').join(''):'<div class="warehouse-home-empty">Belum ada pesanan aktif yang menunggu pemenuhan.</div>')+'</div></section></div>'+
+        '<section class="warehouse-home-panel warehouse-home-activity"><div class="warehouse-home-section-head"><div><h3>Aktivitas stok terbaru</h3><p>Catatan mutasi persediaan terakhir</p></div><button type="button" class="text-button" id="warehouseHomeSeeHistory">Buka riwayat stok</button></div><div id="warehouseHomeStockHistory" class="warehouse-home-list"><div class="muted">Memuat aktivitas stok...</div></div></section>';
+      const openOrders=(status)=>{document.querySelectorAll('#staffNav .nav-btn').forEach(x=>x.classList.remove('active'));$('staffOrders').classList.add('active');renderOpsWarehouse();if(status&&$('warehouseStatus')){$('warehouseStatus').value=status;$('warehouseStatus').dispatchEvent(new Event('change'));}};
+      const openStock=()=>{document.querySelectorAll('#staffNav .nav-btn').forEach(x=>x.classList.remove('active'));$('staffStock').classList.add('active');renderOpsStock();};
+      $('warehouseHomeOrders').onclick=()=>openOrders('');
+      $('warehouseHomeSeeOrders').onclick=()=>openOrders('');
+      $('warehouseHomeStock').onclick=openStock;
+      $('warehouseHomeSeeStock').onclick=openStock;
+      $('warehouseHomeSeeHistory').onclick=openStock;
+      $('warehouseHomeRefresh').onclick=loadOps;
+      document.querySelectorAll('[data-warehouse-stage]').forEach(b=>b.onclick=()=>openOrders(b.dataset.warehouseStage));
+      document.querySelectorAll('[data-warehouse-order]').forEach(b=>b.onclick=()=>openOpsOrderDetail(b.dataset.warehouseOrder));
+      try{
+        const stock=await runServer('getStockManagement',state.token);
+        const items=(stock.items||[]).filter(x=>String(x.productStatus||'').toUpperCase()==='AKTIF'&&(!x.variationStatus||String(x.variationStatus).toUpperCase()==='AKTIF'));
+        const alerts=items.filter(x=>Number(x.stock)<=Number(x.minStock)).sort((a,b)=>(Number(a.stock)<=0?0:1)-(Number(b.stock)<=0?0:1)||Number(a.stock)-Number(b.stock)).slice(0,6);
+        $('warehouseHomeStockAlerts').innerHTML=alerts.length?alerts.map(x=>'<div class="warehouse-home-stock-row"><span class="warehouse-home-stock-indicator '+(Number(x.stock)<=0?'is-out':'is-low')+'"></span><span class="warehouse-home-stock-copy"><strong>'+escapeHtml(x.name)+'</strong><small>'+escapeHtml(x.sku)+(x.variationName?' · '+escapeHtml(x.variationName):'')+'</small></span><span class="warehouse-home-stock-value"><strong>'+formatMoney(x.stock)+'</strong><small>Min. '+formatMoney(x.minStock)+'</small></span></div>').join(''):'<div class="warehouse-home-empty">Semua stok aktif berada di atas batas minimum.</div>';
+        const history=stock.history||[];
+        $('warehouseHomeStockHistory').innerHTML=history.length?history.slice(0,5).map(h=>'<div class="warehouse-home-history-row"><span class="warehouse-home-history-type '+(h.type==='MASUK'?'is-in':'is-out')+'">'+(h.type==='MASUK'?'＋':'−')+'</span><span><strong>'+escapeHtml(h.productName)+'</strong><small>'+escapeHtml(h.variationName||h.sku||'-')+' · '+escapeHtml(h.actor||'Petugas')+'</small></span><span class="warehouse-home-history-qty">'+(h.type==='MASUK'?'+':'−')+formatMoney(h.qty)+'<small>'+escapeHtml(formatDate(h.createdAt))+'</small></span></div>').join(''):'<div class="warehouse-home-empty">Belum ada aktivitas mutasi stok.</div>';
+      }catch(e){
+        $('warehouseHomeStockAlerts').innerHTML='<div class="warehouse-home-empty">Kondisi stok belum dapat dimuat. <button type="button" class="text-button" id="warehouseRetryStock">Coba lagi</button></div>';
+        $('warehouseHomeStockHistory').innerHTML='<div class="warehouse-home-empty">Riwayat stok belum dapat dimuat.</div>';
+        if($('warehouseRetryStock'))$('warehouseRetryStock').onclick=renderOpsWarehouseDashboard;
+      }
+    }
+
     function renderOpsWarehouse(){
       const rows=(opsData.orders||[]).filter(o=>['DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR'].includes(o.status));
       const counts={DIBAYAR:0,DIPROSES:0,DISIAPKAN:0,DIANTAR:0};rows.forEach(o=>{if(counts[o.status]!==undefined)counts[o.status]++});
