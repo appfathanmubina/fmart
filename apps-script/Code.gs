@@ -1957,6 +1957,63 @@ function updateDeliveryProgress(token, assignmentId, note) {
   } finally {lock.releaseLock();}
 }
 
+
+/**
+ * Tahap 7: unggah bukti foto pengantaran. File disimpan privat di Drive;
+ * tenggat konfirmasi Wali dimulai dari waktu unggah yang tercatat server.
+ */
+function submitDeliveryProof(token, assignmentId, fileName, mimeType, dataUrl, note) {
+  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);
+  assignmentId=String(assignmentId||'').trim();
+  fileName=sanitizeFileName_(fileName||'bukti-pengantaran');
+  mimeType=String(mimeType||'').toLowerCase().trim();
+  note=String(note||'').trim().slice(0,300);
+  if(!assignmentId||!dataUrl) throw new Error('Foto bukti pengantaran wajib dipilih.');
+  if(['image/jpeg','image/png','image/webp'].indexOf(mimeType)<0) throw new Error('Format foto harus JPG, PNG, atau WEBP.');
+  const raw=String(dataUrl).replace(/^data:[^;]+;base64,/,'');
+  if(!raw||raw.length>14*1024*1024) throw new Error('Data foto tidak valid atau terlalu besar.');
+  const bytes=Utilities.base64Decode(raw);
+  if(!bytes.length||bytes.length>10*1024*1024) throw new Error('Ukuran foto maksimal 10 MB.');
+  const lock=LockService.getScriptLock();lock.waitLock(20000);
+  let createdFile=null;
+  try {
+    const ss=getSS_(),assignmentSheet=ss.getSheetByName('Pengantaran');
+    const found=findRowById_(assignmentSheet,assignmentId,1);
+    if(!found) throw new Error('Penugasan tidak ditemukan.');
+    const row=found.values,orderId=String(row[1]||''),status=String(row[3]||'').toUpperCase();
+    if(String(row[2]||'')!==String(session.userId)) throw new Error('Anda tidak berhak mengunggah bukti untuk tugas ini.');
+    if(status!=='DALAM_PERJALANAN') throw new Error('Bukti hanya dapat diunggah saat pengantaran berlangsung.');
+    const order=findRowById_(ss.getSheetByName('Pesanan'),orderId,1);
+    if(!order||String(order.values[8]||'').toUpperCase()!=='DIANTAR') throw new Error('Pesanan tidak berada dalam status DIANTAR.');
+    const proofSheet=ss.getSheetByName('BuktiPengantaran'),confirmSheet=ss.getSheetByName('KonfirmasiPengantaran');
+    if(!proofSheet||!confirmSheet) throw new Error('Database bukti pengantaran belum tersedia. Jalankan setupFMartDatabase() terlebih dahulu.');
+    if(readRows_(proofSheet).some(r=>String(r[2]||'')===assignmentId)) throw new Error('Bukti untuk penugasan ini sudah pernah diunggah.');
+    const folder=getDeliveryProofFolder_();
+    const blob=Utilities.newBlob(bytes,mimeType,orderId+'-'+fileName);
+    createdFile=folder.createFile(blob);
+    const now=new Date(),deadline=new Date(now.getTime()+7*24*60*60*1000),proofId=makeFMartId_('BPD');
+    proofSheet.appendRow([proofId,orderId,assignmentId,createdFile.getId(),createdFile.getUrl(),fileName,mimeType,bytes.length,note,session.userId,now]);
+    confirmSheet.appendRow([makeFMartId_('KPG'),orderId,now,deadline,'MENUNGGU_KONFIRMASI','','','',false,now]);
+    const waliId=String(order.values[2]||'');
+    if(waliId) ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),waliId,orderId,'Bukti pengantaran tersedia','Petugas telah mengunggah bukti pengantaran pesanan '+String(order.values[1]||orderId)+'. Silakan periksa dan konfirmasi penerimaan.','PENGANTARAN',false,now]);
+    recordDeliveryHistory_(ss,assignmentId,orderId,session,'UNGGAH_BUKTI','DALAM_PERJALANAN','MENUNGGU_KONFIRMASI',note||'Bukti foto pengantaran diunggah');
+    writeAudit_(session.userId,session.role,'UPLOAD_DELIVERY_PROOF','BUKTI_PENGANTARAN',proofId,'',JSON.stringify({orderId:orderId,assignmentId:assignmentId,mimeType:mimeType,sizeBytes:bytes.length,confirmationDeadline:deadline.toISOString()}),'Mengunggah bukti foto pengantaran');
+    SpreadsheetApp.flush();
+    return {ok:true,message:'Bukti pengantaran berhasil diunggah. Wali Santri telah diberi notifikasi.',uploadedAt:now.toISOString(),confirmationDeadline:deadline.toISOString()};
+  } catch(e) {
+    if(createdFile) { try { createdFile.setTrashed(true); } catch(ignore) {} }
+    throw e;
+  } finally {lock.releaseLock();}
+}
+function getDeliveryProofFolder_() {
+  const props=PropertiesService.getScriptProperties(),key='FMART_DELIVERY_PROOF_FOLDER_ID';
+  const id=props.getProperty(key);
+  if(id) { try { return DriveApp.getFolderById(id); } catch(e) {} }
+  const folder=DriveApp.createFolder('FMart - Bukti Pengantaran');
+  props.setProperty(key,folder.getId());
+  return folder;
+}
+
 function getDeliveryAssignmentWorkspace(token) {
   requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
   const ss=getSS_(), userRows=readRows_(ss.getSheetByName('Users'));
