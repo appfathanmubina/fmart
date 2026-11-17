@@ -2311,33 +2311,38 @@ async function openOpsOrderDetail(id){
         const c=await runServer('getStockCatalog',state.token);
         if(!c.products||!c.products.length){showToast('Belum ada produk aktif yang dapat dimutasi.','error');return}
         $('opsModalTitle').textContent='Mutasi Stok';
-        $('opsModalBody').innerHTML=
-          '<div class="notice">Gunakan stok masuk untuk barang yang diterima dan stok keluar untuk penyesuaian/pengeluaran manual. Pengurangan stok penjualan terverifikasi dicatat otomatis.</div>'+
+        $('opsModalBody').innerHTML='<div class="notice">Stok masuk digunakan untuk barang yang diterima. Stok keluar digunakan untuk pengeluaran atau koreksi manual. Penjualan terverifikasi mengurangi stok otomatis dan tidak perlu dicatat ulang.</div>'+
           '<div class="field"><label>Produk *</label><select id="stockProduct" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px">'+c.products.map(p=>'<option value="'+escapeHtml(p.id)+'" '+(String(p.id)===String(productId||'')?'selected':'')+'>'+escapeHtml(p.name)+' · '+escapeHtml(p.sku)+'</option>').join('')+'</select></div>'+
-          '<div class="field"><label>Variasi</label><select id="stockVariation" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px"><option value="">Stok utama produk</option></select></div>'+
+          '<div class="field"><label>Variasi</label><select id="stockVariation" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px"></select></div>'+
+          '<div class="stock-current-preview" id="stockCurrentPreview"><span>Stok saat ini</span><strong>—</strong></div>'+
           '<div class="field"><label>Jenis Mutasi *</label><select id="stockType" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px"><option value="MASUK">Stok Masuk</option><option value="KELUAR">Stok Keluar</option></select></div>'+
           '<div class="field"><label>Jumlah *</label><input id="stockQty" type="number" min="1" step="1" value="1" inputmode="numeric"></div>'+
-          '<div class="field"><label>Keterangan</label><input id="stockNote" maxlength="300" placeholder="Contoh: pembelian barang / barang rusak"></div>'+
-          '<button class="primary" id="saveStock">Simpan Mutasi</button>';
+          '<div class="field"><label>Keterangan</label><input id="stockNote" maxlength="300" placeholder="Contoh: penerimaan pembelian, barang rusak, atau koreksi stok"></div>'+
+          '<button class="primary" id="saveStock" type="button">Simpan Mutasi</button>';
         $('opsModal').classList.remove('hidden');
-        const refreshVars=()=>{
+        const updatePreview=()=>{
           const p=c.products.find(x=>String(x.id)===String($('stockProduct').value));
-          const hasVariations=!!(p&&p.variations&&p.variations.length);const options=(hasVariations?'<option value="">Pilih variasi...</option>':'<option value="">Stok utama produk</option>')+(p?p.variations.map(v=>'<option value="'+escapeHtml(v.id)+'" '+(String(v.id)===String(variationId||'')?'selected':'')+'>'+escapeHtml(v.name)+': '+escapeHtml(v.value)+' · stok '+formatMoney(v.stock)+'</option>').join(''):'');
-          $('stockVariation').innerHTML=options;
+          const v=p&&p.variations?p.variations.find(x=>String(x.id)===String($('stockVariation').value)):null;
+          const current=v?Number(v.stock)||0:(p?Number(p.stock)||0:0);
+          $('stockCurrentPreview').innerHTML='<span>'+escapeHtml(v?(v.name+': '+v.value):(p?'Stok utama produk':'Item belum dipilih'))+' · stok saat ini</span><strong>'+formatMoney(current)+' unit</strong>';
+        };
+        const refreshVars=()=>{
+          const p=c.products.find(x=>String(x.id)===String($('stockProduct').value)),has=!!(p&&p.variations&&p.variations.length);
+          $('stockVariation').innerHTML=has?'<option value="">Pilih variasi...</option>':'<option value="">Stok utama produk</option>';
+          if(p&&has)p.variations.forEach(v=>$('stockVariation').insertAdjacentHTML('beforeend','<option value="'+escapeHtml(v.id)+'">'+escapeHtml(v.name)+': '+escapeHtml(v.value)+' · stok '+formatMoney(v.stock)+'</option>'));
           if(variationId&&p&&p.variations.some(v=>String(v.id)===String(variationId)))$('stockVariation').value=String(variationId);
+          updatePreview();
         };
         $('stockProduct').addEventListener('change',()=>{variationId='';refreshVars()});
-        refreshVars();
+        $('stockVariation').addEventListener('change',updatePreview);refreshVars();
         $('saveStock').onclick=async()=>{
-          const b=$('saveStock'),qty=Number($('stockQty').value);
-          if(b.disabled)return;
+          const b=$('saveStock'),qty=Number($('stockQty').value);if(b.disabled)return;
           if(!Number.isInteger(qty)||qty<1){showToast('Jumlah mutasi harus berupa bilangan bulat minimal 1.','error');$('stockQty').focus();return}
-          const selectedProduct=c.products.find(x=>String(x.id)===String($('stockProduct').value));if(selectedProduct&&selectedProduct.variations.length&&!$('stockVariation').value){showToast('Pilih variasi produk terlebih dahulu.','error');$('stockVariation').focus();return}
+          const selected=c.products.find(x=>String(x.id)===String($('stockProduct').value));
+          if(selected&&selected.variations.length&&!$('stockVariation').value){showToast('Pilih variasi produk terlebih dahulu.','error');$('stockVariation').focus();return}
           b.disabled=true;loading(true,'Menyimpan mutasi stok...');
-          try{
-            await runServer('adjustStock',state.token,$('stockProduct').value,$('stockVariation').value,$('stockType').value,qty,$('stockNote').value);
-            closeOpsModal();showToast('Mutasi stok berhasil disimpan.','success');await renderOpsStock();
-          }catch(e){showToast(e.message||'Mutasi stok gagal.','error')}
+          try{await runServer('adjustStock',state.token,$('stockProduct').value,$('stockVariation').value,$('stockType').value,qty,$('stockNote').value);closeOpsModal();showToast('Mutasi stok berhasil disimpan.','success');await renderOpsStock()}
+          catch(e){showToast(e.message||'Mutasi stok gagal.','error')}
           finally{b.disabled=false;loading(false)}
         };
       }catch(e){showToast(e.message||'Data stok gagal dimuat.','error')}
