@@ -791,6 +791,7 @@ function checkoutCart(token, santriId, selectedCartIds, catatan, metodePengirima
   if (!santriId) throw new Error('Santri tujuan belum dipilih.');
   if (!selectedCartIds.length) throw new Error('Pilih minimal satu barang untuk checkout.');
   if (['AMBIL_FMART','ANTAR_PESANTREN'].indexOf(metodePengiriman) === -1) throw new Error('Metode pengiriman tidak valid.');
+  if (metodePengiriman === 'ANTAR_PESANTREN' && !tujuan) throw new Error('Titik atau pihak penerima wajib diisi untuk pengantaran.');
   const selectedMap = {};
   selectedCartIds.forEach(function(id){selectedMap[id]=true;});
   const lock = LockService.getScriptLock(); lock.waitLock(15000);
@@ -834,7 +835,8 @@ function checkoutCart(token, santriId, selectedCartIds, catatan, metodePengirima
     items.forEach(function(i){
       detailSheet.appendRow([makeFMartId_('DTL'),orderId,i.productId,i.variationId,i.sku,i.name,i.variationName,i.unitPrice,i.qty,i.unitPrice*i.qty]);
     });
-    ss.getSheetByName('Pengiriman').appendRow([makeFMartId_('SHP'),orderId,metodePengiriman,tujuan||child.name,'MENUNGGU','','',session.userId,now]);
+    const tujuanPengiriman = metodePengiriman === 'ANTAR_PESANTREN' ? tujuan : ('Pengambilan langsung di FMart' + (tujuan ? ' — ' + tujuan : ''));
+    ss.getSheetByName('Pengiriman').appendRow([makeFMartId_('SHP'),orderId,metodePengiriman,tujuanPengiriman,'MENUNGGU','','',session.userId,now]);
     selectedRows.sort(function(a,b){return b.rowNumber-a.rowNumber;}).forEach(function(entry){cartSheet.deleteRow(entry.rowNumber);});
     writeAudit_(session.userId,session.role,'CREATE_ORDER','PESANAN',orderId,'',JSON.stringify({number:nomorPesanan,santriId:santriId,total:total,itemCount:items.length,shippingMethod:metodePengiriman}),'Checkout membuat pesanan dari item terpilih');
     SpreadsheetApp.flush();
