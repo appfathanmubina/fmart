@@ -44,7 +44,7 @@ function assertPortalRole_(role, portalMode) {
 
 function getSS_() {
   const id = PropertiesService.getScriptProperties().getProperty(FMART.SPREADSHEET_PROPERTY);
-  if (!id) throw new Error('Database FMart belum dikonfigurasi. Jalankan setupFMartDatabase() terlebih dahulu.');
+  if (!id) throw new Error('Database FMart belum dikonfigurasi. Jalankan setupFMartDatabase_() terlebih dahulu.');
   return SpreadsheetApp.openById(id);
 }
 
@@ -554,7 +554,7 @@ function findWaliByUserId_(ss, userId) {
 }
 
 function getInitialData(token) {
-  const session = requireSession_(token);
+  const session = requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
   const ss = getSS_();
   const result = {user:{userId:session.userId,username:session.username,nama:session.nama,role:session.role},categories:[],products:[],children:[]};
 
@@ -576,7 +576,7 @@ function getChildrenForWali_(ss, userId) {
 
 /** Fase 2: katalog produk aktif. Harga/stok selalu dibaca dari server. */
 function getProductDetail(token, productId) {
-  requireSession_(token);
+  requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
   productId = String(productId || '').trim();
   if (!productId) throw new Error('Produk tidak valid.');
   const ss = getSS_();
@@ -612,15 +612,14 @@ function getProductDetail(token, productId) {
 }
 
 function getCatalog(token) {
-  const session = requireSession_(token);
-  if (session.role === FMART.ROLES.PETUGAS_PENGANTAR) throw new Error('Petugas Pengantar hanya memiliki akses ke modul pengantaran.');
+  const session = requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
   const ss = getSS_();
   const categorySheet = ss.getSheetByName('Kategori');
   const productSheet = ss.getSheetByName('Produk');
   const stockSheet = ss.getSheetByName('Stok');
   const variationSheet = ss.getSheetByName('VariasiProduk');
   if (!categorySheet || !productSheet || !stockSheet || !variationSheet) {
-    throw new Error('Database katalog FMart belum lengkap. Jalankan setupFMartDatabase().');
+    throw new Error('Database katalog FMart belum lengkap. Jalankan setupFMartDatabase_().');
   }
 
   // Baca masing-masing sheet satu kali. Hindari filter VariasiProduk berulang
@@ -1055,7 +1054,7 @@ function submitPayment(token, orderId, method, nominal, fileName, mimeType, base
   } finally { lock.releaseLock(); }
 }
 function getPaymentSettings(token) {
-  requireSession_(token);
+  requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.SUPERADMIN]);
   return {ok:true,bankName:getSettingValue_('PAYMENT_BANK_NAME'),accountNumber:getSettingValue_('PAYMENT_ACCOUNT_NUMBER'),accountName:getSettingValue_('PAYMENT_ACCOUNT_NAME'),adminWhatsapp:getSettingValue_('PAYMENT_ADMIN_WHATSAPP'),qrisImageUrl:getSettingValue_('PAYMENT_QRIS_IMAGE_URL')};
 }
 
@@ -1253,7 +1252,7 @@ function processDeliveryAutoConfirmation_() {
 }
 
 /** Jalankan sekali dari Apps Script Editor untuk memasang trigger per jam. */
-function installDeliveryAutomationTrigger() {
+function installDeliveryAutomationTrigger_() {
   const handler='processDeliveryAutoConfirmation_';
   ScriptApp.getProjectTriggers().filter(t=>t.getHandlerFunction()===handler).forEach(t=>ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger(handler).timeBased().everyHours(1).create();
@@ -1738,7 +1737,7 @@ function createStaffUser(token, username, password, nama, role, email) {
     username=email;
     role=String(role||'').trim().toUpperCase();
     if(['ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'].indexOf(role)<0) throw new Error('Peran petugas tidak valid.');
-    const result=createFMartUser(username,password,nama,role,email);
+    const result=createFMartUser_(username,password,nama,role,email);
     writeAudit_(session.userId,session.role,'CREATE_USER','USER',result.userId,'',JSON.stringify({username:result.username,role:result.role}),'Membuat pengguna');
     SpreadsheetApp.flush();
     return getOperationsDashboard(token);
@@ -1834,7 +1833,7 @@ function requestWaliSantriLink(token,santriId,hubungan){
   const lock=LockService.getScriptLock();lock.waitLock(10000);
   try{
     const ss=getSS_(), rs=ss.getSheetByName('WaliSantriSantri'), santriSheet=ss.getSheetByName('Santri');
-    if(!rs||!santriSheet) throw new Error('Database relasi belum siap. Jalankan setupFMartDatabase().');
+    if(!rs||!santriSheet) throw new Error('Database relasi belum siap. Jalankan setupFMartDatabase_().');
     const wali=findWaliByUserId_(ss,session.userId); if(!wali) throw new Error('Data Wali Santri tidak ditemukan.');
     const santri=findSantriRowById_(santriSheet,santriId), santriMap=getSantriColumnMap_(santriSheet); if(!santri||santriRecord_(santri.values,santriMap).status.toUpperCase()!=='AKTIF') throw new Error('Data Santri tidak ditemukan atau tidak aktif.');
     const relRows=readRows_(rs), existing=relRows.find(function(r){return String(r[1]||'')===wali.waliId&&String(r[2]||'')===santriId;});
@@ -1864,7 +1863,7 @@ function linkWaliSantri(token,waliId,santriId,hubungan){
   waliId=String(waliId||'').trim();santriId=String(santriId||'').trim();hubungan=String(hubungan||'WALI').trim().toUpperCase();
   if(!waliId||!santriId)throw new Error('Wali Santri dan Santri wajib dipilih.');if(['AYAH','IBU','WALI','LAINNYA'].indexOf(hubungan)===-1)hubungan='WALI';
   const lock=LockService.getScriptLock();lock.waitLock(10000);try{
-    const ss=getSS_(),ws=ss.getSheetByName('WaliSantri'),ssheet=ss.getSheetByName('Santri'),rs=ss.getSheetByName('WaliSantriSantri');if(!ws||!ssheet||!rs)throw new Error('Database relasi Wali Santri belum siap. Jalankan setupFMartDatabase().');
+    const ss=getSS_(),ws=ss.getSheetByName('WaliSantri'),ssheet=ss.getSheetByName('Santri'),rs=ss.getSheetByName('WaliSantriSantri');if(!ws||!ssheet||!rs)throw new Error('Database relasi Wali Santri belum siap. Jalankan setupFMartDatabase_().');
     const wali=findRowById_(ws,waliId,1),santri=findSantriRowById_(ssheet,santriId),santriMap=getSantriColumnMap_(ssheet);if(!wali)throw new Error('Data Wali Santri tidak ditemukan.');if(!santri||santriRecord_(santri.values,santriMap).status.toUpperCase()!=='AKTIF')throw new Error('Santri tidak ditemukan atau tidak aktif.');
     const relRows=readRows_(rs),duplicate=relRows.find(function(r){return String(r[1]||'')===waliId&&String(r[2]||'')===santriId&&String(r[3]||'').toUpperCase()==='AKTIF';});
     const activeOrPendingCount=relRows.filter(function(r){return String(r[2]||'')===santriId&&['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(r[3]||'').toUpperCase())>=0;}).length;
@@ -1978,7 +1977,7 @@ function getDeliveryDashboard(token) {
   const session = requireRole_(token, [FMART.ROLES.PETUGAS_PENGANTAR]);
   const ss = getSS_();
   const assignmentSheet = ss.getSheetByName('Pengantaran');
-  if (!assignmentSheet) throw new Error('Struktur Pengantaran belum tersedia. Jalankan setupFMartDatabase() terlebih dahulu.');
+  if (!assignmentSheet) throw new Error('Struktur Pengantaran belum tersedia. Jalankan setupFMartDatabase_() terlebih dahulu.');
   const assignments = readRows_(assignmentSheet);
   const orders = readRows_(ss.getSheetByName('Pesanan'));
   const users = readRows_(ss.getSheetByName('Users'));
@@ -2066,7 +2065,7 @@ function getDeliveryDashboard(token) {
 /** Tahap 6: tindakan operasional Petugas Pengantar. */
 function recordDeliveryHistory_(ss, assignmentId, orderId, session, action, beforeStatus, afterStatus, note) {
   const sheet=ss.getSheetByName('RiwayatPengantaran');
-  if(!sheet) throw new Error('Sheet RiwayatPengantaran belum tersedia. Jalankan setupFMartDatabase() terlebih dahulu.');
+  if(!sheet) throw new Error('Sheet RiwayatPengantaran belum tersedia. Jalankan setupFMartDatabase_() terlebih dahulu.');
   sheet.appendRow([makeFMartId_('RPD'),orderId,assignmentId,session.userId,session.role,action,beforeStatus,afterStatus,String(note||'').slice(0,500),new Date()]);
 }
 function respondDeliveryAssignment(token, assignmentId, decision, reason) {
@@ -2214,7 +2213,7 @@ function submitDeliveryProof(token, assignmentId, fileName, mimeType, dataUrl, n
     const currentShipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);
     if(!currentShipment||String(currentShipment.method||'').toUpperCase()!=='ANTAR_PESANTREN') throw new Error('Bukti foto hanya berlaku untuk pesanan Antar Pesantren.');
     const proofSheet=ss.getSheetByName('BuktiPengantaran'),confirmSheet=ss.getSheetByName('KonfirmasiPengantaran');
-    if(!proofSheet||!confirmSheet) throw new Error('Database bukti pengantaran belum tersedia. Jalankan setupFMartDatabase() terlebih dahulu.');
+    if(!proofSheet||!confirmSheet) throw new Error('Database bukti pengantaran belum tersedia. Jalankan setupFMartDatabase_() terlebih dahulu.');
     if(readRows_(proofSheet).some(r=>String(r[2]||'')===assignmentId)) throw new Error('Bukti untuk penugasan ini sudah pernah diunggah.');
     const folder=getDeliveryProofFolder_();
     const blob=Utilities.newBlob(bytes,mimeType,orderId+'-'+fileName);
@@ -2277,7 +2276,7 @@ function assignDeliveryOrder(token,orderId,petugasUserId,note){
     const ss=getSS_(),order=findRowById_(ss.getSheetByName('Pesanan'),orderId,1),assignmentSheet=ss.getSheetByName('Pengantaran');
     if(!order)throw new Error('Pesanan tidak ditemukan.');
     if(String(order.values[8]||'').toUpperCase()!=='DISIAPKAN')throw new Error('Pesanan harus berstatus DISIAPKAN sebelum ditugaskan.');
-    if(!assignmentSheet)throw new Error('Sheet Pengantaran belum tersedia. Jalankan setupFMartDatabase() terlebih dahulu.');
+    if(!assignmentSheet)throw new Error('Sheet Pengantaran belum tersedia. Jalankan setupFMartDatabase_() terlebih dahulu.');
     const users=readRows_(ss.getSheetByName('Users')),driver=users.find(r=>String(r[0]||'')===petugasUserId);
     if(!driver||String(driver[5]||'').toUpperCase()!=='PETUGAS_PENGANTAR'||String(driver[6]||'').toUpperCase()!=='AKTIF')throw new Error('Akun Petugas Pengantar tidak ditemukan atau tidak aktif.');
     const payment=readRows_(ss.getSheetByName('Pembayaran')).filter(r=>String(r[1]||'')===orderId).sort((a,b)=>new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime())[0];
@@ -2368,7 +2367,7 @@ function getSantriColumnMap_(sheet) {
   });
   const required = ['nis', 'nama_santri', 'kelas', 'santriid', 'status'];
   const missing = required.filter(function(key) { return map[key] === undefined; });
-  if (missing.length) throw new Error('Struktur master Santri belum lengkap. Header belum tersedia: ' + missing.join(', ') + '. Jalankan setupFMartDatabase() dan migrasi master Santri terlebih dahulu.');
+  if (missing.length) throw new Error('Struktur master Santri belum lengkap. Header belum tersedia: ' + missing.join(', ') + '. Jalankan setupFMartDatabase_() dan migrasi master Santri terlebih dahulu.');
   return map;
 }
 
