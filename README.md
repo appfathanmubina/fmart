@@ -330,3 +330,23 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 
 - Pemeriksaan statis dilakukan pada penggantian alur checkout frontend dan validasi backend.
 - Belum dilakukan uji browser, transaksi pada Spreadsheet aktif, pengujian proses pemenuhan oleh Gudang, atau deployment Apps Script.
+
+
+## Pengembangan Portal Wali Santri — Tahap 8
+
+### Pembayaran, QRIS, Transfer, dan Unggah Bukti
+
+- Halaman pembayaran menampilkan nomor pesanan, santri penerima, dan nominal tagihan yang dikunci mengikuti total pesanan.
+- Wali dapat memilih Transfer Bank atau QRIS. Transfer menampilkan bank, nomor rekening, dan nama pemilik rekening; QRIS menampilkan gambar QRIS dari URL HTTPS yang dikonfigurasi Superadmin.
+- Pengaturan pembayaran Superadmin kini memiliki URL gambar QRIS. Nilai disimpan sebagai key `PAYMENT_QRIS_IMAGE_URL` pada sheet Pengaturan; tidak menambah atau mengubah header Spreadsheet.
+- Kedua metode tetap berupa pembayaran manual. Tidak ada integrasi payment gateway, callback bank, atau konfirmasi otomatis; Admin/Kasir harus memeriksa transaksi aktual sebelum verifikasi.
+- Bukti wajib diunggah dalam JPG, PNG, WEBP, atau PDF dengan batas maksimal 5 MB. Frontend memberi informasi nama dan ukuran file; backend memvalidasi MIME, ukuran, nominal harus sama persis dengan total, kepemilikan pesanan, dan status pesanan sebelum menyimpan file ke folder bukti pembayaran.
+- Backend hanya menerima metode `TRANSFER` atau `QRIS`, menyimpan metode yang dipilih pada sheet Pembayaran, dan tetap membatasi pengajuan satu pembayaran aktif per pesanan. Hak verifikasi Admin/Kasir yang sudah ada tidak diubah.
+- Detail pesanan Wali menampilkan metode, nominal, status, dan informasi bahwa bukti sudah tersimpan. File bukti tetap tidak dibuka untuk role lain selain alur operasional yang berwenang.
+- Tidak ada perubahan struktur kolom sheet Pembayaran atau sheet lain. Pengaturan QRIS menggunakan mekanisme key-value yang sudah tersedia.
+
+### Pemeriksaan Tahap 8
+
+- Pemeriksaan statis dilakukan pada blok pembayaran frontend, validasi metode di backend, konfigurasi QRIS, dan struktur CSS.
+- Belum dilakukan uji unggah file ke Drive aktif, pemindaian QRIS aktual, pembayaran bank/QRIS, verifikasi oleh Kasir, uji browser, atau deployment Apps Script.
+- QRIS hanya dapat digunakan setelah Superadmin mengisi URL gambar QRIS HTTPS yang valid dan dapat diakses Wali.
