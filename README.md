@@ -312,3 +312,21 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 
 - Pemeriksaan statis sintaks backend/frontend, selector CSS, kepemilikan keranjang, validasi checkout, dan penghapusan hanya item terpilih perlu dilakukan.
 - Belum dilakukan uji browser, uji akun Wali/Spreadsheet aktif, transaksi checkout aktual, atau deployment Apps Script.
+
+## Pengembangan Portal Wali Santri — Tahap 7
+
+### Checkout dan Pilihan Pengambilan/Pengantaran
+
+- Checkout menampilkan kembali rincian setiap barang terpilih, variasi, jumlah, harga satuan, dan subtotal sebelum pesanan dibuat.
+- Wali wajib memilih satu santri aktif sebagai penerima. Satu checkout tetap menghasilkan satu pesanan untuk satu santri; item yang tidak dipilih tetap tersimpan di keranjang.
+- Pilihan pemenuhan terdiri dari antar ke pesantren atau ambil langsung di FMart.
+- Untuk pengantaran ke pesantren, Wali wajib mengisi titik atau pihak penerima agar petugas mengetahui tujuan penyerahan. Untuk pengambilan langsung, keterangan tambahan bersifat opsional.
+- Catatan pesanan tersedia terpisah dari keterangan tujuan/pengambilan.
+- Ringkasan akhir memperlihatkan subtotal, biaya pemenuhan, dan total tagihan. Biaya pemenuhan masih mengikuti konfigurasi saat ini yaitu Rp 0; belum ada tarif dinamis.
+- Backend checkout memvalidasi ulang santri aktif, kepemilikan item keranjang, status produk, harga, dan stok di bawah ScriptLock. Backend juga menolak pengantaran tanpa tujuan dan menyimpan metode serta tujuan pada sheet Pengiriman.
+- Tidak ada perubahan header atau struktur Spreadsheet. Data tujuan disimpan pada kolom Tujuan yang sudah tersedia di sheet Pengiriman. Fungsi Admin/Kasir/Gudang tidak diubah.
+
+### Pemeriksaan Tahap 7
+
+- Pemeriksaan statis dilakukan pada penggantian alur checkout frontend dan validasi backend.
+- Belum dilakukan uji browser, transaksi pada Spreadsheet aktif, pengujian proses pemenuhan oleh Gudang, atau deployment Apps Script.
