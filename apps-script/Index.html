@@ -693,10 +693,6 @@ body.admin-portal .status-muted{background:#f3f0f5;color:#766b7d}
   
     /* Tahap 4 — katalog Wali: pencarian, kategori, sortir dan hasil. */
     body.buyer-portal .buyer-catalog-section{margin-top:24px;padding:0 0 20px}
-    body.buyer-portal .buyer-catalog-intro{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:21px 22px;margin-bottom:16px;border:1px solid #eadcf0;border-radius:20px;background:linear-gradient(120deg,#fff 0%,#f5eafb 100%)}
-    body.buyer-portal .buyer-catalog-intro h2{margin:5px 0;color:#4b1554;font-size:clamp(19px,2.4vw,27px);letter-spacing:-.4px}
-    body.buyer-portal .buyer-catalog-intro p{margin:0;color:#82718a;font-size:12px}
-    body.buyer-portal .buyer-catalog-mark{width:52px;height:52px;display:grid;place-items:center;flex:0 0 52px;border-radius:17px;background:#800080;color:#fff;font-size:16px;font-weight:900;box-shadow:0 8px 20px #80008030}
     body.buyer-portal .buyer-search-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;margin-bottom:20px}
     body.buyer-portal .buyer-search{display:flex;align-items:center;gap:10px;margin:0;padding:0 13px;background:#fff;border:1px solid #e8ddec;border-radius:14px;box-shadow:0 5px 18px #241b3508}
     body.buyer-portal .buyer-search>span{color:#8b6594;font-size:23px;line-height:1}
@@ -1234,7 +1230,6 @@ body.buyer-portal #profileModal .modal-card{
     <main class="main">
       <section class="hero"><h1 id="greeting">Belanja lebih mudah</h1><p>Pesan kebutuhan anak Anda dengan praktis.</p></section>
       <section class="section buyer-catalog-section" id="buyerCatalog">
-        <div class="buyer-catalog-intro"><div><div class="eyebrow">KATALOG FMART</div><h2>Temukan kebutuhan pesantren</h2><p>Pilih kategori atau cari nama produk dan SKU.</p></div><span class="buyer-catalog-mark">FM</span></div>
         <div class="buyer-search-toolbar"><div class="search buyer-search"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="Cari nama produk, SKU, atau deskripsi..." autocomplete="off" aria-label="Cari produk"><button type="button" id="clearProductSearch" class="hidden" aria-label="Hapus pencarian">×</button></div></div>
         <div class="section-title buyer-category-heading"><div><h3>Kategori</h3><span class="muted">Jelajahi berdasarkan kebutuhan</span></div><div class="buyer-category-actions"><button type="button" class="text-action" id="resetCatalogFilters">Reset filter</button><div class="buyer-catalog-sort"><select id="productSort" aria-label="Pilih urutan produk"><option value="featured">Rekomendasi</option><option value="name-asc">Nama A–Z</option><option value="price-asc">Harga terendah</option><option value="price-desc">Harga tertinggi</option><option value="stock-desc">Stok tersedia</option></select></div></div></div><div id="categories" class="categories buyer-categories"></div>
         <div class="section-title dashboard-products-head buyer-results-heading"><div><h3 id="buyerResultsTitle">Semua Produk</h3><span id="productCount" class="muted"></span></div><button type="button" class="secondary" id="viewAllProducts">Lihat semua</button></div><div id="searchSummary" class="buyer-search-summary" aria-live="polite"></div><div id="products" class="products"></div>
