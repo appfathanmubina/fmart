@@ -444,3 +444,11 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 - Warna latar shell dan manifest PWA diselaraskan; service worker dinaikkan ke `fmart-shell-v12` untuk memperbarui cache shell.
 - Perubahan hanya pada CSS, warna shell/manifest, cache version, dan dokumentasi. Tidak ada perubahan JavaScript bisnis, endpoint Apps Script, struktur Spreadsheet, checkout, pembayaran QRIS, maupun hak akses.
 - Pemeriksaan yang dilakukan bersifat statis terhadap isi repository. Tampilan akhir tetap perlu ditinjau pada browser desktop dan perangkat mobile setelah sinkronisasi/deploy.
+
+
+## Audit Konsistensi Spacing — Portal Wali dan Admin
+- Pemeriksaan statis mencakup Dashboard Wali, katalog, keranjang umum, checkout, riwayat/detail pesanan, pembayaran, profil, serta workspace Admin.
+- Ritme jarak diseragamkan untuk heading/deskripsi, isi kartu, item daftar, ringkasan subtotal/total, label/input, panel, tabel, dan modal.
+- Tampilan mobile mendapat penyesuaian padding dan gap; tabel tetap menggunakan area horizontal-scroll yang sudah tersedia.
+- Perubahan hanya pada CSS presentasi di `apps-script/Index.html`; tidak mengubah endpoint, aturan role, checkout, QRIS, stok, maupun alur transaksi.
+- Pemeriksaan statis: keseimbangan kurung CSS dan keberadaan aturan responsive diperiksa. Belum dilakukan screenshot/browser test atau pengujian runtime Apps Script; hasil visual final perlu dikonfirmasi setelah sinkronisasi/deployment.
