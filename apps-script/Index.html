@@ -842,6 +842,50 @@ body.buyer-portal .buyer-cart-select input{width:18px;height:18px;margin:0;accen
     body.buyer-portal .modal-card{max-height:min(88vh,900px);max-height:min(88dvh,900px);overflow-y:auto;overscroll-behavior:contain}
     body.buyer-portal .table-wrap{max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
     @media(max-width:760px){body.buyer-portal .modal-card{max-height:88vh;max-height:88dvh}body.buyer-portal .header-inner{padding-left:12px;padding-right:12px}}
+    /* FMart Amethyst visual identity — shared visual system, no behavior changes */
+    :root{--purple:#800080;--purple-dark:#4f0054;--lilac:#f7eff9;--text:#241b35;--muted:#756b85;--line:#e8d8ed;--card:#fff}
+    html,body{background:#f7eff9}
+    .app{background:linear-gradient(180deg,#f7eff9 0%,#f4eaf7 100%)}
+    .header{background:linear-gradient(105deg,#4f0054 0%,#800080 58%,#9a329a 100%);border-bottom:0;box-shadow:0 7px 24px #4f005426}
+    .header-inner{color:#fff}
+    .header .brand{color:#fff}
+    .header .brand-mark{border:2px solid #ffffff55;box-shadow:0 4px 14px #25002d30}
+    .header .user-pill,.header .notification-trigger{background:#ffffff18!important;color:#fff!important;border:1px solid #ffffff45!important;box-shadow:inset 0 1px #ffffff18}
+    .header .notification-count{background:#fbbf24;color:#4f0054;border-color:#800080}
+    .main{background:transparent}
+    .hero{background:linear-gradient(125deg,#4f0054 0%,#800080 54%,#ad59ad 100%);box-shadow:0 16px 36px #80008035;border:1px solid #ffffff25;position:relative;overflow:hidden}
+    .hero:after{content:'';position:absolute;width:210px;height:210px;right:-75px;top:-105px;border:1px solid #ffffff35;border-radius:50%;box-shadow:0 0 0 24px #ffffff0c,0 0 0 50px #ffffff08;pointer-events:none}
+    .section{padding:15px;border:1px solid #ead9ef;border-radius:20px;background:linear-gradient(145deg,#fff 0%,#fcf7fd 100%);box-shadow:0 8px 24px #4f00540b}
+    .section-title h2{color:#4f0054}
+    .section-title h2:before{content:'';display:inline-block;width:5px;height:18px;margin-right:9px;border-radius:8px;background:linear-gradient(180deg,#800080,#c084c8);vertical-align:-3px}
+    .chip{background:#f8effa;border-color:#e7d3eb;color:#650069}
+    .chip.active{background:#800080;border-color:#800080;color:#fff;box-shadow:0 5px 14px #8000802e}
+    .product{border-color:#ead9ef;box-shadow:0 8px 22px #4f00540c}
+    .product-photo{background:linear-gradient(145deg,#f4e7f7,#fbf7fc);color:#8c5b91}
+    .price,.order-number,.order-total{color:#800080}
+    .profile-menu-btn{background:linear-gradient(110deg,#fff,#fbf4fc);border-color:#ead9ef}
+    .profile-menu-btn .menu-ico{background:#ead8ef;color:#650069}
+    .bottom-nav{background:linear-gradient(110deg,#4f0054 0%,#800080 65%,#963b96 100%);border:1px solid #ffffff35;box-shadow:0 14px 36px #4f00544a}
+    .nav-btn{color:#f1dff3}
+    .nav-btn .nav-icon{color:#f4dff5!important}
+    .nav-btn.active{color:#fff}
+    .nav-btn.active .nav-icon{background:#ffffff25!important;color:#fff!important;box-shadow:inset 0 0 0 1px #ffffff30,0 5px 14px #2d003033}
+    .order-card{border-color:#e7d5eb;background:linear-gradient(145deg,#fff,#fcf7fd);box-shadow:0 6px 18px #4f00540c}
+    .order-detail-item{border-color:#ead9ef;background:#fcf7fd}
+    .payment-box{border-color:#d9b6e0;background:linear-gradient(145deg,#f8effa,#fff)}
+    .notice{background:#f1e3f4;color:#4f0054;border:1px solid #e3cbe9}
+    .data-table th{background:#f3e5f5;color:#650069}
+    .modal-head h2{color:#4f0054}
+    .primary{background:linear-gradient(115deg,#650069,#800080 58%,#a64ca6);box-shadow:0 8px 18px #80008024}
+    body.admin-portal{--purple:#800080;--purple-dark:#4f0054;--lilac:#f3e5f5;--line:#e4d1e9;background:#f3eaf5}
+    body.admin-portal .header{background:linear-gradient(105deg,#350038 0%,#650069 55%,#800080 100%)}
+    body.admin-portal .app{background:linear-gradient(180deg,#f4eaf6 0%,#f8f3f9 100%)}
+    body.admin-portal .section{background:linear-gradient(145deg,#fff 0%,#faf4fb 100%);border-color:#e5d2e9}
+    body.admin-portal .bottom-nav{background:linear-gradient(110deg,#350038,#650069 60%,#800080)}
+    body.buyer-portal{--purple:#800080;--purple-dark:#4f0054;--lilac:#f7eff9;--line:#e8d8ed;background:#f7eff9}
+    body.buyer-portal .header{background:linear-gradient(105deg,#4f0054 0%,#800080 58%,#a64ca6 100%)}
+    body.buyer-portal .bottom-nav{background:linear-gradient(110deg,#4f0054 0%,#800080 65%,#a64ca6 100%)}
+    @media(max-width:760px){.main{padding-left:12px;padding-right:12px}.section{padding:13px;border-radius:17px}.hero{border-radius:20px;padding:21px}.bottom-nav{bottom:calc(10px + env(safe-area-inset-bottom));width:calc(100% - 18px)}}
 </style>
 </head>
 <body>
