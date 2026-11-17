@@ -1546,7 +1546,7 @@ async function renderDeliveryComplaintsWorkspace(){
     $('deliveryComplaintList').querySelectorAll('[data-resolve-complaint]').forEach(btn=>btn.addEventListener('click',async function(){
       const id=this.getAttribute('data-resolve-complaint'),resolution=$('complaintResolution_'+id).value.trim(),reopen=$('complaintReopen_'+id).checked;
       if(resolution.length<5){showToast('Catatan penyelesaian minimal 5 karakter.');return;}
-      if(!confirm(reopen?'Selesaikan komplain dan buka kembali masa konfirmasi 7 hari?':'Selesaikan komplain tanpa membuka kembali konfirmasi?'))return;
+      if(!confirm(reopen?'Selesaikan komplain dan buka kembali masa konfirmasi 7 hari?':'Selesaikan komplain dan lanjutkan sisa tenggat konfirmasi sebelumnya?'))return;
       this.disabled=true;loading(true,'Menyimpan penyelesaian komplain...');
       try{const result=await runServer('resolveDeliveryComplaint',state.token,id,resolution,reopen);showToast(result.message||'Komplain diselesaikan.','success');await renderDeliveryComplaintsWorkspace();}
       catch(e){showToast(e.message||'Penyelesaian komplain gagal.');this.disabled=false;}
