@@ -1103,7 +1103,7 @@ function markOrderReceived(token, orderId) {
     const now=new Date();
     orderSheet.getRange(orderRow.rowNumber,9,1,3).setValues([['DITERIMA',orderRow.values[9],now]]);
     const shipSheet=ss.getSheetByName('Pengiriman'),shipRow=latestShipmentRow_(shipSheet,orderId);
-    if(shipRow) shipSheet.getRange(shipRow,6,1,4).setValues([[shipSheet.getRange(shipRow,6).getValue(),now,session.userId,now]]);
+    if(shipRow){const sentAt=shipSheet.getRange(shipRow,6).getValue();shipSheet.getRange(shipRow,5,1,5).setValues([['DITERIMA',sentAt,now,session.userId,now]]);}
     confirmationSheet.getRange(confRow,5,1,6).setValues([['DIKONFIRMASI','MANUAL',now,session.userId,false,now]]);
     const assignments=readRows_(ss.getSheetByName('Pengantaran'));
     const active=assignments.map((x,i)=>({row:x,rowNumber:i+2})).filter(x=>String(x.row[1]||'')===orderId&&String(x.row[3]||'').toUpperCase()==='DALAM_PERJALANAN').pop();
@@ -1237,7 +1237,7 @@ function processDeliveryAutoConfirmation_() {
         if(!orderRow||String(orderRow.values[8]||'').toUpperCase()!=='DIANTAR'){skipped++;return;}
         ss.getSheetByName('KonfirmasiPengantaran').getRange(index+2,5,1,6).setValues([['DIKONFIRMASI','OTOMATIS',now,'SYSTEM',false,now]]);
         const orderSheet=ss.getSheetByName('Pesanan');orderSheet.getRange(orderRow.rowNumber,9).setValue('DITERIMA');orderSheet.getRange(orderRow.rowNumber,12).setValue(now);
-        const shipRow=shipments.indexOf(shipment)+2;if(shipRow>1)ss.getSheetByName('Pengiriman').getRange(shipRow,7,1,3).setValues([[now,'SYSTEM',now]]);
+        const shipRow=shipments.indexOf(shipment)+2;if(shipRow>1)ss.getSheetByName('Pengiriman').getRange(shipRow,5,1,5).setValues([['DITERIMA',shipment[5]||'',now,'SYSTEM',now]]);
         const assignments=readRows_(ss.getSheetByName('Pengantaran'));
         const active=assignments.map((r,i)=>({r:r,n:i+2})).filter(x=>String(x.r[1]||'')===orderId&&String(x.r[3]||'').toUpperCase()==='DALAM_PERJALANAN').pop();
         if(active)ss.getSheetByName('Pengantaran').getRange(active.n,4).setValue('SELESAI');
