@@ -1402,7 +1402,7 @@ function createStaffUser(token, username, password, nama, role, email) {
   } finally { lock.releaseLock(); }
 }
 
-function upsertStockRow_(ss,productId,variationId,qty,userId){const sheet=ss.getSheetByName('Stok');const rows=readRows_(sheet);const idx=rows.findIndex(r=>String(r[1])===String(productId)&&String(r[2]||'')===String(variationId||''));const now=new Date();if(idx>=0){sheet.getRange(idx+2,4).setValue(Math.max(0,Number(qty)||0));sheet.getRange(idx+2,6).setValue(now);}else sheet.appendRow([makeFMartId_('STK'),productId,variationId,Math.max(0,Number(qty)||0),0,now]);}
+function upsertStockRow_(ss,productId,variationId,qty,userId){const sheet=ss.getSheetByName('Stok');const rows=readRows_(sheet);const idx=rows.findIndex(r=>String(r[1])===String(productId)&&String(r[2]||'')===String(variationId||''));const now=new Date();if(idx>=0){sheet.getRange(idx+2,4).setValue(Math.max(0,Number(qty)||0));sheet.getRange(idx+2,6).setValue(now);}else{const product=findRowById_(ss.getSheetByName('Produk'),productId,1);const minimum=product?Math.max(0,Number(product.values[6])||0):0;sheet.appendRow([makeFMartId_('STK'),productId,variationId,Math.max(0,Number(qty)||0),minimum,now]);}}
 
 /** Tahap 4: daftar akun petugas; data sensitif autentikasi tidak pernah dikirim ke browser. */
 function getStaffUserManagement(token) {
