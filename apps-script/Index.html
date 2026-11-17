@@ -1142,6 +1142,50 @@ body.admin-portal #opsMainSection{
   color:#800080!important;
   stroke:#800080!important;
 }
+
+/* Pop-up header Wali: panel ringkas di kanan atas, bukan modal tengah layar. */
+body.buyer-portal #cartModal,
+body.buyer-portal #orderModal,
+body.buyer-portal #profileModal{
+  display:block;
+  padding:0;
+  background:rgba(25,12,32,.08);
+}
+body.buyer-portal #cartModal .modal-card,
+body.buyer-portal #orderModal .modal-card,
+body.buyer-portal #profileModal .modal-card{
+  position:absolute;
+  top:76px;
+  right:max(16px,calc((100vw - 1180px)/2 + 18px));
+  width:min(480px,calc(100vw - 32px));
+  max-height:calc(100dvh - 92px);
+  margin:0;
+  border:1px solid #e6d5eb;
+  border-radius:20px;
+  padding:18px;
+  box-shadow:0 18px 55px rgba(44,12,52,.22);
+  transform-origin:top right;
+  animation:fmartHeaderPopoverIn .18s ease-out;
+}
+@keyframes fmartHeaderPopoverIn{
+  from{opacity:0;transform:translateY(-7px) scale(.985)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@media(max-width:760px){
+  body.buyer-portal #cartModal,
+  body.buyer-portal #orderModal,
+  body.buyer-portal #profileModal{padding:0}
+  body.buyer-portal #cartModal .modal-card,
+  body.buyer-portal #orderModal .modal-card,
+  body.buyer-portal #profileModal .modal-card{
+    top:68px;
+    right:8px;
+    width:calc(100vw - 16px);
+    max-height:calc(100dvh - 80px);
+    padding:15px;
+    border-radius:18px;
+  }
+}
 </style>
 </head>
 <body>
@@ -1723,7 +1767,7 @@ function showToast(text,type='info'){const t=$('toast');const kind=type==='error
 function statusLabel(s){const m={MENUNGGU_PEMBAYARAN:'Menunggu Pembayaran',DIBAYAR:'Dibayar',DIPROSES:'Diproses',DISIAPKAN:'Disiapkan',DIANTAR:'Diantar',DITERIMA:'Diterima',DIBATALKAN:'Dibatalkan'};return m[String(s||'').toUpperCase()]||String(s||'').replace(/_/g,' ')}
 function paymentStatusLabel(s){const m={MENUNGGU_VERIFIKASI:'Menunggu Verifikasi',TERVERIFIKASI:'Terverifikasi',DITOLAK:'Ditolak'};return m[String(s||'').toUpperCase()]||String(s||'').replace(/_/g,' ')}
 function formatDate(v){if(!v)return '-';try{return new Date(v).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}catch(e){return '-'}}
-async function openOrders(){loading(true,'Memuat riwayat pesanan...');try{const r=await runServer('getMyOrders',state.token);state.orderHistory=Array.isArray(r.orders)?r.orders:[];renderOrders(state.orderHistory)}catch(e){showToast(e.message||'Gagal memuat pesanan.')}finally{loading(false)}}
+async function openOrders(){loading(true,'Memuat riwayat pesanan...');try{const r=await runServer('getMyOrders',state.token);state.orderHistory=Array.isArray(r.orders)?r.orders:[];renderOrders(state.orderHistory);$('orderModal').classList.remove('hidden')}catch(e){showToast(e.message||'Gagal memuat pesanan.')}finally{loading(false)}}
 function renderOrders(orders){
   const all=Array.isArray(orders)?orders:[];
   if(!all.length){$('orderBody').innerHTML='<div class="empty-box">Belum ada pesanan. Pesanan yang berhasil dibuat akan muncul di sini.</div>';return}
