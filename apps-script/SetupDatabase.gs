@@ -535,7 +535,7 @@ function createFMartUser(username, password, nama, role, email) {
   if (password.length < 10) throw new Error('Password minimal 10 karakter.');
   if (!nama) throw new Error('Nama wajib diisi.');
   email = String(email || '').trim().toLowerCase();
-  if (['WALI_SANTRI','ADMIN','KASIR','GUDANG','SUPERADMIN'].indexOf(role) === -1) throw new Error('Role tidak valid.');
+  if (['WALI_SANTRI','ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERADMIN'].indexOf(role) === -1) throw new Error('Role tidak valid.');
   if (['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(role) >= 0) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) {
       throw new Error('Email petugas wajib diisi dengan format yang valid.');
