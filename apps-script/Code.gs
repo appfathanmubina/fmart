@@ -1141,6 +1141,122 @@ function reportDeliveryComplaint(token,orderId,issueType,description) {
     return {ok:true,message:'Laporan berhasil dikirim. Konfirmasi otomatis ditahan sampai Admin menyelesaikan komplain.'};
   } finally {lock.releaseLock();}
 }
+
+/** Tahap 9: antrean komplain pengantaran untuk Admin/Superadmin. */
+function getDeliveryComplaintWorkspace(token) {
+  requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  const ss=getSS_(),complaints=readRows_(ss.getSheetByName('KomplainPengantaran'));
+  const orders=readRows_(ss.getSheetByName('Pesanan')),users=readRows_(ss.getSheetByName('Users'));
+  const confirmations=readRows_(ss.getSheetByName('KonfirmasiPengantaran'));
+  const orderMap={},userMap={},confirmationMap={};
+  orders.forEach(r=>orderMap[String(r[0]||'')]=r);
+  users.forEach(r=>userMap[String(r[0]||'')]={name:String(r[4]||''),phone:String(r[1]||'')});
+  confirmations.forEach(r=>confirmationMap[String(r[0]||'')]=r);
+  const items=complaints.map(function(r){
+    const order=orderMap[String(r[1]||'')]||[],wali=userMap[String(r[3]||'')]||{},conf=confirmationMap[String(r[2]||'')]||[];
+    return {complaintId:String(r[0]||''),orderId:String(r[1]||''),orderNumber:String(order[1]||r[1]||''),orderStatus:String(order[8]||''),waliName:wali.name||'Wali Santri',waliPhone:wali.phone||'',issueType:String(r[4]||''),description:String(r[5]||''),status:String(r[6]||''),reportedAt:dateIso_(r[7]),confirmationDeadline:dateIso_(conf[3]),resolution:String(r[9]||''),handledBy:String(r[8]||'')};
+  }).filter(x=>['MENUNGGU_PENANGANAN','DIPROSES'].indexOf(x.status.toUpperCase())>=0)
+    .sort((a,b)=>new Date(a.reportedAt||0)-new Date(b.reportedAt||0));
+  return {ok:true,items:items,updatedAt:new Date().toISOString()};
+}
+
+/** Penyelesaian komplain dengan opsi membuka kembali masa konfirmasi. */
+function resolveDeliveryComplaint(token,complaintId,resolution,reopenConfirmation) {
+  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  complaintId=String(complaintId||'').trim();resolution=String(resolution||'').trim().slice(0,1000);
+  if(!complaintId||resolution.length<5) throw new Error('Catatan penyelesaian minimal 5 karakter wajib diisi.');
+  const lock=LockService.getScriptLock();lock.waitLock(15000);
+  try {
+    const ss=getSS_(),complaintSheet=ss.getSheetByName('KomplainPengantaran'),complaint=findRowById_(complaintSheet,complaintId,1);
+    if(!complaint) throw new Error('Komplain tidak ditemukan.');
+    if(['MENUNGGU_PENANGANAN','DIPROSES'].indexOf(String(complaint.values[6]||'').toUpperCase())<0) throw new Error('Komplain ini sudah diselesaikan.');
+    const orderId=String(complaint.values[1]||''),confirmationId=String(complaint.values[2]||''),orderSheet=ss.getSheetByName('Pesanan'),order=findRowById_(orderSheet,orderId,1);
+    if(!order) throw new Error('Pesanan terkait tidak ditemukan.');
+    const confirmationSheet=ss.getSheetByName('KonfirmasiPengantaran'),confirmation=findRowById_(confirmationSheet,confirmationId,1);
+    if(!confirmation) throw new Error('Data konfirmasi pengantaran tidak ditemukan.');
+    const now=new Date(),reopen=reopenConfirmation===true||String(reopenConfirmation).toUpperCase()==='TRUE';
+    if(reopen){
+      if(String(order.values[8]||'').toUpperCase()!=='DIANTAR') throw new Error('Konfirmasi hanya dapat dibuka kembali jika pesanan masih berstatus DIANTAR.');
+      if(!readRows_(ss.getSheetByName('BuktiPengantaran')).some(r=>String(r[1]||'')===orderId)) throw new Error('Bukti pengantaran tidak ditemukan; konfirmasi tidak dapat dibuka kembali.');
+      const shipment=readRows_(ss.getSheetByName('Pengiriman')).filter(r=>String(r[1]||'')===orderId).sort((a,b)=>new Date(b[8]||0)-new Date(a[8]||0))[0];
+      if(!shipment||String(shipment[2]||'').toUpperCase()!=='ANTAR_PESANTREN') throw new Error('Auto-konfirmasi hanya berlaku untuk metode ANTAR_PESANTREN.');
+      confirmationSheet.getRange(confirmation.rowNumber,4).setValue(new Date(now.getTime()+7*86400000));
+      confirmationSheet.getRange(confirmation.rowNumber,5,1,6).setValues([['MENUNGGU_KONFIRMASI','','','',false,now]]);
+      PropertiesService.getScriptProperties().deleteProperty(deliveryNoticePropertyKey_(confirmationId));
+    } else {
+      confirmationSheet.getRange(confirmation.rowNumber,5).setValue('KOMPLAIN_SELESAI');
+      confirmationSheet.getRange(confirmation.rowNumber,9,1,2).setValues([[false,now]]);
+    }
+    complaintSheet.getRange(complaint.rowNumber,7,1,6).setValues([['SELESAI',complaint.values[7],session.userId,resolution,now,now]]);
+    ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(complaint.values[3]||''),orderId,'Komplain pengantaran selesai',reopen?'Admin menyelesaikan pemeriksaan. Masa konfirmasi penerimaan dibuka kembali selama 7 hari.':'Admin menyelesaikan pemeriksaan. Auto-konfirmasi tidak akan dijalankan untuk pesanan ini.','PENGANTARAN',false,now]);
+    recordDeliveryHistory_(ss,'',orderId,session,'KOMPLAIN_DISELESAIKAN','KOMPLAIN_AKTIF',reopen?'MENUNGGU_KONFIRMASI':'KOMPLAIN_SELESAI',resolution);
+    writeAudit_(session.userId,session.role,'RESOLVE_DELIVERY_COMPLAINT','KOMPLAIN_PENGANTARAN',complaintId,JSON.stringify({status:complaint.values[6]}),JSON.stringify({status:'SELESAI',reopenConfirmation:reopen}),'Admin menyelesaikan komplain pengantaran');
+    SpreadsheetApp.flush();
+    return {ok:true,reopened:reopen,message:reopen?'Komplain selesai. Masa konfirmasi 7 hari dibuka kembali.':'Komplain selesai. Auto-konfirmasi tidak akan dijalankan untuk pesanan ini.'};
+  } finally {lock.releaseLock();}
+}
+
+function deliveryNoticePropertyKey_(confirmationId){return 'FMART_DELIVERY_NOTICE_'+String(confirmationId||'').replace(/[^A-Za-z0-9_-]/g,'').slice(0,80);}
+function deliveryAutoConfirmEnabled_(){
+  const rows=readRows_(getSS_().getSheetByName('Pengaturan'));
+  const row=rows.filter(r=>String(r[0]||'').toUpperCase()==='DELIVERY_AUTO_CONFIRM_ENABLED').pop();
+  return row?String(row[1]||'').toUpperCase()==='TRUE':true;
+}
+
+/** Handler trigger per jam; idempotent dan mengejar tenggat yang terlewat. */
+function processDeliveryAutoConfirmation_() {
+  const lock=LockService.getScriptLock();
+  if(!lock.tryLock(20000)) return {ok:false,skipped:'LOCKED'};
+  try {
+    if(!deliveryAutoConfirmEnabled_()) return {ok:true,disabled:true};
+    const ss=getSS_(),orders=readRows_(ss.getSheetByName('Pesanan')),proofs=readRows_(ss.getSheetByName('BuktiPengantaran'));
+    const confirmations=readRows_(ss.getSheetByName('KonfirmasiPengantaran')),shipments=readRows_(ss.getSheetByName('Pengiriman'));
+    const complaints=readRows_(ss.getSheetByName('KomplainPengantaran')),orderMap={},proofByOrder={},shipmentByOrder={},activeComplaint={};
+    orders.forEach(r=>orderMap[String(r[0]||'')]=r);
+    proofs.forEach(r=>{const id=String(r[1]||'');if(id&&(!proofByOrder[id]||new Date(r[10]||0)>new Date(proofByOrder[id][10]||0)))proofByOrder[id]=r;});
+    shipments.forEach(r=>{const id=String(r[1]||'');if(id&&(!shipmentByOrder[id]||new Date(r[8]||0)>=new Date(shipmentByOrder[id][8]||0)))shipmentByOrder[id]=r;});
+    complaints.forEach(r=>{if(['MENUNGGU_PENANGANAN','DIPROSES'].indexOf(String(r[6]||'').toUpperCase())>=0)activeComplaint[String(r[1]||'')]=true;});
+    const now=new Date(),props=PropertiesService.getScriptProperties();let reminders=0,autoConfirmed=0,skipped=0;
+    confirmations.forEach(function(conf,index){
+      const confId=String(conf[0]||''),orderId=String(conf[1]||'');
+      if(!confId||String(conf[4]||'').toUpperCase()!=='MENUNGGU_KONFIRMASI')return;
+      const order=orderMap[orderId],proof=proofByOrder[orderId],shipment=shipmentByOrder[orderId];
+      if(!order||String(order[8]||'').toUpperCase()!=='DIANTAR'||!proof||!shipment||String(shipment[2]||'').toUpperCase()!=='ANTAR_PESANTREN'||conf[8]===true||String(conf[8]).toUpperCase()==='TRUE'||activeComplaint[orderId]){skipped++;return;}
+      const uploadedAt=new Date(conf[2]||proof[10]),deadline=new Date(conf[3]||uploadedAt.getTime()+7*86400000);
+      if(isNaN(uploadedAt.getTime())||isNaN(deadline.getTime())){skipped++;return;}
+      const elapsed=now.getTime()-uploadedAt.getTime(),key=deliveryNoticePropertyKey_(confId);
+      let sent={};try{sent=JSON.parse(props.getProperty(key)||'{}')||{};}catch(e){sent={};}
+      const waliId=String(order[2]||''),orderNumber=String(order[1]||orderId);
+      if(elapsed>=5*86400000&&!sent.day5&&now<deadline){ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),waliId,orderId,'Pengingat konfirmasi penerimaan','Sudah 5 hari sejak bukti pengantaran diunggah. Periksa pesanan dan konfirmasi penerimaan jika barang telah diterima.','PENGANTARAN',false,now]);sent.day5=true;reminders++;}
+      if(elapsed>=6*86400000&&!sent.day6&&now<deadline){ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),waliId,orderId,'Peringatan batas konfirmasi','Besok adalah batas akhir konfirmasi pesanan '+orderNumber+'. Laporkan komplain sebelum tenggat jika ada masalah.','PENGANTARAN',false,now]);sent.day6=true;reminders++;}
+      if(elapsed>=7*86400000&&now.getTime()>=deadline.getTime()){
+        const orderRow=findRowById_(ss.getSheetByName('Pesanan'),orderId,1);
+        if(!orderRow||String(orderRow.values[8]||'').toUpperCase()!=='DIANTAR'){skipped++;return;}
+        ss.getSheetByName('KonfirmasiPengantaran').getRange(index+2,5,1,6).setValues([['DIKONFIRMASI','OTOMATIS',now,'SYSTEM',false,now]]);
+        const orderSheet=ss.getSheetByName('Pesanan');orderSheet.getRange(orderRow.rowNumber,9).setValue('DITERIMA');orderSheet.getRange(orderRow.rowNumber,12).setValue(now);
+        const shipRow=shipments.indexOf(shipment)+2;if(shipRow>1)ss.getSheetByName('Pengiriman').getRange(shipRow,7,1,3).setValues([[now,'SYSTEM',now]]);
+        const assignments=readRows_(ss.getSheetByName('Pengantaran'));
+        const active=assignments.map((r,i)=>({r:r,n:i+2})).filter(x=>String(x.r[1]||'')===orderId&&String(x.r[3]||'').toUpperCase()==='DALAM_PERJALANAN').pop();
+        if(active)ss.getSheetByName('Pengantaran').getRange(active.n,4).setValue('SELESAI');
+        ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),waliId,orderId,'Pesanan dikonfirmasi otomatis','Batas 7 hari terlewati tanpa komplain aktif. Pesanan '+orderNumber+' otomatis ditandai diterima.','PENGANTARAN',false,now]);
+        writeAudit_('SYSTEM','SYSTEM','AUTO_CONFIRM_DELIVERY','PESANAN',orderId,JSON.stringify({status:'DIANTAR'}),JSON.stringify({status:'DITERIMA',confirmationMethod:'OTOMATIS'}),'Auto-konfirmasi setelah 7x24 jam tanpa komplain aktif');
+        sent.day7=true;autoConfirmed++;
+      }
+      props.setProperty(key,JSON.stringify(sent));
+    });
+    SpreadsheetApp.flush();
+    return {ok:true,reminders:reminders,autoConfirmed:autoConfirmed,skipped:skipped,checkedAt:now.toISOString()};
+  } finally {lock.releaseLock();}
+}
+
+/** Jalankan sekali dari Apps Script Editor untuk memasang trigger per jam. */
+function installDeliveryAutomationTrigger() {
+  const handler='processDeliveryAutoConfirmation_';
+  ScriptApp.getProjectTriggers().filter(t=>t.getHandlerFunction()===handler).forEach(t=>ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger(handler).timeBased().everyHours(1).create();
+  return {ok:true,message:'Trigger auto-konfirmasi FMart dipasang setiap jam.'};
+}
+
 function getDeliveryProofImage(token,orderId) {
   const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
   orderId=String(orderId||'').trim();
