@@ -1104,6 +1104,9 @@ function getOperationsDashboard(token) {
   const ss = getSS_();
   const orders = readRows_(ss.getSheetByName('Pesanan'));
   const payments = readRows_(ss.getSheetByName('Pembayaran'));
+  const proofRows = readRows_(ss.getSheetByName('BuktiPengantaran'));
+  const proofByAssignment = {};
+  proofRows.forEach(function(p){ const key=String(p[2]||''); if(key) proofByAssignment[key]=p; });
   const shipments = readRows_(ss.getSheetByName('Pengiriman'));
   const users = readRows_(ss.getSheetByName('Users'));
   const santri = readSantriRows_(ss.getSheetByName('Santri'));
@@ -1839,6 +1842,7 @@ function getDeliveryDashboard(token) {
     const child = santriById[String(order[3] || '')] || {};
     const wali = userById[String(order[2] || '')] || {};
     const shipment = shipmentByOrder[orderId] || [];
+    const proof = proofByAssignment[String(row[0]||'')] || [];
     return {
       assignmentId:String(row[0] || ''),
       orderId:orderId,
@@ -1851,6 +1855,8 @@ function getDeliveryDashboard(token) {
       failureReason:String(row[10] || ''),
       notes:String(row[11] || ''),
       progressUpdatedAt:dateIso_(row[12]),
+      hasProof:!!String(proof[0]||''),
+      proofUploadedAt:dateIso_(proof[10]),
       orderStatus:String(order[8] || '').toUpperCase(),
       childName:String(child.name || 'Santri'),
       className:String(child.className || ''),
