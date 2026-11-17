@@ -778,6 +778,17 @@ body.buyer-portal .buyer-general-cart-item{display:grid;grid-template-columns:24
 body.buyer-portal .buyer-cart-select{display:flex;align-items:center;justify-content:center;padding-top:22px}
 body.buyer-portal .buyer-cart-select input{width:18px;height:18px;margin:0;accent-color:#800080}
 @media(max-width:520px){body.buyer-portal .buyer-general-cart-item{grid-template-columns:22px 54px minmax(0,1fr);gap:8px}body.buyer-portal .buyer-cart-select-all{align-items:flex-start;flex-direction:column}}
+    /* Tahap 7 Wali: review pesanan dan pilihan pemenuhan */
+    body.buyer-portal .checkout-review{margin:16px 0;padding:15px;background:#fff;border:1px solid var(--line);border-radius:16px}
+    body.buyer-portal .checkout-item{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:11px 0;border-bottom:1px solid var(--line)}
+    body.buyer-portal .checkout-item:last-child{border-bottom:0;padding-bottom:0}
+    body.buyer-portal .checkout-item>div{min-width:0;display:grid;gap:4px}
+    body.buyer-portal .checkout-item strong{font-size:13px}
+    body.buyer-portal .checkout-item small{color:var(--muted);font-size:12px}
+    body.buyer-portal .checkout-fulfillment{margin:16px 0}
+    body.buyer-portal #checkoutDestinationHint{display:block;margin-top:6px;line-height:1.45}
+    body.buyer-portal .checkout-review .section-title{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    @media(max-width:560px){body.buyer-portal .checkout-review{padding:12px}body.buyer-portal .checkout-item{gap:8px}body.buyer-portal .checkout-item>strong{white-space:nowrap;font-size:12px}}
 </style>
 </head>
 <body>
@@ -1329,9 +1340,19 @@ function openCheckout(){
   const children=(state.data&&state.data.children||[]);
   if(!children.length){showToast('Belum ada santri aktif yang terhubung. Hubungkan santri melalui menu Profil.');return}
   const total=selected.reduce((sum,i)=>sum+Number(i.subtotal||0),0);
-  $('checkoutBody').innerHTML='<div class="notice">Satu pesanan hanya untuk satu santri. Jika berbelanja untuk santri lain, lakukan checkout terpisah dari keranjang.</div><div class="field"><label for="checkoutSantriId">Pilih santri tujuan <strong style="color:#b91c1c">*</strong></label><select id="checkoutSantriId" required><option value="">Pilih santri</option>'+children.map(c=>'<option value="'+escapeHtml(c.id)+'">'+escapeHtml(c.name)+' · '+escapeHtml(c.className||'')+'</option>').join('')+'</select></div><div class="section"><div class="section-title"><h2>Pengambilan</h2></div><div class="radio-grid"><label class="radio-card"><input type="radio" name="shippingMethod" value="ANTAR_PESANTREN" checked><span><strong>Antar ke pesantren</strong><div class="muted">Pesanan disiapkan untuk santri yang dipilih.</div></span></label><label class="radio-card"><input type="radio" name="shippingMethod" value="AMBIL_FMART"><span><strong>Ambil di FMart</strong><div class="muted">Pesanan diambil oleh Wali sesuai ketentuan FMart.</div></span></label></div></div><div class="field" style="margin-top:16px"><label for="checkoutTujuan">Tujuan / keterangan pengambilan</label><textarea id="checkoutTujuan" rows="3" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px;resize:vertical" placeholder="Contoh: Titip melalui bagian pengasuhan atau keterangan lain"></textarea></div><div class="field"><label for="checkoutCatatan">Catatan pesanan (opsional)</label><textarea id="checkoutCatatan" rows="2" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px;resize:vertical" placeholder="Catatan untuk FMart"></textarea></div><div class="cart-summary"><div class="summary-row"><span>Barang dipilih</span><strong>'+selected.length+' jenis</strong></div><div class="summary-row"><span>Subtotal</span><strong>Rp '+formatMoney(total)+'</strong></div><div class="summary-row"><span>Ongkir</span><span>Rp 0</span></div><div class="summary-row summary-total"><span>Total</span><span>Rp '+formatMoney(total)+'</span></div></div><button type="button" class="primary" id="submitCheckout" style="margin-top:12px">Buat pesanan</button>';
+  const itemRows=selected.map(i=>'<div class="checkout-item"><div><strong>'+escapeHtml(i.name)+'</strong>'+(i.variationName?'<small>'+escapeHtml(i.variationName)+'</small>':'')+'<small>'+Number(i.qty||0)+' × Rp '+formatMoney(i.unitPrice)+'</small></div><strong>Rp '+formatMoney(i.subtotal)+'</strong></div>').join('');
+  $('checkoutBody').innerHTML='<div class="notice">Satu pesanan hanya untuk satu santri. Untuk santri lain, lakukan checkout terpisah. Barang yang tidak dipilih tetap berada di keranjang.</div><div class="field"><label for="checkoutSantriId">Santri penerima <strong style="color:#b91c1c">*</strong></label><select id="checkoutSantriId" required><option value="">Pilih santri tujuan</option>'+children.map(c=>'<option value="'+escapeHtml(c.id)+'">'+escapeHtml(c.name)+' · '+escapeHtml(c.className||'')+'</option>').join('')+'</select></div><section class="checkout-review"><div class="section-title"><h2>Rincian barang</h2><span class="muted">'+selected.length+' jenis produk</span></div>'+itemRows+'</section><div class="section checkout-fulfillment"><div class="section-title"><h2>Metode pemenuhan</h2></div><div class="radio-grid"><label class="radio-card"><input type="radio" name="shippingMethod" value="ANTAR_PESANTREN" checked><span><strong>Antar ke pesantren</strong><div class="muted">Pesanan diserahkan melalui titik penerimaan yang Anda tentukan.</div></span></label><label class="radio-card"><input type="radio" name="shippingMethod" value="AMBIL_FMART"><span><strong>Ambil di FMart</strong><div class="muted">Wali mengambil pesanan langsung di FMart.</div></span></label></div></div><div class="field" id="checkoutDestinationField"><label id="checkoutDestinationLabel" for="checkoutTujuan">Titik / keterangan penerimaan <strong style="color:#b91c1c">*</strong></label><textarea id="checkoutTujuan" rows="3" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px;resize:vertical" placeholder="Contoh: Titip melalui bagian pengasuhan / nama petugas penerima"></textarea><small id="checkoutDestinationHint" class="muted">Isi titik atau pihak yang akan menerima pesanan untuk santri.</small></div><div class="field"><label for="checkoutCatatan">Catatan pesanan (opsional)</label><textarea id="checkoutCatatan" rows="2" style="width:100%;padding:13px;border:1px solid var(--line);border-radius:13px;resize:vertical" placeholder="Catatan tambahan untuk petugas FMart"></textarea></div><div class="cart-summary"><div class="summary-row"><span>Subtotal barang</span><strong>Rp '+formatMoney(total)+'</strong></div><div class="summary-row"><span>Biaya pemenuhan</span><span>Rp 0</span></div><div class="summary-row summary-total"><span>Total tagihan</span><span>Rp '+formatMoney(total)+'</span></div><small class="muted">Biaya pemenuhan mengikuti konfigurasi FMart saat ini.</small></div><button type="button" class="primary" id="submitCheckout" style="margin-top:12px">Konfirmasi dan buat pesanan</button>';
   $('checkoutModal').classList.remove('hidden');
+  document.querySelectorAll('input[name="shippingMethod"]').forEach(r=>r.onchange=updateCheckoutFulfillmentUI);
+  updateCheckoutFulfillmentUI();
   $('submitCheckout').onclick=submitCheckout;
+}
+function updateCheckoutFulfillmentUI(){
+  const method=document.querySelector('input[name="shippingMethod"]:checked')?.value||'ANTAR_PESANTREN';
+  const label=$('checkoutDestinationLabel'),field=$('checkoutTujuan'),hint=$('checkoutDestinationHint');
+  if(!label||!field||!hint)return;
+  if(method==='ANTAR_PESANTREN'){label.innerHTML='Titik / keterangan penerimaan <strong style="color:#b91c1c">*</strong>';field.required=true;field.placeholder='Contoh: Titip melalui bagian pengasuhan / nama petugas penerima';hint.textContent='Isi titik atau pihak yang akan menerima pesanan untuk santri.';}
+  else{label.textContent='Keterangan pengambilan (opsional)';field.required=false;field.placeholder='Contoh: Nama Wali atau perkiraan waktu pengambilan';hint.textContent='Pesanan diambil langsung di FMart. Keterangan tambahan boleh dikosongkan.';}
 }
 async function submitCheckout(){
   const btn=$('submitCheckout');if(!btn)return;
@@ -1339,16 +1360,18 @@ async function submitCheckout(){
   if(!santriId){showToast('Pilih santri tujuan terlebih dahulu.');$('checkoutSantriId').focus();return}
   const selectedIds=getSelectedCartItems().map(i=>String(i.cartId));
   if(!selectedIds.length){showToast('Pilih minimal satu barang.');return}
+  const method=document.querySelector('input[name="shippingMethod"]:checked')?.value||'ANTAR_PESANTREN';
+  const tujuan=$('checkoutTujuan').value.trim();
+  if(method==='ANTAR_PESANTREN'&&!tujuan){showToast('Isi titik atau pihak penerima untuk pengantaran ke pesantren.');$('checkoutTujuan').focus();return}
   btn.disabled=true;loading(true,'Memproses checkout...');
   try{
-    const method=document.querySelector('input[name="shippingMethod"]:checked')?.value||'ANTAR_PESANTREN';
-    const r=await runServer('checkoutCart',state.token,santriId,selectedIds,$('checkoutCatatan').value,method,$('checkoutTujuan').value);
+    const r=await runServer('checkoutCart',state.token,santriId,selectedIds,$('checkoutCatatan').value,method,tujuan);
     state.cart=await runServer('getCart',state.token);
     state.selectedCartIds=(state.selectedCartIds||[]).filter(id=>(state.cart.items||[]).some(i=>String(i.cartId)===String(id)));
     renderCart(state.cart);
     updateCartBadge((state.cart.items||[]).reduce((n,i)=>n+Number(i.qty||0),0));
     closeCheckout();closeCart();
-    $('successBody').innerHTML='<div class="empty-box" style="text-align:center"><div style="font-size:34px;margin-bottom:8px">✓</div><strong style="font-size:18px">Pesanan berhasil dibuat</strong><p class="muted">Nomor pesanan: <strong>'+escapeHtml(r.nomorPesanan)+'</strong></p><p class="muted">Untuk santri: <strong>'+escapeHtml(r.child&&r.child.name||'Santri terpilih')+'</strong></p><p class="muted">Status saat ini: <strong>Menunggu Pembayaran</strong></p><p class="muted">Anda dapat membuka menu Pesanan untuk melihat rincian dan mengajukan pembayaran.</p></div><button type="button" class="primary" id="successCloseBtn" style="margin-top:12px">Selesai</button>';
+    $('successBody').innerHTML='<div class="empty-box" style="text-align:center"><div style="font-size:34px;margin-bottom:8px">✓</div><strong style="font-size:18px">Pesanan berhasil dibuat</strong><p class="muted">Nomor pesanan: <strong>'+escapeHtml(r.nomorPesanan)+'</strong></p><p class="muted">Untuk santri: <strong>'+escapeHtml(r.child&&r.child.name||'Santri terpilih')+'</strong></p><p class="muted">Metode: <strong>'+(method==='ANTAR_PESANTREN'?'Antar ke pesantren':'Ambil di FMart')+'</strong></p><p class="muted">Status saat ini: <strong>Menunggu Pembayaran</strong></p><p class="muted">Anda dapat membuka menu Pesanan untuk melihat rincian dan mengajukan pembayaran.</p></div><button type="button" class="primary" id="successCloseBtn" style="margin-top:12px">Selesai</button>';
     $('successModal').classList.remove('hidden');$('successCloseBtn').onclick=closeSuccess;
     refreshWaliDashboard();
   }catch(e){showToast(e.message||'Checkout gagal.');await openCart()}
