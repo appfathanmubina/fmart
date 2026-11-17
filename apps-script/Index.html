@@ -1218,7 +1218,7 @@ body.buyer-portal #profileModal .modal-card{
       <h1 id="loginTitle">Selamat datang</h1>
       <p id="loginIntro">Silakan masuk menggunakan nomor HP Wali Santri dan password Anda.</p>
       <form id="loginForm" autocomplete="on">
-        <div class="field login-field"><label id="usernameLabel" for="username">No. HP Wali Santri</label><input id="username" name="username" type="tel" inputmode="tel" autocomplete="username" placeholder="Contoh: 081234567890" required><div class="field-hint" id="usernameHint">Nomor HP yang terdaftar pada data Wali Santri.</div></div>
+        <div class="field login-field"><label id="usernameLabel" for="username">No. HP Wali Santri</label><input id="username" name="username" type="text" inputmode="tel" autocapitalize="off" spellcheck="false" autocomplete="username" placeholder="Contoh: 081234567890" required><div class="field-hint" id="usernameHint">Nomor HP yang terdaftar pada data Wali Santri.</div></div>
         <div class="field login-field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Masukkan password" required><button type="button" class="password-toggle" id="togglePassword" aria-label="Tampilkan password" title="Tampilkan password">◉</button></div>
         <label class="remember-me" for="rememberMe"><input id="rememberMe" name="rememberMe" type="checkbox"><span>Ingat Saya</span></label>
         <button class="primary login-submit" id="loginBtn" type="submit">Masuk ke FMart</button><div id="loginError" class="error"></div><button type="button" class="secondary" id="registerBtn" style="width:100%;margin-top:10px">Daftar sebagai Wali Santri</button>
@@ -1328,7 +1328,7 @@ body.buyer-portal #profileModal .modal-card{
     }
     function loading(show,text){$('loadingText').textContent=text||'Memproses...';$('loading').classList.toggle('hidden',!show)}
     function runServer(fn,...args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args))}
-    function showLogin(message){$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginError').textContent=message||''}
+    function showLogin(message){$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginError').textContent=message||'';restoreRememberedLoginCredential()}
     function showApp(){ $('loginView').classList.add('hidden');$('appView').classList.remove('hidden'); }
     async function boot(){if(!state.token)return showLogin('');loading(true,'Memuat sesi...');try{const s=await runServer('getSession',state.token,FMART_PORTAL_MODE);if(!s.ok)throw new Error('Sesi tidak valid');await loadInitial();}catch(e){sessionStorage.removeItem('fmartToken');state.token='';showLogin('Sesi telah berakhir. Silakan login kembali.')}finally{loading(false)}}
     async function loadInitial(){
@@ -1385,10 +1385,27 @@ function renderProducts(items,homeMode){const all=items||[],list=homeMode?all.sl
 function setCustomerNav(id){document.querySelectorAll('#customerNav .nav-btn').forEach(x=>x.classList.remove('active'));if($(id))$(id).classList.add('active')}
 function showBuyerHome(){$('waliProfilePage').classList.add('hidden');$('buyerCatalog').classList.remove('hidden');document.querySelector('.hero').classList.remove('hidden')}
 async function openWaliProfilePage(){
-  setCustomerNav('navProfile');closeProfile();$('buyerCatalog').classList.add('hidden');document.querySelector('.hero').classList.add('hidden');$('waliProfilePage').classList.remove('hidden');
-  $('waliProfilePageBody').innerHTML='<div class="wali-profile-loading">Memuat profil dan data santri…</div>';window.scrollTo({top:0,behavior:'smooth'});
-  try{let result=state.waliProfileManagement;if(!result||!result.ok){result=await runServer('getWaliProfileManagement',state.token);if(!result||!result.ok)throw new Error('Profil Wali tidak dapat dimuat.');state.waliProfileManagement=result;state.profile=Object.assign({},state.profile||{},result.profile||{})}renderWaliProfileManagement(result)}
-  catch(e){$('waliProfilePageBody').innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Profil tidak dapat dimuat.')+'<button type="button" class="secondary" id="waliProfilePageRetry" style="margin-top:10px;width:100%">Coba lagi</button></div>';if($('waliProfilePageRetry'))$('waliProfilePageRetry').onclick=openWaliProfilePage}
+  setCustomerNav('navProfile');closeProfile();$('buyerCatalog').classList.add('hidden');document.querySelector('.hero').classList.add('hidden');$('waliProfilePage').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});
+  const cached=state.waliProfileManagement;
+  if(cached&&cached.ok){renderWaliProfileManagement(cached);return}
+  const preview=state.profile||{};
+  const user=(state.data&&state.data.user)||{};
+  $('waliProfilePageBody').innerHTML=
+    '<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">INFORMASI AKUN</div><h3>Data Wali Santri</h3></div><span class="wali-profile-status">'+escapeHtml(preview.status||'AKTIF')+'</span></div>'+
+    '<div class="wali-profile-form"><div class="field"><label>Nama lengkap</label><input value="'+escapeHtml(preview.nama||user.nama||'')+'" readonly></div>'+
+    '<div class="field"><label>Nomor HP / Username</label><input value="'+escapeHtml(preview.noHp||preview.username||user.username||'')+'" readonly></div>'+
+    '<div class="field"><label>Email</label><input value="'+escapeHtml(preview.email||'')+'" readonly></div></div></section>'+
+    '<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">KELUARGA</div><h3>Manajemen Data Santri</h3></div></div><div class="wali-profile-loading">Memuat data santri dan pengaturan…</div></section>';
+  try{
+    const result=await runServer('getWaliProfileManagement',state.token);
+    if(!result||!result.ok)throw new Error('Data profil belum dapat dimuat.');
+    state.waliProfileManagement=result;state.profile=Object.assign({},state.profile||{},result.profile||{});
+    renderWaliProfileManagement(result);
+  }catch(e){
+    const msg='<div class="empty-box">'+escapeHtml(e.message||'Profil tidak dapat dimuat.')+'<button type="button" class="secondary" id="waliProfilePageRetry" style="margin-top:10px;width:100%">Coba lagi</button></div>';
+    const retry=$('waliProfilePageBody');if(retry)retry.insertAdjacentHTML('beforeend',msg);
+    if($('waliProfilePageRetry'))$('waliProfilePageRetry').onclick=()=>{state.waliProfileManagement=null;openWaliProfilePage()};
+  }
 }
     function showStaffApp(){$('customerNav').classList.add('hidden');$('staffNav').classList.remove('hidden');$('operationsView').classList.remove('hidden');$('appView').querySelector('.main').classList.add('hidden');$('userBtn').textContent=state.data.user.nama||'Petugas';$('greeting').textContent='Operasional FMart'}
 
@@ -1626,7 +1643,8 @@ function renderWaliProfileManagement(result){
   const p=result.profile||{},items=result.relationships||[];
   const active=items.filter(x=>x.status==='AKTIF'&&x.active);
   const pending=items.filter(x=>x.status==='MENUNGGU_VERIFIKASI');
-  $('profileBody').innerHTML=
+  const profileTarget=$('waliProfilePage')&&!$('waliProfilePage').classList.contains('hidden')?'waliProfilePageBody':'profileBody';
+  $(profileTarget).innerHTML=
     '<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">INFORMASI AKUN</div><h3>Data Wali Santri</h3></div><span class="wali-profile-status">'+escapeHtml(p.status||'AKTIF')+'</span></div>'+
     '<form id="waliProfileForm" class="wali-profile-form">'+
     '<div class="field"><label for="waliProfileName">Nama lengkap *</label><input id="waliProfileName" name="nama" maxlength="120" required value="'+escapeHtml(p.nama||'')+'"></div>'+
@@ -2257,6 +2275,21 @@ function resetBuyerCatalogFilters(){$('searchInput').value='';$('productSort').v
     function closeRegister(){ $('registerModal').classList.add('hidden'); }
     function normalizeBuyerPhoneInput(value){let phone=String(value||'').trim().replace(/[^0-9]/g,'');if(phone.indexOf('62')===0)phone='0'+phone.slice(2);else if(phone.charAt(0)==='8')phone='0'+phone;return phone;}
     async function submitRegister(){const btn=$('saveRegister');if(btn.disabled)return;const nama=$('regNama').value.trim(),rawPhone=$('regPhone').value,phone=normalizeBuyerPhoneInput(rawPhone),pw=$('regPassword').value,cf=$('regConfirm').value,email=$('regEmail').value.trim(),alamat=$('regAlamat').value.trim();$('registerError').textContent='';if(!nama||!rawPhone||!pw||!cf){$('registerError').textContent='Nama, nomor HP, dan password wajib diisi.';return}if(!/^08[0-9]{8,13}$/.test(phone)){$('registerError').textContent='Nomor HP tidak valid. Gunakan format 08xxxxxxxxxx atau +628xxxxxxxxxx.';$('regPhone').focus();return}if(pw.length<10){$('registerError').textContent='Password minimal 10 karakter.';$('regPassword').focus();return}if(pw!==cf){$('registerError').textContent='Konfirmasi password tidak sama.';$('regConfirm').focus();return}if(email&&!/^[^@ ]+@[^@ ]+[.][^@ ]+$/.test(email)){$('registerError').textContent='Format email belum valid.';$('regEmail').focus();return}$('regPhone').value=phone;btn.disabled=true;loading(true,'Mendaftarkan akun...');try{const r=await runServer('registerWaliSantri',nama,phone,pw,email,alamat);if(!r.ok)throw new Error(r.message||'Pendaftaran gagal.');closeRegister();$('username').value=phone;$('password').value='';$('loginError').textContent='Akun berhasil dibuat. Silakan masuk menggunakan nomor HP dan password Anda.';$('password').focus()}catch(e){$('registerError').textContent=e.message||'Pendaftaran gagal.'}finally{btn.disabled=false;loading(false)}}
+    async function restoreRememberedLoginCredential(){
+      try{
+        if(!window.isSecureContext||!navigator.credentials||typeof navigator.credentials.get!=='function')return false;
+        if($('username').value||$('password').value)return false;
+        const credential=await navigator.credentials.get({password:true,mediation:'optional'});
+        if(!credential)return false;
+        if(credential.id)$('username').value=credential.id;
+        if(credential.password)$('password').value=credential.password;
+        if(credential.id||credential.password)$('rememberMe').checked=true;
+        return !!(credential.id||credential.password);
+      }catch(error){
+        // Password manager bawaan browser tetap dapat mengisi form melalui autocomplete.
+        return false;
+      }
+    }
     async function storeRememberedLoginCredential(){
       try{
         if(!window.isSecureContext||!('credentials' in navigator)||typeof window.PasswordCredential!=='function')return false;
