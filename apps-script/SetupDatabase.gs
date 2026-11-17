@@ -2,7 +2,7 @@
  * FMart - SetupDatabase.gs
  *
  * Tugas file ini HANYA untuk menyiapkan struktur database dan konfigurasi awal.
- * Jalankan setupFMartDatabase() sekali setelah project terhubung ke Spreadsheet.
+ * Jalankan setupFMartDatabase_() sekali setelah project terhubung ke Spreadsheet.
  *
  * Keamanan:
  * - Tidak menyimpan password default di source code.
@@ -43,9 +43,9 @@ const FMART_DB = Object.freeze({
   }
 });
 
-function setupFMartDatabase() {
+function setupFMartDatabase_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ss) throw new Error('Buka project FMart dari Spreadsheet yang akan digunakan, lalu jalankan setupFMartDatabase().');
+  if (!ss) throw new Error('Buka project FMart dari Spreadsheet yang akan digunakan, lalu jalankan setupFMartDatabase_().');
 
   PropertiesService.getScriptProperties().setProperty(FMART_DB.PROPERTY_SPREADSHEET_ID, ss.getId());
 
@@ -125,9 +125,9 @@ function seedSettings_(sheet) {
 /**
  * Audit read-only untuk memeriksa struktur dan relasi database FMart.
  * Fungsi ini tidak mengubah sheet, header, maupun isi data.
- * Jalankan dari Apps Script Editor: auditFMartDatabaseIntegrity()
+ * Jalankan dari Apps Script Editor: auditFMartDatabaseIntegrity_()
  */
-function auditFMartDatabaseIntegrity() {
+function auditFMartDatabaseIntegrity_() {
   const ss = getSetupSpreadsheet_();
   const issues = [];
   const rowsBySheet = {};
@@ -135,7 +135,7 @@ function auditFMartDatabaseIntegrity() {
   const counts = {};
   const maxIssues = 500;
 
-  function addIssue(code, sheetName, rowNumber, detail) {
+  function addIssue_(code, sheetName, rowNumber, detail) {
     if (issues.length >= maxIssues) return;
     issues.push({
       code: code,
@@ -145,7 +145,7 @@ function auditFMartDatabaseIntegrity() {
     });
   }
 
-  function hasData(row) {
+  function hasData_(row) {
     return row.some(function(value) {
       return value !== '' && value !== null;
     });
@@ -157,7 +157,7 @@ function auditFMartDatabaseIntegrity() {
     const sheet = ss.getSheetByName(sheetName);
 
     if (!sheet) {
-      addIssue('MISSING_SHEET', sheetName, '', 'Sheet wajib belum tersedia.');
+      addIssue_('MISSING_SHEET', sheetName, '', 'Sheet wajib belum tersedia.');
       validSchema[sheetName] = false;
       rowsBySheet[sheetName] = [];
       counts[sheetName] = 0;
@@ -178,7 +178,7 @@ function auditFMartDatabaseIntegrity() {
     });
 
     if (mismatches.length) {
-      addIssue('HEADER_MISMATCH', sheetName, 1, JSON.stringify(mismatches));
+      addIssue_('HEADER_MISMATCH', sheetName, 1, JSON.stringify(mismatches));
     }
 
     const lastColumn = sheet.getLastColumn();
@@ -193,7 +193,7 @@ function auditFMartDatabaseIntegrity() {
         })
         .filter(function(value) { return value !== null; });
       if (extraHeaders.length) {
-        addIssue('UNEXPECTED_COLUMNS', sheetName, 1, JSON.stringify(extraHeaders));
+        addIssue_('UNEXPECTED_COLUMNS', sheetName, 1, JSON.stringify(extraHeaders));
       }
     }
 
@@ -202,7 +202,7 @@ function auditFMartDatabaseIntegrity() {
       ? sheet.getRange(2, 1, sheet.getLastRow() - 1, expected.length).getValues()
       : [];
     rowsBySheet[sheetName] = dataRows;
-    counts[sheetName] = dataRows.filter(hasData).length;
+    counts[sheetName] = dataRows.filter(hasData_).length;
   });
 
   Object.keys(FMART_DB.SHEETS).forEach(function(key) {
@@ -211,40 +211,40 @@ function auditFMartDatabaseIntegrity() {
     const rows = rowsBySheet[sheetName];
     const seen = Object.create(null);
     rows.forEach(function(row, index) {
-      if (!hasData(row)) return;
+      if (!hasData_(row)) return;
       const idColumn = sheetName === 'Santri' ? 8 : 0;
       const id = String(row[idColumn] || '').trim();
       const rowNumber = index + 2;
       if (!id) {
-        addIssue('EMPTY_PRIMARY_ID', sheetName, rowNumber, 'Kolom ID utama kosong.');
+        addIssue_('EMPTY_PRIMARY_ID', sheetName, rowNumber, 'Kolom ID utama kosong.');
       } else if (seen[id]) {
-        addIssue('DUPLICATE_PRIMARY_ID', sheetName, rowNumber, 'ID utama duplikat; baris pertama ' + seen[id] + '.');
+        addIssue_('DUPLICATE_PRIMARY_ID', sheetName, rowNumber, 'ID utama duplikat; baris pertama ' + seen[id] + '.');
       } else {
         seen[id] = rowNumber;
       }
     });
   });
 
-  function checkUnique(sheetName, columnIndex, label, normalize) {
+  function checkUnique_(sheetName, columnIndex, label, normalize) {
     if (!validSchema[sheetName]) return;
     const seen = {};
     rowsBySheet[sheetName].forEach(function(row, index) {
-      if (!hasData(row)) return;
+      if (!hasData_(row)) return;
       const value = normalize ? normalize(row[columnIndex]) : String(row[columnIndex] || '').trim();
       if (!value) return;
       if (seen[value]) {
-        addIssue('DUPLICATE_' + label, sheetName, index + 2, label + ' duplikat; baris pertama ' + seen[value] + '.');
+        addIssue_('DUPLICATE_' + label, sheetName, index + 2, label + ' duplikat; baris pertama ' + seen[value] + '.');
       } else {
         seen[value] = index + 2;
       }
     });
   }
 
-  checkUnique('Santri', 0, 'NIS', function(value) { return String(value || '').trim().toUpperCase(); });
-  checkUnique('Users', 1, 'USERNAME', function(value) { return String(value || '').trim().toLowerCase(); });
-  checkUnique('Users', 10, 'EMAIL', function(value) { return String(value || '').trim().toLowerCase(); });
-  checkUnique('WaliSantri', 1, 'WALI_USER_ID', function(value) { return String(value || '').trim(); });
-  checkUnique('WaliSantri', 3, 'WALI_PHONE', function(value) { return normalizePhone_(value) || String(value || '').trim(); });
+  checkUnique_('Santri', 0, 'NIS', function(value) { return String(value || '').trim().toUpperCase(); });
+  checkUnique_('Users', 1, 'USERNAME', function(value) { return String(value || '').trim().toLowerCase(); });
+  checkUnique_('Users', 10, 'EMAIL', function(value) { return String(value || '').trim().toLowerCase(); });
+  checkUnique_('WaliSantri', 1, 'WALI_USER_ID', function(value) { return String(value || '').trim(); });
+  checkUnique_('WaliSantri', 3, 'WALI_PHONE', function(value) { return normalizePhone_(value) || String(value || '').trim(); });
 
   if (validSchema.Users) {
     const activeSuperadmins = rowsBySheet.Users.filter(function(row) {
@@ -252,11 +252,11 @@ function auditFMartDatabaseIntegrity() {
         String(row[6] || '').trim().toUpperCase() === 'AKTIF';
     }).length;
     if (activeSuperadmins === 0) {
-      addIssue('NO_ACTIVE_SUPERADMIN', 'Users', '', 'Tidak ditemukan akun Superadmin aktif.');
+      addIssue_('NO_ACTIVE_SUPERADMIN', 'Users', '', 'Tidak ditemukan akun Superadmin aktif.');
     }
   }
 
-  function idSet(sheetName) {
+  function idSet_(sheetName) {
     const result = Object.create(null);
     if (!validSchema[sheetName]) return result;
     const idColumn = sheetName === 'Santri' ? 8 : 0;
@@ -267,51 +267,51 @@ function auditFMartDatabaseIntegrity() {
     return result;
   }
 
-  function checkReference(sourceName, sourceColumn, targetName, label, optional) {
+  function checkReference_(sourceName, sourceColumn, targetName, label, optional) {
     if (!validSchema[sourceName] || !validSchema[targetName]) return;
-    const targets = idSet(targetName);
+    const targets = idSet_(targetName);
     rowsBySheet[sourceName].forEach(function(row, index) {
-      if (!hasData(row)) return;
+      if (!hasData_(row)) return;
       const value = String(row[sourceColumn] || '').trim();
       if (!value && optional) return;
       if (!value || !targets[value]) {
-        addIssue('BROKEN_REFERENCE', sourceName, index + 2,
+        addIssue_('BROKEN_REFERENCE', sourceName, index + 2,
           label + ' tidak ditemukan pada sheet ' + targetName + '.');
       }
     });
   }
 
-  checkReference('WaliSantri', 1, 'Users', 'UserId WaliSantri', false);
-  checkReference('WaliSantriSantri', 1, 'WaliSantri', 'WaliId relasi', false);
-  checkReference('WaliSantriSantri', 2, 'Santri', 'SantriId relasi', false);
-  checkReference('Produk', 1, 'Kategori', 'KategoriId produk', false);
-  checkReference('VariasiProduk', 1, 'Produk', 'ProdukId variasi', false);
-  checkReference('Stok', 1, 'Produk', 'ProdukId stok', false);
-  checkReference('Stok', 2, 'VariasiProduk', 'VariasiId stok', true);
-  checkReference('MutasiStok', 1, 'Produk', 'ProdukId mutasi stok', false);
-  checkReference('MutasiStok', 2, 'VariasiProduk', 'VariasiId mutasi stok', true);
-  checkReference('Keranjang', 1, 'Users', 'UserId keranjang', false);
-  checkReference('Keranjang', 2, 'Santri', 'SantriId keranjang', false);
-  checkReference('Keranjang', 3, 'Produk', 'ProdukId keranjang', false);
-  checkReference('Keranjang', 4, 'VariasiProduk', 'VariasiId keranjang', true);
-  checkReference('Pesanan', 2, 'Users', 'UserId pesanan', false);
-  checkReference('Pesanan', 3, 'Santri', 'SantriId pesanan', false);
-  checkReference('DetailPesanan', 1, 'Pesanan', 'PesananId detail', false);
-  checkReference('DetailPesanan', 2, 'Produk', 'ProdukId detail', false);
-  checkReference('DetailPesanan', 3, 'VariasiProduk', 'VariasiId detail', true);
-  checkReference('Pembayaran', 1, 'Pesanan', 'PesananId pembayaran', false);
-  checkReference('Pengiriman', 1, 'Pesanan', 'PesananId pengiriman', false);
-  checkReference('Pengantaran', 1, 'Pesanan', 'PesananId penugasan pengantaran', false);
-  checkReference('Pengantaran', 2, 'Users', 'PetugasUserId pengantaran', true);
-  checkReference('BuktiPengantaran', 1, 'Pesanan', 'PesananId bukti pengantaran', false);
-  checkReference('BuktiPengantaran', 2, 'Pengantaran', 'PengantaranId bukti', false);
-  checkReference('BuktiPengantaran', 9, 'Users', 'UploadedBy bukti pengantaran', true);
-  checkReference('KonfirmasiPengantaran', 1, 'Pesanan', 'PesananId konfirmasi pengantaran', false);
-  checkReference('KomplainPengantaran', 1, 'Pesanan', 'PesananId komplain pengantaran', false);
-  checkReference('KomplainPengantaran', 2, 'KonfirmasiPengantaran', 'KonfirmasiId komplain', true);
-  checkReference('RiwayatPengantaran', 1, 'Pesanan', 'PesananId riwayat pengantaran', false);
-  checkReference('Notifikasi', 1, 'Users', 'UserId notifikasi', false);
-  checkReference('Notifikasi', 2, 'Pesanan', 'PesananId notifikasi', true);
+  checkReference_('WaliSantri', 1, 'Users', 'UserId WaliSantri', false);
+  checkReference_('WaliSantriSantri', 1, 'WaliSantri', 'WaliId relasi', false);
+  checkReference_('WaliSantriSantri', 2, 'Santri', 'SantriId relasi', false);
+  checkReference_('Produk', 1, 'Kategori', 'KategoriId produk', false);
+  checkReference_('VariasiProduk', 1, 'Produk', 'ProdukId variasi', false);
+  checkReference_('Stok', 1, 'Produk', 'ProdukId stok', false);
+  checkReference_('Stok', 2, 'VariasiProduk', 'VariasiId stok', true);
+  checkReference_('MutasiStok', 1, 'Produk', 'ProdukId mutasi stok', false);
+  checkReference_('MutasiStok', 2, 'VariasiProduk', 'VariasiId mutasi stok', true);
+  checkReference_('Keranjang', 1, 'Users', 'UserId keranjang', false);
+  checkReference_('Keranjang', 2, 'Santri', 'SantriId keranjang', false);
+  checkReference_('Keranjang', 3, 'Produk', 'ProdukId keranjang', false);
+  checkReference_('Keranjang', 4, 'VariasiProduk', 'VariasiId keranjang', true);
+  checkReference_('Pesanan', 2, 'Users', 'UserId pesanan', false);
+  checkReference_('Pesanan', 3, 'Santri', 'SantriId pesanan', false);
+  checkReference_('DetailPesanan', 1, 'Pesanan', 'PesananId detail', false);
+  checkReference_('DetailPesanan', 2, 'Produk', 'ProdukId detail', false);
+  checkReference_('DetailPesanan', 3, 'VariasiProduk', 'VariasiId detail', true);
+  checkReference_('Pembayaran', 1, 'Pesanan', 'PesananId pembayaran', false);
+  checkReference_('Pengiriman', 1, 'Pesanan', 'PesananId pengiriman', false);
+  checkReference_('Pengantaran', 1, 'Pesanan', 'PesananId penugasan pengantaran', false);
+  checkReference_('Pengantaran', 2, 'Users', 'PetugasUserId pengantaran', true);
+  checkReference_('BuktiPengantaran', 1, 'Pesanan', 'PesananId bukti pengantaran', false);
+  checkReference_('BuktiPengantaran', 2, 'Pengantaran', 'PengantaranId bukti', false);
+  checkReference_('BuktiPengantaran', 9, 'Users', 'UploadedBy bukti pengantaran', true);
+  checkReference_('KonfirmasiPengantaran', 1, 'Pesanan', 'PesananId konfirmasi pengantaran', false);
+  checkReference_('KomplainPengantaran', 1, 'Pesanan', 'PesananId komplain pengantaran', false);
+  checkReference_('KomplainPengantaran', 2, 'KonfirmasiPengantaran', 'KonfirmasiId komplain', true);
+  checkReference_('RiwayatPengantaran', 1, 'Pesanan', 'PesananId riwayat pengantaran', false);
+  checkReference_('Notifikasi', 1, 'Users', 'UserId notifikasi', false);
+  checkReference_('Notifikasi', 2, 'Pesanan', 'PesananId notifikasi', true);
 
   const report = {
     ok: issues.length === 0,
@@ -333,7 +333,7 @@ function auditFMartDatabaseIntegrity() {
  * Delapan kolom sumber FMPay wajib cocok persis dan tidak pernah disentuh.
  * Sel metadata yang sudah berisi header lain akan menyebabkan fungsi berhenti.
  */
-function repairFMartSantriMasterHeaders() {
+function repairFMartSantriMasterHeaders_() {
   const lock = LockService.getScriptLock();
   lock.waitLock(15000);
   try {
@@ -398,9 +398,9 @@ function repairFMartSantriMasterHeaders() {
 
 /**
  * Audit khusus master Santri bersama FMart/FMPay. Read-only.
- * Jalankan setelah setupFMartDatabase() menambahkan 4 header internal di ujung kanan.
+ * Jalankan setelah setupFMartDatabase_() menambahkan 4 header internal di ujung kanan.
  */
-function auditFMartSantriMaster() {
+function auditFMartSantriMaster_() {
   const ss = getSetupSpreadsheet_();
   const sheet = ss.getSheetByName('Santri');
   if (!sheet) throw new Error('Sheet Santri tidak ditemukan.');
@@ -423,8 +423,8 @@ function auditFMartSantriMaster() {
     const name = String(displayRows[index][1] || '').trim();
     const id = String(row[8] || '').trim();
     const status = String(row[9] || '').trim();
-    const hasData = row.slice(0,8).some(function(value){return value !== '' && value !== null;});
-    if (!hasData) { blankRows++; return; }
+    const hasData_ = row.slice(0,8).some(function(value){return value !== '' && value !== null;});
+    if (!hasData_) { blankRows++; return; }
     if (!nis) issues.push({code:'EMPTY_NIS',row:rowNumber,detail:'Data Santri memiliki isi tetapi NIS kosong.'});
     else if (seenNis[nis]) issues.push({code:'DUPLICATE_NIS',row:rowNumber,detail:'NIS duplikat; baris pertama ' + seenNis[nis] + '.'});
     else seenNis[nis] = rowNumber;
@@ -454,18 +454,18 @@ function auditFMartSantriMaster() {
 
 /**
  * Menyiapkan ID dan metadata internal Santri tanpa mengubah 8 kolom sumber FMPay.
- * Jalankan hanya setelah auditFMartSantriMaster() menunjukkan tidak ada masalah.
+ * Jalankan hanya setelah auditFMartSantriMaster_() menunjukkan tidak ada masalah.
  * Status awal AKTIF diberikan untuk baris yang memiliki NIS dan nama; tinjau kembali
  * jika master sumber ternyata juga memuat alumni atau santri nonaktif.
  */
-function migrateFMartSantriMaster() {
+function migrateFMartSantriMaster_() {
   const lock = LockService.getScriptLock();
   lock.waitLock(15000);
   try {
     const ss = getSetupSpreadsheet_();
     const sheet = ss.getSheetByName('Santri');
     if (!sheet) throw new Error('Sheet Santri tidak ditemukan.');
-    const audit = auditFMartSantriMaster();
+    const audit = auditFMartSantriMaster_();
     if (!audit || audit.ok !== true) {
       const auditDetail = audit ? JSON.stringify(audit, null, 2) : 'Audit tidak mengembalikan laporan.';
       Logger.log('AUDIT MASTER SANTRI GAGAL:\n' + auditDetail);
@@ -524,7 +524,7 @@ function makeSetupSantriId_(nis) {
  * Jalankan dari editor Apps Script, lalu hapus data sensitif dari riwayat/log Anda sendiri.
  * Password tidak pernah ditulis ke Spreadsheet dalam bentuk plaintext.
  */
-function createFMartUser(username, password, nama, role, email) {
+function createFMartUser_(username, password, nama, role, email) {
   const lock = LockService.getScriptLock(); lock.waitLock(10000);
   try {
   username = String(username || '').trim().toLowerCase();
@@ -548,7 +548,7 @@ function createFMartUser(username, password, nama, role, email) {
 
   const ss = getSetupSpreadsheet_();
   const sheet = ss.getSheetByName('Users');
-  if (!sheet) throw new Error('Jalankan setupFMartDatabase() terlebih dahulu.');
+  if (!sheet) throw new Error('Jalankan setupFMartDatabase_() terlebih dahulu.');
 
   const rows = sheet.getLastRow() > 1 ? sheet.getRange(2,1,sheet.getLastRow()-1,12).getValues() : [];
   if (rows.some(function(r){ return String(r[1] || '').trim().toLowerCase() === username; })) {
@@ -573,18 +573,18 @@ function createFMartUser(username, password, nama, role, email) {
  * - Hanya dapat berhasil jika BELUM ada Superadmin AKTIF.
  * - Username/password diberikan saat menjalankan fungsi dari editor Apps Script;
  *   tidak pernah ditulis ke source code atau Spreadsheet sebagai plaintext.
- * - Password langsung diproses menjadi hash + salt oleh createFMartUser().
+ * - Password langsung diproses menjadi hash + salt oleh createFMartUser_().
  * - Setelah Superadmin pertama ada, fungsi ini terkunci dan tidak dapat membuat
  *   Superadmin kedua melalui jalur bootstrap.
  *
  * Cara penggunaan utama:
- *   Jalankan createInitialFMartSuperadmin() tanpa parameter dari Apps Script Editor.
+ *   Jalankan createInitialFMartSuperadmin_() tanpa parameter dari Apps Script Editor.
  *   Sistem akan meminta username, nama, dan password melalui dialog Spreadsheet.
  *
  * Pemanggilan dengan parameter tetap didukung untuk kebutuhan administrasi terkontrol,
  * tetapi jangan menaruh password nyata di source code.
  */
-function createInitialFMartSuperadmin(username, password, nama, email) {
+function createInitialFMartSuperadmin_(username, password, nama, email) {
   if (arguments.length === 0 || (!username && !password && !nama && !email)) {
     const ui = SpreadsheetApp.getUi();
     const u = ui.prompt('FMart — Buat Superadmin Pertama', 'Email Superadmin:', ui.ButtonSet.OK_CANCEL);
@@ -612,7 +612,7 @@ function createInitialFMartSuperadmin(username, password, nama, email) {
   try {
     const ss = getSetupSpreadsheet_();
     const sheet = ss.getSheetByName('Users');
-    if (!sheet) throw new Error('Sheet Users tidak ditemukan. Jalankan setupFMartDatabase() terlebih dahulu.');
+    if (!sheet) throw new Error('Sheet Users tidak ditemukan. Jalankan setupFMartDatabase_() terlebih dahulu.');
     const rows = sheet.getLastRow() > 1 ? sheet.getRange(2,1,sheet.getLastRow()-1,12).getValues() : [];
     if (rows.some(function(r){ return String(r[5]||'').trim().toUpperCase()==='SUPERADMIN' && String(r[6]||'').trim().toUpperCase()==='AKTIF'; })) {
       throw new Error('Bootstrap dikunci: sudah ada Superadmin aktif. Gunakan manajemen pengguna setelah login.');
@@ -621,7 +621,7 @@ function createInitialFMartSuperadmin(username, password, nama, email) {
       throw new Error('Username sudah digunakan. Pilih username lain.');
     }
 
-    const result = createFMartUser(username, password, nama, 'SUPERADMIN', email);
+    const result = createFMartUser_(username, password, nama, 'SUPERADMIN', email);
     SpreadsheetApp.flush();
     const lastRow = sheet.getLastRow();
     const savedRows = lastRow > 1 ? sheet.getRange(2,1,lastRow-1,12).getValues() : [];
@@ -716,7 +716,7 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) {
 /**
  * Fungsi publik untuk dijalankan dari daftar fungsi Apps Script Editor.
  */
-function prepareExistingSuperadminEmail() {
+function prepareExistingSuperadminEmailFromEditor_() {
   return prepareExistingSuperadminEmail_();
 }
 
@@ -738,7 +738,7 @@ function getSetupSpreadsheet_() {
  * Setelah akun baru berhasil diverifikasi dan Superadmin lama dinonaktifkan,
  * nilai B2:B4 dikosongkan otomatis.
  */
-function replaceFMartSuperadminFromEditor() {
+function replaceFMartSuperadminFromEditor_() {
   const ss = getSetupSpreadsheet_();
   const setupName = 'FMart_AdminSetup';
   let inputSheet = ss.getSheetByName(setupName);
@@ -760,7 +760,7 @@ function replaceFMartSuperadminFromEditor() {
       readyForInput: true,
       spreadsheetName: ss.getName(),
       sheetName: setupName,
-      message: 'Sheet FMart_AdminSetup telah dibuat. Isi B2 dengan email, B3 dengan nama, dan B4 dengan password baru. Setelah itu jalankan replaceFMartSuperadminFromEditor() sekali lagi.'
+      message: 'Sheet FMart_AdminSetup telah dibuat. Isi B2 dengan email, B3 dengan nama, dan B4 dengan password baru. Setelah itu jalankan replaceFMartSuperadminFromEditor_() sekali lagi.'
     };
   }
 
