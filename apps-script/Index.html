@@ -1505,7 +1505,7 @@ async function openWaliProfilePage(){
 }
     function showStaffApp(){$('customerNav').classList.add('hidden');$('staffNav').classList.remove('hidden');$('operationsView').classList.remove('hidden');$('appView').querySelector('.main').classList.add('hidden');$('userBtn').textContent=state.data.user.nama||'Petugas';$('greeting').textContent='Operasional FMart'}
     let deliveryDashboardData=null;
-    async let deliveryAssignmentData=null;
+    let deliveryAssignmentData=null;
 async function renderDeliveryAssignmentWorkspace(){
   if(!state.data||!['ADMIN','GUDANG','SUPERADMIN'].includes(state.data.user.role))return;
   $('opsMainTitle').textContent='Distribusi Pengantaran';$('opsMainBody').innerHTML='<div class="panel-loading"><span class="spinner"></span><span>Memuat pesanan siap antar...</span></div>';
