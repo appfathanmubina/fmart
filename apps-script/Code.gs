@@ -1089,6 +1089,8 @@ function markOrderReceived(token, orderId) {
     const ss=getSS_(),orderSheet=ss.getSheetByName('Pesanan'),orderRow=findRowById_(orderSheet,orderId,1);
     if(!orderRow||String(orderRow.values[2])!==String(session.userId)) throw new Error('Pesanan tidak ditemukan.');
     if(String(orderRow.values[8]||'').toUpperCase()!=='DIANTAR') throw new Error('Pesanan belum berada pada status dapat diterima.');
+    const shipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);
+    if(!shipment||String(shipment.method||'').toUpperCase()!=='ANTAR_PESANTREN') throw new Error('Konfirmasi penerimaan ini hanya berlaku untuk pesanan Antar Pesantren.');
     const proof=readRows_(ss.getSheetByName('BuktiPengantaran')).filter(x=>String(x[1]||'')===orderId).sort((a,b)=>new Date(b[10]||0)-new Date(a[10]||0))[0];
     if(!proof) throw new Error('Bukti foto pengantaran belum tersedia. Anda belum dapat mengonfirmasi penerimaan.');
     const confirmationSheet=ss.getSheetByName('KonfirmasiPengantaran');
@@ -1122,6 +1124,8 @@ function reportDeliveryComplaint(token,orderId,issueType,description) {
     const ss=getSS_(),order=findRowById_(ss.getSheetByName('Pesanan'),orderId,1);
     if(!order||String(order.values[2])!==String(session.userId)) throw new Error('Pesanan tidak ditemukan.');
     if(String(order.values[8]||'').toUpperCase()!=='DIANTAR') throw new Error('Komplain hanya dapat diajukan sebelum pesanan dikonfirmasi diterima.');
+    const shipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);
+    if(!shipment||String(shipment.method||'').toUpperCase()!=='ANTAR_PESANTREN') throw new Error('Komplain pengantaran hanya tersedia untuk pesanan Antar Pesantren.');
     const proof=readRows_(ss.getSheetByName('BuktiPengantaran')).filter(x=>String(x[1]||'')===orderId).sort((a,b)=>new Date(b[10]||0)-new Date(a[10]||0))[0];
     if(!proof) throw new Error('Bukti pengantaran belum tersedia.');
     const confSheet=ss.getSheetByName('KonfirmasiPengantaran'),confs=readRows_(confSheet);
@@ -1722,7 +1726,7 @@ function updateOrderOperation(token, orderId, nextStatus, shipmentStatus, note) 
   const session=requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);orderId=String(orderId||'').trim();nextStatus=String(nextStatus||'').toUpperCase();shipmentStatus=String(shipmentStatus||'').toUpperCase();note=String(note||'').trim().slice(0,300);
   const allowed=['DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR','DIBATALKAN'];if(allowed.indexOf(nextStatus)<0)throw new Error('Status pesanan tidak valid.');
   if(nextStatus==='DIBATALKAN' && session.role==='GUDANG') throw new Error('Gudang tidak berwenang membatalkan pesanan.');
-  const lock=LockService.getScriptLock();lock.waitLock(10000);try{const ss=getSS_();const os=ss.getSheetByName('Pesanan');const row=findRowById_(os,orderId,1);if(!row)throw new Error('Pesanan tidak ditemukan.');const current=String(row.values[8]||'').toUpperCase();const orderFlow={DIBAYAR:['DIPROSES'],DIPROSES:['DISIAPKAN'],DISIAPKAN:['DIANTAR'],DIANTAR:['DITERIMA'],DITERIMA:[],MENUNGGU_PEMBAYARAN:['DIBATALKAN'],DIBATALKAN:[]};if(!orderFlow[current]||orderFlow[current].indexOf(nextStatus)<0)throw new Error('Perubahan status '+current+' ke '+nextStatus+' tidak diperbolehkan.');if(session.role==='GUDANG'){const paidRows=readRows_(ss.getSheetByName('Pembayaran')).filter(function(p){return String(p[1])===orderId;}).sort(function(a,b){return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime();});if(!paidRows.length||String(paidRows[0][5]||'').toUpperCase()!=='TERVERIFIKASI')throw new Error('Pesanan belum memiliki pembayaran terverifikasi. Gudang belum dapat memproses pesanan ini.');if(['DIPROSES','DISIAPKAN','DIANTAR'].indexOf(nextStatus)<0)throw new Error('Gudang hanya dapat menjalankan tahapan pemenuhan pesanan.');}const now=new Date();os.getRange(row.rowNumber,9,1,3).setValues([[nextStatus,note||row.values[9],now]]);const shipSheet=ss.getSheetByName('Pengiriman');const ship=latestShipmentRow_(shipSheet,orderId);if(ship){const currentShip=shipSheet.getRange(ship,1,1,9).getValues()[0];let st=String(currentShip[4]||'MENUNGGU');let sent=currentShip[5],received=currentShip[6];if(nextStatus==='DIANTAR'){st='DIANTAR';sent=now;}shipSheet.getRange(ship,5,1,5).setValues([[st,sent,received,session.userId,now]]);}else shipSheet.appendRow([makeFMartId_('SHP'),orderId,'', '',nextStatus==='DIANTAR'?'DIANTAR':'MENUNGGU','','',session.userId,now]);ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(row.values[2]),orderId,'Status pesanan diperbarui','Pesanan '+String(row.values[1])+' sekarang '+nextStatus+'.','PESANAN',false,now]);writeAudit_(session.userId,session.role,'UPDATE_ORDER_STATUS','PESANAN',orderId,JSON.stringify({status:current,note:String(row.values[9]||'')}),JSON.stringify({status:nextStatus,note:note}),'Perubahan status operasional');SpreadsheetApp.flush();return getOperationsDashboard(token);}finally{lock.releaseLock();}
+  const lock=LockService.getScriptLock();lock.waitLock(10000);try{const ss=getSS_();const os=ss.getSheetByName('Pesanan');const row=findRowById_(os,orderId,1);if(!row)throw new Error('Pesanan tidak ditemukan.');const current=String(row.values[8]||'').toUpperCase();const currentShipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);if(nextStatus==='DIANTAR'&&currentShipment&&String(currentShipment.method||'').toUpperCase()==='ANTAR_PESANTREN')throw new Error('Pesanan Antar Pesantren hanya dapat berubah menjadi DIANTAR melalui Petugas Pengantar setelah menerima tugas dan memulai perjalanan.');const orderFlow={DIBAYAR:['DIPROSES'],DIPROSES:['DISIAPKAN'],DISIAPKAN:['DIANTAR'],DIANTAR:['DITERIMA'],DITERIMA:[],MENUNGGU_PEMBAYARAN:['DIBATALKAN'],DIBATALKAN:[]};if(!orderFlow[current]||orderFlow[current].indexOf(nextStatus)<0)throw new Error('Perubahan status '+current+' ke '+nextStatus+' tidak diperbolehkan.');if(session.role==='GUDANG'){const paidRows=readRows_(ss.getSheetByName('Pembayaran')).filter(function(p){return String(p[1])===orderId;}).sort(function(a,b){return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime();});if(!paidRows.length||String(paidRows[0][5]||'').toUpperCase()!=='TERVERIFIKASI')throw new Error('Pesanan belum memiliki pembayaran terverifikasi. Gudang belum dapat memproses pesanan ini.');if(['DIPROSES','DISIAPKAN','DIANTAR'].indexOf(nextStatus)<0)throw new Error('Gudang hanya dapat menjalankan tahapan pemenuhan pesanan.');}const now=new Date();os.getRange(row.rowNumber,9,1,3).setValues([[nextStatus,note||row.values[9],now]]);const shipSheet=ss.getSheetByName('Pengiriman');const ship=latestShipmentRow_(shipSheet,orderId);if(ship){const currentShip=shipSheet.getRange(ship,1,1,9).getValues()[0];let st=String(currentShip[4]||'MENUNGGU');let sent=currentShip[5],received=currentShip[6];if(nextStatus==='DIANTAR'){st='DIANTAR';sent=now;}shipSheet.getRange(ship,5,1,5).setValues([[st,sent,received,session.userId,now]]);}else shipSheet.appendRow([makeFMartId_('SHP'),orderId,'', '',nextStatus==='DIANTAR'?'DIANTAR':'MENUNGGU','','',session.userId,now]);ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(row.values[2]),orderId,'Status pesanan diperbarui','Pesanan '+String(row.values[1])+' sekarang '+nextStatus+'.','PESANAN',false,now]);writeAudit_(session.userId,session.role,'UPDATE_ORDER_STATUS','PESANAN',orderId,JSON.stringify({status:current,note:String(row.values[9]||'')}),JSON.stringify({status:nextStatus,note:note}),'Perubahan status operasional');SpreadsheetApp.flush();return getOperationsDashboard(token);}finally{lock.releaseLock();}
 }
 
 function createStaffUser(token, username, password, nama, role, email) {
@@ -1997,6 +2001,13 @@ function getDeliveryDashboard(token) {
     if (id) orderById[id] = row;
   });
   const shipments = readRows_(ss.getSheetByName('Pengiriman'));
+  const proofByAssignment = {};
+  readRows_(ss.getSheetByName('BuktiPengantaran')).forEach(function(row) {
+    const assignmentId=String(row[2]||'');
+    if(!assignmentId)return;
+    const previous=proofByAssignment[assignmentId];
+    if(!previous||new Date(row[10]||0).getTime()>=new Date(previous[10]||0).getTime())proofByAssignment[assignmentId]=row;
+  });
   const shipmentByOrder = {};
   shipments.forEach(function(row) {
     const id = String(row[1] || '');
@@ -2163,6 +2174,8 @@ function submitDeliveryProof(token, assignmentId, fileName, mimeType, dataUrl, n
     if(status!=='DALAM_PERJALANAN') throw new Error('Bukti hanya dapat diunggah saat pengantaran berlangsung.');
     const order=findRowById_(ss.getSheetByName('Pesanan'),orderId,1);
     if(!order||String(order.values[8]||'').toUpperCase()!=='DIANTAR') throw new Error('Pesanan tidak berada dalam status DIANTAR.');
+    const currentShipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);
+    if(!currentShipment||String(currentShipment.method||'').toUpperCase()!=='ANTAR_PESANTREN') throw new Error('Bukti foto hanya berlaku untuk pesanan Antar Pesantren.');
     const proofSheet=ss.getSheetByName('BuktiPengantaran'),confirmSheet=ss.getSheetByName('KonfirmasiPengantaran');
     if(!proofSheet||!confirmSheet) throw new Error('Database bukti pengantaran belum tersedia. Jalankan setupFMartDatabase() terlebih dahulu.');
     if(readRows_(proofSheet).some(r=>String(r[2]||'')===assignmentId)) throw new Error('Bukti untuk penugasan ini sudah pernah diunggah.');
