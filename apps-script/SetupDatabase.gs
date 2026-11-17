@@ -97,7 +97,8 @@ function seedSettings_(sheet) {
     ['PAYMENT_BANK_NAME','','Nama bank rekening pembayaran FMart'],
     ['PAYMENT_ACCOUNT_NUMBER','','Nomor rekening pembayaran FMart'],
     ['PAYMENT_ACCOUNT_NAME','','Nama pemilik rekening pembayaran FMart'],
-    ['PAYMENT_ADMIN_WHATSAPP','','Nomor WhatsApp Admin/Kasir untuk konfirmasi pembayaran']
+    ['PAYMENT_ADMIN_WHATSAPP','','Nomor WhatsApp Admin/Kasir untuk konfirmasi pembayaran'],
+    ['PAYMENT_QRIS_IMAGE_URL','','URL HTTPS gambar kode QRIS FMart']
   ];
   defaults.forEach(function(row) {
     if (existing.indexOf(row[0]) === -1) sheet.appendRow(row.concat([new Date()]));
