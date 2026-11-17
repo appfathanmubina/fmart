@@ -1054,7 +1054,7 @@ function submitPayment(token, orderId, method, nominal, fileName, mimeType, base
   } finally { lock.releaseLock(); }
 }
 function getPaymentSettings(token) {
-  requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.SUPERADMIN]);
+  requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.SUPERADMIN]);
   return {ok:true,bankName:getSettingValue_('PAYMENT_BANK_NAME'),accountNumber:getSettingValue_('PAYMENT_ACCOUNT_NUMBER'),accountName:getSettingValue_('PAYMENT_ACCOUNT_NAME'),adminWhatsapp:getSettingValue_('PAYMENT_ADMIN_WHATSAPP'),qrisImageUrl:getSettingValue_('PAYMENT_QRIS_IMAGE_URL')};
 }
 
