@@ -1324,8 +1324,29 @@ function getStockManagement(token) {
     return {id:String(m[0]||''),productName:product?String(product[3]||''):'Produk tidak ditemukan',sku:product?String(product[2]||''):'-',variationName:variation?[String(variation[2]||''),String(variation[3]||'')].filter(Boolean).join(': '):'',type:String(m[3]||''),qty:Number(m[4])||0,before:Number(m[5])||0,after:Number(m[6])||0,referenceId:String(m[7]||''),note:String(m[8]||''),actor:userMap[String(m[9])]||'-',createdAt:dateIso_(m[10]),sortAt:m[10] instanceof Date?m[10].getTime():new Date(m[10]||0).getTime()};
   }).sort(function(a,b){return b.sortAt-a.sortAt;}).slice(0,100).map(function(x){delete x.sortAt;return x;});
   let totalUnits=0,lowStock=0,outOfStock=0;
-  items.forEach(function(x){totalUnits+=x.stock;if(x.stock<=0)outOfStock++;if(x.stock<=x.minStock)lowStock++;});
+  items.forEach(function(x){totalUnits+=x.stock;if(x.stock<=0)outOfStock++;else if(x.stock<=x.minStock)lowStock++;});
   return {ok:true,summary:{totalItems:items.length,totalUnits:totalUnits,lowStock:lowStock,outOfStock:outOfStock},items:items,history:history};
+}
+
+function setStockMinimum(token, productId, variationId, minStock) {
+  const session=requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  productId=String(productId||'').trim();variationId=String(variationId||'').trim();minStock=Number(minStock);
+  if(!productId||!Number.isInteger(minStock)||minStock<0)throw new Error('Batas stok minimum harus berupa bilangan bulat nol atau lebih.');
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{
+    const ss=getSS_(),product=findRowById_(ss.getSheetByName('Produk'),productId,1);
+    if(!product)throw new Error('Produk tidak ditemukan.');
+    if(String(product.values[8]||'').toUpperCase()!=='AKTIF')throw new Error('Produk nonaktif tidak dapat diubah batas stoknya.');
+    let variation=null;
+    if(variationId){variation=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(!variation||String(variation.values[1])!==productId||String(variation.values[6]||'').toUpperCase()!=='AKTIF')throw new Error('Variasi tidak valid atau tidak aktif.');}
+    const stockSheet=ss.getSheetByName('Stok'),stockRows=readRows_(stockSheet),index=stockRows.findIndex(r=>String(r[1])===productId&&String(r[2]||'')===variationId);
+    const now=new Date(),before=index>=0?(Number(stockRows[index][4])||0):(Number(product.values[6])||0);
+    if(index>=0)stockSheet.getRange(index+2,5,1,2).setValues([[minStock,now]]);
+    else stockSheet.appendRow([makeFMartId_('STK'),productId,variationId,variation?Math.max(0,Number(variation.values[5])||0):0,minStock,now]);
+    if(!variationId)ss.getSheetByName('Produk').getRange(product.rowNumber,7).setValue(minStock);
+    writeAudit_(session.userId,session.role,'SET_STOCK_MINIMUM','STOK',productId,JSON.stringify({variationId:variationId,minStock:before}),JSON.stringify({variationId:variationId,minStock:minStock}),'Perubahan batas stok minimum');
+    SpreadsheetApp.flush();return getStockManagement(token);
+  }finally{lock.releaseLock();}
 }
 
 function adjustStock(token, productId, variationId, type, qty, note) {
