@@ -1138,6 +1138,54 @@ function getOperationsDashboard(token) {
 
 
 
+
+/** Tahap 6: riwayat pemenuhan, mutasi stok, dan penerimaan khusus Gudang. */
+function getWarehouseHistoryReport(token, startDate, endDate) {
+  const session=requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  const parseDay=function(value,endOfDay){
+    const text=String(value||'').trim();
+    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(text))throw new Error('Format periode laporan tidak valid.');
+    const p=text.split('-').map(Number),d=new Date(p[0],p[1]-1,p[2],endOfDay?23:0,endOfDay?59:0,endOfDay?59:0,endOfDay?999:0);
+    if(d.getFullYear()!==p[0]||d.getMonth()!==p[1]-1||d.getDate()!==p[2])throw new Error('Tanggal laporan tidak valid.');
+    return d;
+  };
+  const start=parseDay(startDate,false),end=parseDay(endDate,true);
+  if(end<start)throw new Error('Tanggal akhir tidak boleh lebih awal dari tanggal mulai.');
+  const inRange=function(value){const d=value instanceof Date?value:new Date(value||0);const t=d.getTime();return Number.isFinite(t)&&t>=start.getTime()&&t<=end.getTime();};
+  const ss=getSS_();
+  const users=readRows_(ss.getSheetByName('Users')),userMap={};
+  users.forEach(function(r){userMap[String(r[0])]=String(r[4]||r[1]||'-');});
+  const orders=readRows_(ss.getSheetByName('Pesanan')),orderMap={};
+  orders.forEach(function(r){orderMap[String(r[0])]={number:String(r[1]||r[0]),childId:String(r[3]||''),status:String(r[8]||'')};});
+  const santriSheet=ss.getSheetByName('Santri'),santriMap=getSantriColumnMap_(santriSheet),santriNames={};
+  readSantriRows_(santriSheet).forEach(function(r){const c=santriRecord_(r,santriMap);if(c.id)santriNames[c.id]=c.name;});
+  const auditRows=readRows_(ss.getSheetByName('AuditLog'));
+  const orderHistory=auditRows.filter(function(r){return String(r[3]||'').toUpperCase()==='UPDATE_ORDER_STATUS'&&String(r[4]||'').toUpperCase()==='PESANAN'&&inRange(r[9]);}).map(function(r){
+    let before={},after={};try{before=JSON.parse(String(r[6]||'{}'));}catch(e){}try{after=JSON.parse(String(r[7]||'{}'));}catch(e){}
+    const order=orderMap[String(r[5]||'')]||{};
+    return {id:String(r[0]||''),orderId:String(r[5]||''),orderNumber:order.number||String(r[5]||''),childName:santriNames[order.childId]||'-',fromStatus:String(before.status||'-'),toStatus:String(after.status||'-'),note:String(after.note||r[8]||''),actor:userMap[String(r[1])]||'-',role:String(r[2]||'-'),createdAt:dateIso_(r[9]),sortAt:new Date(r[9]||0).getTime()};
+  }).sort(function(a,b){return b.sortAt-a.sortAt;});
+  const products=readRows_(ss.getSheetByName('Produk')),productMap={};
+  products.forEach(function(r){productMap[String(r[0])]={name:String(r[3]||'Produk tidak ditemukan'),sku:String(r[2]||'-')};});
+  const variations=readRows_(ss.getSheetByName('VariasiProduk')),variationMap={};
+  variations.forEach(function(r){variationMap[String(r[0])]=[String(r[2]||''),String(r[3]||'')].filter(Boolean).join(': ');});
+  const mutationRows=readRows_(ss.getSheetByName('MutasiStok'));
+  const stockHistory=mutationRows.filter(function(r){return inRange(r[10]);}).map(function(r){
+    const p=productMap[String(r[1])]||{};
+    return {id:String(r[0]||''),productName:p.name||'Produk tidak ditemukan',sku:p.sku||'-',variationName:variationMap[String(r[2])]||'',type:String(r[3]||''),qty:Number(r[4])||0,before:Number(r[5])||0,after:Number(r[6])||0,referenceId:String(r[7]||''),note:String(r[8]||''),actor:userMap[String(r[9])]||'-',createdAt:dateIso_(r[10]),sortAt:new Date(r[10]||0).getTime()};
+  }).sort(function(a,b){return b.sortAt-a.sortAt;});
+  const receiptSheet=ss.getSheetByName('PenerimaanBarang');
+  const receiptRows=receiptSheet?readRows_(receiptSheet):[];
+  const receivingHistory=receiptRows.filter(function(r){return inRange(r[4]||r[9]);}).map(function(r){
+    return {id:String(r[0]||''),number:String(r[1]||''),supplier:String(r[2]||''),reference:String(r[3]||''),receivedAt:dateIso_(r[4]||r[9]),lineCount:Number(r[6])||0,totalQty:Number(r[7])||0,actor:userMap[String(r[8])]||'-',note:String(r[5]||''),sortAt:new Date(r[4]||r[9]||0).getTime()};
+  }).sort(function(a,b){return b.sortAt-a.sortAt;});
+  const inbound=stockHistory.filter(function(x){return x.type.toUpperCase()==='MASUK';}).reduce(function(n,x){return n+x.qty;},0);
+  const outbound=stockHistory.filter(function(x){return x.type.toUpperCase()==='KELUAR';}).reduce(function(n,x){return n+x.qty;},0);
+  const counts={};orderHistory.forEach(function(x){counts[x.toStatus]=(counts[x.toStatus]||0)+1;});
+  const clean=function(rows){return rows.slice(0,500).map(function(x){delete x.sortAt;return x;});};
+  return {ok:true,period:{start:startDate,end:endDate},summary:{orderChanges:orderHistory.length,receipts:receivingHistory.length,stockMutations:stockHistory.length,inboundQty:inbound,outboundQty:outbound,orderStageChanges:counts},orderHistory:clean(orderHistory),stockHistory:clean(stockHistory),receivingHistory:clean(receivingHistory),limits:{orderHistory:500,stockHistory:500,receivingHistory:500}};
+}
+
 /** Fase 6: laporan operasional terhitung dari data transaksi aktual. */
 function getFMartReports(token, startDate, endDate) {
   const session = requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
