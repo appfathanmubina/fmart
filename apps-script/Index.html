@@ -1134,7 +1134,7 @@ body.buyer-portal .buyer-cart-select input{width:18px;height:18px;margin:0;accen
   </div>
 
   <div id="appView" class="app hidden">
-    <header class="header"><div class="header-inner"><div class="brand"><div class="brand-mark" role="img" aria-label="Logo FMart"></div><span>FMart</span></div><div class="header-actions"><button type="button" class="notification-trigger" id="waliNotificationBtn" aria-label="Notifikasi" title="Notifikasi">♧<span id="waliNotificationBadge" class="notification-count hidden">0</span></button><button class="user-pill" id="userBtn">Akun</button></div></div></header>
+    <header class="header"><div class="header-inner"><div class="brand" id="brandHome" role="button" tabindex="0" aria-label="Kembali ke Dashboard"><div class="brand-mark" role="img" aria-label="Logo FMart"></div><span>FMart</span></div><div class="header-actions"><button type="button" class="header-nav-link" id="headerCatalogBtn">Katalog</button><button type="button" class="header-nav-link" id="headerOrdersBtn">Pesanan</button><button type="button" class="notification-trigger" id="waliNotificationBtn" aria-label="Notifikasi" title="Notifikasi">♧<span id="waliNotificationBadge" class="notification-count hidden">0</span></button><button class="user-pill" id="userBtn">Akun</button></div></div></header>
     <main class="main">
       <section class="hero"><h1 id="greeting">Belanja lebih mudah</h1><p>Pesan kebutuhan anak Anda dengan praktis.</p></section>
       <section id="waliDashboard" class="wali-dashboard" aria-labelledby="waliDashboardTitle">
@@ -1282,6 +1282,7 @@ body.buyer-portal .buyer-cart-select input{width:18px;height:18px;margin:0;accen
         // tambahan tidak boleh menghalangi pengguna melihat halaman utama.
         showApp();
         $('waliNotificationBtn').classList.toggle('hidden',session.user.role!=='WALI_SANTRI');
+        $('headerCatalogBtn').classList.toggle('hidden',session.user.role!=='WALI_SANTRI');$('headerOrdersBtn').classList.toggle('hidden',session.user.role!=='WALI_SANTRI');
         if(session.user.role==='WALI_SANTRI'){
           state.selectedChildId='';
           sessionStorage.removeItem('fmartSelectedChildId');
@@ -2212,3 +2213,8 @@ function resetBuyerCatalogFilters(){$('searchInput').value='';$('productSort').v
   </script>
 </body>
 </html>
+
+<style>
+/* FMart header quick navigation */
+.brand[role="button"]{cursor:pointer;user-select:none}.brand[role="button"]:focus-visible{outline:3px solid #ead5ef;outline-offset:4px;border-radius:10px}.header-actions{gap:10px}.header-nav-link{border:1px solid rgba(255,255,255,.32);background:rgba(255,255,255,.13);color:#fff;border-radius:999px;padding:9px 15px;font-weight:700;cursor:pointer}.header-nav-link:hover{background:rgba(255,255,255,.24)}@media(max-width:560px){.header-actions{gap:6px}.header-nav-link{padding:8px 10px;font-size:12px}.header .user-pill{padding:8px 10px}}
+</style>
