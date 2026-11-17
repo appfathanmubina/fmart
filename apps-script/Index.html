@@ -2220,7 +2220,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       $('warehouseHomeSeeOrders').onclick=()=>openOrders('');
       $('warehouseHomeStock').onclick=openStock;$('warehouseHomeReceiving').onclick=()=>{document.querySelectorAll('#staffNav .nav-btn').forEach(x=>x.classList.remove('active'));$('staffReceiving').classList.add('active');renderOpsReceiving()};$('warehouseHomeReports').onclick=()=>{document.querySelectorAll('#staffNav .nav-btn').forEach(x=>x.classList.remove('active'));$('staffWarehouseReports').classList.add('active');renderOpsWarehouseReports()};
       $('warehouseHomeSeeStock').onclick=openStock;
-      $('warehouseHomeSeeHistory').onclick=openStock;
+      $('warehouseHomeSeeHistory').onclick=()=>{document.querySelectorAll('#staffNav .nav-btn').forEach(x=>x.classList.remove('active'));$('staffWarehouseReports').classList.add('active');renderOpsWarehouseReports().then(()=>{warehouseReportTab='stock';drawWarehouseHistoryReport()})};
       $('warehouseHomeRefresh').onclick=loadOps;
       document.querySelectorAll('[data-warehouse-stage]').forEach(b=>b.onclick=()=>openOrders(b.dataset.warehouseStage));
       document.querySelectorAll('[data-warehouse-order]').forEach(b=>b.onclick=()=>openOpsOrderDetail(b.dataset.warehouseOrder));
@@ -2308,7 +2308,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       if(!filtered.length)table='<div class="empty-box">Tidak ada catatan yang sesuai pada periode dan pencarian ini.</div>';
       $('warehouseReportBody').innerHTML=
         '<div class="warehouse-report-metrics"><article><small>Perubahan tahapan pesanan</small><strong>'+formatMoney(sum.orderChanges)+'</strong></article><article><small>Mutasi stok</small><strong>'+formatMoney(sum.stockMutations)+'</strong></article><article><small>Barang masuk</small><strong>'+formatMoney(sum.inboundQty)+' unit</strong></article><article><small>Barang keluar</small><strong>'+formatMoney(sum.outboundQty)+' unit</strong></article><article><small>Dokumen penerimaan</small><strong>'+formatMoney(sum.receipts)+'</strong></article></div>'+
-        '<section class="section warehouse-report-workspace"><div class="warehouse-report-toolbar"><div class="report-tabs">'+tabs.map(t=>'<button type="button" class="report-tab '+(active===t[0]?'active':'')+'" data-warehouse-report-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div><div class="warehouse-report-actions"><input id="warehouseReportSearch" type="search" placeholder="Cari riwayat..."><button type="button" class="secondary" id="warehouseReportExport">Ekspor CSV</button></div></div>'+
+        '<section class="section warehouse-report-workspace"><div class="warehouse-report-toolbar"><div class="report-tabs">'+tabs.map(t=>'<button type="button" class="report-tab '+(active===t[0]?'active':'')+'" data-warehouse-report-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div><div class="warehouse-report-actions"><input id="warehouseReportSearch" type="search" value="'+escapeHtml(q)+'" placeholder="Cari riwayat..."><button type="button" class="secondary" id="warehouseReportExport">Ekspor CSV</button></div></div>'+
         '<div class="warehouse-report-count">Menampilkan '+formatMoney(filtered.length)+' dari '+formatMoney(rows.length)+' catatan'+(rows.length>=500?' · batas tampilan 500 catatan per kategori':'')+'</div>'+table+'</section>';
       document.querySelectorAll('[data-warehouse-report-tab]').forEach(b=>b.onclick=()=>{warehouseReportTab=b.dataset.warehouseReportTab;drawWarehouseHistoryReport()});
       $('warehouseReportSearch').addEventListener('input',drawWarehouseHistoryReport);
@@ -2321,7 +2321,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       try{
         const data=await runServer('getStockReceivingData',state.token),receipts=data.receipts||[];
         $('opsMainBody').innerHTML='<div class="receiving-intro"><div><span class="receiving-eyebrow">GUDANG · BARANG MASUK</span><h3>Catat barang yang diterima</h3><p>Setiap penerimaan menambah stok dan membuat jejak dokumen serta mutasi yang dapat ditelusuri.</p></div><button type="button" class="primary" id="newStockReceipt">+ Catat Penerimaan</button></div>'+
-          '<div class="receiving-summary"><div><small>Dokumen penerimaan tersimpan</small><strong>'+formatMoney(receipts.length)+'</strong></div><div><small>Ditampilkan</small><strong>50 terakhir</strong></div></div>'+
+          '<div class="receiving-summary"><div><small>Dokumen terbaru dimuat</small><strong>'+formatMoney(receipts.length)+'</strong></div><div><small>Ditampilkan</small><strong>50 terakhir</strong></div></div>'+
           '<section class="receiving-history"><div class="stock-toolbar"><div><h3>Riwayat Penerimaan</h3><p>Dokumen terbaru berada di bagian atas.</p></div><input id="receiptSearch" type="search" placeholder="Cari nomor, pemasok, atau referensi..."></div><div class="table-wrap"><table class="data-table receiving-table"><thead><tr><th>Nomor</th><th>Tanggal</th><th>Pemasok / Asal</th><th>Referensi</th><th>Item</th><th>Total Qty</th><th>Petugas</th><th>Aksi</th></tr></thead><tbody id="receiptTableBody"></tbody></table></div></section>';
         const draw=()=>{
           const q=$('receiptSearch').value.trim().toLowerCase(),filtered=receipts.filter(r=>[r.number,r.supplier,r.reference].join(' ').toLowerCase().includes(q));
@@ -2608,6 +2608,100 @@ body.admin-portal .warehouse-report-count{font-size:12px;color:var(--muted);marg
 body.admin-portal .warehouse-report-table small{display:block;color:var(--muted);margin-top:3px}
 @media(max-width:900px){body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){body.admin-portal .warehouse-report-filters{grid-template-columns:1fr 1fr}body.admin-portal .warehouse-report-filters button{grid-column:1/-1;width:100%}body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}body.admin-portal .warehouse-report-toolbar{align-items:stretch}body.admin-portal .warehouse-report-actions{width:100%;min-width:0}body.admin-portal .warehouse-report-actions button{white-space:nowrap}}
+</style>
+
+<style>
+/* Tahap 7 — penyelarasan UI/UX seluruh workspace Gudang */
+body.admin-portal .warehouse-home-actions{gap:10px}
+body.admin-portal .warehouse-home-actions button{min-height:44px;padding:10px 15px}
+body.admin-portal .warehouse-home-panel,body.admin-portal .warehouse-report-workspace,body.admin-portal .warehouse-workspace,body.admin-portal .stock-history-section,body.admin-portal .receiving-history{min-width:0}
+body.admin-portal .warehouse-home-section-head button{flex:0 0 auto}
+body.admin-portal .warehouse-home-stock-row,body.admin-portal .warehouse-home-history-row{min-width:0}
+body.admin-portal .warehouse-home-order-status{max-width:45%;overflow-wrap:anywhere;white-space:normal;text-align:center}
+body.admin-portal .fulfillment-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+body.admin-portal .warehouse-filter-grid{grid-template-columns:minmax(0,2fr) minmax(180px,1fr)}
+body.admin-portal .warehouse-workspace .section-title{align-items:center;gap:12px;flex-wrap:wrap}
+body.admin-portal .warehouse-workspace .section-title>div{min-width:0}
+body.admin-portal .warehouse-workspace .table-wrap,body.admin-portal .stock-table-wrap,body.admin-portal .receiving-history .table-wrap,body.admin-portal .warehouse-report-workspace .table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+body.admin-portal .fulfillment-table,body.admin-portal .stock-table,body.admin-portal .receiving-table,body.admin-portal .warehouse-report-table{border-collapse:separate;border-spacing:0}
+body.admin-portal .fulfillment-table th,body.admin-portal .fulfillment-table td,body.admin-portal .receiving-table th,body.admin-portal .receiving-table td,body.admin-portal .warehouse-report-table th,body.admin-portal .warehouse-report-table td{vertical-align:middle}
+body.admin-portal .warehouse-report-filters .field label{display:block;margin-bottom:7px}
+body.admin-portal .warehouse-report-workspace .report-tabs{display:flex;gap:7px;flex-wrap:wrap}
+body.admin-portal .warehouse-report-actions{flex:1 1 330px}
+body.admin-portal .warehouse-report-actions input{flex:1;min-width:0}
+body.admin-portal .warehouse-report-actions button{min-height:44px}
+body.admin-portal .warehouse-report-table{min-width:760px;width:100%}
+body.admin-portal .warehouse-report-table th,body.admin-portal .warehouse-report-table td{padding:12px 13px;white-space:nowrap}
+body.admin-portal .warehouse-report-table td:nth-child(2),body.admin-portal .warehouse-report-table td:last-child{white-space:normal;min-width:130px}
+body.admin-portal .warehouse-report-count{line-height:1.5}
+body.admin-portal .receipt-line select,body.admin-portal .receipt-line input{width:100%;min-height:44px}
+body.admin-portal .warehouse-home-actions button:focus-visible,body.admin-portal .warehouse-home-flow-card:focus-visible,body.admin-portal #staffWarehouseReports:focus-visible{outline:3px solid #c99ad1;outline-offset:3px}
+@media(max-width:980px){
+ body.admin-portal .warehouse-home-flow{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.admin-portal .warehouse-home-grid{grid-template-columns:1fr}
+ body.admin-portal .fulfillment-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:620px){
+ body.admin-portal #opsMainBody{padding-left:0;padding-right:0}
+ body.admin-portal .warehouse-home-intro{padding:17px;border-radius:16px;gap:10px}
+ body.admin-portal .warehouse-home-intro h2{font-size:21px}
+ body.admin-portal .warehouse-home-intro p{font-size:12px}
+ body.admin-portal .warehouse-home-mark{width:48px;height:48px;flex-basis:48px;border-radius:14px;font-size:23px}
+ body.admin-portal .warehouse-home-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:19px}
+ body.admin-portal .warehouse-home-actions button{width:100%;min-width:0;min-height:44px;padding:9px 10px;font-size:12px}
+ body.admin-portal .warehouse-home-actions button:first-child{grid-column:1/-1}
+ body.admin-portal .warehouse-home-flow{gap:8px}
+ body.admin-portal .warehouse-home-flow-card{padding:11px 9px;gap:8px;border-radius:13px}
+ body.admin-portal .warehouse-home-flow-icon{width:30px;height:30px;flex-basis:30px;font-size:15px}
+ body.admin-portal .warehouse-home-flow-copy strong{font-size:20px}
+ body.admin-portal .warehouse-home-flow-copy em{font-size:9px}
+ body.admin-portal .warehouse-home-panel{padding:13px;border-radius:15px}
+ body.admin-portal .warehouse-home-section-head{align-items:flex-start}
+ body.admin-portal .warehouse-home-section-head h3{font-size:14px}
+ body.admin-portal .warehouse-home-section-head p{font-size:11px;line-height:1.45}
+ body.admin-portal .warehouse-home-section-head .text-button{font-size:11px;padding:5px 0}
+ body.admin-portal .fulfillment-metrics{gap:8px}
+ body.admin-portal .fulfillment-metric{padding:12px;border-radius:13px}
+ body.admin-portal .fulfillment-metric span{font-size:11px;line-height:1.4}
+ body.admin-portal .fulfillment-metric strong{font-size:21px}
+ body.admin-portal .warehouse-filter-grid{grid-template-columns:1fr;gap:8px}
+ body.admin-portal .warehouse-filter-grid input,body.admin-portal .warehouse-filter-grid select{min-height:46px}
+ body.admin-portal .warehouse-workspace{padding:13px;margin-top:14px}
+ body.admin-portal .warehouse-workspace .section-title{align-items:stretch}
+ body.admin-portal .warehouse-workspace .section-title button{width:100%}
+ body.admin-portal .stock-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.admin-portal .stock-toolbar{gap:10px}
+ body.admin-portal .stock-row-actions{width:100%;flex-wrap:wrap}
+ body.admin-portal .stock-row-actions button{flex:1}
+ body.admin-portal .receiving-summary{gap:8px}
+ body.admin-portal .receiving-summary>div{padding:12px}
+ body.admin-portal .receiving-summary strong{font-size:18px}
+ body.admin-portal .receiving-history .stock-toolbar{gap:10px}
+ body.admin-portal .warehouse-report-filters{grid-template-columns:1fr 1fr;gap:8px}
+ body.admin-portal .warehouse-report-filters .field{min-width:0}
+ body.admin-portal .warehouse-report-filters input{min-width:0;font-size:13px}
+ body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ body.admin-portal .warehouse-report-metrics article{padding:12px;border-radius:13px}
+ body.admin-portal .warehouse-report-metrics small{font-size:10px;line-height:1.4}
+ body.admin-portal .warehouse-report-metrics strong{font-size:18px}
+ body.admin-portal .warehouse-report-workspace{padding:12px}
+ body.admin-portal .warehouse-report-toolbar{gap:10px}
+ body.admin-portal .warehouse-report-workspace .report-tabs{display:grid;grid-template-columns:1fr 1fr;flex:1}
+ body.admin-portal .warehouse-report-workspace .report-tab{min-width:0;padding:9px 7px;font-size:11px}
+ body.admin-portal .warehouse-report-workspace .report-tab:last-child{grid-column:1/-1}
+ body.admin-portal .warehouse-report-actions{display:grid;grid-template-columns:1fr auto;gap:7px}
+ body.admin-portal .warehouse-report-actions input{width:100%;min-width:0}
+ body.admin-portal .warehouse-report-actions button{padding:9px 10px;font-size:11px}
+ body.admin-portal .warehouse-report-table{min-width:720px}
+}
+@media(max-width:360px){
+ body.admin-portal .warehouse-home-actions{grid-template-columns:1fr}
+ body.admin-portal .warehouse-home-actions button:first-child{grid-column:auto}
+ body.admin-portal .warehouse-report-filters{grid-template-columns:1fr}
+ body.admin-portal .warehouse-report-filters button{grid-column:auto}
+ body.admin-portal .warehouse-report-actions{grid-template-columns:1fr}
+}
 </style>
 </body>
 </html>
