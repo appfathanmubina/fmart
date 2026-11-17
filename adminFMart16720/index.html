@@ -41,8 +41,9 @@
     frame.addEventListener('load',sendInstallState);
     window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;sendInstallState()});
     window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;if(frame.contentWindow)frame.contentWindow.postMessage({type:'FMART_INSTALL_DONE'},'*');sendInstallState()});
+    function isTrustedAppsScriptOrigin(origin){try{const url=new URL(origin);const host=url.hostname.toLowerCase();return url.protocol==='https:'&&(host==='script.google.com'||host==='script.googleusercontent.com'||/^[a-z0-9-]+-script\.googleusercontent\.com$/.test(host))}catch(e){return false}}
     window.addEventListener('message',async event=>{
-      if(event.source!==frame.contentWindow)return;
+      if(event.source!==frame.contentWindow||!isTrustedAppsScriptOrigin(event.origin))return;
       const data=event.data||{};
       if(data.type==='FMART_ONESIGNAL_LOGIN'){fmartOneSignalExternalId=String(data.externalId||"");window.OneSignalDeferred.push(async OneSignal=>{if(fmartOneSignalExternalId)await OneSignal.login(fmartOneSignalExternalId)});return;}
       if(data.type==='FMART_ONESIGNAL_LOGOUT'){fmartOneSignalExternalId="";window.OneSignalDeferred.push(async OneSignal=>{await OneSignal.logout()});return;}
