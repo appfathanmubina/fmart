@@ -1323,7 +1323,7 @@ function createStockReceipt(token, payload) {
   if(rawItems.length<1||rawItems.length>100)throw new Error('Tambahkan minimal satu item penerimaan dan maksimal 100 baris.');
   let receivedAt=new Date();
   if(receivedDate){
-    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(receivedDate))throw new Error('Tanggal penerimaan tidak valid.');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(receivedDate))throw new Error('Tanggal penerimaan tidak valid.');
     const parts=receivedDate.split('-').map(Number);receivedAt=new Date(parts[0],parts[1]-1,parts[2],12,0,0);
     if(isNaN(receivedAt.getTime())||receivedAt.getFullYear()!==parts[0]||receivedAt.getMonth()!==parts[1]-1||receivedAt.getDate()!==parts[2])throw new Error('Tanggal penerimaan tidak valid.');
   }
