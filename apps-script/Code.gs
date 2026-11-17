@@ -2125,6 +2125,43 @@ function startDeliveryTrip(token, assignmentId) {
     return {ok:true,message:'Pengantaran dimulai. Status pesanan sekarang DIANTAR.'};
   } finally {lock.releaseLock();}
 }
+function reportDeliveryFailure(token, assignmentId, reason) {
+  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);
+  assignmentId=String(assignmentId||'').trim();reason=String(reason||'').trim().slice(0,500);
+  if(!assignmentId||reason.length<5)throw new Error('Alasan pengantaran gagal minimal 5 karakter wajib diisi.');
+  const lock=LockService.getScriptLock();lock.waitLock(15000);
+  try{
+    const ss=getSS_(),assignmentSheet=ss.getSheetByName('Pengantaran'),found=findRowById_(assignmentSheet,assignmentId,1);
+    if(!found)throw new Error('Penugasan tidak ditemukan.');
+    const row=found.values,orderId=String(row[1]||''),before=String(row[3]||'').toUpperCase();
+    if(String(row[2]||'')!==session.userId)throw new Error('Penugasan ini bukan milik akun Anda.');
+    if(before!=='DALAM_PERJALANAN')throw new Error('Pengantaran gagal hanya dapat dilaporkan saat perjalanan berlangsung.');
+    if(readRows_(ss.getSheetByName('BuktiPengantaran')).some(r=>String(r[2]||'')===assignmentId))throw new Error('Bukti pengantaran sudah diunggah. Hubungi Admin untuk penanganan lanjutan.');
+    const orderSheet=ss.getSheetByName('Pesanan'),order=findRowById_(orderSheet,orderId,1);
+    if(!order||String(order.values[8]||'').toUpperCase()!=='DIANTAR')throw new Error('Status pesanan tidak sesuai untuk pelaporan kegagalan.');
+    const shipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);
+    if(!shipment||String(shipment.method||'').toUpperCase()!=='ANTAR_PESANTREN')throw new Error('Fitur ini hanya berlaku untuk Antar Pesantren.');
+    const now=new Date(),combined=(String(row[11]||'').trim()?String(row[11]).trim()+'\n':'')+'[GAGAL] '+reason;
+    assignmentSheet.getRange(found.rowNumber,4).setValue('GAGAL');
+    assignmentSheet.getRange(found.rowNumber,10).setValue(now);
+    assignmentSheet.getRange(found.rowNumber,11,1,2).setValues([['GAGAL_PENGANTARAN',combined.slice(-2000)]]);
+    assignmentSheet.getRange(found.rowNumber,13).setValue(now);
+    orderSheet.getRange(order.rowNumber,9).setValue('DISIAPKAN');
+    orderSheet.getRange(order.rowNumber,12).setValue(now);
+    const shipSheet=ss.getSheetByName('Pengiriman'),shipRow=latestShipmentRow_(shipSheet,orderId);
+    if(shipRow)shipSheet.getRange(shipRow,5,1,5).setValues([['MENUNGGU','','',session.userId,now]]);
+    const noticeSheet=ss.getSheetByName('Notifikasi'),waliId=String(order.values[2]||'');
+    if(waliId)noticeSheet.appendRow([makeFMartId_('NTF'),waliId,orderId,'Pengantaran belum berhasil','Pengantaran pesanan '+String(order.values[1]||orderId)+' belum berhasil. Pesanan dikembalikan ke antrean untuk penugasan ulang.','PENGANTARAN',false,now]);
+    readRows_(ss.getSheetByName('Users')).filter(u=>['ADMIN','GUDANG','SUPERADMIN'].indexOf(String(u[5]||'').toUpperCase())>=0&&String(u[6]||'').toUpperCase()==='AKTIF').forEach(u=>{
+      noticeSheet.appendRow([makeFMartId_('NTF'),String(u[0]),orderId,'Pengantaran gagal - perlu penugasan ulang','Pesanan '+String(order.values[1]||orderId)+' dikembalikan ke antrean Distribusi. Alasan: '+reason,'PENGANTARAN',false,now]);
+    });
+    recordDeliveryHistory_(ss,assignmentId,orderId,session,'PENGANTARAN_GAGAL',before,'GAGAL',reason);
+    writeAudit_(session.userId,session.role,'DELIVERY_FAILED','PENGANTARAN',assignmentId,JSON.stringify({assignmentStatus:before,orderStatus:'DIANTAR'}),JSON.stringify({assignmentStatus:'GAGAL',orderStatus:'DISIAPKAN',reason:reason}),'Pengantaran gagal dan dikembalikan ke antrean Distribusi');
+    SpreadsheetApp.flush();
+    return {ok:true,message:'Pengantaran gagal dicatat. Pesanan dikembalikan ke antrean Distribusi untuk ditugaskan ulang.'};
+  }finally{lock.releaseLock();}
+}
+
 function updateDeliveryProgress(token, assignmentId, note) {
   const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);
   assignmentId=String(assignmentId||'').trim();note=String(note||'').trim().slice(0,500);
