@@ -54,6 +54,20 @@ URL deployment disimpan di `config.js`. Host shell melalui HTTPS (misalnya GitHu
 - Nama path yang tidak mudah ditebak hanya lapisan pengurangan paparan, bukan autentikasi. Keamanan tetap bergantung pada password, sesi, dan pemeriksaan role pada setiap fungsi backend. Jangan membagikan alamat Admin secara terbuka.
 - Setelah perubahan ini, salin ulang `apps-script/Code.gs` dan `apps-script/Index.html` ke proyek Apps Script, lalu buat deployment version baru. PWA GitHub Pages juga harus memuat commit terbaru. URL Web App di `config.js` tidak berubah.
 
+
+
+### Navigasi sidebar berdasarkan role
+
+Sidebar workspace Admin memakai satu pola visual untuk desktop dan HP, tetapi item menu ditampilkan sesuai kewenangan akun:
+
+- `SUPERADMIN`: Dashboard, Pesanan, Produk, Stok, Penerimaan, Riwayat Gudang, Distribusi, Komplain, Pengguna, Laporan, dan Pengaturan QRIS.
+- `ADMIN`: seluruh menu operasional dan manajemen di atas kecuali Pengaturan QRIS.
+- `KASIR`: Dashboard dan Kasir (workspace transaksi/verifikasi pembayaran).
+- `GUDANG`: Dashboard, Pesanan, Stok, Penerimaan, Riwayat Gudang, dan Distribusi.
+- `PETUGAS_PENGANTAR`: Dashboard dan Pengantaran saja.
+
+Pembatasan menu di sidebar hanya untuk pengalaman pengguna; setiap endpoint backend tetap harus memeriksa sesi dan role agar pemanggilan langsung dari browser tidak melewati hak akses.
+
 ## Migrasi hash password (bertahap)
 
 Backend menyiapkan format versi `pbkdf2-sha256:600000:...` berbasis PBKDF2-HMAC-SHA256, dengan kompatibilitas verifikasi hash SHA-256 lama dan migrasi otomatis setelah login berhasil. Mode tetap `LEGACY` secara default agar waktu login tidak berubah sebelum benchmark pada runtime Apps Script sebenarnya. Jalankan `testPbkdf2Implementation_()` dan `benchmarkPbkdf2_()` dari editor Apps Script; aktifkan `PASSWORD_HASH_MODE: 'PBKDF2'` hanya setelah vektor uji RFC 8018 lolos dan estimasi 600.000 iterasi memenuhi target waktu login (disarankan kurang dari 1 detik). Setelah mode diaktifkan dan deployment diperbarui, akun lama dimigrasikan saat login sukses; akun baru, reset password, dan perubahan password langsung memakai PBKDF2. Jangan menghapus kompatibilitas SHA-256 sebelum seluruh akun lama selesai bermigrasi atau sudah diwajibkan reset password.
