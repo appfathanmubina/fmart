@@ -844,6 +844,22 @@ function checkoutCart(token, santriId, selectedCartIds, catatan, metodePengirima
   } finally { lock.releaseLock(); }
 }
 
+/** Notifikasi pribadi Wali; hanya notifikasi milik sesi aktif yang dikembalikan. */
+function getMyNotifications(token) {
+  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
+  const rows=readRows_(getSS_().getSheetByName('Notifikasi')).filter(function(r){return String(r[1]||'')===String(session.userId);}).sort(function(a,b){return new Date(b[7]||0).getTime()-new Date(a[7]||0).getTime();});
+  const notifications=rows.slice(0,100).map(function(r){return{id:String(r[0]||''),orderId:String(r[2]||''),title:String(r[3]||''),message:String(r[4]||''),type:String(r[5]||''),isRead:r[6]===true||String(r[6]).toUpperCase()==='TRUE',createdAt:dateIso_(r[7])};});
+  return {ok:true,notifications:notifications,unreadCount:notifications.filter(function(n){return !n.isRead;}).length};
+}
+function markMyNotificationRead(token, notificationId) {
+  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);notificationId=String(notificationId||'').trim();if(!notificationId)throw new Error('Notifikasi tidak valid.');
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{const sheet=getSS_().getSheetByName('Notifikasi');const row=findRowById_(sheet,notificationId,1);if(!row||String(row.values[1]||'')!==String(session.userId))throw new Error('Notifikasi tidak ditemukan.');if(row.values[6]!==true&&String(row.values[6]).toUpperCase()!=='TRUE')sheet.getRange(row.rowNumber,7).setValue(true);SpreadsheetApp.flush();return {ok:true};}finally{lock.releaseLock();}
+}
+function markAllMyNotificationsRead(token) {
+  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{const sheet=getSS_().getSheetByName('Notifikasi');const rows=readRows_(sheet);let changed=0;rows.forEach(function(r,i){if(String(r[1]||'')===String(session.userId)&&r[6]!==true&&String(r[6]).toUpperCase()!=='TRUE'){sheet.getRange(i+2,7).setValue(true);changed++;}});SpreadsheetApp.flush();return {ok:true,updated:changed};}finally{lock.releaseLock();}
+}
 /** Fase 4: pesanan dan pembayaran Wali Santri. */
 /** Dashboard ringkas Wali: hanya membaca pesanan dan relasi milik sesi aktif. */
 function getWaliDashboard(token) {
