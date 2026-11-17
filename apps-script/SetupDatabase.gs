@@ -32,6 +32,11 @@ const FMART_DB = Object.freeze({
     DETAIL_PESANAN: ['DetailId','PesananId','ProdukId','VariasiId','SKU','NamaProduk','NamaVariasi','Harga','Qty','Subtotal'],
     PEMBAYARAN: ['PembayaranId','PesananId','Metode','Nominal','BuktiUrl','Status','VerifiedBy','VerifiedAt','CreatedAt','UpdatedAt','BuktiSumber','SubmittedBy','Catatan'],
     PENGIRIMAN: ['PengirimanId','PesananId','Metode','Tujuan','Status','DikirimAt','DiterimaAt','UpdatedBy','UpdatedAt'],
+    PENGANTARAN: ['PengantaranId','PesananId','PetugasUserId','Status','DitugaskanOleh','DitugaskanAt','DiambilAt','MulaiAt','SelesaiAt','GagalAt','KodeGagal','Catatan','UpdatedAt'],
+    BUKTI_PENGANTARAN: ['BuktiId','PesananId','PengantaranId','DriveFileId','FileUrl','FileName','MimeType','FileSizeBytes','Catatan','UploadedBy','UploadedAt'],
+    KONFIRMASI_PENGANTARAN: ['KonfirmasiId','PesananId','BuktiUploadedAt','BatasKonfirmasiAt','Status','MetodeKonfirmasi','DikonfirmasiAt','DikonfirmasiOleh','KomplainAktif','UpdatedAt'],
+    KOMPLAIN_PENGANTARAN: ['KomplainId','PesananId','KonfirmasiId','DilaporkanOleh','JenisMasalah','Keterangan','Status','DilaporkanAt','DitanganiOleh','Penyelesaian','DiselesaikanAt','UpdatedAt'],
+    RIWAYAT_PENGANTARAN: ['RiwayatId','PesananId','PengantaranId','ActorUserId','ActorRole','Action','StatusSebelum','StatusSesudah','Catatan','CreatedAt'],
     NOTIFIKASI: ['NotifikasiId','UserId','PesananId','Judul','Pesan','Jenis','IsRead','CreatedAt'],
     PENGATURAN: ['Key','Value','Description','UpdatedAt'],
     AUDIT_LOG: ['AuditId','ActorUserId','ActorRole','Action','EntityType','EntityId','BeforeData','AfterData','Note','CreatedAt']
@@ -44,13 +49,19 @@ function setupFMartDatabase() {
 
   PropertiesService.getScriptProperties().setProperty(FMART_DB.PROPERTY_SPREADSHEET_ID, ss.getId());
 
-  Object.keys(FMART_DB.SHEETS).forEach(function(key) {
-    ensureSheet_(ss, FMART_DB.SHEETS[key], sheetNameForKey_(key));
-  });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    Object.keys(FMART_DB.SHEETS).forEach(function(key) {
+      ensureSheet_(ss, FMART_DB.SHEETS[key], sheetNameForKey_(key));
+    });
 
-  seedSettings_(ss.getSheetByName('Pengaturan'));
-  SpreadsheetApp.flush();
-  return 'Database FMart siap: ' + ss.getName();
+    seedSettings_(ss.getSheetByName('Pengaturan'));
+    SpreadsheetApp.flush();
+    return 'Database FMart siap: ' + ss.getName();
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function ensureSheet_(ss, headers, sheetName) {
@@ -80,7 +91,9 @@ function sheetNameForKey_(key) {
     USERS:'Users', WALI_SANTRI:'WaliSantri', SANTRI:'Santri', WALI_SANTRI_SANTRI:'WaliSantriSantri',
     KATEGORI:'Kategori', PRODUK:'Produk', VARIASI_PRODUK:'VariasiProduk', STOK:'Stok', MUTASI_STOK:'MutasiStok', PENERIMAAN_BARANG:'PenerimaanBarang', DETAIL_PENERIMAAN_BARANG:'DetailPenerimaanBarang',
     KERANJANG:'Keranjang', PESANAN:'Pesanan', DETAIL_PESANAN:'DetailPesanan', PEMBAYARAN:'Pembayaran',
-    PENGIRIMAN:'Pengiriman', NOTIFIKASI:'Notifikasi', PENGATURAN:'Pengaturan', AUDIT_LOG:'AuditLog'
+    PENGIRIMAN:'Pengiriman', PENGANTARAN:'Pengantaran', BUKTI_PENGANTARAN:'BuktiPengantaran',
+    KONFIRMASI_PENGANTARAN:'KonfirmasiPengantaran', KOMPLAIN_PENGANTARAN:'KomplainPengantaran',
+    RIWAYAT_PENGANTARAN:'RiwayatPengantaran', NOTIFIKASI:'Notifikasi', PENGATURAN:'Pengaturan', AUDIT_LOG:'AuditLog'
   };
   return map[key] || key;
 }
@@ -96,6 +109,8 @@ function seedSettings_(sheet) {
     ['TIMEZONE','Asia/Jakarta','Zona waktu aplikasi'],
     ['CURRENCY','IDR','Mata uang'],
     ['ORDER_STATUS_FLOW','MENUNGGU_PEMBAYARAN,DIBAYAR,DIPROSES,DISIAPKAN,DIANTAR,DITERIMA,DIBATALKAN','Urutan status pesanan'],
+    ['DELIVERY_CONFIRMATION_DAYS','7','Batas konfirmasi penerimaan setelah bukti pengantaran diunggah (hari kalender x 24 jam)'],
+    ['DELIVERY_AUTO_CONFIRM_ENABLED','TRUE','Aktifkan auto konfirmasi setelah tenggat 7 hari dan tanpa komplain aktif'],
     ['PAYMENT_BANK_NAME','','Nama bank rekening pembayaran FMart'],
     ['PAYMENT_ACCOUNT_NUMBER','','Nomor rekening pembayaran FMart'],
     ['PAYMENT_ACCOUNT_NAME','','Nama pemilik rekening pembayaran FMart'],
@@ -286,6 +301,15 @@ function auditFMartDatabaseIntegrity() {
   checkReference('DetailPesanan', 3, 'VariasiProduk', 'VariasiId detail', true);
   checkReference('Pembayaran', 1, 'Pesanan', 'PesananId pembayaran', false);
   checkReference('Pengiriman', 1, 'Pesanan', 'PesananId pengiriman', false);
+  checkReference('Pengantaran', 1, 'Pesanan', 'PesananId penugasan pengantaran', false);
+  checkReference('Pengantaran', 2, 'Users', 'PetugasUserId pengantaran', true);
+  checkReference('BuktiPengantaran', 1, 'Pesanan', 'PesananId bukti pengantaran', false);
+  checkReference('BuktiPengantaran', 2, 'Pengantaran', 'PengantaranId bukti', false);
+  checkReference('BuktiPengantaran', 9, 'Users', 'UploadedBy bukti pengantaran', true);
+  checkReference('KonfirmasiPengantaran', 1, 'Pesanan', 'PesananId konfirmasi pengantaran', false);
+  checkReference('KomplainPengantaran', 1, 'Pesanan', 'PesananId komplain pengantaran', false);
+  checkReference('KomplainPengantaran', 2, 'KonfirmasiPengantaran', 'KonfirmasiId komplain', true);
+  checkReference('RiwayatPengantaran', 1, 'Pesanan', 'PesananId riwayat pengantaran', false);
   checkReference('Notifikasi', 1, 'Users', 'UserId notifikasi', false);
   checkReference('Notifikasi', 2, 'Pesanan', 'PesananId notifikasi', true);
 
