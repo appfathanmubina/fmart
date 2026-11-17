@@ -997,6 +997,7 @@ function submitPayment(token, orderId, method, nominal, fileName, mimeType, base
   nominal = Math.round(Number(nominal));
   if (!orderId || ['TRANSFER','QRIS'].indexOf(method) === -1 || !Number.isFinite(nominal) || nominal < 1) throw new Error('Metode pembayaran atau nominal tidak valid.');
   if (!base64Data) throw new Error('Bukti transfer wajib diupload sebelum pembayaran dikirim.');
+  if (method === 'QRIS' && !/^https:\/\//i.test(getSettingValue_('PAYMENT_QRIS_IMAGE_URL'))) throw new Error('QRIS belum dikonfigurasi. Silakan pilih Transfer atau hubungi petugas FMart.');
   const lock = LockService.getScriptLock(); lock.waitLock(15000);
   try {
     const ss = getSS_();
