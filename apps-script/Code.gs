@@ -1280,6 +1280,98 @@ function saveVariation(token, data) {
   } finally { lock.releaseLock(); }
 }
 
+function ensureReceivingSheets_(ss) {
+  const definitions=[
+    {name:'PenerimaanBarang',headers:['PenerimaanId','NomorPenerimaan','Pemasok','ReferensiDokumen','TanggalTerima','Catatan','JumlahBaris','TotalQty','CreatedBy','CreatedAt']},
+    {name:'DetailPenerimaanBarang',headers:['DetailPenerimaanId','PenerimaanId','ProdukId','VariasiId','Qty','StokSebelum','StokSesudah','Catatan']}
+  ];
+  definitions.forEach(function(def){
+    let sheet=ss.getSheetByName(def.name);
+    if(!sheet)sheet=ss.insertSheet(def.name);
+    if(sheet.getMaxColumns()<def.headers.length)sheet.insertColumnsAfter(sheet.getMaxColumns(),def.headers.length-sheet.getMaxColumns());
+    const current=sheet.getRange(1,1,1,def.headers.length).getValues()[0];
+    def.headers.forEach(function(header,i){if(!String(current[i]||'').trim())sheet.getRange(1,i+1).setValue(header);});
+    sheet.setFrozenRows(1);
+  });
+}
+
+function getStockReceivingData(token) {
+  requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  const ss=getSS_();ensureReceivingSheets_(ss);
+  const products=getStockCatalog(token).products;
+  const productRows=readRows_(ss.getSheetByName('Produk')),variationRows=readRows_(ss.getSheetByName('VariasiProduk'));
+  const userRows=readRows_(ss.getSheetByName('Users')),users={};
+  userRows.forEach(function(r){users[String(r[0])]=String(r[4]||r[1]||'-');});
+  const pmap={};productRows.forEach(function(r){pmap[String(r[0])]=r;});
+  const receipts=readRows_(ss.getSheetByName('PenerimaanBarang')).slice(-50).reverse().map(function(r){
+    const receiptId=String(r[0]||'');
+    const details=readRows_(ss.getSheetByName('DetailPenerimaanBarang')).filter(function(d){return String(d[1])===receiptId;});
+    return {id:receiptId,number:String(r[1]||''),supplier:String(r[2]||''),reference:String(r[3]||''),receivedAt:r[4] instanceof Date?r[4].toISOString():String(r[4]||''),note:String(r[5]||''),lineCount:Number(r[6])||details.length,totalQty:Number(r[7])||0,actor:users[String(r[8])]||'-',createdAt:r[9] instanceof Date?r[9].toISOString():String(r[9]||''),items:details.map(function(d){const p=pmap[String(d[2])],v=variationRows.find(function(x){return String(x[0])===String(d[3]);});return {productName:p?String(p[3]||''):'Produk tidak ditemukan',variationName:v?[String(v[2]||''),String(v[3]||'')].filter(Boolean).join(': '):'',qty:Number(d[4])||0,before:Number(d[5])||0,after:Number(d[6])||0,note:String(d[7]||'')};})};
+  });
+  return {ok:true,products:products,receipts:receipts};
+}
+
+function createStockReceipt(token, payload) {
+  const session=requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  payload=payload&&typeof payload==='object'?payload:{};
+  const supplier=String(payload.supplier||'').trim().slice(0,120);
+  const reference=String(payload.reference||'').trim().slice(0,100);
+  const note=String(payload.note||'').trim().slice(0,500);
+  const receivedDate=String(payload.receivedDate||'').trim();
+  const rawItems=Array.isArray(payload.items)?payload.items:[];
+  if(!supplier)throw new Error('Nama pemasok atau asal barang wajib diisi.');
+  if(rawItems.length<1||rawItems.length>100)throw new Error('Tambahkan minimal satu item penerimaan dan maksimal 100 baris.');
+  let receivedAt=new Date();
+  if(receivedDate){
+    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(receivedDate))throw new Error('Tanggal penerimaan tidak valid.');
+    const parts=receivedDate.split('-').map(Number);receivedAt=new Date(parts[0],parts[1]-1,parts[2],12,0,0);
+    if(isNaN(receivedAt.getTime())||receivedAt.getFullYear()!==parts[0]||receivedAt.getMonth()!==parts[1]-1||receivedAt.getDate()!==parts[2])throw new Error('Tanggal penerimaan tidak valid.');
+  }
+  const grouped={};
+  rawItems.forEach(function(item){
+    const productId=String(item&&item.productId||'').trim(),variationId=String(item&&item.variationId||'').trim(),qty=Number(item&&item.qty);
+    if(!productId||!Number.isInteger(qty)||qty<1)throw new Error('Setiap item harus memiliki produk dan jumlah bilangan bulat minimal 1.');
+    const key=productId+'|'+variationId;
+    if(!grouped[key])grouped[key]={productId:productId,variationId:variationId,qty:0};
+    grouped[key].qty+=qty;
+    if(!Number.isSafeInteger(grouped[key].qty))throw new Error('Jumlah penerimaan terlalu besar.');
+  });
+  const items=Object.keys(grouped).map(function(k){return grouped[k];});
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{
+    const ss=getSS_();ensureReceivingSheets_(ss);
+    const productSheet=ss.getSheetByName('Produk'),variationSheet=ss.getSheetByName('VariasiProduk'),stockSheet=ss.getSheetByName('Stok');
+    const productRows=readRows_(productSheet),variationRows=readRows_(variationSheet),stockRows=readRows_(stockSheet);
+    const prepared=items.map(function(item){
+      const product=productRows.find(function(r){return String(r[0])===item.productId;});
+      if(!product||String(product[8]||'').toUpperCase()!=='AKTIF')throw new Error('Produk tidak ditemukan atau tidak aktif.');
+      const activeVariations=variationRows.filter(function(v){return String(v[1])===item.productId&&String(v[6]||'').toUpperCase()==='AKTIF';});
+      if(activeVariations.length&&!item.variationId)throw new Error('Pilih variasi untuk produk '+String(product[3]||'')+'.');
+      let variation=null;
+      if(item.variationId){variation=variationRows.find(function(v){return String(v[0])===item.variationId&&String(v[1])===item.productId;});if(!variation||String(variation[6]||'').toUpperCase()!=='AKTIF')throw new Error('Variasi tidak valid atau tidak aktif untuk produk '+String(product[3]||'')+'.');}
+      const stockIndex=stockRows.findIndex(function(r){return String(r[1])===item.productId&&String(r[2]||'')===item.variationId;});
+      const before=stockIndex>=0?Math.max(0,Number(stockRows[stockIndex][3])||0):(variation?Math.max(0,Number(variation[5])||0):0);
+      const after=before+item.qty;
+      if(!Number.isSafeInteger(after))throw new Error('Hasil stok terlalu besar.');
+      return {productId:item.productId,variationId:item.variationId,qty:item.qty,product:product,variation:variation,stockIndex:stockIndex,before:before,after:after};
+    });
+    const now=new Date(),receiptId=makeFMartId_('RCV'),receiptNumber='PN-'+Utilities.formatDate(now,Session.getScriptTimeZone(),'yyyyMMdd-HHmmss')+'-'+Utilities.getUuid().slice(0,4).toUpperCase();
+    const totalQty=prepared.reduce(function(sum,x){return sum+x.qty;},0);
+    const receiptSheet=ss.getSheetByName('PenerimaanBarang'),detailSheet=ss.getSheetByName('DetailPenerimaanBarang'),mutationSheet=ss.getSheetByName('MutasiStok');
+    receiptSheet.appendRow([receiptId,receiptNumber,supplier,reference,receivedAt,note,prepared.length,totalQty,session.userId,now]);
+    detailSheet.getRange(detailSheet.getLastRow()+1,1,prepared.length,8).setValues(prepared.map(function(x){return [makeFMartId_('DRC'),receiptId,x.productId,x.variationId,x.qty,x.before,x.after,''];}));
+    prepared.forEach(function(x){
+      if(x.stockIndex>=0){stockSheet.getRange(x.stockIndex+2,4).setValue(x.after);stockSheet.getRange(x.stockIndex+2,6).setValue(now);}
+      else stockSheet.appendRow([makeFMartId_('STK'),x.productId,x.variationId,x.after,Math.max(0,Number(x.product[6])||0),now]);
+      if(x.variation){const row=variationRows.find(function(v){return String(v[0])===x.variationId;});const rowNumber=variationRows.indexOf(row)+2;variationSheet.getRange(rowNumber,6,1,3).setValues([[x.after,'AKTIF',now]]);}
+      mutationSheet.appendRow([makeFMartId_('MUT'),x.productId,x.variationId,'MASUK',x.qty,x.before,x.after,receiptId,'Penerimaan '+receiptNumber+(note?' · '+note:''),session.userId,now]);
+    });
+    writeAudit_(session.userId,session.role,'CREATE_STOCK_RECEIPT','PENERIMAAN_BARANG',receiptId,'',JSON.stringify({receiptNumber:receiptNumber,supplier:supplier,reference:reference,items:prepared.map(function(x){return {productId:x.productId,variationId:x.variationId,qty:x.qty,before:x.before,after:x.after};})}),'Mencatat penerimaan barang');
+    SpreadsheetApp.flush();
+    return {ok:true,id:receiptId,number:receiptNumber,totalLines:prepared.length,totalQty:totalQty};
+  }finally{lock.releaseLock();}
+}
+
 function getStockCatalog(token) {
   requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
   const ss=getSS_(); const products=readRows_(ss.getSheetByName('Produk')).filter(r=>String(r[8]||'').toUpperCase()==='AKTIF'); const vars=readRows_(ss.getSheetByName('VariasiProduk')).filter(r=>String(r[6]||'').toUpperCase()==='AKTIF'); const stocks=readRows_(ss.getSheetByName('Stok')); 
