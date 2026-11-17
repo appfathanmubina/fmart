@@ -245,7 +245,7 @@ function setStaffEmail(token,userId,email) {
     const sheet=getSS_().getSheetByName('Users'),target=findRowById_(sheet,String(userId||''),1);
     if(!target) throw new Error('Akun staf tidak ditemukan.');
     const role=String(target.values[5]||'').toUpperCase();
-    if(['ADMIN','SUPERADMIN','KASIR','GUDANG'].indexOf(role)<0) throw new Error('Email hanya dapat diatur untuk akun staf.');
+    if(['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'].indexOf(role)<0) throw new Error('Email hanya dapat diatur untuk akun staf.');
     const rows=sheet.getLastRow()>1?sheet.getRange(2,1,sheet.getLastRow()-1,12).getValues():[];
     if(rows.some(function(r){return String(r[0]||'')!==String(userId)&&normalizeEmail_(r[10])===email;})) throw new Error('Email sudah digunakan akun lain.');
     sheet.getRange(target.rowNumber,11,1,2).setValues([[email,false]]);
