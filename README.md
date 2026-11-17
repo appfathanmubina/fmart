@@ -350,3 +350,22 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 - Pemeriksaan statis dilakukan pada blok pembayaran frontend, validasi metode di backend, konfigurasi QRIS, dan struktur CSS.
 - Belum dilakukan uji unggah file ke Drive aktif, pemindaian QRIS aktual, pembayaran bank/QRIS, verifikasi oleh Kasir, uji browser, atau deployment Apps Script.
 - QRIS hanya dapat digunakan setelah Superadmin mengisi URL gambar QRIS HTTPS yang valid dan dapat diakses Wali.
+
+
+## Pengembangan Portal Wali Santri — Tahap 9
+
+### Riwayat dan Detail Pesanan
+
+- Riwayat pesanan Wali menampilkan nomor pesanan, santri penerima, kelas, tanggal, total, status pesanan, status/metode pembayaran, dan status pemenuhan.
+- Pencarian dapat dilakukan berdasarkan nomor pesanan, nama santri, atau kelas. Filter tersedia untuk status pesanan, santri penerima, dan status pembayaran.
+- Ringkasan riwayat menghitung jumlah pesanan yang sesuai filter dan total nilai pesanan yang sedang ditampilkan.
+- Detail pesanan menampilkan santri penerima, tanggal dibuat/diperbarui, seluruh item dan variasi, jumlah, harga, subtotal, biaya pemenuhan, diskon, total, serta catatan pesanan.
+- Informasi pembayaran menampilkan metode, nominal, status, waktu pengajuan/verifikasi jika tersedia, dan catatan penolakan. Wali tidak diberi akses untuk mengubah status verifikasi.
+- Informasi pemenuhan menampilkan metode ambil/antar, tujuan, status, waktu pengiriman/penyerahan, dan waktu diterima jika tersedia.
+- Tombol bayar ulang ditampilkan jika pengajuan pembayaran sebelumnya ditolak; status pesanan dan validasi server tetap menjadi penentu akhir.
+- Backend riwayat/detail yang sudah membatasi data berdasarkan UserId Wali tetap digunakan. Tidak ada perubahan backend atau struktur Spreadsheet pada tahap ini.
+
+### Pemeriksaan Tahap 9
+
+- Pemeriksaan statis dilakukan pada renderer riwayat/detail, filter, status pembayaran, dan selector CSS buyer-only.
+- Belum dilakukan pengujian browser, akun Wali nyata, data transaksi Spreadsheet aktif, atau deployment Apps Script.
