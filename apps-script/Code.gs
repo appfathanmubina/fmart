@@ -1850,6 +1850,7 @@ function getDeliveryDashboard(token) {
       completedAt:dateIso_(row[8]),
       failureReason:String(row[10] || ''),
       notes:String(row[11] || ''),
+      progressUpdatedAt:dateIso_(row[12]),
       orderStatus:String(order[8] || '').toUpperCase(),
       childName:String(child.name || 'Santri'),
       className:String(child.className || ''),
@@ -1870,6 +1871,90 @@ function getDeliveryDashboard(token) {
     else if (['GAGAL','DITOLAK'].indexOf(task.assignmentStatus) >= 0) summary.failed++;
   });
   return {ok:true,summary:summary,tasks:tasks,updatedAt:new Date().toISOString()};
+}
+
+
+/** Tahap 6: tindakan operasional Petugas Pengantar. */
+function recordDeliveryHistory_(ss, assignmentId, orderId, session, action, beforeStatus, afterStatus, note) {
+  const sheet=ss.getSheetByName('RiwayatPengantaran');
+  if(!sheet) throw new Error('Sheet RiwayatPengantaran belum tersedia. Jalankan setupFMartDatabase() terlebih dahulu.');
+  sheet.appendRow([makeFMartId_('RPD'),orderId,assignmentId,session.userId,session.role,action,beforeStatus,afterStatus,String(note||'').slice(0,500),new Date()]);
+}
+function respondDeliveryAssignment(token, assignmentId, decision, reason) {
+  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);
+  assignmentId=String(assignmentId||'').trim();decision=String(decision||'').toUpperCase();reason=String(reason||'').trim().slice(0,300);
+  if(!assignmentId||['DITERIMA','DITOLAK'].indexOf(decision)<0) throw new Error('Respons penugasan tidak valid.');
+  if(decision==='DITOLAK'&&!reason) throw new Error('Alasan penolakan wajib diisi.');
+  const lock=LockService.getScriptLock();lock.waitLock(15000);
+  try {
+    const ss=getSS_(),sheet=ss.getSheetByName('Pengantaran'),found=findRowById_(sheet,assignmentId,1);
+    if(!found) throw new Error('Penugasan tidak ditemukan.');
+    const row=found.values,owner=String(row[2]||''),before=String(row[3]||'').toUpperCase();
+    if(owner!==session.userId) throw new Error('Penugasan ini bukan milik akun Anda.');
+    if(before!=='DITUGASKAN'&&before!=='BARU'&&before!=='MENUNGGU_KONFIRMASI') throw new Error('Tugas ini sudah direspons atau tidak lagi aktif.');
+    const now=new Date(),after=decision;
+    sheet.getRange(found.rowNumber,4).setValue(after);
+    if(decision==='DITERIMA') sheet.getRange(found.rowNumber,7).setValue(now);
+    else {sheet.getRange(found.rowNumber,11,1,2).setValues([['DITOLAK',reason]]);}
+    sheet.getRange(found.rowNumber,13).setValue(now);
+    recordDeliveryHistory_(ss,assignmentId,String(row[1]),session,'RESPONS_'+decision,before,after,reason||'Petugas menerima tugas');
+    if(decision==='DITOLAK'&&String(row[4]||'')) ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(row[4]),String(row[1]),'Penugasan ditolak','Petugas menolak tugas pengantaran. Alasan: '+reason,'PENGANTARAN',false,now]);
+    writeAudit_(session.userId,session.role,'DELIVERY_'+decision,'PENGANTARAN',assignmentId,JSON.stringify({status:before}),JSON.stringify({status:after,reason:reason}),'Respons penugasan pengantaran');
+    SpreadsheetApp.flush();
+    return {ok:true,message:decision==='DITERIMA'?'Tugas berhasil diterima.':'Tugas ditolak dan dikembalikan ke antrean Distribusi.'};
+  } finally {lock.releaseLock();}
+}
+function startDeliveryTrip(token, assignmentId) {
+  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);
+  assignmentId=String(assignmentId||'').trim();
+  const lock=LockService.getScriptLock();lock.waitLock(15000);
+  try {
+    const ss=getSS_(),as=ss.getSheetByName('Pengantaran'),found=findRowById_(as,assignmentId,1);
+    if(!found) throw new Error('Penugasan tidak ditemukan.');
+    const row=found.values,orderId=String(row[1]||''),before=String(row[3]||'').toUpperCase();
+    if(String(row[2]||'')!==session.userId) throw new Error('Penugasan ini bukan milik akun Anda.');
+    if(before!=='DITERIMA'&&before!=='DITERIMA_PETUGAS') throw new Error('Terima tugas terlebih dahulu sebelum memulai pengantaran.');
+    const os=ss.getSheetByName('Pesanan'),order=findRowById_(os,orderId,1);
+    if(!order) throw new Error('Pesanan tidak ditemukan.');
+    if(String(order.values[8]||'').toUpperCase()!=='DISIAPKAN') throw new Error('Pesanan tidak lagi berada pada status DISIAPKAN.');
+    const payments=readRows_(ss.getSheetByName('Pembayaran')).filter(r=>String(r[1]||'')===orderId).sort((a,b)=>new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime());
+    if(!payments.length||String(payments[0][5]||'').toUpperCase()!=='TERVERIFIKASI') throw new Error('Pembayaran pesanan belum terverifikasi.');
+    const shipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);
+    if(!shipment||String(shipment.method||'').toUpperCase()!=='ANTAR_PESANTREN') throw new Error('Metode pesanan bukan Antar Pesantren.');
+    const now=new Date();
+    as.getRange(found.rowNumber,4).setValue('DALAM_PERJALANAN');
+    as.getRange(found.rowNumber,8).setValue(now);
+    as.getRange(found.rowNumber,13).setValue(now);
+    os.getRange(order.rowNumber,9,1,3).setValues([['DIANTAR',String(order.values[9]||''),now]]);
+    const shipSheet=ss.getSheetByName('Pengiriman'),shipRow=latestShipmentRow_(shipSheet,orderId);
+    if(shipRow) shipSheet.getRange(shipRow,5,1,5).setValues([['DIANTAR',now,'',session.userId,now]]);
+    else shipSheet.appendRow([makeFMartId_('SHP'),orderId,'ANTAR_PESANTREN','','DIANTAR',now,'',session.userId,now]);
+    ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),orderId,'Pesanan sedang diantar','Pesanan '+String(order.values[1]||orderId)+' sedang dalam perjalanan menuju tujuan.','PESANAN',false,now]);
+    recordDeliveryHistory_(ss,assignmentId,orderId,session,'MULAI_PENGANTARAN',before,'DALAM_PERJALANAN','Petugas memulai perjalanan');
+    writeAudit_(session.userId,session.role,'START_DELIVERY','PENGANTARAN',assignmentId,JSON.stringify({assignmentStatus:before,orderStatus:'DISIAPKAN'}),JSON.stringify({assignmentStatus:'DALAM_PERJALANAN',orderStatus:'DIANTAR'}),'Petugas memulai pengantaran');
+    SpreadsheetApp.flush();
+    return {ok:true,message:'Pengantaran dimulai. Status pesanan sekarang DIANTAR.'};
+  } finally {lock.releaseLock();}
+}
+function updateDeliveryProgress(token, assignmentId, note) {
+  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);
+  assignmentId=String(assignmentId||'').trim();note=String(note||'').trim().slice(0,500);
+  if(!note) throw new Error('Catatan perkembangan wajib diisi.');
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try {
+    const ss=getSS_(),sheet=ss.getSheetByName('Pengantaran'),found=findRowById_(sheet,assignmentId,1);
+    if(!found) throw new Error('Penugasan tidak ditemukan.');
+    const row=found.values,status=String(row[3]||'').toUpperCase();
+    if(String(row[2]||'')!==session.userId) throw new Error('Penugasan ini bukan milik akun Anda.');
+    if(status!=='DALAM_PERJALANAN') throw new Error('Catatan hanya dapat ditambahkan saat pengantaran berlangsung.');
+    const now=new Date(),combined=(String(row[11]||'').trim()?String(row[11]).trim()+'\n':'')+'['+Utilities.formatDate(now,Session.getScriptTimeZone(),'dd/MM/yyyy HH:mm')+'] '+note;
+    sheet.getRange(found.rowNumber,12).setValue(combined.slice(-2000));
+    sheet.getRange(found.rowNumber,13).setValue(now);
+    recordDeliveryHistory_(ss,assignmentId,String(row[1]),session,'UPDATE_PERKEMBANGAN','DALAM_PERJALANAN','DALAM_PERJALANAN',note);
+    writeAudit_(session.userId,session.role,'UPDATE_DELIVERY_PROGRESS','PENGANTARAN',assignmentId,'',JSON.stringify({note:note}),'Memperbarui perkembangan pengantaran');
+    SpreadsheetApp.flush();
+    return {ok:true,message:'Perkembangan pengantaran berhasil dicatat.'};
+  } finally {lock.releaseLock();}
 }
 
 function getDeliveryAssignmentWorkspace(token) {
