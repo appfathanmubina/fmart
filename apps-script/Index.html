@@ -1551,10 +1551,32 @@ async function renderDeliveryWorkspace(){
       const filter=$('deliveryStatusFilter').value;
       const query=$('deliverySearch').value.trim().toLowerCase();
       const shown=active.filter(t=>(!filter||t.assignmentStatus===filter)&&(!query||[t.orderNumber,t.childName,t.recipientName,t.destination].join(' ').toLowerCase().includes(query)));
-      const cards=shown.map(t=>'<article class="profile-item" style="margin:0;padding:16px;border:1px solid var(--line);border-radius:16px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><small style="color:var(--muted)">PESANAN '+escapeHtml(t.orderNumber)+'</small><h3 style="margin:5px 0">'+escapeHtml(t.childName)+'</h3><div style="color:var(--muted);font-size:13px">'+escapeHtml(t.className||'')+'</div></div><span class="status-pill">'+escapeHtml(t.assignmentStatus.replace(/_/g,' '))+'</span></div><div style="margin-top:12px;display:grid;gap:7px;font-size:13px"><div><strong>Penerima:</strong> '+escapeHtml(t.recipientName)+'</div><div><strong>Kontak:</strong> '+escapeHtml(t.recipientContact||'Belum tersedia')+'</div><div><strong>Tujuan:</strong> '+escapeHtml(t.destination||'Belum dicantumkan')+'</div><div><strong>Ditugaskan:</strong> '+escapeHtml(formatDate(t.assignedAt))+'</div></div></article>').join('');
+      const cards=shown.map(t=>{const st=t.assignmentStatus;let actions='';if(['DITUGASKAN','BARU','MENUNGGU_KONFIRMASI'].includes(st))actions='<div class="delivery-actions"><button type="button" class="primary" data-delivery-action="accept" data-assignment-id="'+escapeHtml(t.assignmentId)+'">Terima Tugas</button><button type="button" class="secondary" data-delivery-action="reject" data-assignment-id="'+escapeHtml(t.assignmentId)+'">Tolak</button></div>';else if(['DITERIMA','DITERIMA_PETUGAS'].includes(st))actions='<div class="delivery-actions"><button type="button" class="primary" data-delivery-action="start" data-assignment-id="'+escapeHtml(t.assignmentId)+'">Mulai Pengantaran</button></div>';else if(st==='DALAM_PERJALANAN')actions='<div class="delivery-actions"><button type="button" class="secondary" data-delivery-action="progress" data-assignment-id="'+escapeHtml(t.assignmentId)+'">Tambah Catatan Perjalanan</button></div>';return '<article class="profile-item delivery-task-card" style="margin:0;padding:16px;border:1px solid var(--line);border-radius:16px"><div class="delivery-task-head"><div><small style="color:var(--muted)">PESANAN '+escapeHtml(t.orderNumber)+'</small><h3 style="margin:5px 0">'+escapeHtml(t.childName)+'</h3><div style="color:var(--muted);font-size:13px">'+escapeHtml(t.className||'')+'</div></div><span class="status-pill">'+escapeHtml(st.replace(/_/g,' '))+'</span></div><div class="delivery-task-details"><div><strong>Penerima:</strong> '+escapeHtml(t.recipientName)+'</div><div><strong>Kontak:</strong> '+(t.recipientContact?'<a href="tel:'+escapeHtml(t.recipientContact)+'">'+escapeHtml(t.recipientContact)+'</a>':'Belum tersedia')+'</div><div><strong>Alamat tujuan:</strong> '+escapeHtml(t.destination||'Belum dicantumkan')+'</div><div><strong>Ditugaskan:</strong> '+escapeHtml(formatDate(t.assignedAt))+'</div>'+(t.acceptedAt?'<div><strong>Diterima:</strong> '+escapeHtml(formatDate(t.acceptedAt))+'</div>':'')+(t.startedAt?'<div><strong>Mulai perjalanan:</strong> '+escapeHtml(formatDate(t.startedAt))+'</div>':'')+(t.notes?'<div class="delivery-progress-note"><strong>Catatan:</strong><br>'+escapeHtml(t.notes).replace(/\n/g,'<br>')+'</div>':'')+'</div>'+actions+'</article>';}).join('');
       $('deliveryTaskList').innerHTML=shown.length?cards:'<div class="empty-box">Tidak ada tugas yang sesuai dengan pencarian atau filter.</div>';
+      document.querySelectorAll('[data-delivery-action]').forEach(btn=>{btn.onclick=()=>handleDeliveryAction(btn.dataset.deliveryAction,btn.dataset.assignmentId);});
       $('deliveryUpdatedAt').textContent='Terakhir diperbarui: '+formatDate(data.updatedAt);
       $('deliverySummaryCards').innerHTML=[['Tugas Aktif',active.length,'Belum selesai'],['Tugas Baru',summary.newTasks,'Menunggu respons'],['Dalam Perjalanan',summary.inProgress,'Sedang diantar'],['Selesai',summary.completed,'Sudah dituntaskan']].map(x=>'<div class="profile-item ops-stat-card"><small>'+x[0]+'</small><strong>'+Number(x[1]||0)+'</strong><span>'+x[2]+'</span></div>').join('');
+    }
+
+
+    async function handleDeliveryAction(action,assignmentId){
+      let reason='';
+      if(action==='reject'){reason=window.prompt('Tuliskan alasan penolakan tugas:','');if(reason===null)return;if(!reason.trim()){showToast('Alasan penolakan wajib diisi.','error');return;}}
+      if(action==='start'&&!window.confirm('Mulai pengantaran sekarang? Status pesanan akan berubah menjadi DIANTAR.'))return;
+      let note='';
+      if(action==='progress'){note=window.prompt('Catatan perkembangan perjalanan:','');if(note===null)return;if(!note.trim()){showToast('Catatan wajib diisi.','error');return;}}
+      const endpoint={accept:'respondDeliveryAssignment',reject:'respondDeliveryAssignment',start:'startDeliveryTrip',progress:'updateDeliveryProgress'}[action];
+      loading(true,action==='start'?'Memulai pengantaran...':'Menyimpan perubahan tugas...');
+      try{
+        let result;
+        if(action==='accept')result=await runServer(endpoint,state.token,assignmentId,'DITERIMA','');
+        else if(action==='reject')result=await runServer(endpoint,state.token,assignmentId,'DITOLAK',reason);
+        else if(action==='start')result=await runServer(endpoint,state.token,assignmentId);
+        else result=await runServer(endpoint,state.token,assignmentId,note);
+        showToast(result.message||'Perubahan berhasil disimpan.','success');
+        await renderDeliveryWorkspace();
+      }catch(e){showToast(e.message||'Tindakan belum berhasil.','error');}
+      finally{loading(false);}
     }
 
     function renderCategories(items){const products=(state.data&&state.data.products)||[];$('categories').innerHTML='<button class="chip active" data-cat="">Semua <span>'+products.length+'</span></button>'+items.map(cat=>{const count=products.filter(p=>String(p.categoryId)===String(cat.id)).length;return '<button class="chip" data-cat="'+escapeHtml(cat.id)+'">'+escapeHtml(cat.name)+' <span>'+count+'</span></button>'}).join('');document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-cat]').forEach(x=>x.classList.remove('active'));b.classList.add('active');filterProducts()})}
@@ -2772,3 +2794,15 @@ body.admin-portal .warehouse-home-actions button:focus-visible,body.admin-portal
 .brand[role="button"]{cursor:pointer;user-select:none}.brand[role="button"]:focus-visible{outline:3px solid #ead5ef;outline-offset:4px;border-radius:10px}.header-actions{gap:10px}.header-icon-btn{position:relative;width:42px;height:42px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.32);background:rgba(255,255,255,.13);color:#fff;border-radius:50%;padding:9px;cursor:pointer;transition:background .18s ease,transform .18s ease}.header-icon-btn:hover{background:rgba(255,255,255,.25);transform:translateY(-1px)}.header-icon-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.header-icon-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;display:grid;place-items:center;border:2px solid #800080;border-radius:999px;background:#fbbf24;color:#4f0054;font-size:10px;font-weight:850;line-height:1}.header-icon-badge.hidden{display:none!important}@media(max-width:560px){.header-actions{gap:6px}.header-icon-btn{width:38px;height:38px;padding:8px}.header-icon-btn svg{width:21px;height:21px}.header .user-pill{padding:8px 10px}}
 </style>
 
+
+<style>
+/* FMart Tahap 6 — operasional Petugas Pengantar */
+body.admin-portal .delivery-task-card{background:#fff;min-width:0}
+body.admin-portal .delivery-task-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+body.admin-portal .delivery-task-details{display:grid;gap:8px;margin-top:13px;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+body.admin-portal .delivery-task-details a{color:#70277d;font-weight:700;text-decoration:none}
+body.admin-portal .delivery-progress-note{padding:10px 12px;border-radius:12px;background:#f8f1fa;color:#62436a}
+body.admin-portal .delivery-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}
+body.admin-portal .delivery-actions button{min-height:43px}
+@media(max-width:560px){body.admin-portal .delivery-task-head{gap:8px}body.admin-portal .delivery-actions{display:grid;grid-template-columns:1fr 1fr}body.admin-portal .delivery-actions button{width:100%;padding:10px 8px;font-size:12px}}
+</style>
