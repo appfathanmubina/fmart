@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="theme-color" content="#7c3aed">
+  <meta name="theme-color" content="#800080">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>FMart</title>
   <style>
@@ -836,6 +836,12 @@ body.buyer-portal .buyer-cart-select input{width:18px;height:18px;margin:0;accen
     body.buyer-portal .wali-help-faq summary{font-weight:700;font-size:13px;cursor:pointer}
     body.buyer-portal .wali-help-faq p{margin:9px 0 0;font-size:12px;line-height:1.55;color:var(--muted)}
     @media(max-width:520px){.header-actions{gap:7px}.notification-trigger{width:38px;height:38px}.user-pill{max-width:116px}}
+    /* Tahap 12 — penyempurnaan aksesibilitas dan konsistensi portal Wali */
+    body.buyer-portal button:focus-visible,body.buyer-portal a:focus-visible,body.buyer-portal input:focus-visible,body.buyer-portal select:focus-visible,body.buyer-portal textarea:focus-visible{outline:3px solid #a855f7!important;outline-offset:2px}
+    body.buyer-portal img{max-width:100%}
+    body.buyer-portal .modal-card{max-height:min(88vh,900px);max-height:min(88dvh,900px);overflow-y:auto;overscroll-behavior:contain}
+    body.buyer-portal .table-wrap{max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+    @media(max-width:760px){body.buyer-portal .modal-card{max-height:88vh;max-height:88dvh}body.buyer-portal .header-inner{padding-left:12px;padding-right:12px}}
 </style>
 </head>
 <body>
