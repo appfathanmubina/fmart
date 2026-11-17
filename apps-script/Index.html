@@ -1027,6 +1027,7 @@ body.buyer-portal .buyer-cart-select input{width:18px;height:18px;margin:0;accen
         // Tampilkan aplikasi segera setelah data inti tersedia. Profil dan operasi
         // tambahan tidak boleh menghalangi pengguna melihat halaman utama.
         showApp();
+        $('waliNotificationBtn').classList.toggle('hidden',session.user.role!=='WALI_SANTRI');
         if(session.user.role==='WALI_SANTRI'){
           state.selectedChildId='';
           sessionStorage.removeItem('fmartSelectedChildId');
@@ -1034,6 +1035,7 @@ body.buyer-portal .buyer-cart-select input{width:18px;height:18px;margin:0;accen
           render();
           loading(false);
           refreshWaliDashboard();
+          refreshWaliNotificationCount();
           // Profil dimuat setelah Dashboard tampil agar login terasa cepat.
           runServer('getMyProfile',state.token).then(function(p){
             state.profile=p&&p.profile?p.profile:null;
