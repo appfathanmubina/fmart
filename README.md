@@ -433,3 +433,14 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 - Pemeriksaan CSS menemukan media query untuk desktop, tablet, dan mobile serta dukungan `prefers-reduced-motion`; aturan fokus keyboard tambahan diterapkan pada kontrol Wali.
 - Belum dilakukan uji browser lintas perangkat, instalasi PWA aktual, Lighthouse, uji offline/online nyata, akun multi-role, transaksi Spreadsheet/Drive, pembayaran QRIS aktual, atau deployment Apps Script. Karena itu hasil ini merupakan audit statis repository, bukan sertifikasi siap produksi.
 - Sebelum penggunaan produksi, sinkronkan file Apps Script dari repository dan deploy versi terbaru; kemudian uji akun Wali dan semua role petugas, alur pesanan end-to-end, unggah bukti, konfirmasi penerimaan, serta instalasi Buyer dan Admin pada perangkat nyata.
+
+
+## Identitas Visual FMart — Amethyst
+
+- Tema visual diperkuat pada Portal Wali dan Admin dengan primary purple `#800080`, deep purple `#4F0054`, amethyst `#A64CA6`, lilac `#EBD8EF`, dan soft background `#F7EFF9`.
+- Header dan navigasi utama memakai gradasi ungu sebagai elemen identitas yang mudah dikenali; dashboard hero, judul bagian, kategori aktif, kartu produk/pesanan, panel pembayaran, tabel, dan menu profil mendapat aksen ungu/lilac yang konsisten.
+- Portal Admin menggunakan nuansa lebih dalam dan tegas, sedangkan Portal Wali lebih cerah dan ramah. Keduanya tetap berbagi sistem warna FMart.
+- Status transaksi tetap mempertahankan warna semantik sukses/peringatan/gagal agar tidak tertukar dengan warna merek.
+- Warna latar shell dan manifest PWA diselaraskan; service worker dinaikkan ke `fmart-shell-v12` untuk memperbarui cache shell.
+- Perubahan hanya pada CSS, warna shell/manifest, cache version, dan dokumentasi. Tidak ada perubahan JavaScript bisnis, endpoint Apps Script, struktur Spreadsheet, checkout, pembayaran QRIS, maupun hak akses.
+- Pemeriksaan yang dilakukan bersifat statis terhadap isi repository. Tampilan akhir tetap perlu ditinjau pada browser desktop dan perangkat mobile setelah sinkronisasi/deploy.
