@@ -2959,10 +2959,13 @@ function confirmCashierQrisPayment(token,saleId,reference) {
     if(!active.length)throw new Error('Reservasi stok transaksi sudah berakhir. Batalkan transaksi ini dan buat transaksi baru.');
     const details=readRows_(ss.getSheetByName('DetailPenjualanToko')).filter(function(r){return String(r[1])===saleId;});
     if(!details.length)throw new Error('Rincian transaksi tidak ditemukan.');
+    const reservedForSale={};
+    active.forEach(function(r){const key=String(r[2]||'')+'|'+String(r[3]||'');reservedForSale[key]=(reservedForSale[key]||0)+(Number(r[4])||0);});
     const stockRows=readRows_(ss.getSheetByName('Stok')),plan=[];
     details.forEach(function(d){
       const pid=String(d[2]||''),vid=String(d[3]||''),qty=Number(d[8]);
       if(!Number.isSafeInteger(qty)||qty<1)throw new Error('Jumlah produk pada transaksi tidak valid.');
+      if((reservedForSale[pid+'|'+vid]||0)<qty)throw new Error('Reservasi stok tidak lengkap untuk salah satu barang. Batalkan transaksi dan buat transaksi baru.');
       const idx=stockRows.findIndex(function(r){return String(r[1])===pid&&String(r[2]||'')===vid;});
       if(idx<0)throw new Error('Data stok produk tidak ditemukan.');
       const snap=getProductSnapshot_(ss,pid,vid);
