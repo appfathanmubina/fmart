@@ -1081,37 +1081,43 @@ function savePaymentSettings(token, bankName, accountNumber, accountName, adminW
 
 function markOrderReceived(token, orderId) {
   const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
-  orderId=String(orderId||'').trim();
-  if(!orderId) throw new Error('Pesanan tidak valid.');
+  orderId=String(orderId||'').trim();if(!orderId)throw new Error('Pesanan tidak valid.');
   const lock=LockService.getScriptLock();lock.waitLock(15000);
-  try {
-    const ss=getSS_(),orderSheet=ss.getSheetByName('Pesanan'),orderRow=findRowById_(orderSheet,orderId,1);
-    if(!orderRow||String(orderRow.values[2])!==String(session.userId)) throw new Error('Pesanan tidak ditemukan.');
-    if(String(orderRow.values[8]||'').toUpperCase()!=='DIANTAR') throw new Error('Pesanan belum berada pada status dapat diterima.');
-    const shipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);
-    if(!shipment||String(shipment.method||'').toUpperCase()!=='ANTAR_PESANTREN') throw new Error('Konfirmasi penerimaan ini hanya berlaku untuk pesanan Antar Pesantren.');
+  try{
+    const ss=getSS_(),orderSheet=ss.getSheetByName('Pesanan'),order=findRowById_(orderSheet,orderId,1);
+    if(!order||String(order.values[2])!==String(session.userId))throw new Error('Pesanan tidak ditemukan.');
+    const status=String(order.values[8]||'').toUpperCase(),shipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);
+    const method=String(shipment&&shipment.method||'').toUpperCase();
+    if(method==='AMBIL_FMART'){
+      if(status!=='SIAP_DIAMBIL'||String(shipment.status||'').toUpperCase()!=='SIAP_DIAMBIL')throw new Error('Pesanan belum siap diserahkan. Silakan tunggu notifikasi dari FMart.');
+      const now=new Date(),shipSheet=ss.getSheetByName('Pengiriman'),shipRow=latestShipmentRow_(shipSheet,orderId);
+      orderSheet.getRange(order.rowNumber,9,1,3).setValues([['DITERIMA',order.values[9],now]]);
+      if(shipRow)shipSheet.getRange(shipRow,5,1,5).setValues([['DITERIMA',shipment.dikirimAt||now,now,session.userId,now]]);
+      ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),session.userId,orderId,'Pengambilan dikonfirmasi','Pengambilan pesanan '+String(order.values[1])+' telah Anda konfirmasi diterima.','PESANAN',false,now]);
+      writeAudit_(session.userId,session.role,'RECEIVE_PICKUP_ORDER','PESANAN',orderId,JSON.stringify({orderStatus:status,shipmentStatus:shipment.status}),JSON.stringify({orderStatus:'DITERIMA',shipmentStatus:'DITERIMA',method:'AMBIL_FMART'}),'Wali mengonfirmasi barang diambil dan diterima di FMart');
+      SpreadsheetApp.flush();return getOrderDetail(token,orderId);
+    }
+    if(method!=='ANTAR_PESANTREN'||status!=='DIANTAR')throw new Error('Pesanan belum berada pada status dapat diterima.');
     const proof=readRows_(ss.getSheetByName('BuktiPengantaran')).filter(x=>String(x[1]||'')===orderId).sort((a,b)=>new Date(b[10]||0)-new Date(a[10]||0))[0];
-    if(!proof) throw new Error('Bukti foto pengantaran belum tersedia. Anda belum dapat mengonfirmasi penerimaan.');
-    const confirmationSheet=ss.getSheetByName('KonfirmasiPengantaran');
-    const confirmationRows=readRows_(confirmationSheet);
+    if(!proof)throw new Error('Bukti foto pengantaran belum tersedia. Anda belum dapat mengonfirmasi penerimaan.');
+    const confirmationSheet=ss.getSheetByName('KonfirmasiPengantaran'),confirmationRows=readRows_(confirmationSheet);
     const confIndex=confirmationRows.map(x=>String(x[1]||'')).lastIndexOf(orderId);
-    if(confIndex<0) throw new Error('Data konfirmasi pengantaran belum tersedia. Hubungi Admin FMart.');
+    if(confIndex<0)throw new Error('Data konfirmasi pengantaran belum tersedia. Hubungi Admin FMart.');
     const conf=confirmationRows[confIndex],confRow=confIndex+2;
-    if(String(conf[4]||'').toUpperCase()!=='MENUNGGU_KONFIRMASI') throw new Error('Konfirmasi pengantaran sudah diproses atau sedang ditangani.');
-    if(conf[8]===true||String(conf[8]).toUpperCase()==='TRUE') throw new Error('Pesanan memiliki komplain aktif. Tunggu penyelesaian Admin.');
+    if(String(conf[4]||'').toUpperCase()!=='MENUNGGU_KONFIRMASI')throw new Error('Konfirmasi pengantaran sudah diproses atau sedang ditangani.');
+    if(conf[8]===true||String(conf[8]).toUpperCase()==='TRUE')throw new Error('Pesanan memiliki komplain aktif. Tunggu penyelesaian Admin.');
     const now=new Date();
-    orderSheet.getRange(orderRow.rowNumber,9,1,3).setValues([['DITERIMA',orderRow.values[9],now]]);
+    orderSheet.getRange(order.rowNumber,9,1,3).setValues([['DITERIMA',order.values[9],now]]);
     const shipSheet=ss.getSheetByName('Pengiriman'),shipRow=latestShipmentRow_(shipSheet,orderId);
-    if(shipRow){const sentAt=shipSheet.getRange(shipRow,6).getValue();shipSheet.getRange(shipRow,5,1,5).setValues([['DITERIMA',sentAt,now,session.userId,now]]);}
+    if(shipRow)shipSheet.getRange(shipRow,5,1,5).setValues([['DITERIMA',shipment.dikirimAt||'',now,session.userId,now]]);
     confirmationSheet.getRange(confRow,5,1,6).setValues([['DIKONFIRMASI','MANUAL',now,session.userId,false,now]]);
     const assignments=readRows_(ss.getSheetByName('Pengantaran'));
     const active=assignments.map((x,i)=>({row:x,rowNumber:i+2})).filter(x=>String(x.row[1]||'')===orderId&&String(x.row[3]||'').toUpperCase()==='DALAM_PERJALANAN').pop();
     if(active){const assignmentSheet=ss.getSheetByName('Pengantaran');assignmentSheet.getRange(active.rowNumber,4).setValue('SELESAI');assignmentSheet.getRange(active.rowNumber,9).setValue(now);assignmentSheet.getRange(active.rowNumber,13).setValue(now);}
-    ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),session.userId,orderId,'Pesanan diterima','Pesanan '+String(orderRow.values[1])+' telah Anda konfirmasi diterima.','PESANAN',false,now]);
+    ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),session.userId,orderId,'Pesanan diterima','Pesanan '+String(order.values[1])+' telah Anda konfirmasi diterima.','PESANAN',false,now]);
     writeAudit_(session.userId,session.role,'RECEIVE_ORDER','PESANAN',orderId,JSON.stringify({status:'DIANTAR',confirmationStatus:conf[4]}),JSON.stringify({status:'DITERIMA',confirmationMethod:'MANUAL'}),'Pesanan diterima dan dikonfirmasi Wali Santri');
-    SpreadsheetApp.flush();
-    return getOrderDetail(token,orderId);
-  } finally {lock.releaseLock();}
+    SpreadsheetApp.flush();return getOrderDetail(token,orderId);
+  }finally{lock.releaseLock();}
 }
 function reportDeliveryComplaint(token,orderId,issueType,description) {
   const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
@@ -1312,7 +1318,7 @@ function getOperationsDashboard(token) {
   });
   const pendingVerification=payments.filter(r=>String(r[5]||'').toUpperCase()==='MENUNGGU_VERIFIKASI').length;
   const countStatus=st=>orders.filter(r=>String(r[8]||'').toUpperCase()===st).length;
-  return {ok:true,user:{userId:session.userId,nama:session.nama,role:session.role},stats:{pendingVerification:pendingVerification,menungguPembayaran:countStatus('MENUNGGU_PEMBAYARAN'),dibayar:countStatus('DIBAYAR'),diproses:countStatus('DIPROSES'),disiapkan:countStatus('DISIAPKAN'),diantar:countStatus('DIANTAR'),diterima:countStatus('DITERIMA'),activeProducts:products.filter(r=>String(r[8]||'').toUpperCase()==='AKTIF').length,lowStock:lowStock,categories:cats.filter(r=>String(r[4]||'').toUpperCase()==='AKTIF').length},categories:cats.map(r=>({id:String(r[0]),name:String(r[1]||''),description:String(r[2]||''),order:Number(r[3])||0,status:String(r[4]||'')})),orders:resultOrders,products:productStock};
+  return {ok:true,user:{userId:session.userId,nama:session.nama,role:session.role},stats:{pendingVerification:pendingVerification,menungguPembayaran:countStatus('MENUNGGU_PEMBAYARAN'),dibayar:countStatus('DIBAYAR'),diproses:countStatus('DIPROSES'),disiapkan:countStatus('DISIAPKAN'),diantar:countStatus('DIANTAR'),diterima:countStatus('DITERIMA'),siapDiambil:countStatus('SIAP_DIAMBIL'),activeProducts:products.filter(r=>String(r[8]||'').toUpperCase()==='AKTIF').length,lowStock:lowStock,categories:cats.filter(r=>String(r[4]||'').toUpperCase()==='AKTIF').length},categories:cats.map(r=>({id:String(r[0]),name:String(r[1]||''),description:String(r[2]||''),order:Number(r[3])||0,status:String(r[4]||'')})),orders:resultOrders,products:productStock};
 }
 
 
@@ -1722,12 +1728,42 @@ function verifyPayment(token, paymentId, decision, note) {
 }
 
 function updateOrderOperation(token, orderId, nextStatus, shipmentStatus, note) {
-  const session=requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);orderId=String(orderId||'').trim();nextStatus=String(nextStatus||'').toUpperCase();shipmentStatus=String(shipmentStatus||'').toUpperCase();note=String(note||'').trim().slice(0,300);
-  const allowed=['DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR','DIBATALKAN'];if(allowed.indexOf(nextStatus)<0)throw new Error('Status pesanan tidak valid.');
-  if(nextStatus==='DIBATALKAN' && session.role==='GUDANG') throw new Error('Gudang tidak berwenang membatalkan pesanan.');
-  const lock=LockService.getScriptLock();lock.waitLock(10000);try{const ss=getSS_();const os=ss.getSheetByName('Pesanan');const row=findRowById_(os,orderId,1);if(!row)throw new Error('Pesanan tidak ditemukan.');const current=String(row.values[8]||'').toUpperCase();const currentShipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);if(currentShipment&&String(currentShipment.method||'').toUpperCase()==='ANTAR_PESANTREN'){if(nextStatus==='DIANTAR')throw new Error('Pesanan Antar Pesantren hanya dapat berubah menjadi DIANTAR melalui Petugas Pengantar setelah menerima tugas dan memulai perjalanan.');if(nextStatus==='DITERIMA')throw new Error('Pesanan Antar Pesantren hanya dapat menjadi DITERIMA melalui konfirmasi Wali atau auto-konfirmasi setelah masa 7 hari.');}const orderFlow={DIBAYAR:['DIPROSES'],DIPROSES:['DISIAPKAN'],DISIAPKAN:['DIANTAR'],DIANTAR:['DITERIMA'],DITERIMA:[],MENUNGGU_PEMBAYARAN:['DIBATALKAN'],DIBATALKAN:[]};if(!orderFlow[current]||orderFlow[current].indexOf(nextStatus)<0)throw new Error('Perubahan status '+current+' ke '+nextStatus+' tidak diperbolehkan.');if(session.role==='GUDANG'){const paidRows=readRows_(ss.getSheetByName('Pembayaran')).filter(function(p){return String(p[1])===orderId;}).sort(function(a,b){return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime();});if(!paidRows.length||String(paidRows[0][5]||'').toUpperCase()!=='TERVERIFIKASI')throw new Error('Pesanan belum memiliki pembayaran terverifikasi. Gudang belum dapat memproses pesanan ini.');if(['DIPROSES','DISIAPKAN','DIANTAR'].indexOf(nextStatus)<0)throw new Error('Gudang hanya dapat menjalankan tahapan pemenuhan pesanan.');}const now=new Date();os.getRange(row.rowNumber,9,1,3).setValues([[nextStatus,note||row.values[9],now]]);const shipSheet=ss.getSheetByName('Pengiriman');const ship=latestShipmentRow_(shipSheet,orderId);if(ship){const currentShip=shipSheet.getRange(ship,1,1,9).getValues()[0];let st=String(currentShip[4]||'MENUNGGU');let sent=currentShip[5],received=currentShip[6];if(nextStatus==='DIANTAR'){st='DIANTAR';sent=now;}shipSheet.getRange(ship,5,1,5).setValues([[st,sent,received,session.userId,now]]);}else shipSheet.appendRow([makeFMartId_('SHP'),orderId,'', '',nextStatus==='DIANTAR'?'DIANTAR':'MENUNGGU','','',session.userId,now]);ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(row.values[2]),orderId,'Status pesanan diperbarui','Pesanan '+String(row.values[1])+' sekarang '+nextStatus+'.','PESANAN',false,now]);writeAudit_(session.userId,session.role,'UPDATE_ORDER_STATUS','PESANAN',orderId,JSON.stringify({status:current,note:String(row.values[9]||'')}),JSON.stringify({status:nextStatus,note:note}),'Perubahan status operasional');SpreadsheetApp.flush();return getOperationsDashboard(token);}finally{lock.releaseLock();}
+  const session=requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  orderId=String(orderId||'').trim();nextStatus=String(nextStatus||'').toUpperCase();note=String(note||'').trim().slice(0,300);
+  if(!orderId)throw new Error('Pesanan tidak valid.');
+  if(nextStatus==='DIBATALKAN' && session.role==='GUDANG')throw new Error('Gudang tidak berwenang membatalkan pesanan.');
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{
+    const ss=getSS_(),orderSheet=ss.getSheetByName('Pesanan'),row=findRowById_(orderSheet,orderId,1);
+    if(!row)throw new Error('Pesanan tidak ditemukan.');
+    const current=String(row.values[8]||'').toUpperCase();
+    const shipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);
+    const method=String(shipment&&shipment.method||'').toUpperCase();
+    const isPickup=method==='AMBIL_FMART';
+    const allowed=['DIBAYAR','DIPROSES','DISIAPKAN','SIAP_DIAMBIL','DIANTAR','DIBATALKAN'];
+    if(allowed.indexOf(nextStatus)<0)throw new Error('Status pesanan tidak valid.');
+    if(method==='ANTAR_PESANTREN'&&(nextStatus==='SIAP_DIAMBIL'||nextStatus==='DIANTAR'))throw new Error('Pesanan Antar Pesantren hanya dapat menjadi DIANTAR melalui Petugas Pengantar.');
+    if(isPickup&&(nextStatus==='DIANTAR'||nextStatus==='SIAP_DIAMBIL'&&current!=='DISIAPKAN'))throw new Error('Pesanan Ambil di FMart hanya dapat menjadi SIAP_DIAMBIL setelah disiapkan Gudang.');
+    if(isPickup&&nextStatus==='DITERIMA')throw new Error('Penerimaan Ambil di FMart harus dikonfirmasi oleh Wali setelah barang diserahkan.');
+    const orderFlow={DIBAYAR:['DIPROSES'],DIPROSES:['DISIAPKAN'],DISIAPKAN:isPickup?['SIAP_DIAMBIL']:[],SIAP_DIAMBIL:['DITERIMA'],DIANTAR:['DITERIMA'],DITERIMA:[],MENUNGGU_PEMBAYARAN:['DIBATALKAN'],DIBATALKAN:[]};
+    if(!orderFlow[current]||orderFlow[current].indexOf(nextStatus)<0)throw new Error('Perubahan status '+current+' ke '+nextStatus+' tidak diperbolehkan.');
+    if(session.role==='GUDANG'){
+      const paidRows=readRows_(ss.getSheetByName('Pembayaran')).filter(p=>String(p[1])===orderId).sort((a,b)=>new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime());
+      if(!paidRows.length||String(paidRows[0][5]||'').toUpperCase()!=='TERVERIFIKASI')throw new Error('Pesanan belum memiliki pembayaran terverifikasi. Gudang belum dapat memproses pesanan ini.');
+      if(['DIPROSES','DISIAPKAN','SIAP_DIAMBIL'].indexOf(nextStatus)<0)throw new Error('Gudang hanya dapat menjalankan tahapan pemenuhan pesanan.');
+    }
+    if(nextStatus==='SIAP_DIAMBIL'&&!isPickup)throw new Error('Status SIAP_DIAMBIL hanya berlaku untuk metode Ambil di FMart.');
+    const now=new Date();
+    orderSheet.getRange(row.rowNumber,9,1,3).setValues([[nextStatus,note||row.values[9],now]]);
+    const shipSheet=ss.getSheetByName('Pengiriman'),shipRow=latestShipmentRow_(shipSheet,orderId);
+    const shipStatus=nextStatus==='SIAP_DIAMBIL'?'SIAP_DIAMBIL':(nextStatus==='DIBATALKAN'?'DIBATALKAN':(nextStatus==='DISIAPKAN'?'DIPROSES':String(shipment&&shipment.status||'MENUNGGU')));
+    if(shipRow)shipSheet.getRange(shipRow,5,1,5).setValues([[shipStatus,shipment&&shipment.dikirimAt||'',shipment&&shipment.diterimaAt||'',session.userId,now]]);
+    else shipSheet.appendRow([makeFMartId_('SHP'),orderId,method,'',shipStatus,'','',session.userId,now]);
+    ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(row.values[2]),orderId,nextStatus==='SIAP_DIAMBIL'?'Pesanan siap diambil':'Status pesanan diperbarui',nextStatus==='SIAP_DIAMBIL'?'Pesanan '+String(row.values[1])+' sudah siap diambil di FMart. Silakan datang ke lokasi pengambilan.':'Pesanan '+String(row.values[1])+' sekarang '+nextStatus+'.','PESANAN',false,now]);
+    writeAudit_(session.userId,session.role,'UPDATE_ORDER_STATUS','PESANAN',orderId,JSON.stringify({status:current,shipmentStatus:shipment&&shipment.status||''}),JSON.stringify({status:nextStatus,shipmentStatus:shipStatus,note:note}),'Perubahan status pesanan dan pemenuhan');
+    SpreadsheetApp.flush();return getOperationsDashboard(token);
+  }finally{lock.releaseLock();}
 }
-
 function createStaffUser(token, username, password, nama, role, email) {
   const session=requireRole_(token,[FMART.ROLES.SUPERADMIN]);
   const lock=LockService.getScriptLock(); lock.waitLock(10000);
