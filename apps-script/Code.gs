@@ -896,6 +896,12 @@ function markAllMyNotificationsRead(token) {
 }
 /** Fase 4: pesanan dan pembayaran Wali Santri. */
 /** Dashboard ringkas Wali: hanya membaca pesanan dan relasi milik sesi aktif. */
+function sanitizeWaliOrderStatus_(status) {
+  const value=String(status||'').toUpperCase();
+  // MENUNGGU_STOK dan DIBAYAR adalah tahap internal pemenuhan; Wali melihat keduanya sebagai Diproses.
+  return ['MENUNGGU_STOK','DIBAYAR'].indexOf(value)!==-1 ? 'DIPROSES' : value;
+}
+
 function getWaliDashboard(token) {
   const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
   const ss = getSS_();
@@ -944,7 +950,7 @@ function getWaliDashboard(token) {
       childName:String(child.name || ''),
       className:String(child.className || ''),
       total:Number(row[7]) || 0,
-      status:status === 'MENUNGGU_STOK' ? 'DIPROSES' : status,
+      status:sanitizeWaliOrderStatus_(status),
       paymentStatus:payment ? payment.status : '',
       createdAt:dateIso_(row[10])
     };
@@ -1006,9 +1012,9 @@ function getMyOrders(token) {
     return {
       orderId:String(r[0]), number:String(r[1]), santriId:String(r[3]), childName:String(child.name || ''), className:String(child.className || ''),
       subtotal:Number(r[4])||0, shipping:Number(r[5])||0, discount:Number(r[6])||0, total:Number(r[7])||0,
-      status:String(r[8]||'') === 'MENUNGGU_STOK' ? 'DIPROSES' : String(r[8]||''), note:sanitizeWaliStockNote_(r[9],r[8]), createdAt:dateIso_(r[10]), updatedAt:dateIso_(r[11]),
+      status:sanitizeWaliOrderStatus_(r[8]), note:sanitizeWaliStockNote_(r[9],r[8]), createdAt:dateIso_(r[10]), updatedAt:dateIso_(r[11]),
       payment:payment ? {id:payment.id,method:payment.method,nominal:payment.nominal,status:payment.status,buktiUrl:payment.buktiUrl,buktiSumber:payment.buktiSumber,submittedBy:payment.submittedBy,catatan:sanitizeWaliStockNote_(payment.catatan,''),createdAt:dateIso_(payment.createdAt)} : null,
-      shipment:shipment ? {id:shipment.id,method:shipment.method,destination:shipment.destination,status:shipment.status === 'MENUNGGU_STOK' ? 'DIPROSES' : shipment.status,updatedAt:dateIso_(shipment.updatedAt)} : null
+      shipment:shipment ? {id:shipment.id,method:shipment.method,destination:shipment.destination,status:sanitizeWaliOrderStatus_(shipment.status),updatedAt:dateIso_(shipment.updatedAt)} : null
     };
   });
   return {ok:true,orders:result};
@@ -1036,7 +1042,7 @@ function getOrderDetail(token, orderId) {
   const proof=proofRows.length?proofRows[0]:null;
   const complaintRows=readRows_(ss.getSheetByName('KomplainPengantaran')).filter(function(x){return String(x[1]||'')===orderId;}).sort(function(a,b){return new Date(b[7]||0).getTime()-new Date(a[7]||0).getTime();});
   const latestComplaint=complaintRows.length?complaintRows[0]:null;
-  return {ok:true,order:{orderId:String(r[0]),number:String(r[1]),santriId:String(r[3]),childName:String(child.name||''),className:String(child.className||''),subtotal:Number(r[4])||0,shipping:Number(r[5])||0,discount:Number(r[6])||0,total:Number(r[7])||0,status:String(r[8]||'') === 'MENUNGGU_STOK' ? 'DIPROSES' : String(r[8]||''),note:sanitizeWaliStockNote_(r[9],r[8]),createdAt:dateIso_(r[10]),updatedAt:dateIso_(r[11]),deliveryProof:proof?{proofId:String(proof[0]),uploadedAt:dateIso_(proof[10]),fileName:String(proof[5]||''),mimeType:String(proof[6]||''),note:String(proof[8]||'')}:null,deliveryConfirmation:confirmation?{id:String(confirmation[0]),uploadedAt:dateIso_(confirmation[2]),deadline:dateIso_(confirmation[3]),status:String(confirmation[4]||''),complaintActive:confirmation[8]===true||String(confirmation[8]).toUpperCase()==='TRUE'}:null,deliveryComplaint:latestComplaint?{type:String(latestComplaint[4]||''),description:String(latestComplaint[5]||''),status:String(latestComplaint[6]||''),reportedAt:dateIso_(latestComplaint[7])}:null,details:details,payment:payment?{id:payment.id,method:payment.method,nominal:payment.nominal,status:payment.status,buktiUrl:payment.buktiUrl,buktiSumber:payment.buktiSumber,submittedBy:payment.submittedBy,catatan:sanitizeWaliStockNote_(payment.catatan,''),createdAt:dateIso_(payment.createdAt),verifiedAt:dateIso_(payment.verifiedAt)}:null,shipment:shipment?{id:shipment.id,method:shipment.method,destination:shipment.destination,status:shipment.status === 'MENUNGGU_STOK' ? 'DIPROSES' : shipment.status,dikirimAt:dateIso_(shipment.dikirimAt),diterimaAt:dateIso_(shipment.diterimaAt),updatedAt:dateIso_(shipment.updatedAt)}:null}};
+  return {ok:true,order:{orderId:String(r[0]),number:String(r[1]),santriId:String(r[3]),childName:String(child.name||''),className:String(child.className||''),subtotal:Number(r[4])||0,shipping:Number(r[5])||0,discount:Number(r[6])||0,total:Number(r[7])||0,status:sanitizeWaliOrderStatus_(r[8]),note:sanitizeWaliStockNote_(r[9],r[8]),createdAt:dateIso_(r[10]),updatedAt:dateIso_(r[11]),deliveryProof:proof?{proofId:String(proof[0]),uploadedAt:dateIso_(proof[10]),fileName:String(proof[5]||''),mimeType:String(proof[6]||''),note:String(proof[8]||'')}:null,deliveryConfirmation:confirmation?{id:String(confirmation[0]),uploadedAt:dateIso_(confirmation[2]),deadline:dateIso_(confirmation[3]),status:String(confirmation[4]||''),complaintActive:confirmation[8]===true||String(confirmation[8]).toUpperCase()==='TRUE'}:null,deliveryComplaint:latestComplaint?{type:String(latestComplaint[4]||''),description:String(latestComplaint[5]||''),status:String(latestComplaint[6]||''),reportedAt:dateIso_(latestComplaint[7])}:null,details:details,payment:payment?{id:payment.id,method:payment.method,nominal:payment.nominal,status:payment.status,buktiUrl:payment.buktiUrl,buktiSumber:payment.buktiSumber,submittedBy:payment.submittedBy,catatan:sanitizeWaliStockNote_(payment.catatan,''),createdAt:dateIso_(payment.createdAt),verifiedAt:dateIso_(payment.verifiedAt)}:null,shipment:shipment?{id:shipment.id,method:shipment.method,destination:shipment.destination,status:sanitizeWaliOrderStatus_(shipment.status),dikirimAt:dateIso_(shipment.dikirimAt),diterimaAt:dateIso_(shipment.diterimaAt),updatedAt:dateIso_(shipment.updatedAt)}:null}};
 }
 
 
