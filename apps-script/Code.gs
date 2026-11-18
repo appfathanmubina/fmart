@@ -2971,7 +2971,7 @@ function confirmCashierQrisPayment(token,saleId,reference) {
     });
     const now=new Date();
     applyCashierSaleStock_(ss,saleId,plan,session,now);
-    salesSheet.getRange(sale.rowNumber,12,1,8).setValues([['LUNAS','SELESAI',session.userId,String(sale.values[14]||''),sale.values[15]||now,now,String(sale.values[17]||''),reference]]);
+    salesSheet.getRange(sale.rowNumber,12,1,8).setValues([['LUNAS','SELESAI',String(sale.values[13]||''),String(sale.values[14]||''),sale.values[15]||now,now,String(sale.values[17]||''),reference]]);
     active.forEach(function(r){const row=findRowById_(reservationSheet,String(r[0]),1);if(row)reservationSheet.getRange(row.rowNumber,6,1,4).setValues([['DIGUNAKAN',row.values[6],row.values[7],now]]);});
     writeAudit_(session.userId,session.role,'CONFIRM_CASHIER_QRIS','PENJUALAN_TOKO',saleId,JSON.stringify({paymentStatus:'MENUNGGU_KONFIRMASI'}),JSON.stringify({paymentStatus:'LUNAS',reference:reference}),'Pembayaran QRIS diperiksa dan dikonfirmasi kasir');
     SpreadsheetApp.flush();
@@ -2990,7 +2990,7 @@ function cancelCashierQrisSale(token,saleId,reason) {
     if(String(sale.values[11]||'').toUpperCase()!=='MENUNGGU_KONFIRMASI')throw new Error('Hanya transaksi QRIS yang belum dibayar dapat dibatalkan.');
     const now=new Date(),reservations=readRows_(ss.getSheetByName('ReservasiStokToko'));
     reservations.forEach(function(r,i){if(String(r[1])===saleId&&String(r[5]||'').toUpperCase()==='AKTIF')ss.getSheetByName('ReservasiStokToko').getRange(i+2,6,1,4).setValues([['DILEPAS',r[6],r[7],now]]);});
-    sheet.getRange(sale.rowNumber,12,1,6).setValues([['DIBATALKAN','DIBATALKAN',session.userId,reason||String(sale.values[14]||''),sale.values[15]||now,now]]);
+    sheet.getRange(sale.rowNumber,12,1,6).setValues([['DIBATALKAN','DIBATALKAN',String(sale.values[13]||''),reason||String(sale.values[14]||''),sale.values[15]||now,now]]);
     writeAudit_(session.userId,session.role,'CANCEL_CASHIER_QRIS','PENJUALAN_TOKO',saleId,JSON.stringify({paymentStatus:'MENUNGGU_KONFIRMASI'}),JSON.stringify({paymentStatus:'DIBATALKAN',reason:reason}),'Transaksi QRIS dibatalkan sebelum pembayaran');
     SpreadsheetApp.flush();
     return {ok:true,saleId:saleId,status:'DIBATALKAN'};
