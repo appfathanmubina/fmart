@@ -5,7 +5,8 @@
   <meta name="theme-color" content="#800080">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>FMart</title>
-  <style>
+  <style id="fmart-global-styles">
+
     :root{--purple:#800080;--purple-dark:#5b145f;--lilac:#f5f0ff;--text:#241b35;--muted:#756b85;--line:#e9e2f2;--card:#fff;--danger:#b91c1c;}
     *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#f8f4ff 0,#f4effb 100%);color:var(--text)}
     button,input{font:inherit}button{cursor:pointer}.hidden{display:none!important}
@@ -1272,9 +1273,9 @@ body.buyer-portal #profileModal .modal-card{
       body.admin-portal .warehouse-home-section-head h3{font-size:15px}
     }
 
-</style>
 
-<style>
+
+
 /* Perbaikan ruang tepi dan kepadatan konten pop-up detail produk pada HP */
 @media(max-width:600px){
   body.buyer-portal #productModal{
@@ -1355,14 +1356,792 @@ body.buyer-portal #profileModal .modal-card{
     padding-inline:15px;
   }
 }
-</style>
 
-<style>
+
+
 .login-otp-panel{margin-top:14px;padding:16px;border:1px solid #eaddec;border-radius:16px;background:#faf6fc}
 .login-otp-panel p{margin:0 0 12px;color:#6f5c76;font-size:13px;line-height:1.55}
 .login-otp-panel input{width:100%;min-height:48px;padding:12px;border:1px solid #dfd0e5;border-radius:12px;text-align:center;font-size:20px;font-weight:800;letter-spacing:.3em}
 .login-otp-panel button{min-height:46px}
+
+
+
+/* FMart Tahap 5 — detail pemenuhan Gudang */
+body.admin-portal .warehouse-detail-action{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:16px;border:1px solid #d9b9e2;border-radius:16px;background:#f8effa}
+body.admin-portal .warehouse-detail-action>div{display:grid;gap:4px}
+body.admin-portal .warehouse-detail-action span{font-size:13px;color:#6b4773}
+body.admin-portal .warehouse-detail-action .primary{width:auto;min-width:150px}
+@media(max-width:560px){body.admin-portal .warehouse-detail-action{align-items:stretch;flex-direction:column}body.admin-portal .warehouse-detail-action .primary{width:100%}}
+
+
+
+/* FMart Tahap 6 — riwayat dan laporan Gudang */
+body.admin-portal .warehouse-report-filters{display:grid;grid-template-columns:1fr 1fr auto;align-items:end;gap:12px;margin:16px 0}
+body.admin-portal .warehouse-report-filters .field{margin:0}
+body.admin-portal .warehouse-report-filters input,body.admin-portal .warehouse-report-actions input{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text)}
+body.admin-portal .warehouse-report-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0}
+body.admin-portal .warehouse-report-metrics article{display:grid;gap:7px;padding:15px;border:1px solid #e7d5ec;border-radius:15px;background:#fff;min-width:0}
+body.admin-portal .warehouse-report-metrics small{font-size:12px;color:var(--muted)}
+body.admin-portal .warehouse-report-metrics strong{font-size:20px;color:#6b2676;overflow-wrap:anywhere}
+body.admin-portal .warehouse-report-workspace{padding:16px;border:1px solid #ead9ef;border-radius:18px;background:#fff}
+body.admin-portal .warehouse-report-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+body.admin-portal .warehouse-report-toolbar .report-tabs{margin:0}
+body.admin-portal .warehouse-report-actions{display:flex;align-items:center;gap:8px;min-width:min(100%,330px)}
+body.admin-portal .warehouse-report-actions input{min-width:140px}
+body.admin-portal .warehouse-report-count{font-size:12px;color:var(--muted);margin:8px 0 12px}
+body.admin-portal .warehouse-report-table small{display:block;color:var(--muted);margin-top:3px}
+@media(max-width:900px){body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){body.admin-portal .warehouse-report-filters{grid-template-columns:1fr 1fr}body.admin-portal .warehouse-report-filters button{grid-column:1/-1;width:100%}body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}body.admin-portal .warehouse-report-toolbar{align-items:stretch}body.admin-portal .warehouse-report-actions{width:100%;min-width:0}body.admin-portal .warehouse-report-actions button{white-space:nowrap}}
+
+
+
+/* Tahap 7 — penyelarasan UI/UX seluruh workspace Gudang */
+body.admin-portal .warehouse-home-actions{gap:10px}
+body.admin-portal .warehouse-home-actions button{min-height:44px;padding:10px 15px}
+body.admin-portal .warehouse-home-panel,body.admin-portal .warehouse-report-workspace,body.admin-portal .warehouse-workspace,body.admin-portal .stock-history-section,body.admin-portal .receiving-history{min-width:0}
+body.admin-portal .warehouse-home-section-head button{flex:0 0 auto}
+body.admin-portal .warehouse-home-stock-row,body.admin-portal .warehouse-home-history-row{min-width:0}
+body.admin-portal .warehouse-home-order-status{max-width:45%;overflow-wrap:anywhere;white-space:normal;text-align:center}
+body.admin-portal .warehouse-fulfillment-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+body.admin-portal .warehouse-filter-grid{grid-template-columns:minmax(0,2fr) minmax(180px,1fr)}
+body.admin-portal .warehouse-workspace .section-title{align-items:center;gap:12px;flex-wrap:wrap}
+body.admin-portal .warehouse-workspace .section-title>div{min-width:0}
+body.admin-portal .warehouse-workspace .table-wrap,body.admin-portal .stock-table-wrap,body.admin-portal .receiving-history .table-wrap,body.admin-portal .warehouse-report-workspace .table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+body.admin-portal .fulfillment-table,body.admin-portal .stock-table,body.admin-portal .receiving-table,body.admin-portal .warehouse-report-table{border-collapse:separate;border-spacing:0}
+body.admin-portal .fulfillment-table th,body.admin-portal .fulfillment-table td,body.admin-portal .receiving-table th,body.admin-portal .receiving-table td,body.admin-portal .warehouse-report-table th,body.admin-portal .warehouse-report-table td{vertical-align:middle}
+body.admin-portal .warehouse-report-filters .field label{display:block;margin-bottom:7px}
+body.admin-portal .warehouse-report-workspace .report-tabs{display:flex;gap:7px;flex-wrap:wrap}
+body.admin-portal .warehouse-report-actions{flex:1 1 330px}
+body.admin-portal .warehouse-report-actions input{flex:1;min-width:0}
+body.admin-portal .warehouse-report-actions button{min-height:44px}
+body.admin-portal .warehouse-report-table{min-width:760px;width:100%}
+body.admin-portal .warehouse-report-table th,body.admin-portal .warehouse-report-table td{padding:12px 13px;white-space:nowrap}
+body.admin-portal .warehouse-report-table td:nth-child(2),body.admin-portal .warehouse-report-table td:last-child{white-space:normal;min-width:130px}
+body.admin-portal .warehouse-report-count{line-height:1.5}
+body.admin-portal .receipt-line select,body.admin-portal .receipt-line input{width:100%;min-height:44px}
+body.admin-portal .warehouse-home-actions button:focus-visible,body.admin-portal .warehouse-home-flow-card:focus-visible,body.admin-portal #staffWarehouseReports:focus-visible{outline:3px solid #c99ad1;outline-offset:3px}
+@media(max-width:980px){
+ body.admin-portal .warehouse-home-flow{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.admin-portal .warehouse-home-grid{grid-template-columns:1fr}
+ body.admin-portal .warehouse-fulfillment-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:620px){
+ body.admin-portal .warehouse-home-intro{padding:17px;border-radius:16px;gap:10px}
+ body.admin-portal .warehouse-home-intro h2{font-size:21px}
+ body.admin-portal .warehouse-home-intro p{font-size:12px}
+ body.admin-portal .warehouse-home-mark{width:48px;height:48px;flex-basis:48px;border-radius:14px;font-size:23px}
+ body.admin-portal .warehouse-home-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:19px}
+ body.admin-portal .warehouse-home-actions button{width:100%;min-width:0;min-height:44px;padding:9px 10px;font-size:12px}
+ body.admin-portal .warehouse-home-actions button:first-child{grid-column:1/-1}
+ body.admin-portal .warehouse-home-flow{gap:8px}
+ body.admin-portal .warehouse-home-flow-card{padding:11px 9px;gap:8px;border-radius:13px}
+ body.admin-portal .warehouse-home-flow-icon{width:30px;height:30px;flex-basis:30px;font-size:15px}
+ body.admin-portal .warehouse-home-flow-copy strong{font-size:20px}
+ body.admin-portal .warehouse-home-flow-copy em{font-size:9px}
+ body.admin-portal .warehouse-home-panel{padding:13px;border-radius:15px}
+ body.admin-portal .warehouse-home-section-head{align-items:flex-start}
+ body.admin-portal .warehouse-home-section-head h3{font-size:14px}
+ body.admin-portal .warehouse-home-section-head p{font-size:11px;line-height:1.45}
+ body.admin-portal .warehouse-home-section-head .text-button{font-size:11px;padding:5px 0}
+ body.admin-portal .warehouse-fulfillment-metrics{gap:8px}
+ body.admin-portal .warehouse-fulfillment-metrics .fulfillment-metric{padding:12px;border-radius:13px}
+ body.admin-portal .warehouse-fulfillment-metrics .fulfillment-metric span{font-size:11px;line-height:1.4}
+ body.admin-portal .warehouse-fulfillment-metrics .fulfillment-metric strong{font-size:21px}
+ body.admin-portal .warehouse-filter-grid{grid-template-columns:1fr;gap:8px}
+ body.admin-portal .warehouse-filter-grid input,body.admin-portal .warehouse-filter-grid select{min-height:46px}
+ body.admin-portal .warehouse-workspace{padding:13px;margin-top:14px}
+ body.admin-portal .warehouse-workspace .section-title{align-items:stretch}
+ body.admin-portal .warehouse-workspace .section-title button{width:100%}
+ body.admin-portal .stock-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.admin-portal .stock-toolbar{gap:10px}
+ body.admin-portal .stock-row-actions{width:100%;flex-wrap:wrap}
+ body.admin-portal .stock-row-actions button{flex:1}
+ body.admin-portal .receiving-summary{gap:8px}
+ body.admin-portal .receiving-summary>div{padding:12px}
+ body.admin-portal .receiving-summary strong{font-size:18px}
+ body.admin-portal .receiving-history .stock-toolbar{gap:10px}
+ body.admin-portal .warehouse-report-filters{grid-template-columns:1fr 1fr;gap:8px}
+ body.admin-portal .warehouse-report-filters .field{min-width:0}
+ body.admin-portal .warehouse-report-filters input{min-width:0;font-size:13px}
+ body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ body.admin-portal .warehouse-report-metrics article{padding:12px;border-radius:13px}
+ body.admin-portal .warehouse-report-metrics small{font-size:10px;line-height:1.4}
+ body.admin-portal .warehouse-report-metrics strong{font-size:18px}
+ body.admin-portal .warehouse-report-workspace{padding:12px}
+ body.admin-portal .warehouse-report-toolbar{gap:10px}
+ body.admin-portal .warehouse-report-workspace .report-tabs{display:grid;grid-template-columns:1fr 1fr;flex:1}
+ body.admin-portal .warehouse-report-workspace .report-tab{min-width:0;padding:9px 7px;font-size:11px}
+ body.admin-portal .warehouse-report-workspace .report-tab:last-child{grid-column:1/-1}
+ body.admin-portal .warehouse-report-actions{display:grid;grid-template-columns:1fr auto;gap:7px}
+ body.admin-portal .warehouse-report-actions input{width:100%;min-width:0}
+ body.admin-portal .warehouse-report-actions button{padding:9px 10px;font-size:11px}
+ body.admin-portal .warehouse-report-table{min-width:720px}
+}
+@media(max-width:360px){
+ body.admin-portal .warehouse-home-actions{grid-template-columns:1fr}
+ body.admin-portal .warehouse-home-actions button:first-child{grid-column:auto}
+ body.admin-portal .warehouse-report-filters{grid-template-columns:1fr}
+ body.admin-portal .warehouse-report-filters button{grid-column:auto}
+ body.admin-portal .warehouse-report-actions{grid-template-columns:1fr}
+}
+
+
+
+/* FMart header quick navigation */
+.brand[role="button"]{cursor:pointer;user-select:none}.brand[role="button"]:focus-visible{outline:3px solid #ead5ef;outline-offset:4px;border-radius:10px}.header-actions{gap:10px}.header-icon-btn{position:relative;width:42px;height:42px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.32);background:rgba(255,255,255,.13);color:#fff;border-radius:50%;padding:9px;cursor:pointer;transition:background .18s ease,transform .18s ease}.header-icon-btn:hover{background:rgba(255,255,255,.25);transform:translateY(-1px)}.header-icon-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.header-icon-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;display:grid;place-items:center;border:2px solid #800080;border-radius:999px;background:#fbbf24;color:#4f0054;font-size:10px;font-weight:850;line-height:1}.header-icon-badge.hidden{display:none!important}@media(max-width:560px){.header-actions{gap:6px}.header-icon-btn{width:38px;height:38px;padding:8px}.header-icon-btn svg{width:21px;height:21px}.header .user-pill{padding:8px 10px}}
+
+
+
+
+/* Tahap F — tablet portrait: navigasi petugas tidak mengambil lebar konten. */
+@media (min-width:761px) and (max-width:900px){
+  body.admin-portal #staffNav.bottom-nav{
+    position:fixed;z-index:40;top:auto;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));
+    width:auto;height:72px;display:flex;flex-direction:row;align-items:stretch;justify-content:flex-start;
+    gap:6px;padding:7px 8px;border:1px solid #eaddec;border-radius:18px;
+    overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;background:rgba(255,255,255,.97);box-shadow:0 12px 32px #35113d20;
+  }
+  body.admin-portal #staffNav.bottom-nav::-webkit-scrollbar{display:none}
+  body.admin-portal #staffNav .nav-btn{
+    flex:0 0 82px;width:82px;min-width:82px;min-height:56px;height:56px;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;
+    padding:5px 4px;border-radius:12px;font-size:10px;line-height:1.15;text-align:center;
+  }
+  body.admin-portal #staffNav .nav-btn .nav-icon{width:27px;height:27px;flex:0 0 27px}
+  body.admin-portal #operationsView{
+    width:100%!important;max-width:none!important;min-width:0;margin:0!important;
+    padding:22px 20px calc(112px + env(safe-area-inset-bottom))!important;
+  }
+  body.admin-portal #opsStats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+  body.admin-portal #opsMainSection,
+  body.admin-portal #opsMainBody,
+  body.admin-portal #opsMainBody>*{min-width:0;max-width:100%}
+  body.admin-portal #opsMainBody .table-wrap,
+  body.admin-portal #opsMainBody .table-responsive{
+    display:block;width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  body.admin-portal #opsMainBody .table-wrap table,
+  body.admin-portal #opsMainBody .table-responsive table{max-width:none}
+  body.admin-portal #opsMainBody .section-title{flex-wrap:wrap;gap:10px}
+  body.admin-portal #opsMainBody .section-title button{max-width:100%}
+}
+/* Semua panel petugas: cegah elemen panjang memperlebar viewport. */
+body.admin-portal #operationsView,
+body.admin-portal #opsMainSection,
+body.admin-portal #opsMainBody{min-width:0;box-sizing:border-box}
+body.admin-portal #opsMainBody .table-wrap,
+body.admin-portal #opsMainBody .table-responsive{
+  max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+}
+body.admin-portal #opsMainBody input,
+body.admin-portal #opsMainBody select,
+body.admin-portal #opsMainBody textarea{max-width:100%}
+@media(max-width:760px){
+  body.admin-portal #opsMainBody .table-wrap,
+  body.admin-portal #opsMainBody .table-responsive{width:100%}
+}
+
+/* FMart Tahap 6 — operasional Petugas Pengantar */
+body.admin-portal .delivery-task-card{background:#fff;min-width:0}
+body.admin-portal .delivery-task-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+body.admin-portal .delivery-task-details{display:grid;gap:8px;margin-top:13px;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+body.admin-portal .delivery-task-details a{color:#70277d;font-weight:700;text-decoration:none}
+body.admin-portal .delivery-progress-note{padding:10px 12px;border-radius:12px;background:#f8f1fa;color:#62436a}
+body.admin-portal .delivery-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}
+body.admin-portal .delivery-actions button{min-height:43px}
+@media(max-width:560px){body.admin-portal .delivery-task-head{gap:8px}body.admin-portal .delivery-actions{display:grid;grid-template-columns:1fr 1fr}body.admin-portal .delivery-actions button{width:100%;padding:10px 8px;font-size:12px}}
+
+
+
+/* Tahap 3 — antarmuka POS Kasir */
+body.admin-portal .cashier-pos-panel{margin:14px 0 20px;padding:18px;border:1px solid #e8d8ed;border-radius:20px;background:linear-gradient(145deg,#fff 0%,#fbf6fd 100%);box-shadow:0 12px 30px #4b15550d}
+body.admin-portal .cashier-pos-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}
+body.admin-portal .cashier-pos-head h2{margin:3px 0 5px;color:#57145f;font-size:22px}
+body.admin-portal .cashier-pos-head p{margin:0;color:#756b85;font-size:13px}
+body.admin-portal .cashier-pos-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.85fr);gap:16px;align-items:start}
+body.admin-portal .cashier-pos-catalog,body.admin-portal .cashier-pos-checkout{min-width:0;padding:14px;border:1px solid #eee5f1;border-radius:16px;background:#fff}
+body.admin-portal .cashier-pos-search{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+body.admin-portal .cashier-pos-search input,body.admin-portal .cashier-pos-buyer>input,body.admin-portal .cashier-pos-payment input,body.admin-portal .cashier-pos-payment select{width:100%;min-width:0;min-height:43px;padding:10px 12px;border:1px solid #e5dce9;border-radius:11px;background:#fff}
+body.admin-portal .cashier-pos-search span{white-space:nowrap;color:#756b85;font-size:12px}
+body.admin-portal .cashier-pos-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-height:570px;overflow:auto;padding:2px}
+body.admin-portal .cashier-pos-product{display:flex;flex-direction:column;gap:9px;min-width:0;padding:12px;border:1px solid #eee5f1;border-radius:14px;background:#fff}
+body.admin-portal .cashier-pos-product-info{display:grid;gap:4px;min-height:62px}
+body.admin-portal .cashier-pos-product-info strong{font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+body.admin-portal .cashier-pos-product-info span,body.admin-portal .cashier-pos-product-info small{color:#756b85;font-size:11px}
+body.admin-portal .cashier-pos-product-foot{display:flex;justify-content:space-between;gap:7px;align-items:center;font-size:12px}
+body.admin-portal .cashier-pos-product-foot>strong{color:#5b145f}
+body.admin-portal .stock-ok{color:#16834c}.stock-empty{color:#b42318}
+body.admin-portal .cashier-pos-product .primary{width:100%;min-height:38px;padding:8px;font-size:12px}
+body.admin-portal .cashier-pos-cart-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+body.admin-portal .cashier-pos-cart-head h3{margin:0 0 3px;color:#57145f}
+body.admin-portal .cashier-pos-cart-items{display:grid;gap:9px;max-height:280px;overflow:auto;margin:12px 0}
+body.admin-portal .cashier-pos-cart-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;padding:10px 0;border-bottom:1px solid #f0eaf2}
+body.admin-portal .cashier-pos-cart-copy{display:grid;gap:3px;min-width:0}
+body.admin-portal .cashier-pos-cart-copy strong{font-size:12px;overflow-wrap:anywhere}
+body.admin-portal .cashier-pos-cart-copy small{font-size:10px;color:#756b85}
+body.admin-portal .cashier-pos-qty{display:flex;align-items:center;gap:7px}
+body.admin-portal .cashier-pos-qty button{width:28px;height:28px;border:1px solid #e6d9eb;border-radius:8px;background:#f8f1fa;color:#5b145f;font-weight:800}
+body.admin-portal .cashier-pos-cart-row>strong{grid-column:1/-1;text-align:right;font-size:12px}
+body.admin-portal .cashier-pos-empty{padding:18px 8px;text-align:center;color:#8a8092;font-size:12px}
+body.admin-portal .cashier-pos-total{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-top:1px solid #e9e0ed;border-bottom:1px solid #e9e0ed;font-size:13px}
+body.admin-portal .cashier-pos-total strong{font-size:20px;color:#5b145f}
+body.admin-portal .cashier-pos-buyer,body.admin-portal .cashier-pos-payment{display:grid;gap:9px;margin-top:14px}
+body.admin-portal .cashier-pos-buyer h4,body.admin-portal .cashier-pos-payment h4{margin:0;color:#4c3154;font-size:13px}
+body.admin-portal .cashier-pos-buyer h4 small{font-weight:500;color:#8a8092}
+body.admin-portal .cashier-pos-buyer-types{display:flex;flex-wrap:wrap;gap:9px}
+body.admin-portal .cashier-pos-buyer-types label{display:flex;align-items:center;gap:5px;font-size:12px}
+body.admin-portal .cashier-santri-results{display:grid;gap:5px;max-height:150px;overflow:auto}
+body.admin-portal .cashier-santri-results button{display:grid;gap:3px;text-align:left;padding:9px;border:1px solid #eee5f1;border-radius:9px;background:#fff}
+body.admin-portal .cashier-santri-results small{color:#756b85}
+body.admin-portal .cashier-selected-santri{font-size:12px;color:#5b145f}
+body.admin-portal .cashier-selected-santri button,.text-button{border:0;background:none;color:#76277e;font-weight:700}
+body.admin-portal .cashier-change{font-size:12px;color:#756b85}
+body.admin-portal .cashier-change strong{color:#16834c}
+body.admin-portal .cashier-pos-submit{width:100%;min-height:48px;margin-top:5px}
+@media(max-width:900px){body.admin-portal .cashier-pos-layout{grid-template-columns:1fr}body.admin-portal .cashier-pos-products{max-height:430px}}
+@media(max-width:560px){body.admin-portal .cashier-pos-panel{padding:12px;border-radius:16px}body.admin-portal .cashier-pos-head{align-items:flex-start;flex-direction:column}body.admin-portal .cashier-pos-head button{width:100%}body.admin-portal .cashier-pos-products{grid-template-columns:1fr 1fr;gap:8px;max-height:380px}body.admin-portal .cashier-pos-product{padding:9px}body.admin-portal .cashier-pos-product-info{min-height:72px}body.admin-portal .cashier-pos-product-foot{align-items:flex-start;flex-direction:column;gap:3px}body.admin-portal .cashier-pos-catalog,body.admin-portal .cashier-pos-checkout{padding:11px}}
+@media(max-width:360px){body.admin-portal .cashier-pos-products{grid-template-columns:1fr}}
+
+
+
+/* Tahap 4 — antrean dan konfirmasi QRIS penjualan toko */
+body.admin-portal .cashier-qris-queue{margin-top:18px;padding:16px;border:1px solid #e7d9ed;border-radius:18px;background:#fff}
+body.admin-portal .cashier-qris-queue-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+body.admin-portal .cashier-qris-queue-head h3{margin:3px 0 5px;color:#57145f;font-size:18px}
+body.admin-portal .cashier-qris-queue-head p{margin:0;color:#756b85;font-size:12px}
+body.admin-portal .cashier-qris-queue-head button{white-space:nowrap}
+body.admin-portal .cashier-qris-queue-body{display:grid;gap:12px}
+body.admin-portal .cashier-qris-card{padding:14px;border:1px solid #eadfed;border-radius:14px;background:#fcf9fd}
+body.admin-portal .cashier-qris-card.is-expired{border-color:#f0c9c5;background:#fffafa}
+body.admin-portal .cashier-qris-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+body.admin-portal .cashier-qris-card-head>div{display:grid;gap:4px;min-width:0}
+body.admin-portal .cashier-qris-card-head strong{color:#4e1857;font-size:14px}
+body.admin-portal .cashier-qris-card-head small,body.admin-portal .cashier-qris-meta{color:#756b85;font-size:11px}
+body.admin-portal .cashier-qris-state{padding:5px 8px;border-radius:20px;background:#fff0ce;color:#875800;font-size:10px;font-weight:800;white-space:nowrap}
+body.admin-portal .cashier-qris-state.is-expired{background:#fde8e7;color:#a32620}
+body.admin-portal .cashier-qris-summary{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:12px 0;padding:10px 0;border-top:1px solid #eee5f1;border-bottom:1px solid #eee5f1}
+body.admin-portal .cashier-qris-summary strong{font-size:19px;color:#5b145f}
+body.admin-portal .cashier-qris-summary span{font-size:12px;color:#8a5c10;font-weight:700}
+body.admin-portal .cashier-qris-card.is-expired .cashier-qris-summary span{color:#a32620}
+body.admin-portal .cashier-qris-items{display:grid;gap:6px}
+body.admin-portal .cashier-qris-items>div{display:flex;justify-content:space-between;gap:10px;font-size:12px}
+body.admin-portal .cashier-qris-items>div span{overflow-wrap:anywhere}
+body.admin-portal .cashier-qris-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+body.admin-portal .cashier-qris-confirm-panel{display:grid;gap:8px;margin-top:13px;padding-top:12px;border-top:1px dashed #e5d8e9}
+body.admin-portal .cashier-qris-check{display:flex;align-items:flex-start;gap:8px;color:#4d3b54;font-size:12px;line-height:1.5}
+body.admin-portal .cashier-qris-check input{margin-top:2px;flex:0 0 auto}
+body.admin-portal .cashier-qris-confirm>label:not(.cashier-qris-check){font-size:11px;font-weight:700;color:#62536a}
+body.admin-portal .cashier-qris-reference{width:100%;min-height:40px;padding:9px 11px;border:1px solid #e5dce9;border-radius:9px;background:#fff}
+body.admin-portal .cashier-qris-actions{display:flex;gap:8px;flex-wrap:wrap}
+body.admin-portal .cashier-qris-actions button{min-height:39px}
+body.admin-portal .cashier-qris-warning{color:#a32620;font-size:11px;line-height:1.5}
+body.admin-portal .cashier-qris-empty{display:grid;justify-items:center;gap:7px;padding:26px 12px;text-align:center;color:#756b85}
+body.admin-portal .cashier-qris-empty>span{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#eaf7ef;color:#16834c;font-size:20px}
+body.admin-portal .cashier-qris-empty strong{color:#4c3154;font-size:13px}
+body.admin-portal .cashier-qris-empty small{font-size:11px}
+@media(max-width:560px){body.admin-portal .cashier-qris-queue{padding:12px}body.admin-portal .cashier-qris-queue-head{align-items:flex-start;flex-direction:column}body.admin-portal .cashier-qris-queue-head button{width:100%}body.admin-portal .cashier-qris-card{padding:11px}body.admin-portal .cashier-qris-actions{display:grid;grid-template-columns:1fr}body.admin-portal .cashier-qris-actions button{width:100%}}
+
+
+
+body.admin-portal .cashier-sales-history{margin-top:18px;padding:16px;border:1px solid #e7d9ed;border-radius:18px;background:#fff}
+body.admin-portal .cashier-sales-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+body.admin-portal .cashier-sales-head h3{margin:3px 0 5px;color:#57145f;font-size:18px}
+body.admin-portal .cashier-sales-head p{margin:0;color:#756b85;font-size:12px}
+body.admin-portal .cashier-sales-filters{display:grid;grid-template-columns:minmax(180px,2fr) minmax(120px,1fr) minmax(120px,1fr) auto;gap:9px;align-items:end;margin-bottom:14px}
+body.admin-portal .cashier-sales-filters label{display:grid;gap:4px;color:#65556e;font-size:11px;font-weight:700}
+body.admin-portal .cashier-sales-filters input{width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid #e4dbe8;border-radius:9px;background:#fff}
+body.admin-portal .cashier-sales-count{margin-bottom:9px;color:#766a80;font-size:11px}
+body.admin-portal .cashier-sale-row{padding:13px 0;border-top:1px solid #eee7f0}
+body.admin-portal .cashier-sale-main{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+body.admin-portal .cashier-sale-main>div:first-child{display:grid;gap:4px;min-width:0}
+body.admin-portal .cashier-sale-main strong{color:#4f1858;font-size:13px}
+body.admin-portal .cashier-sale-main small,body.admin-portal .cashier-sale-meta{font-size:11px;color:#796d82}
+body.admin-portal .cashier-sale-total{display:grid;justify-items:end;gap:4px;white-space:nowrap}
+body.admin-portal .cashier-sale-total>strong{font-size:14px}
+body.admin-portal .cashier-sale-total span{font-size:9px;font-weight:800;border-radius:20px;padding:4px 7px;background:#e7f7ed;color:#187342}
+body.admin-portal .cashier-sale-total span.is-pending{background:#fff1d5;color:#8b5d0b}
+body.admin-portal .cashier-sale-meta{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}
+body.admin-portal .cashier-sale-actions{display:flex;gap:8px;flex-wrap:wrap}
+body.admin-portal .cashier-sale-actions button{min-height:36px;font-size:11px}
+body.admin-portal .cashier-sale-detail-body{margin-top:10px;padding:12px;border-radius:11px;background:#faf7fc}
+body.admin-portal .cashier-sale-detail-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#5a2262;font-size:12px}
+body.admin-portal .cashier-sale-lines{display:grid;gap:8px;margin:10px 0}
+body.admin-portal .cashier-sale-lines>div{display:flex;justify-content:space-between;gap:12px;font-size:11px}
+body.admin-portal .cashier-sale-lines small{display:block;margin-top:3px;color:#796d82}
+body.admin-portal .cashier-sale-detail-total{display:grid;grid-template-columns:1fr auto;gap:5px 12px;padding-top:8px;border-top:1px dashed #ded2e3;font-size:11px}
+body.admin-portal .cashier-sale-detail-foot{margin-top:9px;color:#786c80;font-size:10px}
+body.admin-portal .cashier-sales-empty{padding:22px;text-align:center;color:#796d82;font-size:12px;background:#faf8fb;border-radius:10px}
+@media(max-width:700px){body.admin-portal .cashier-sales-filters{grid-template-columns:1fr 1fr}body.admin-portal .cashier-sales-filters input[type=search]{grid-column:1/-1}body.admin-portal .cashier-sales-filters button{grid-column:1/-1;width:100%}}
+@media(max-width:480px){body.admin-portal .cashier-sales-history{padding:12px}body.admin-portal .cashier-sales-head{align-items:flex-start;flex-direction:column}body.admin-portal .cashier-sales-head button{width:100%}body.admin-portal .cashier-sale-actions button{flex:1}}
+
+
+
+/* Tahap 10 — responsivitas, aksesibilitas, dan kemudahan kasir */
+body.admin-portal .cashier-pos-layout{align-items:start}
+@media(min-width:901px){body.admin-portal .cashier-pos-checkout{position:sticky;top:14px}}
+body.admin-portal .cashier-pos-add,
+body.admin-portal .cashier-pos-submit,
+body.admin-portal .cashier-qris-actions button,
+body.admin-portal .cashier-sale-actions button{min-height:42px}
+body.admin-portal .cashier-pos-qty button{width:38px;height:38px;min-height:38px;font-size:18px}
+body.admin-portal .cashier-pos-buyer-types label{min-height:40px;padding:7px 10px;border:1px solid #e8ddec;border-radius:10px;background:#fcf9fd}
+body.admin-portal .cashier-pos-buyer-types input{accent-color:#76277e}
+body.admin-portal .cashier-pos-product{transition:border-color .16s ease,box-shadow .16s ease}
+body.admin-portal .cashier-pos-product:focus-within{border-color:#b58bc0;box-shadow:0 0 0 3px #76277e12}
+body.admin-portal .cashier-pos-panel button:focus-visible,
+body.admin-portal .cashier-pos-panel input:focus-visible,
+body.admin-portal .cashier-pos-panel select:focus-visible,
+body.admin-portal .cashier-qris-queue button:focus-visible,
+body.admin-portal .cashier-sales-history button:focus-visible,
+body.admin-portal .cashier-sales-history input:focus-visible{outline:3px solid #b58bc0;outline-offset:2px}
+body.admin-portal .cashier-pos-empty,
+body.admin-portal .cashier-qris-empty,
+body.admin-portal .cashier-sales-empty{line-height:1.55}
+@media(max-width:900px){body.admin-portal .cashier-pos-checkout{position:relative}}
+@media(max-width:560px){
+ body.admin-portal .cashier-pos-panel{padding:10px}
+ body.admin-portal .cashier-pos-layout{gap:10px}
+ body.admin-portal .cashier-pos-catalog,body.admin-portal .cashier-pos-checkout{padding:12px}
+ body.admin-portal .cashier-pos-products{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:420px}
+ body.admin-portal .cashier-pos-product{min-height:176px;padding:10px}
+ body.admin-portal .cashier-pos-product-info{min-height:76px}
+ body.admin-portal .cashier-pos-product-foot{align-items:flex-start;flex-direction:column;gap:4px}
+ body.admin-portal .cashier-pos-add{min-height:44px}
+ body.admin-portal .cashier-pos-cart-items{max-height:320px}
+ body.admin-portal .cashier-pos-total strong{font-size:21px}
+ body.admin-portal .cashier-pos-submit{min-height:52px;font-size:14px}
+ body.admin-portal .cashier-qris-summary{align-items:flex-start;flex-direction:column;gap:5px}
+ body.admin-portal .cashier-qris-card-head{flex-direction:column}
+ body.admin-portal .cashier-sales-filters{grid-template-columns:1fr 1fr}
+ body.admin-portal .cashier-sales-filters input[type=search],body.admin-portal .cashier-sales-filters button{grid-column:1/-1}
+ body.admin-portal .cashier-pos-search input,body.admin-portal .cashier-pos-buyer input,body.admin-portal .cashier-pos-payment input,body.admin-portal .cashier-pos-payment select,body.admin-portal .cashier-sales-filters input{font-size:16px}
+}
+@media(max-width:380px){
+ body.admin-portal .cashier-pos-products{grid-template-columns:1fr}
+ body.admin-portal .cashier-pos-product{min-height:0}
+ body.admin-portal .cashier-pos-product-info{min-height:0}
+ body.admin-portal .cashier-pos-product-foot{align-items:center;flex-direction:row}
+ body.admin-portal .cashier-sale-main{flex-direction:column}
+ body.admin-portal .cashier-sale-total{justify-items:start}
+}
+@media(prefers-reduced-motion:reduce){body.admin-portal .cashier-pos-product{transition:none}#toast{transition:none}}
+
+
+
+/* FMart — penyempurnaan pop-up detail produk Wali */
+body.buyer-portal #productModal{
+  padding:24px;
+  place-items:center;
+  background:rgba(29,16,39,.62);
+  backdrop-filter:blur(7px);
+}
+body.buyer-portal #productModal .modal-card{
+  width:min(960px,100%);
+  max-width:960px;
+  max-height:min(90dvh,860px);
+  overflow:auto;
+  padding:24px;
+  border:1px solid #eee4f3;
+  border-radius:26px;
+  background:#fff;
+  box-shadow:0 28px 90px rgba(28,12,40,.28);
+  scrollbar-width:thin;
+  scrollbar-color:#d9c7e2 transparent;
+}
+body.buyer-portal #productModal .modal-head{
+  position:sticky;
+  top:-24px;
+  z-index:3;
+  align-items:center;
+  margin:-2px 0 22px;
+  padding:2px 0 15px;
+  border-bottom:1px solid #f0e8f3;
+  background:#fff;
+}
+body.buyer-portal #productModal .modal-head h2{
+  color:#351b40;
+  font-size:21px;
+  letter-spacing:-.025em;
+}
+body.buyer-portal #productModal .modal-head .eyebrow{
+  color:#8a4b98;
+  letter-spacing:.13em;
+}
+body.buyer-portal #productModal .icon-btn{
+  flex:0 0 42px;
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  background:#faf7fc;
+  color:#5b145f;
+  font-size:25px;
+}
+body.buyer-portal #productModal .buyer-detail-layout{
+  display:grid;
+  grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);
+  gap:30px;
+  align-items:start;
+}
+body.buyer-portal #productModal .buyer-detail-visual,
+body.buyer-portal #productModal .buyer-detail-info{min-width:0}
+body.buyer-portal #productModal .buyer-detail-photo{
+  height:clamp(300px,38vw,430px);
+  min-height:300px;
+  margin:0;
+  border:1px solid #eee5f4;
+  border-radius:22px;
+  background:linear-gradient(145deg,#fcfaff 0%,#f2eaf8 100%);
+  box-shadow:inset 0 1px 0 #fff;
+}
+body.buyer-portal #productModal .buyer-detail-photo img{
+  width:100%;
+  height:100%;
+  padding:20px;
+  object-fit:contain;
+}
+body.buyer-portal #productModal .detail-photo-placeholder{
+  display:grid;
+  justify-items:center;
+  gap:10px;
+  color:#9b8aa5;
+  font-size:14px;
+}
+body.buyer-portal #productModal .detail-photo-placeholder span{font-size:48px}
+body.buyer-portal #productModal .buyer-photo-caption{
+  margin-top:10px;
+  color:#94879b;
+  font-size:11px;
+}
+body.buyer-portal #productModal .buyer-detail-category{
+  padding:6px 11px;
+  border:1px solid #eadcf0;
+  background:#faf4fc;
+  color:#70277e;
+  font-size:10px;
+  letter-spacing:.04em;
+}
+body.buyer-portal #productModal .buyer-detail-name{
+  margin:12px 0 0;
+  color:#2d1d35;
+  font-size:clamp(22px,2.4vw,29px);
+  line-height:1.28;
+  letter-spacing:-.035em;
+  overflow-wrap:anywhere;
+}
+body.buyer-portal #productModal .buyer-detail-price{
+  margin:13px 0 16px;
+  color:#701c7b;
+  font-size:28px;
+  line-height:1.2;
+  letter-spacing:-.035em;
+}
+body.buyer-portal #productModal .buyer-detail-stock{display:none!important}
+body.buyer-portal #productModal .buyer-detail-description{
+  margin:0;
+  padding:14px 15px;
+  border:1px solid #eee7f2;
+  border-radius:15px;
+  background:#fcfafd;
+}
+body.buyer-portal #productModal .buyer-detail-description strong{
+  color:#4c3655;
+  font-size:12px;
+}
+body.buyer-portal #productModal .buyer-detail-description p{
+  margin:6px 0 0;
+  color:#756b7e;
+  font-size:13px;
+  line-height:1.65;
+  overflow-wrap:anywhere;
+}
+body.buyer-portal #productModal .buyer-variation-section{margin-top:18px}
+body.buyer-portal #productModal .buyer-variation-heading{margin-bottom:10px}
+body.buyer-portal #productModal .buyer-variation-heading strong{
+  color:#3e2948;
+  font-size:13px;
+}
+body.buyer-portal #productModal .buyer-variation-heading span{
+  padding:4px 8px;
+  border-radius:20px;
+  background:#f7f0fa;
+  color:#81558b;
+  font-size:10px;
+  font-weight:700;
+}
+body.buyer-portal #productModal .buyer-variation-list{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+}
+body.buyer-portal #productModal .buyer-variation-option{
+  min-height:54px;
+  padding:11px 12px;
+  border:1px solid #e8deec;
+  border-radius:13px;
+  box-shadow:0 2px 7px rgba(50,25,60,.025);
+  transition:border-color .16s ease,background .16s ease,box-shadow .16s ease;
+}
+body.buyer-portal #productModal .buyer-variation-option:hover{
+  border-color:#c9a9d1;
+  background:#fdf9ff;
+}
+body.buyer-portal #productModal .buyer-variation-option.selected{
+  padding:10px 11px;
+  border:2px solid #81258b;
+  background:#fbf5fd;
+  box-shadow:0 0 0 3px rgba(128,0,128,.08);
+}
+body.buyer-portal #productModal .buyer-variation-main strong{
+  color:#403047;
+  font-size:12px;
+  line-height:1.4;
+}
+body.buyer-portal #productModal .buyer-variation-price{
+  color:#76277e;
+  font-size:10px;
+}
+body.buyer-portal #productModal .buyer-quantity-panel{
+  margin-top:18px;
+  padding:13px 14px;
+  border:1px solid #eee5f1;
+  border-radius:15px;
+  background:#faf7fc;
+}
+body.buyer-portal #productModal .buyer-quantity-panel strong{
+  color:#45304d;
+  font-size:13px;
+}
+body.buyer-portal #productModal .buyer-quantity-panel small{
+  color:#85778d;
+  font-size:10px;
+  line-height:1.4;
+}
+body.buyer-portal #productModal .buyer-qty-control{
+  flex:0 0 auto;
+  border-color:#e5d9ea;
+  border-radius:12px;
+}
+body.buyer-portal #productModal .buyer-qty-control button{
+  width:40px;
+  height:40px;
+  background:#f5edf8;
+  color:#641d70;
+  font-size:19px;
+}
+body.buyer-portal #productModal .buyer-qty-control input{
+  width:48px;
+  height:40px;
+  color:#382342;
+  font-size:14px;
+}
+body.buyer-portal #productModal .buyer-detail-actions{
+  position:sticky;
+  bottom:-24px;
+  z-index:2;
+  margin:14px -2px -2px;
+  padding:13px 2px 2px;
+  background:linear-gradient(180deg,rgba(255,255,255,.88),#fff 24%);
+  gap:10px;
+}
+body.buyer-portal #productModal .buyer-detail-actions button{
+  min-height:48px;
+  border-radius:13px;
+  font-size:13px;
+}
+body.buyer-portal #productModal .buyer-detail-actions .secondary{
+  border-color:#d9c5e1;
+  background:#fff;
+}
+body.buyer-portal #productModal .buyer-detail-actions .primary{
+  box-shadow:0 8px 18px rgba(128,0,128,.18);
+}
+body.buyer-portal #productModal button:focus-visible,
+body.buyer-portal #productModal input:focus-visible{
+  outline:3px solid #c8a4d2;
+  outline-offset:2px;
+}
+@media(max-width:760px){
+  body.buyer-portal #productModal{
+    padding:8px 8px max(8px,env(safe-area-inset-bottom));
+    align-items:end;
+  }
+  body.buyer-portal #productModal .modal-card{
+    width:100%;
+    max-width:620px;
+    max-height:calc(94dvh - env(safe-area-inset-bottom));
+    padding:17px 15px calc(15px + env(safe-area-inset-bottom));
+    border-radius:23px 23px 17px 17px;
+  }
+  body.buyer-portal #productModal .modal-head{
+    top:-17px;
+    margin:-1px 0 16px;
+    padding:1px 0 12px;
+  }
+  body.buyer-portal #productModal .modal-head h2{font-size:19px}
+  body.buyer-portal #productModal .buyer-detail-layout{
+    grid-template-columns:minmax(0,1fr);
+    gap:17px;
+  }
+  body.buyer-portal #productModal .buyer-detail-photo{
+    height:clamp(190px,54vw,270px);
+    min-height:190px;
+    border-radius:18px;
+  }
+  body.buyer-portal #productModal .buyer-detail-photo img{padding:14px}
+  body.buyer-portal #productModal .buyer-photo-caption{margin-top:6px}
+  body.buyer-portal #productModal .buyer-detail-name{font-size:21px}
+  body.buyer-portal #productModal .buyer-detail-price{font-size:24px;margin:10px 0 13px}
+  body.buyer-portal #productModal .buyer-detail-description{padding:12px 13px}
+  body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.buyer-portal #productModal .buyer-detail-actions{
+    bottom:calc(-15px - env(safe-area-inset-bottom));
+    margin:12px -15px calc(-15px - env(safe-area-inset-bottom));
+    padding:12px 15px calc(15px + env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.97);
+    border-top:1px solid #f0e8f3;
+  }
+  body.buyer-portal #productModal .buyer-detail-actions button{min-height:47px}
+}
+@media(max-width:390px){
+  body.buyer-portal #productModal .modal-card{padding-left:13px;padding-right:13px}
+  body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:1fr}
+  body.buyer-portal #productModal .buyer-quantity-panel{align-items:flex-start}
+  body.buyer-portal #productModal .buyer-detail-actions{grid-template-columns:1fr}
+  body.buyer-portal #productModal .buyer-detail-actions button{width:100%}
+}
+@media(prefers-reduced-motion:reduce){
+  body.buyer-portal #productModal .buyer-variation-option{transition:none}
+}
+
+
+
+/* Responsive refinement: desktop, tablet, and mobile */
+body.buyer-portal #productModal{box-sizing:border-box;width:100%;min-width:0;padding:clamp(14px,2.5vw,30px);place-items:center;overflow-y:auto;overscroll-behavior:contain}
+body.buyer-portal #productModal,body.buyer-portal #productModal *{box-sizing:border-box}
+body.buyer-portal #productModal .modal-card{width:min(1040px,calc(100vw - 48px));max-width:1040px;max-height:min(90vh,90dvh,900px);margin:auto;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+body.buyer-portal #productModal .buyer-detail-layout{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:clamp(18px,2.6vw,32px)}
+body.buyer-portal #productModal .buyer-detail-photo{width:100%;height:auto;min-height:0;aspect-ratio:.95/1;max-height:520px}
+body.buyer-portal #productModal .buyer-detail-photo img{object-fit:contain}
+body.buyer-portal #productModal .buyer-detail-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+body.buyer-portal #productModal .buyer-detail-actions button{min-width:0;white-space:normal;line-height:1.25}
+
+/* Tablet: single-column content avoids cramped two-column layout */
+@media(min-width:601px) and (max-width:1024px){
+ body.buyer-portal #productModal{padding:clamp(18px,3vw,30px);place-items:center}
+ body.buyer-portal #productModal .modal-card{width:min(820px,calc(100vw - 48px));max-width:820px;max-height:88vh;max-height:88dvh;padding:clamp(20px,3vw,28px);border-radius:24px}
+ body.buyer-portal #productModal .modal-head{top:calc(-1 * clamp(20px,3vw,28px));margin:0 0 18px;padding:2px 0 14px}
+ body.buyer-portal #productModal .buyer-detail-layout{grid-template-columns:minmax(0,1fr);gap:18px}
+ body.buyer-portal #productModal .buyer-detail-visual{width:min(100%,560px);margin-inline:auto}
+ body.buyer-portal #productModal .buyer-detail-photo{aspect-ratio:16/9;height:auto;max-height:340px;min-height:0}
+ body.buyer-portal #productModal .buyer-photo-caption{text-align:center}
+ body.buyer-portal #productModal .buyer-detail-info{width:100%}
+ body.buyer-portal #productModal .buyer-detail-name{font-size:25px}
+ body.buyer-portal #productModal .buyer-detail-price{font-size:27px}
+ body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.buyer-portal #productModal .buyer-detail-actions{position:sticky;bottom:-28px;margin:16px -2px -2px;padding:14px 2px 2px;background:linear-gradient(180deg,rgba(255,255,255,.9),#fff 25%)}
+}
+
+/* Mobile: bottom sheet with one scroll area and reachable action buttons */
+@media(max-width:600px){
+ body.buyer-portal #productModal{display:grid;align-items:end;justify-items:center;padding:0;padding-top:max(8px,env(safe-area-inset-top));padding-bottom:0}
+ body.buyer-portal #productModal .modal-card{width:100%;max-width:620px;max-height:calc(94vh - env(safe-area-inset-top));max-height:calc(94dvh - env(safe-area-inset-top));margin:0 auto;padding:16px 15px calc(12px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0;overflow-x:hidden;overflow-y:auto}
+ body.buyer-portal #productModal .modal-head{top:-16px;margin:0 0 14px;padding:0 0 12px}
+ body.buyer-portal #productModal .modal-head h2{font-size:18px}
+ body.buyer-portal #productModal .icon-btn{width:40px;height:40px;flex-basis:40px}
+ body.buyer-portal #productModal .buyer-detail-layout{grid-template-columns:minmax(0,1fr);gap:14px}
+ body.buyer-portal #productModal .buyer-detail-visual{width:100%}
+ body.buyer-portal #productModal .buyer-detail-photo{width:100%;aspect-ratio:16/10;height:auto;min-height:0;max-height:260px;border-radius:17px}
+ body.buyer-portal #productModal .buyer-detail-photo img{padding:12px}
+ body.buyer-portal #productModal .buyer-photo-caption{margin-top:5px;text-align:center}
+ body.buyer-portal #productModal .buyer-detail-name{margin-top:8px;font-size:20px;line-height:1.3}
+ body.buyer-portal #productModal .buyer-detail-price{margin:9px 0 12px;font-size:23px}
+ body.buyer-portal #productModal .buyer-detail-description{padding:11px 12px;border-radius:13px}
+ body.buyer-portal #productModal .buyer-detail-description p{font-size:12px}
+ body.buyer-portal #productModal .buyer-variation-section{margin-top:14px}
+ body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ body.buyer-portal #productModal .buyer-variation-option{min-width:0;min-height:50px;padding:10px}
+ body.buyer-portal #productModal .buyer-variation-price{white-space:normal;text-align:right}
+ body.buyer-portal #productModal .buyer-quantity-panel{margin-top:14px;padding:11px 12px}
+ body.buyer-portal #productModal .buyer-qty-control button{width:38px;height:38px}
+ body.buyer-portal #productModal .buyer-qty-control input{width:42px;height:38px}
+ body.buyer-portal #productModal .buyer-detail-actions{position:sticky;bottom:calc(-12px - env(safe-area-inset-bottom));grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:13px -15px calc(-12px - env(safe-area-inset-bottom));padding:11px 15px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #eee5f2;background:rgba(255,255,255,.97);backdrop-filter:blur(10px)}
+ body.buyer-portal #productModal .buyer-detail-actions button{min-height:46px;padding:10px 8px;font-size:12px}
+}
+@media(max-width:380px){
+ body.buyer-portal #productModal .modal-card{padding-inline:12px}
+ body.buyer-portal #productModal .buyer-detail-photo{max-height:220px}
+ body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:1fr}
+ body.buyer-portal #productModal .buyer-quantity-panel{align-items:center;gap:8px}
+ body.buyer-portal #productModal .buyer-quantity-panel small{max-width:170px}
+ body.buyer-portal #productModal .buyer-detail-actions{grid-template-columns:1fr;margin-inline:-12px;padding-inline:12px}
+}
+@media(max-height:560px) and (min-width:601px){
+ body.buyer-portal #productModal .modal-card{max-height:94vh;max-height:94dvh}
+ body.buyer-portal #productModal .buyer-detail-photo{aspect-ratio:16/9;max-height:230px}
+}
+
+
+/* FMart Tahap 3 — shared component, touch, and accessibility baseline */
+:root{
+  --fm-touch-target:44px;
+  --fm-radius-card:16px;
+  --fm-radius-control:12px;
+  --fm-focus-ring:#9b4d9b;
+  --fm-shadow-card:0 8px 26px rgba(48,24,64,.08);
+}
+:where(button,[role="button"],input:not([type="hidden"]),select,textarea){
+  min-height:var(--fm-touch-target);
+}
+:where(button,[role="button"]){touch-action:manipulation}
+:where(input:not([type="hidden"]),select,textarea){min-width:0}
+:where(button,a,input,select,textarea,[tabindex]):focus-visible{
+  outline:3px solid var(--fm-focus-ring);
+  outline-offset:2px;
+}
+input[type="checkbox"],input[type="radio"]{min-width:20px;min-height:20px}
+textarea{min-height:88px}
+.modal{overscroll-behavior:contain}
+.modal-card{
+  max-height:92vh;
+  max-height:min(92dvh,900px);
+  overscroll-behavior:contain;
+}
+.table-wrap,.table-responsive{
+  max-width:100%;
+  overflow-x:auto;
+  overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+}
+button:disabled,[role="button"][aria-disabled="true"]{cursor:not-allowed}
+.skip-link{
+  position:fixed;left:12px;top:12px;z-index:10000;
+  transform:translateY(-160%);padding:12px 16px;
+  border-radius:10px;background:#fff;color:var(--purple-dark);
+  border:2px solid var(--purple);font-weight:800;
+  box-shadow:0 6px 24px rgba(0,0,0,.18);
+}
+.skip-link:focus{transform:translateY(0)}
+@media(max-width:760px){
+  :where(input:not([type="hidden"]),select,textarea){font-size:16px}
+  .modal-card{max-height:94vh;max-height:94dvh}
+  .header-icon-btn{min-width:44px;min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+@media(prefers-contrast:more){
+  :where(button,a,input,select,textarea,[tabindex]):focus-visible{outline-width:4px;outline-offset:3px}
+  .muted{color:#51485c}
+}
+
 </style>
+  
+
+
+
+
 </head>
 <body>
   <div id="loginView" class="login-wrap">
@@ -1406,7 +2185,8 @@ body.buyer-portal #profileModal .modal-card{
     </section>
   </div>
 
-  <div id="appView" class="app hidden">
+  <div id="appView" class="app hidden" tabindex="-1">
+    <a class="skip-link" href="#appView">Lewati ke konten utama</a>
     <header class="header"><div class="header-inner"><div class="brand" id="brandHome" role="button" tabindex="0" aria-label="Kembali ke Dashboard"><div class="brand-mark" role="img" aria-label="Logo FMart"></div><span>FMart</span></div><div class="header-actions"><button type="button" class="header-icon-btn" id="headerCartBtn" aria-label="Keranjang" title="Keranjang"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h2l1.5 10.5h10L20 8H7"></path><circle cx="9" cy="19" r="1.4"></circle><circle cx="17" cy="19" r="1.4"></circle></svg><span id="headerCartBadge" class="header-icon-badge hidden">0</span></button><button type="button" class="header-icon-btn" id="headerOrdersBtn" aria-label="Pesanan" title="Pesanan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6z"></path><path d="M9 8h6M9 12h6M9 16h4"></path></svg></button><button type="button" class="notification-trigger" id="waliNotificationBtn" aria-label="Notifikasi" title="Notifikasi">♧<span id="waliNotificationBadge" class="notification-count hidden">0</span></button><button class="user-pill" id="userBtn">Akun</button></div></div></header>
     <main class="main">
       <section class="hero"><h1 id="greeting">Belanja lebih mudah</h1><p>Pesan kebutuhan anak Anda dengan praktis.</p></section>
@@ -3155,724 +3935,28 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
     })();
 
   </script>
-<style>
-/* FMart Tahap 5 — detail pemenuhan Gudang */
-body.admin-portal .warehouse-detail-action{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:16px;border:1px solid #d9b9e2;border-radius:16px;background:#f8effa}
-body.admin-portal .warehouse-detail-action>div{display:grid;gap:4px}
-body.admin-portal .warehouse-detail-action span{font-size:13px;color:#6b4773}
-body.admin-portal .warehouse-detail-action .primary{width:auto;min-width:150px}
-@media(max-width:560px){body.admin-portal .warehouse-detail-action{align-items:stretch;flex-direction:column}body.admin-portal .warehouse-detail-action .primary{width:100%}}
-</style>
 
-<style>
-/* FMart Tahap 6 — riwayat dan laporan Gudang */
-body.admin-portal .warehouse-report-filters{display:grid;grid-template-columns:1fr 1fr auto;align-items:end;gap:12px;margin:16px 0}
-body.admin-portal .warehouse-report-filters .field{margin:0}
-body.admin-portal .warehouse-report-filters input,body.admin-portal .warehouse-report-actions input{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text)}
-body.admin-portal .warehouse-report-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0}
-body.admin-portal .warehouse-report-metrics article{display:grid;gap:7px;padding:15px;border:1px solid #e7d5ec;border-radius:15px;background:#fff;min-width:0}
-body.admin-portal .warehouse-report-metrics small{font-size:12px;color:var(--muted)}
-body.admin-portal .warehouse-report-metrics strong{font-size:20px;color:#6b2676;overflow-wrap:anywhere}
-body.admin-portal .warehouse-report-workspace{padding:16px;border:1px solid #ead9ef;border-radius:18px;background:#fff}
-body.admin-portal .warehouse-report-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-body.admin-portal .warehouse-report-toolbar .report-tabs{margin:0}
-body.admin-portal .warehouse-report-actions{display:flex;align-items:center;gap:8px;min-width:min(100%,330px)}
-body.admin-portal .warehouse-report-actions input{min-width:140px}
-body.admin-portal .warehouse-report-count{font-size:12px;color:var(--muted);margin:8px 0 12px}
-body.admin-portal .warehouse-report-table small{display:block;color:var(--muted);margin-top:3px}
-@media(max-width:900px){body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:600px){body.admin-portal .warehouse-report-filters{grid-template-columns:1fr 1fr}body.admin-portal .warehouse-report-filters button{grid-column:1/-1;width:100%}body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}body.admin-portal .warehouse-report-toolbar{align-items:stretch}body.admin-portal .warehouse-report-actions{width:100%;min-width:0}body.admin-portal .warehouse-report-actions button{white-space:nowrap}}
-</style>
 
-<style>
-/* Tahap 7 — penyelarasan UI/UX seluruh workspace Gudang */
-body.admin-portal .warehouse-home-actions{gap:10px}
-body.admin-portal .warehouse-home-actions button{min-height:44px;padding:10px 15px}
-body.admin-portal .warehouse-home-panel,body.admin-portal .warehouse-report-workspace,body.admin-portal .warehouse-workspace,body.admin-portal .stock-history-section,body.admin-portal .receiving-history{min-width:0}
-body.admin-portal .warehouse-home-section-head button{flex:0 0 auto}
-body.admin-portal .warehouse-home-stock-row,body.admin-portal .warehouse-home-history-row{min-width:0}
-body.admin-portal .warehouse-home-order-status{max-width:45%;overflow-wrap:anywhere;white-space:normal;text-align:center}
-body.admin-portal .warehouse-fulfillment-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
-body.admin-portal .warehouse-filter-grid{grid-template-columns:minmax(0,2fr) minmax(180px,1fr)}
-body.admin-portal .warehouse-workspace .section-title{align-items:center;gap:12px;flex-wrap:wrap}
-body.admin-portal .warehouse-workspace .section-title>div{min-width:0}
-body.admin-portal .warehouse-workspace .table-wrap,body.admin-portal .stock-table-wrap,body.admin-portal .receiving-history .table-wrap,body.admin-portal .warehouse-report-workspace .table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
-body.admin-portal .fulfillment-table,body.admin-portal .stock-table,body.admin-portal .receiving-table,body.admin-portal .warehouse-report-table{border-collapse:separate;border-spacing:0}
-body.admin-portal .fulfillment-table th,body.admin-portal .fulfillment-table td,body.admin-portal .receiving-table th,body.admin-portal .receiving-table td,body.admin-portal .warehouse-report-table th,body.admin-portal .warehouse-report-table td{vertical-align:middle}
-body.admin-portal .warehouse-report-filters .field label{display:block;margin-bottom:7px}
-body.admin-portal .warehouse-report-workspace .report-tabs{display:flex;gap:7px;flex-wrap:wrap}
-body.admin-portal .warehouse-report-actions{flex:1 1 330px}
-body.admin-portal .warehouse-report-actions input{flex:1;min-width:0}
-body.admin-portal .warehouse-report-actions button{min-height:44px}
-body.admin-portal .warehouse-report-table{min-width:760px;width:100%}
-body.admin-portal .warehouse-report-table th,body.admin-portal .warehouse-report-table td{padding:12px 13px;white-space:nowrap}
-body.admin-portal .warehouse-report-table td:nth-child(2),body.admin-portal .warehouse-report-table td:last-child{white-space:normal;min-width:130px}
-body.admin-portal .warehouse-report-count{line-height:1.5}
-body.admin-portal .receipt-line select,body.admin-portal .receipt-line input{width:100%;min-height:44px}
-body.admin-portal .warehouse-home-actions button:focus-visible,body.admin-portal .warehouse-home-flow-card:focus-visible,body.admin-portal #staffWarehouseReports:focus-visible{outline:3px solid #c99ad1;outline-offset:3px}
-@media(max-width:980px){
- body.admin-portal .warehouse-home-flow{grid-template-columns:repeat(2,minmax(0,1fr))}
- body.admin-portal .warehouse-home-grid{grid-template-columns:1fr}
- body.admin-portal .warehouse-fulfillment-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
- body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
-}
-@media(max-width:620px){
- body.admin-portal .warehouse-home-intro{padding:17px;border-radius:16px;gap:10px}
- body.admin-portal .warehouse-home-intro h2{font-size:21px}
- body.admin-portal .warehouse-home-intro p{font-size:12px}
- body.admin-portal .warehouse-home-mark{width:48px;height:48px;flex-basis:48px;border-radius:14px;font-size:23px}
- body.admin-portal .warehouse-home-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:19px}
- body.admin-portal .warehouse-home-actions button{width:100%;min-width:0;min-height:44px;padding:9px 10px;font-size:12px}
- body.admin-portal .warehouse-home-actions button:first-child{grid-column:1/-1}
- body.admin-portal .warehouse-home-flow{gap:8px}
- body.admin-portal .warehouse-home-flow-card{padding:11px 9px;gap:8px;border-radius:13px}
- body.admin-portal .warehouse-home-flow-icon{width:30px;height:30px;flex-basis:30px;font-size:15px}
- body.admin-portal .warehouse-home-flow-copy strong{font-size:20px}
- body.admin-portal .warehouse-home-flow-copy em{font-size:9px}
- body.admin-portal .warehouse-home-panel{padding:13px;border-radius:15px}
- body.admin-portal .warehouse-home-section-head{align-items:flex-start}
- body.admin-portal .warehouse-home-section-head h3{font-size:14px}
- body.admin-portal .warehouse-home-section-head p{font-size:11px;line-height:1.45}
- body.admin-portal .warehouse-home-section-head .text-button{font-size:11px;padding:5px 0}
- body.admin-portal .warehouse-fulfillment-metrics{gap:8px}
- body.admin-portal .warehouse-fulfillment-metrics .fulfillment-metric{padding:12px;border-radius:13px}
- body.admin-portal .warehouse-fulfillment-metrics .fulfillment-metric span{font-size:11px;line-height:1.4}
- body.admin-portal .warehouse-fulfillment-metrics .fulfillment-metric strong{font-size:21px}
- body.admin-portal .warehouse-filter-grid{grid-template-columns:1fr;gap:8px}
- body.admin-portal .warehouse-filter-grid input,body.admin-portal .warehouse-filter-grid select{min-height:46px}
- body.admin-portal .warehouse-workspace{padding:13px;margin-top:14px}
- body.admin-portal .warehouse-workspace .section-title{align-items:stretch}
- body.admin-portal .warehouse-workspace .section-title button{width:100%}
- body.admin-portal .stock-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
- body.admin-portal .stock-toolbar{gap:10px}
- body.admin-portal .stock-row-actions{width:100%;flex-wrap:wrap}
- body.admin-portal .stock-row-actions button{flex:1}
- body.admin-portal .receiving-summary{gap:8px}
- body.admin-portal .receiving-summary>div{padding:12px}
- body.admin-portal .receiving-summary strong{font-size:18px}
- body.admin-portal .receiving-history .stock-toolbar{gap:10px}
- body.admin-portal .warehouse-report-filters{grid-template-columns:1fr 1fr;gap:8px}
- body.admin-portal .warehouse-report-filters .field{min-width:0}
- body.admin-portal .warehouse-report-filters input{min-width:0;font-size:13px}
- body.admin-portal .warehouse-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
- body.admin-portal .warehouse-report-metrics article{padding:12px;border-radius:13px}
- body.admin-portal .warehouse-report-metrics small{font-size:10px;line-height:1.4}
- body.admin-portal .warehouse-report-metrics strong{font-size:18px}
- body.admin-portal .warehouse-report-workspace{padding:12px}
- body.admin-portal .warehouse-report-toolbar{gap:10px}
- body.admin-portal .warehouse-report-workspace .report-tabs{display:grid;grid-template-columns:1fr 1fr;flex:1}
- body.admin-portal .warehouse-report-workspace .report-tab{min-width:0;padding:9px 7px;font-size:11px}
- body.admin-portal .warehouse-report-workspace .report-tab:last-child{grid-column:1/-1}
- body.admin-portal .warehouse-report-actions{display:grid;grid-template-columns:1fr auto;gap:7px}
- body.admin-portal .warehouse-report-actions input{width:100%;min-width:0}
- body.admin-portal .warehouse-report-actions button{padding:9px 10px;font-size:11px}
- body.admin-portal .warehouse-report-table{min-width:720px}
-}
-@media(max-width:360px){
- body.admin-portal .warehouse-home-actions{grid-template-columns:1fr}
- body.admin-portal .warehouse-home-actions button:first-child{grid-column:auto}
- body.admin-portal .warehouse-report-filters{grid-template-columns:1fr}
- body.admin-portal .warehouse-report-filters button{grid-column:auto}
- body.admin-portal .warehouse-report-actions{grid-template-columns:1fr}
-}
-</style>
+
+
+
 </body>
 </html>
 
-<style>
-/* FMart header quick navigation */
-.brand[role="button"]{cursor:pointer;user-select:none}.brand[role="button"]:focus-visible{outline:3px solid #ead5ef;outline-offset:4px;border-radius:10px}.header-actions{gap:10px}.header-icon-btn{position:relative;width:42px;height:42px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.32);background:rgba(255,255,255,.13);color:#fff;border-radius:50%;padding:9px;cursor:pointer;transition:background .18s ease,transform .18s ease}.header-icon-btn:hover{background:rgba(255,255,255,.25);transform:translateY(-1px)}.header-icon-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.header-icon-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;display:grid;place-items:center;border:2px solid #800080;border-radius:999px;background:#fbbf24;color:#4f0054;font-size:10px;font-weight:850;line-height:1}.header-icon-badge.hidden{display:none!important}@media(max-width:560px){.header-actions{gap:6px}.header-icon-btn{width:38px;height:38px;padding:8px}.header-icon-btn svg{width:21px;height:21px}.header .user-pill{padding:8px 10px}}
-</style>
 
 
-<style>
-
-/* Tahap F — tablet portrait: navigasi petugas tidak mengambil lebar konten. */
-@media (min-width:761px) and (max-width:900px){
-  body.admin-portal #staffNav.bottom-nav{
-    position:fixed;z-index:40;top:auto;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));
-    width:auto;height:72px;display:flex;flex-direction:row;align-items:stretch;justify-content:flex-start;
-    gap:6px;padding:7px 8px;border:1px solid #eaddec;border-radius:18px;
-    overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
-    scrollbar-width:none;background:rgba(255,255,255,.97);box-shadow:0 12px 32px #35113d20;
-  }
-  body.admin-portal #staffNav.bottom-nav::-webkit-scrollbar{display:none}
-  body.admin-portal #staffNav .nav-btn{
-    flex:0 0 82px;width:82px;min-width:82px;min-height:56px;height:56px;
-    display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;
-    padding:5px 4px;border-radius:12px;font-size:10px;line-height:1.15;text-align:center;
-  }
-  body.admin-portal #staffNav .nav-btn .nav-icon{width:27px;height:27px;flex:0 0 27px}
-  body.admin-portal #operationsView{
-    width:100%!important;max-width:none!important;min-width:0;margin:0!important;
-    padding:22px 20px calc(112px + env(safe-area-inset-bottom))!important;
-  }
-  body.admin-portal #opsStats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
-  body.admin-portal #opsMainSection,
-  body.admin-portal #opsMainBody,
-  body.admin-portal #opsMainBody>*{min-width:0;max-width:100%}
-  body.admin-portal #opsMainBody .table-wrap,
-  body.admin-portal #opsMainBody .table-responsive{
-    display:block;width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;
-    -webkit-overflow-scrolling:touch;
-  }
-  body.admin-portal #opsMainBody .table-wrap table,
-  body.admin-portal #opsMainBody .table-responsive table{max-width:none}
-  body.admin-portal #opsMainBody .section-title{flex-wrap:wrap;gap:10px}
-  body.admin-portal #opsMainBody .section-title button{max-width:100%}
-}
-/* Semua panel petugas: cegah elemen panjang memperlebar viewport. */
-body.admin-portal #operationsView,
-body.admin-portal #opsMainSection,
-body.admin-portal #opsMainBody{min-width:0;box-sizing:border-box}
-body.admin-portal #opsMainBody .table-wrap,
-body.admin-portal #opsMainBody .table-responsive{
-  max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
-}
-body.admin-portal #opsMainBody input,
-body.admin-portal #opsMainBody select,
-body.admin-portal #opsMainBody textarea{max-width:100%}
-@media(max-width:760px){
-  body.admin-portal #opsMainBody .table-wrap,
-  body.admin-portal #opsMainBody .table-responsive{width:100%}
-}
-
-/* FMart Tahap 6 — operasional Petugas Pengantar */
-body.admin-portal .delivery-task-card{background:#fff;min-width:0}
-body.admin-portal .delivery-task-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-body.admin-portal .delivery-task-details{display:grid;gap:8px;margin-top:13px;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
-body.admin-portal .delivery-task-details a{color:#70277d;font-weight:700;text-decoration:none}
-body.admin-portal .delivery-progress-note{padding:10px 12px;border-radius:12px;background:#f8f1fa;color:#62436a}
-body.admin-portal .delivery-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}
-body.admin-portal .delivery-actions button{min-height:43px}
-@media(max-width:560px){body.admin-portal .delivery-task-head{gap:8px}body.admin-portal .delivery-actions{display:grid;grid-template-columns:1fr 1fr}body.admin-portal .delivery-actions button{width:100%;padding:10px 8px;font-size:12px}}
-</style>
 
 
-<style>
-/* Tahap 3 — antarmuka POS Kasir */
-body.admin-portal .cashier-pos-panel{margin:14px 0 20px;padding:18px;border:1px solid #e8d8ed;border-radius:20px;background:linear-gradient(145deg,#fff 0%,#fbf6fd 100%);box-shadow:0 12px 30px #4b15550d}
-body.admin-portal .cashier-pos-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}
-body.admin-portal .cashier-pos-head h2{margin:3px 0 5px;color:#57145f;font-size:22px}
-body.admin-portal .cashier-pos-head p{margin:0;color:#756b85;font-size:13px}
-body.admin-portal .cashier-pos-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.85fr);gap:16px;align-items:start}
-body.admin-portal .cashier-pos-catalog,body.admin-portal .cashier-pos-checkout{min-width:0;padding:14px;border:1px solid #eee5f1;border-radius:16px;background:#fff}
-body.admin-portal .cashier-pos-search{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-body.admin-portal .cashier-pos-search input,body.admin-portal .cashier-pos-buyer>input,body.admin-portal .cashier-pos-payment input,body.admin-portal .cashier-pos-payment select{width:100%;min-width:0;min-height:43px;padding:10px 12px;border:1px solid #e5dce9;border-radius:11px;background:#fff}
-body.admin-portal .cashier-pos-search span{white-space:nowrap;color:#756b85;font-size:12px}
-body.admin-portal .cashier-pos-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-height:570px;overflow:auto;padding:2px}
-body.admin-portal .cashier-pos-product{display:flex;flex-direction:column;gap:9px;min-width:0;padding:12px;border:1px solid #eee5f1;border-radius:14px;background:#fff}
-body.admin-portal .cashier-pos-product-info{display:grid;gap:4px;min-height:62px}
-body.admin-portal .cashier-pos-product-info strong{font-size:13px;line-height:1.4;overflow-wrap:anywhere}
-body.admin-portal .cashier-pos-product-info span,body.admin-portal .cashier-pos-product-info small{color:#756b85;font-size:11px}
-body.admin-portal .cashier-pos-product-foot{display:flex;justify-content:space-between;gap:7px;align-items:center;font-size:12px}
-body.admin-portal .cashier-pos-product-foot>strong{color:#5b145f}
-body.admin-portal .stock-ok{color:#16834c}.stock-empty{color:#b42318}
-body.admin-portal .cashier-pos-product .primary{width:100%;min-height:38px;padding:8px;font-size:12px}
-body.admin-portal .cashier-pos-cart-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
-body.admin-portal .cashier-pos-cart-head h3{margin:0 0 3px;color:#57145f}
-body.admin-portal .cashier-pos-cart-items{display:grid;gap:9px;max-height:280px;overflow:auto;margin:12px 0}
-body.admin-portal .cashier-pos-cart-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;padding:10px 0;border-bottom:1px solid #f0eaf2}
-body.admin-portal .cashier-pos-cart-copy{display:grid;gap:3px;min-width:0}
-body.admin-portal .cashier-pos-cart-copy strong{font-size:12px;overflow-wrap:anywhere}
-body.admin-portal .cashier-pos-cart-copy small{font-size:10px;color:#756b85}
-body.admin-portal .cashier-pos-qty{display:flex;align-items:center;gap:7px}
-body.admin-portal .cashier-pos-qty button{width:28px;height:28px;border:1px solid #e6d9eb;border-radius:8px;background:#f8f1fa;color:#5b145f;font-weight:800}
-body.admin-portal .cashier-pos-cart-row>strong{grid-column:1/-1;text-align:right;font-size:12px}
-body.admin-portal .cashier-pos-empty{padding:18px 8px;text-align:center;color:#8a8092;font-size:12px}
-body.admin-portal .cashier-pos-total{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-top:1px solid #e9e0ed;border-bottom:1px solid #e9e0ed;font-size:13px}
-body.admin-portal .cashier-pos-total strong{font-size:20px;color:#5b145f}
-body.admin-portal .cashier-pos-buyer,body.admin-portal .cashier-pos-payment{display:grid;gap:9px;margin-top:14px}
-body.admin-portal .cashier-pos-buyer h4,body.admin-portal .cashier-pos-payment h4{margin:0;color:#4c3154;font-size:13px}
-body.admin-portal .cashier-pos-buyer h4 small{font-weight:500;color:#8a8092}
-body.admin-portal .cashier-pos-buyer-types{display:flex;flex-wrap:wrap;gap:9px}
-body.admin-portal .cashier-pos-buyer-types label{display:flex;align-items:center;gap:5px;font-size:12px}
-body.admin-portal .cashier-santri-results{display:grid;gap:5px;max-height:150px;overflow:auto}
-body.admin-portal .cashier-santri-results button{display:grid;gap:3px;text-align:left;padding:9px;border:1px solid #eee5f1;border-radius:9px;background:#fff}
-body.admin-portal .cashier-santri-results small{color:#756b85}
-body.admin-portal .cashier-selected-santri{font-size:12px;color:#5b145f}
-body.admin-portal .cashier-selected-santri button,.text-button{border:0;background:none;color:#76277e;font-weight:700}
-body.admin-portal .cashier-change{font-size:12px;color:#756b85}
-body.admin-portal .cashier-change strong{color:#16834c}
-body.admin-portal .cashier-pos-submit{width:100%;min-height:48px;margin-top:5px}
-@media(max-width:900px){body.admin-portal .cashier-pos-layout{grid-template-columns:1fr}body.admin-portal .cashier-pos-products{max-height:430px}}
-@media(max-width:560px){body.admin-portal .cashier-pos-panel{padding:12px;border-radius:16px}body.admin-portal .cashier-pos-head{align-items:flex-start;flex-direction:column}body.admin-portal .cashier-pos-head button{width:100%}body.admin-portal .cashier-pos-products{grid-template-columns:1fr 1fr;gap:8px;max-height:380px}body.admin-portal .cashier-pos-product{padding:9px}body.admin-portal .cashier-pos-product-info{min-height:72px}body.admin-portal .cashier-pos-product-foot{align-items:flex-start;flex-direction:column;gap:3px}body.admin-portal .cashier-pos-catalog,body.admin-portal .cashier-pos-checkout{padding:11px}}
-@media(max-width:360px){body.admin-portal .cashier-pos-products{grid-template-columns:1fr}}
-</style>
 
 
-<style>
-/* Tahap 4 — antrean dan konfirmasi QRIS penjualan toko */
-body.admin-portal .cashier-qris-queue{margin-top:18px;padding:16px;border:1px solid #e7d9ed;border-radius:18px;background:#fff}
-body.admin-portal .cashier-qris-queue-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
-body.admin-portal .cashier-qris-queue-head h3{margin:3px 0 5px;color:#57145f;font-size:18px}
-body.admin-portal .cashier-qris-queue-head p{margin:0;color:#756b85;font-size:12px}
-body.admin-portal .cashier-qris-queue-head button{white-space:nowrap}
-body.admin-portal .cashier-qris-queue-body{display:grid;gap:12px}
-body.admin-portal .cashier-qris-card{padding:14px;border:1px solid #eadfed;border-radius:14px;background:#fcf9fd}
-body.admin-portal .cashier-qris-card.is-expired{border-color:#f0c9c5;background:#fffafa}
-body.admin-portal .cashier-qris-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-body.admin-portal .cashier-qris-card-head>div{display:grid;gap:4px;min-width:0}
-body.admin-portal .cashier-qris-card-head strong{color:#4e1857;font-size:14px}
-body.admin-portal .cashier-qris-card-head small,body.admin-portal .cashier-qris-meta{color:#756b85;font-size:11px}
-body.admin-portal .cashier-qris-state{padding:5px 8px;border-radius:20px;background:#fff0ce;color:#875800;font-size:10px;font-weight:800;white-space:nowrap}
-body.admin-portal .cashier-qris-state.is-expired{background:#fde8e7;color:#a32620}
-body.admin-portal .cashier-qris-summary{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:12px 0;padding:10px 0;border-top:1px solid #eee5f1;border-bottom:1px solid #eee5f1}
-body.admin-portal .cashier-qris-summary strong{font-size:19px;color:#5b145f}
-body.admin-portal .cashier-qris-summary span{font-size:12px;color:#8a5c10;font-weight:700}
-body.admin-portal .cashier-qris-card.is-expired .cashier-qris-summary span{color:#a32620}
-body.admin-portal .cashier-qris-items{display:grid;gap:6px}
-body.admin-portal .cashier-qris-items>div{display:flex;justify-content:space-between;gap:10px;font-size:12px}
-body.admin-portal .cashier-qris-items>div span{overflow-wrap:anywhere}
-body.admin-portal .cashier-qris-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
-body.admin-portal .cashier-qris-confirm-panel{display:grid;gap:8px;margin-top:13px;padding-top:12px;border-top:1px dashed #e5d8e9}
-body.admin-portal .cashier-qris-check{display:flex;align-items:flex-start;gap:8px;color:#4d3b54;font-size:12px;line-height:1.5}
-body.admin-portal .cashier-qris-check input{margin-top:2px;flex:0 0 auto}
-body.admin-portal .cashier-qris-confirm>label:not(.cashier-qris-check){font-size:11px;font-weight:700;color:#62536a}
-body.admin-portal .cashier-qris-reference{width:100%;min-height:40px;padding:9px 11px;border:1px solid #e5dce9;border-radius:9px;background:#fff}
-body.admin-portal .cashier-qris-actions{display:flex;gap:8px;flex-wrap:wrap}
-body.admin-portal .cashier-qris-actions button{min-height:39px}
-body.admin-portal .cashier-qris-warning{color:#a32620;font-size:11px;line-height:1.5}
-body.admin-portal .cashier-qris-empty{display:grid;justify-items:center;gap:7px;padding:26px 12px;text-align:center;color:#756b85}
-body.admin-portal .cashier-qris-empty>span{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#eaf7ef;color:#16834c;font-size:20px}
-body.admin-portal .cashier-qris-empty strong{color:#4c3154;font-size:13px}
-body.admin-portal .cashier-qris-empty small{font-size:11px}
-@media(max-width:560px){body.admin-portal .cashier-qris-queue{padding:12px}body.admin-portal .cashier-qris-queue-head{align-items:flex-start;flex-direction:column}body.admin-portal .cashier-qris-queue-head button{width:100%}body.admin-portal .cashier-qris-card{padding:11px}body.admin-portal .cashier-qris-actions{display:grid;grid-template-columns:1fr}body.admin-portal .cashier-qris-actions button{width:100%}}
-</style>
 
-<style>
-body.admin-portal .cashier-sales-history{margin-top:18px;padding:16px;border:1px solid #e7d9ed;border-radius:18px;background:#fff}
-body.admin-portal .cashier-sales-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
-body.admin-portal .cashier-sales-head h3{margin:3px 0 5px;color:#57145f;font-size:18px}
-body.admin-portal .cashier-sales-head p{margin:0;color:#756b85;font-size:12px}
-body.admin-portal .cashier-sales-filters{display:grid;grid-template-columns:minmax(180px,2fr) minmax(120px,1fr) minmax(120px,1fr) auto;gap:9px;align-items:end;margin-bottom:14px}
-body.admin-portal .cashier-sales-filters label{display:grid;gap:4px;color:#65556e;font-size:11px;font-weight:700}
-body.admin-portal .cashier-sales-filters input{width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid #e4dbe8;border-radius:9px;background:#fff}
-body.admin-portal .cashier-sales-count{margin-bottom:9px;color:#766a80;font-size:11px}
-body.admin-portal .cashier-sale-row{padding:13px 0;border-top:1px solid #eee7f0}
-body.admin-portal .cashier-sale-main{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-body.admin-portal .cashier-sale-main>div:first-child{display:grid;gap:4px;min-width:0}
-body.admin-portal .cashier-sale-main strong{color:#4f1858;font-size:13px}
-body.admin-portal .cashier-sale-main small,body.admin-portal .cashier-sale-meta{font-size:11px;color:#796d82}
-body.admin-portal .cashier-sale-total{display:grid;justify-items:end;gap:4px;white-space:nowrap}
-body.admin-portal .cashier-sale-total>strong{font-size:14px}
-body.admin-portal .cashier-sale-total span{font-size:9px;font-weight:800;border-radius:20px;padding:4px 7px;background:#e7f7ed;color:#187342}
-body.admin-portal .cashier-sale-total span.is-pending{background:#fff1d5;color:#8b5d0b}
-body.admin-portal .cashier-sale-meta{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}
-body.admin-portal .cashier-sale-actions{display:flex;gap:8px;flex-wrap:wrap}
-body.admin-portal .cashier-sale-actions button{min-height:36px;font-size:11px}
-body.admin-portal .cashier-sale-detail-body{margin-top:10px;padding:12px;border-radius:11px;background:#faf7fc}
-body.admin-portal .cashier-sale-detail-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#5a2262;font-size:12px}
-body.admin-portal .cashier-sale-lines{display:grid;gap:8px;margin:10px 0}
-body.admin-portal .cashier-sale-lines>div{display:flex;justify-content:space-between;gap:12px;font-size:11px}
-body.admin-portal .cashier-sale-lines small{display:block;margin-top:3px;color:#796d82}
-body.admin-portal .cashier-sale-detail-total{display:grid;grid-template-columns:1fr auto;gap:5px 12px;padding-top:8px;border-top:1px dashed #ded2e3;font-size:11px}
-body.admin-portal .cashier-sale-detail-foot{margin-top:9px;color:#786c80;font-size:10px}
-body.admin-portal .cashier-sales-empty{padding:22px;text-align:center;color:#796d82;font-size:12px;background:#faf8fb;border-radius:10px}
-@media(max-width:700px){body.admin-portal .cashier-sales-filters{grid-template-columns:1fr 1fr}body.admin-portal .cashier-sales-filters input[type=search]{grid-column:1/-1}body.admin-portal .cashier-sales-filters button{grid-column:1/-1;width:100%}}
-@media(max-width:480px){body.admin-portal .cashier-sales-history{padding:12px}body.admin-portal .cashier-sales-head{align-items:flex-start;flex-direction:column}body.admin-portal .cashier-sales-head button{width:100%}body.admin-portal .cashier-sale-actions button{flex:1}}
-</style>
-<style>
-/* Tahap 10 — responsivitas, aksesibilitas, dan kemudahan kasir */
-body.admin-portal .cashier-pos-layout{align-items:start}
-@media(min-width:901px){body.admin-portal .cashier-pos-checkout{position:sticky;top:14px}}
-body.admin-portal .cashier-pos-add,
-body.admin-portal .cashier-pos-submit,
-body.admin-portal .cashier-qris-actions button,
-body.admin-portal .cashier-sale-actions button{min-height:42px}
-body.admin-portal .cashier-pos-qty button{width:38px;height:38px;min-height:38px;font-size:18px}
-body.admin-portal .cashier-pos-buyer-types label{min-height:40px;padding:7px 10px;border:1px solid #e8ddec;border-radius:10px;background:#fcf9fd}
-body.admin-portal .cashier-pos-buyer-types input{accent-color:#76277e}
-body.admin-portal .cashier-pos-product{transition:border-color .16s ease,box-shadow .16s ease}
-body.admin-portal .cashier-pos-product:focus-within{border-color:#b58bc0;box-shadow:0 0 0 3px #76277e12}
-body.admin-portal .cashier-pos-panel button:focus-visible,
-body.admin-portal .cashier-pos-panel input:focus-visible,
-body.admin-portal .cashier-pos-panel select:focus-visible,
-body.admin-portal .cashier-qris-queue button:focus-visible,
-body.admin-portal .cashier-sales-history button:focus-visible,
-body.admin-portal .cashier-sales-history input:focus-visible{outline:3px solid #b58bc0;outline-offset:2px}
-body.admin-portal .cashier-pos-empty,
-body.admin-portal .cashier-qris-empty,
-body.admin-portal .cashier-sales-empty{line-height:1.55}
-@media(max-width:900px){body.admin-portal .cashier-pos-checkout{position:relative}}
-@media(max-width:560px){
- body.admin-portal .cashier-pos-panel{padding:10px}
- body.admin-portal .cashier-pos-layout{gap:10px}
- body.admin-portal .cashier-pos-catalog,body.admin-portal .cashier-pos-checkout{padding:12px}
- body.admin-portal .cashier-pos-products{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:420px}
- body.admin-portal .cashier-pos-product{min-height:176px;padding:10px}
- body.admin-portal .cashier-pos-product-info{min-height:76px}
- body.admin-portal .cashier-pos-product-foot{align-items:flex-start;flex-direction:column;gap:4px}
- body.admin-portal .cashier-pos-add{min-height:44px}
- body.admin-portal .cashier-pos-cart-items{max-height:320px}
- body.admin-portal .cashier-pos-total strong{font-size:21px}
- body.admin-portal .cashier-pos-submit{min-height:52px;font-size:14px}
- body.admin-portal .cashier-qris-summary{align-items:flex-start;flex-direction:column;gap:5px}
- body.admin-portal .cashier-qris-card-head{flex-direction:column}
- body.admin-portal .cashier-sales-filters{grid-template-columns:1fr 1fr}
- body.admin-portal .cashier-sales-filters input[type=search],body.admin-portal .cashier-sales-filters button{grid-column:1/-1}
- body.admin-portal .cashier-pos-search input,body.admin-portal .cashier-pos-buyer input,body.admin-portal .cashier-pos-payment input,body.admin-portal .cashier-pos-payment select,body.admin-portal .cashier-sales-filters input{font-size:16px}
-}
-@media(max-width:380px){
- body.admin-portal .cashier-pos-products{grid-template-columns:1fr}
- body.admin-portal .cashier-pos-product{min-height:0}
- body.admin-portal .cashier-pos-product-info{min-height:0}
- body.admin-portal .cashier-pos-product-foot{align-items:center;flex-direction:row}
- body.admin-portal .cashier-sale-main{flex-direction:column}
- body.admin-portal .cashier-sale-total{justify-items:start}
-}
-@media(prefers-reduced-motion:reduce){body.admin-portal .cashier-pos-product{transition:none}#toast{transition:none}}
-</style>
 
-<style>
-/* FMart — penyempurnaan pop-up detail produk Wali */
-body.buyer-portal #productModal{
-  padding:24px;
-  place-items:center;
-  background:rgba(29,16,39,.62);
-  backdrop-filter:blur(7px);
-}
-body.buyer-portal #productModal .modal-card{
-  width:min(960px,100%);
-  max-width:960px;
-  max-height:min(90dvh,860px);
-  overflow:auto;
-  padding:24px;
-  border:1px solid #eee4f3;
-  border-radius:26px;
-  background:#fff;
-  box-shadow:0 28px 90px rgba(28,12,40,.28);
-  scrollbar-width:thin;
-  scrollbar-color:#d9c7e2 transparent;
-}
-body.buyer-portal #productModal .modal-head{
-  position:sticky;
-  top:-24px;
-  z-index:3;
-  align-items:center;
-  margin:-2px 0 22px;
-  padding:2px 0 15px;
-  border-bottom:1px solid #f0e8f3;
-  background:#fff;
-}
-body.buyer-portal #productModal .modal-head h2{
-  color:#351b40;
-  font-size:21px;
-  letter-spacing:-.025em;
-}
-body.buyer-portal #productModal .modal-head .eyebrow{
-  color:#8a4b98;
-  letter-spacing:.13em;
-}
-body.buyer-portal #productModal .icon-btn{
-  flex:0 0 42px;
-  width:42px;
-  height:42px;
-  border-radius:14px;
-  background:#faf7fc;
-  color:#5b145f;
-  font-size:25px;
-}
-body.buyer-portal #productModal .buyer-detail-layout{
-  display:grid;
-  grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);
-  gap:30px;
-  align-items:start;
-}
-body.buyer-portal #productModal .buyer-detail-visual,
-body.buyer-portal #productModal .buyer-detail-info{min-width:0}
-body.buyer-portal #productModal .buyer-detail-photo{
-  height:clamp(300px,38vw,430px);
-  min-height:300px;
-  margin:0;
-  border:1px solid #eee5f4;
-  border-radius:22px;
-  background:linear-gradient(145deg,#fcfaff 0%,#f2eaf8 100%);
-  box-shadow:inset 0 1px 0 #fff;
-}
-body.buyer-portal #productModal .buyer-detail-photo img{
-  width:100%;
-  height:100%;
-  padding:20px;
-  object-fit:contain;
-}
-body.buyer-portal #productModal .detail-photo-placeholder{
-  display:grid;
-  justify-items:center;
-  gap:10px;
-  color:#9b8aa5;
-  font-size:14px;
-}
-body.buyer-portal #productModal .detail-photo-placeholder span{font-size:48px}
-body.buyer-portal #productModal .buyer-photo-caption{
-  margin-top:10px;
-  color:#94879b;
-  font-size:11px;
-}
-body.buyer-portal #productModal .buyer-detail-category{
-  padding:6px 11px;
-  border:1px solid #eadcf0;
-  background:#faf4fc;
-  color:#70277e;
-  font-size:10px;
-  letter-spacing:.04em;
-}
-body.buyer-portal #productModal .buyer-detail-name{
-  margin:12px 0 0;
-  color:#2d1d35;
-  font-size:clamp(22px,2.4vw,29px);
-  line-height:1.28;
-  letter-spacing:-.035em;
-  overflow-wrap:anywhere;
-}
-body.buyer-portal #productModal .buyer-detail-price{
-  margin:13px 0 16px;
-  color:#701c7b;
-  font-size:28px;
-  line-height:1.2;
-  letter-spacing:-.035em;
-}
-body.buyer-portal #productModal .buyer-detail-stock{display:none!important}
-body.buyer-portal #productModal .buyer-detail-description{
-  margin:0;
-  padding:14px 15px;
-  border:1px solid #eee7f2;
-  border-radius:15px;
-  background:#fcfafd;
-}
-body.buyer-portal #productModal .buyer-detail-description strong{
-  color:#4c3655;
-  font-size:12px;
-}
-body.buyer-portal #productModal .buyer-detail-description p{
-  margin:6px 0 0;
-  color:#756b7e;
-  font-size:13px;
-  line-height:1.65;
-  overflow-wrap:anywhere;
-}
-body.buyer-portal #productModal .buyer-variation-section{margin-top:18px}
-body.buyer-portal #productModal .buyer-variation-heading{margin-bottom:10px}
-body.buyer-portal #productModal .buyer-variation-heading strong{
-  color:#3e2948;
-  font-size:13px;
-}
-body.buyer-portal #productModal .buyer-variation-heading span{
-  padding:4px 8px;
-  border-radius:20px;
-  background:#f7f0fa;
-  color:#81558b;
-  font-size:10px;
-  font-weight:700;
-}
-body.buyer-portal #productModal .buyer-variation-list{
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:9px;
-}
-body.buyer-portal #productModal .buyer-variation-option{
-  min-height:54px;
-  padding:11px 12px;
-  border:1px solid #e8deec;
-  border-radius:13px;
-  box-shadow:0 2px 7px rgba(50,25,60,.025);
-  transition:border-color .16s ease,background .16s ease,box-shadow .16s ease;
-}
-body.buyer-portal #productModal .buyer-variation-option:hover{
-  border-color:#c9a9d1;
-  background:#fdf9ff;
-}
-body.buyer-portal #productModal .buyer-variation-option.selected{
-  padding:10px 11px;
-  border:2px solid #81258b;
-  background:#fbf5fd;
-  box-shadow:0 0 0 3px rgba(128,0,128,.08);
-}
-body.buyer-portal #productModal .buyer-variation-main strong{
-  color:#403047;
-  font-size:12px;
-  line-height:1.4;
-}
-body.buyer-portal #productModal .buyer-variation-price{
-  color:#76277e;
-  font-size:10px;
-}
-body.buyer-portal #productModal .buyer-quantity-panel{
-  margin-top:18px;
-  padding:13px 14px;
-  border:1px solid #eee5f1;
-  border-radius:15px;
-  background:#faf7fc;
-}
-body.buyer-portal #productModal .buyer-quantity-panel strong{
-  color:#45304d;
-  font-size:13px;
-}
-body.buyer-portal #productModal .buyer-quantity-panel small{
-  color:#85778d;
-  font-size:10px;
-  line-height:1.4;
-}
-body.buyer-portal #productModal .buyer-qty-control{
-  flex:0 0 auto;
-  border-color:#e5d9ea;
-  border-radius:12px;
-}
-body.buyer-portal #productModal .buyer-qty-control button{
-  width:40px;
-  height:40px;
-  background:#f5edf8;
-  color:#641d70;
-  font-size:19px;
-}
-body.buyer-portal #productModal .buyer-qty-control input{
-  width:48px;
-  height:40px;
-  color:#382342;
-  font-size:14px;
-}
-body.buyer-portal #productModal .buyer-detail-actions{
-  position:sticky;
-  bottom:-24px;
-  z-index:2;
-  margin:14px -2px -2px;
-  padding:13px 2px 2px;
-  background:linear-gradient(180deg,rgba(255,255,255,.88),#fff 24%);
-  gap:10px;
-}
-body.buyer-portal #productModal .buyer-detail-actions button{
-  min-height:48px;
-  border-radius:13px;
-  font-size:13px;
-}
-body.buyer-portal #productModal .buyer-detail-actions .secondary{
-  border-color:#d9c5e1;
-  background:#fff;
-}
-body.buyer-portal #productModal .buyer-detail-actions .primary{
-  box-shadow:0 8px 18px rgba(128,0,128,.18);
-}
-body.buyer-portal #productModal button:focus-visible,
-body.buyer-portal #productModal input:focus-visible{
-  outline:3px solid #c8a4d2;
-  outline-offset:2px;
-}
-@media(max-width:760px){
-  body.buyer-portal #productModal{
-    padding:8px 8px max(8px,env(safe-area-inset-bottom));
-    align-items:end;
-  }
-  body.buyer-portal #productModal .modal-card{
-    width:100%;
-    max-width:620px;
-    max-height:calc(94dvh - env(safe-area-inset-bottom));
-    padding:17px 15px calc(15px + env(safe-area-inset-bottom));
-    border-radius:23px 23px 17px 17px;
-  }
-  body.buyer-portal #productModal .modal-head{
-    top:-17px;
-    margin:-1px 0 16px;
-    padding:1px 0 12px;
-  }
-  body.buyer-portal #productModal .modal-head h2{font-size:19px}
-  body.buyer-portal #productModal .buyer-detail-layout{
-    grid-template-columns:minmax(0,1fr);
-    gap:17px;
-  }
-  body.buyer-portal #productModal .buyer-detail-photo{
-    height:clamp(190px,54vw,270px);
-    min-height:190px;
-    border-radius:18px;
-  }
-  body.buyer-portal #productModal .buyer-detail-photo img{padding:14px}
-  body.buyer-portal #productModal .buyer-photo-caption{margin-top:6px}
-  body.buyer-portal #productModal .buyer-detail-name{font-size:21px}
-  body.buyer-portal #productModal .buyer-detail-price{font-size:24px;margin:10px 0 13px}
-  body.buyer-portal #productModal .buyer-detail-description{padding:12px 13px}
-  body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:repeat(2,minmax(0,1fr))}
-  body.buyer-portal #productModal .buyer-detail-actions{
-    bottom:calc(-15px - env(safe-area-inset-bottom));
-    margin:12px -15px calc(-15px - env(safe-area-inset-bottom));
-    padding:12px 15px calc(15px + env(safe-area-inset-bottom));
-    background:rgba(255,255,255,.97);
-    border-top:1px solid #f0e8f3;
-  }
-  body.buyer-portal #productModal .buyer-detail-actions button{min-height:47px}
-}
-@media(max-width:390px){
-  body.buyer-portal #productModal .modal-card{padding-left:13px;padding-right:13px}
-  body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:1fr}
-  body.buyer-portal #productModal .buyer-quantity-panel{align-items:flex-start}
-  body.buyer-portal #productModal .buyer-detail-actions{grid-template-columns:1fr}
-  body.buyer-portal #productModal .buyer-detail-actions button{width:100%}
-}
-@media(prefers-reduced-motion:reduce){
-  body.buyer-portal #productModal .buyer-variation-option{transition:none}
-}
-</style>
 
-<style>
-/* Responsive refinement: desktop, tablet, and mobile */
-body.buyer-portal #productModal{box-sizing:border-box;width:100%;min-width:0;padding:clamp(14px,2.5vw,30px);place-items:center;overflow-y:auto;overscroll-behavior:contain}
-body.buyer-portal #productModal,body.buyer-portal #productModal *{box-sizing:border-box}
-body.buyer-portal #productModal .modal-card{width:min(1040px,calc(100vw - 48px));max-width:1040px;max-height:min(90vh,90dvh,900px);margin:auto;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
-body.buyer-portal #productModal .buyer-detail-layout{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:clamp(18px,2.6vw,32px)}
-body.buyer-portal #productModal .buyer-detail-photo{width:100%;height:auto;min-height:0;aspect-ratio:.95/1;max-height:520px}
-body.buyer-portal #productModal .buyer-detail-photo img{object-fit:contain}
-body.buyer-portal #productModal .buyer-detail-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
-body.buyer-portal #productModal .buyer-detail-actions button{min-width:0;white-space:normal;line-height:1.25}
 
-/* Tablet: single-column content avoids cramped two-column layout */
-@media(min-width:601px) and (max-width:1024px){
- body.buyer-portal #productModal{padding:clamp(18px,3vw,30px);place-items:center}
- body.buyer-portal #productModal .modal-card{width:min(820px,calc(100vw - 48px));max-width:820px;max-height:88vh;max-height:88dvh;padding:clamp(20px,3vw,28px);border-radius:24px}
- body.buyer-portal #productModal .modal-head{top:calc(-1 * clamp(20px,3vw,28px));margin:0 0 18px;padding:2px 0 14px}
- body.buyer-portal #productModal .buyer-detail-layout{grid-template-columns:minmax(0,1fr);gap:18px}
- body.buyer-portal #productModal .buyer-detail-visual{width:min(100%,560px);margin-inline:auto}
- body.buyer-portal #productModal .buyer-detail-photo{aspect-ratio:16/9;height:auto;max-height:340px;min-height:0}
- body.buyer-portal #productModal .buyer-photo-caption{text-align:center}
- body.buyer-portal #productModal .buyer-detail-info{width:100%}
- body.buyer-portal #productModal .buyer-detail-name{font-size:25px}
- body.buyer-portal #productModal .buyer-detail-price{font-size:27px}
- body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:repeat(2,minmax(0,1fr))}
- body.buyer-portal #productModal .buyer-detail-actions{position:sticky;bottom:-28px;margin:16px -2px -2px;padding:14px 2px 2px;background:linear-gradient(180deg,rgba(255,255,255,.9),#fff 25%)}
-}
 
-/* Mobile: bottom sheet with one scroll area and reachable action buttons */
-@media(max-width:600px){
- body.buyer-portal #productModal{display:grid;align-items:end;justify-items:center;padding:0;padding-top:max(8px,env(safe-area-inset-top));padding-bottom:0}
- body.buyer-portal #productModal .modal-card{width:100%;max-width:620px;max-height:calc(94vh - env(safe-area-inset-top));max-height:calc(94dvh - env(safe-area-inset-top));margin:0 auto;padding:16px 15px calc(12px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0;overflow-x:hidden;overflow-y:auto}
- body.buyer-portal #productModal .modal-head{top:-16px;margin:0 0 14px;padding:0 0 12px}
- body.buyer-portal #productModal .modal-head h2{font-size:18px}
- body.buyer-portal #productModal .icon-btn{width:40px;height:40px;flex-basis:40px}
- body.buyer-portal #productModal .buyer-detail-layout{grid-template-columns:minmax(0,1fr);gap:14px}
- body.buyer-portal #productModal .buyer-detail-visual{width:100%}
- body.buyer-portal #productModal .buyer-detail-photo{width:100%;aspect-ratio:16/10;height:auto;min-height:0;max-height:260px;border-radius:17px}
- body.buyer-portal #productModal .buyer-detail-photo img{padding:12px}
- body.buyer-portal #productModal .buyer-photo-caption{margin-top:5px;text-align:center}
- body.buyer-portal #productModal .buyer-detail-name{margin-top:8px;font-size:20px;line-height:1.3}
- body.buyer-portal #productModal .buyer-detail-price{margin:9px 0 12px;font-size:23px}
- body.buyer-portal #productModal .buyer-detail-description{padding:11px 12px;border-radius:13px}
- body.buyer-portal #productModal .buyer-detail-description p{font-size:12px}
- body.buyer-portal #productModal .buyer-variation-section{margin-top:14px}
- body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
- body.buyer-portal #productModal .buyer-variation-option{min-width:0;min-height:50px;padding:10px}
- body.buyer-portal #productModal .buyer-variation-price{white-space:normal;text-align:right}
- body.buyer-portal #productModal .buyer-quantity-panel{margin-top:14px;padding:11px 12px}
- body.buyer-portal #productModal .buyer-qty-control button{width:38px;height:38px}
- body.buyer-portal #productModal .buyer-qty-control input{width:42px;height:38px}
- body.buyer-portal #productModal .buyer-detail-actions{position:sticky;bottom:calc(-12px - env(safe-area-inset-bottom));grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:13px -15px calc(-12px - env(safe-area-inset-bottom));padding:11px 15px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #eee5f2;background:rgba(255,255,255,.97);backdrop-filter:blur(10px)}
- body.buyer-portal #productModal .buyer-detail-actions button{min-height:46px;padding:10px 8px;font-size:12px}
-}
-@media(max-width:380px){
- body.buyer-portal #productModal .modal-card{padding-inline:12px}
- body.buyer-portal #productModal .buyer-detail-photo{max-height:220px}
- body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:1fr}
- body.buyer-portal #productModal .buyer-quantity-panel{align-items:center;gap:8px}
- body.buyer-portal #productModal .buyer-quantity-panel small{max-width:170px}
- body.buyer-portal #productModal .buyer-detail-actions{grid-template-columns:1fr;margin-inline:-12px;padding-inline:12px}
-}
-@media(max-height:560px) and (min-width:601px){
- body.buyer-portal #productModal .modal-card{max-height:94vh;max-height:94dvh}
- body.buyer-portal #productModal .buyer-detail-photo{aspect-ratio:16/9;max-height:230px}
-}
-</style>
+
+
+
+
+
+
