@@ -867,12 +867,21 @@ function checkoutCart(token, santriId, selectedCartIds, catatan, metodePengirima
 function getMyNotifications(token) {
   const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.PETUGAS_PENGANTAR]);
   const rows=readRows_(getSS_().getSheetByName('Notifikasi')).filter(function(r){return String(r[1]||'')===String(session.userId);}).sort(function(a,b){return new Date(b[7]||0).getTime()-new Date(a[7]||0).getTime();});
+  const waitingStockOrderIds={};
+  if(session.role===FMART.ROLES.WALI_SANTRI){
+    readRows_(getSS_().getSheetByName('Pesanan')).forEach(function(order){
+      if(String(order[2]||'')===String(session.userId) && String(order[8]||'').toUpperCase()==='MENUNGGU_STOK') waitingStockOrderIds[String(order[0])]=true;
+    });
+  }
   const notifications=rows.slice(0,100).map(function(r){
+    const orderId=String(r[2]||'');
     let title=String(r[3]||''),message=String(r[4]||'');
-    if(session.role===FMART.ROLES.WALI_SANTRI && /stok|restok|persediaan|barang tersedia/i.test(title+' '+message)){
-      title='Pesanan sedang diproses'; message='Pesanan Anda sedang diproses. Informasi perkembangan berikutnya akan kami sampaikan melalui aplikasi.';
+    const stockRelated=/stok|restok|persediaan|barang tersedia|ketersediaan|belum terpenuhi|belum lengkap|kekurangan|antrean gudang/i.test(title+' '+message);
+    if(session.role===FMART.ROLES.WALI_SANTRI && (waitingStockOrderIds[orderId]||stockRelated)){
+      title='Pesanan sedang diproses';
+      message='Pesanan Anda sedang diproses. Informasi perkembangan berikutnya akan kami sampaikan melalui aplikasi.';
     }
-    return{id:String(r[0]||''),orderId:String(r[2]||''),title:title,message:message,type:String(r[5]||''),isRead:r[6]===true||String(r[6]).toUpperCase()==='TRUE',createdAt:dateIso_(r[7])};
+    return{id:String(r[0]||''),orderId:orderId,title:title,message:message,type:String(r[5]||''),isRead:r[6]===true||String(r[6]).toUpperCase()==='TRUE',createdAt:dateIso_(r[7])};
   });
   return {ok:true,notifications:notifications,unreadCount:notifications.filter(function(n){return !n.isRead;}).length};
 }
