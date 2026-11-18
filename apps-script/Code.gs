@@ -2008,7 +2008,7 @@ function updateWaliSantri(token,waliId,nama,noHp,email,alamat){
     if(waliRows.some(function(r){return String(r[0]||'')!==waliId && phoneEquals_(r[3],noHp);})){throw new Error('No. HP sudah digunakan oleh Wali Santri lain.');}
     const userRow=findRowById_(us,userId,1); if(!userRow) throw new Error('Akun pengguna Wali Santri tidak ditemukan.');
     const allUsers=readRows_(us);
-    if(allUsers.some(function(u){return String(u[0]||'')!==userId&&String(u[1]||'').trim()===noHp;}))throw new Error('Nomor HP sudah digunakan sebagai username akun lain.');
+    if(allUsers.some(function(u){const other=String(u[1]||'').trim();return String(u[0]||'')!==userId&&(other===noHp||normalizePhone_(other)===noHp);}))throw new Error('Nomor HP sudah digunakan sebagai username akun lain.');
     const now=new Date();
     ws.getRange(row.rowNumber,3,1,7).setValues([[nama,noHp,email,alamat,String(row.values[6]||'AKTIF'),row.values[7]||now,now]]);
     ws.getRange(row.rowNumber,4).setNumberFormat('@');
