@@ -14,9 +14,9 @@ function extractFunction(source, name) {
   const start = source.indexOf(marker);
   assert.notEqual(start, -1, 'Function not found: ' + name);
   if (name === 'getPaymentProofData') {
-    return source.slice(start, source.indexOf('\\n', start));
+    return source.slice(start, source.indexOf('\n', start));
   }
-  const end = source.indexOf('\\n}', start);
+  const end = source.indexOf('\n}', start);
   assert.notEqual(end, -1, 'Function end not found: ' + name);
   return source.slice(start, end + 2);
 }
@@ -40,7 +40,7 @@ function makeUtilitiesMock() {
     },
     base64EncodeWebSafe(bytes) {
       return Buffer.from(bytes.map(byte => byte & 255)).toString('base64')
-        .replace(/\\+/g, '-').replace(/\\//g, '_');
+        .replace(/\+/g, '-').replace(/\//g, '_');
     }
   };
 }
@@ -56,7 +56,7 @@ test('Service worker only removes FMart-owned caches', () => {
 test('QRIS approval validator accepts only matching order, owner, method and exact amount', () => {
   const fn = extractFunction(code, 'validateQrisPaymentForApproval_');
   const sandbox = {};
-  vm.runInNewContext(fn + '\\nthis.validate = validateQrisPaymentForApproval_;', sandbox);
+  vm.runInNewContext(fn + '\nthis.validate = validateQrisPaymentForApproval_;', sandbox);
   const payment = ['PAY-1', 'ORD-1', 'QRIS', 125000, 'https://proof', 'MENUNGGU_VERIFIKASI', '', '', new Date(), new Date(), 'APLIKASI', 'WALI-1', ''];
   const order = ['ORD-1', 'FM-0001', 'WALI-1', 'SANTRI-1', 100000, 25000, 0, 125000, 'MENUNGGU_PEMBAYARAN'];
   assert.equal(sandbox.validate(payment, order), true);
@@ -95,7 +95,7 @@ test('Staff login cannot create a session before email OTP succeeds', () => {
 test('PBKDF2 implementation matches the RFC 8018 SHA-256 test vector', () => {
   const fn = extractFunction(code, 'pbkdf2HmacSha256_');
   const sandbox = { Utilities: makeUtilitiesMock() };
-  vm.runInNewContext(fn + '\\nthis.derive = pbkdf2HmacSha256_;', sandbox);
+  vm.runInNewContext(fn + '\nthis.derive = pbkdf2HmacSha256_;', sandbox);
   assert.equal(
     sandbox.derive('password', 'salt', 1),
     'Eg-2z_z4syxD5yJSVsT4N6hlSMkszDVICAWYfLcL4Xs='
