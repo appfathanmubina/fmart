@@ -782,3 +782,50 @@ Tahap ini menyamakan aturan pembacaan stok lintas katalog Wali, POS Kasir, dashb
 5. Lakukan UAT dengan akun Gudang, Kasir, Admin, dan Wali pada Spreadsheet uji: penerimaan barang, mutasi MASUK/KELUAR, penjualan tunai, QRIS, reservasi Wali, katalog, dan pencarian santri.
 
 **Status:** perubahan repository dan pemeriksaan statis; menunggu eksekusi audit serta UAT pada runtime Apps Script/Spreadsheet. Tidak ada data operasional yang diubah oleh audit Tahap 8.
+
+
+## Tahap 9 — Hak Akses Kasir, Admin, dan Superadmin
+
+Tahap ini mempertegas pembatasan menu dan otorisasi server. Pemeriksaan role di antarmuka hanya membantu navigasi; setiap endpoint sensitif tetap memvalidasi sesi dan role pada server.
+
+### Matriks akses operasional
+
+| Fitur | Kasir | Admin | Superadmin |
+|---|---|---|---|
+| Dashboard | Ringkasan POS milik sendiri | Ringkasan operasional | Ringkasan operasional |
+| POS penjualan | Ya | Ya | Ya |
+| Riwayat penjualan | Transaksi sendiri | Semua kasir | Semua kasir |
+| Antrean QRIS | Transaksi sendiri | Semua kasir | Semua kasir |
+| Konfirmasi QRIS | Transaksi sendiri | Semua kasir | Semua kasir |
+| Pembatalan QRIS | Transaksi sendiri | Semua kasir | Semua kasir |
+| Pesanan Wali & detail | Tidak | Ya | Ya |
+| Verifikasi pembayaran pesanan Wali | Tidak | Ya | Ya |
+| Bukti pembayaran Wali | Tidak | Ya | Ya |
+| Katalog produk/kategori | Tidak | Kelola | Kelola |
+| Stok/penerimaan/gudang | Tidak | Ya | Ya |
+| Laporan dan audit log | Tidak | Ya | Ya |
+| Lihat daftar akun staf | Tidak | Lihat saja | Kelola |
+| Buat/ubah/nonaktifkan/reset akun staf | Tidak | Tidak | Ya |
+| Pengaturan QRIS | Tidak | Tidak | Ya |
+| Pengaturan integrasi Tabungan | Tidak | Ya | Ya |
+
+### Perubahan pengamanan
+- Menu Kasir disederhanakan: tidak lagi menampilkan menu Pesanan yang sebelumnya membuka panel POS yang sama. Kasir memakai menu Dashboard dan Kasir POS.
+- Dashboard Kasir hanya mengembalikan metrik POS akun tersebut: antrean QRIS miliknya, jumlah transaksi hari ini, dan transaksi lunas hari ini. Data pesanan Wali, daftar pembayaran, daftar produk, dan kategori tidak dikirim melalui respons dashboard Kasir.
+- Riwayat penjualan dan daftar QRIS Kasir dibatasi pada transaksi yang dibuat oleh akun Kasir tersebut.
+- Kasir hanya dapat mengonfirmasi atau membatalkan transaksi QRIS miliknya. Admin dan Superadmin tetap dapat menangani antrean lintas kasir.
+- Kasir tidak lagi dapat membuka detail pesanan Wali, mengambil file bukti pembayaran Wali, atau memverifikasi pembayaran pesanan Wali melalui pemanggilan endpoint langsung.
+- Admin tetap dapat melihat daftar akun staf, tetapi tindakan pembuatan akun, perubahan role/nama, penonaktifan, dan reset password tetap khusus Superadmin.
+- Pengaturan QRIS tetap khusus Superadmin. Pengaturan integrasi Tabungan tetap dapat diakses Admin dan Superadmin.
+- Menu dan endpoint lain yang memang diperlukan oleh Admin/Superadmin dipertahankan.
+
+### Uji akses yang harus dilakukan pada runtime
+1. Login sebagai Kasir: hanya Dashboard dan Kasir POS terlihat; riwayat/antrean QRIS hanya berisi transaksi akun tersebut.
+2. Kasir mencoba membuka detail pesanan Wali, bukti pembayaran, dan endpoint verifikasi pembayaran: server harus menolak.
+3. Kasir mencoba mengonfirmasi atau membatalkan QRIS milik Kasir lain: server harus menolak.
+4. Kasir dapat menyelesaikan penjualan tunai dan QRIS miliknya sesuai alur POS.
+5. Login sebagai Admin: dapat melihat operasional, mengelola katalog/stok, memeriksa pembayaran Wali, laporan, dan daftar akun staf; tidak dapat mengubah akun staf atau pengaturan QRIS.
+6. Login sebagai Superadmin: dapat melakukan seluruh tindakan Admin serta pengelolaan akun staf dan pengaturan QRIS.
+7. Pastikan menu tersembunyi tidak menjadi satu-satunya perlindungan: ulangi pengujian dengan pemanggilan endpoint langsung dan pastikan penolakan berasal dari server.
+
+**Status:** perubahan repository dan pemeriksaan statis; uji role langsung di Apps Script/Spreadsheet masih menunggu UAT. Matriks ini mendokumentasikan izin yang diterapkan, bukan bukti bahwa seluruh akun produksi sudah diuji.
