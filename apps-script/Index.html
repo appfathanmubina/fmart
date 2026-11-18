@@ -1408,7 +1408,7 @@ body.buyer-portal #profileModal .modal-card{
     const FMART_PORTAL_MODE = '<?= portalMode ?>';
     document.body.classList.toggle('admin-portal', FMART_PORTAL_MODE === 'ADMINFMART16720');
     document.body.classList.toggle('buyer-portal', FMART_PORTAL_MODE !== 'ADMINFMART16720');
-    const state={token:sessionStorage.getItem('fmartToken')||'',data:null,profile:null,waliDashboard:null,selectedChildId:sessionStorage.getItem('fmartSelectedChildId')||'',cart:null,currentProduct:null,currentVariationId:'',currentProductQty:1,currentOrderId:'',currentPaymentOrderId:'',catalogSort:'featured',cashierPOS:{products:[],cart:[],qrisQueue:[],qrisQueueError:'',buyerType:'UMUM',buyerName:'',santriId:'',santriLabel:'',students:[],paymentMethod:'TUNAI',amountReceived:'',note:'',requestKey:'',loading:false,search:''}};
+    const state={token:sessionStorage.getItem('fmartToken')||'',data:null,profile:null,waliDashboard:null,selectedChildId:sessionStorage.getItem('fmartSelectedChildId')||'',cart:null,currentProduct:null,currentVariationId:'',currentProductQty:1,currentOrderId:'',currentPaymentOrderId:'',catalogSort:'featured',cashierPOS:{products:[],cart:[],qrisQueue:[],qrisQueueError:'',qrisQueueLoaded:false,buyerType:'UMUM',buyerName:'',santriId:'',santriLabel:'',students:[],paymentMethod:'TUNAI',amountReceived:'',note:'',requestKey:'',loading:false,search:''}};
     const $=id=>document.getElementById(id);
     document.title = FMART_PORTAL_MODE === 'ADMINFMART16720' ? 'FMart Admin' : 'FMart';
     if(FMART_PORTAL_MODE==='ADMINFMART16720'){ document.querySelector('.login-brand .brand-name').textContent='FMart Admin'; $('loginIntro').textContent='Masuk ke portal petugas FMart menggunakan email dan password.'; $('usernameLabel').textContent='Email Staf'; $('username').type='email'; $('username').inputMode='email'; $('username').placeholder='nama@fathanmubina.com'; $('usernameHint').textContent='Gunakan alamat email akun staf FMart.'; $('registerBtn').classList.add('hidden'); }
@@ -2366,26 +2366,22 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         pos.products=Array.isArray(r.products)?r.products:[];
         pos.recentSales=Array.isArray(r.recentSales)?r.recentSales:[];
         pos.serverTime=r.serverTime||'';
-        try{
-          const qr=await runServer('getCashierQrisQueue',state.token);
-          pos.qrisQueue=qr&&qr.ok&&Array.isArray(qr.queue)?qr.queue:[];
-          pos.qrisQueueError='';
-        }catch(qe){pos.qrisQueueError=qe.message||'Antrean QRIS belum dapat dimuat.'}
+        if(!pos.qrisQueueLoaded)await loadCashierQrisQueue_(false);
         renderCashierPOSPanel_();
         if(keepSearchFocus){const input=$('cashierPOSSearch');if(input){input.focus();const cursor=Math.min(Number(searchCursor)||input.value.length,input.value.length);input.setSelectionRange(cursor,cursor)}}
       }catch(e){if(panel)panel.innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Katalog POS gagal dimuat.')+'<button type="button" class="secondary" id="cashierPOSRetry" style="margin-top:10px">Coba lagi</button></div>';const retry=$('cashierPOSRetry');if(retry)retry.onclick=()=>loadCashierPOSData_(pos.search)}
       finally{pos.loading=false}
     }
 
-    async function loadCashierQrisQueue_(){
+    async function loadCashierQrisQueue_(render){
       const pos=state.cashierPOS;
       try{
         const r=await runServer('getCashierQrisQueue',state.token);
         if(!r||!r.ok)throw new Error('Antrean QRIS belum dapat dimuat.');
         pos.qrisQueue=Array.isArray(r.queue)?r.queue:[];
-        pos.qrisQueueError='';
-      }catch(e){pos.qrisQueueError=e.message||'Antrean QRIS belum dapat dimuat.'}
-      renderCashierQrisQueue_();
+        pos.qrisQueueError='';pos.qrisQueueLoaded=true;
+      }catch(e){pos.qrisQueueError=e.message||'Antrean QRIS belum dapat dimuat.';pos.qrisQueueLoaded=false}
+      if(render!==false)renderCashierQrisQueue_();
     }
     function cashierQrisRemaining_(item){
       if(item.expired||!item.expiresAt)return 'Reservasi kedaluwarsa';
@@ -2509,6 +2505,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         pos.cart=[];pos.requestKey='';pos.amountReceived='';pos.note='';pos.buyerType='UMUM';pos.buyerName='';pos.santriId='';pos.santriLabel='';pos.students=[];
         renderCashierPOSPanel_();
         showToast(selectedMethod==='QRIS'?'Transaksi '+r.number+' dibuat. Menunggu konfirmasi dana QRIS.':'Transaksi '+r.number+' berhasil. Kembalian Rp '+formatMoney(r.change||0), 'success');
+        if(selectedMethod==='QRIS')await loadCashierQrisQueue_();
         await loadCashierPOSData_(pos.search);
       }catch(e){showToast(e.message||'Transaksi gagal. Kunci transaksi dipertahankan untuk mencegah transaksi ganda saat mencoba ulang.','error')}
       finally{loading(false);const current=$('cashierPOSSubmit');if(current)current.disabled=!pos.cart.length}
