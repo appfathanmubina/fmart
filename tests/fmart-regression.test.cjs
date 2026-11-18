@@ -112,6 +112,13 @@ test('PBKDF2 activation is runtime-gated and preserves legacy hash compatibility
   assert.ok(readme.includes('activatePbkdf2PasswordHashing_()'));
 });
 
+
+test('Kasir queue is limited to QRIS Wali payments and legacy methods cannot be approved', () => {
+  assert.ok(code.includes("pendingRows.filter(function(p){return String(p[2]||'').toUpperCase()==='QRIS';}).slice(0,queueLimit).map(mapPendingPayment)"));
+  assert.ok(index.includes('Metode legacy tidak dapat disetujui'));
+  assert.ok(code.includes("if(session.role===FMART.ROLES.KASIR && paymentMethod!=='QRIS')"));
+});
+
 test('Wali payment submission remains QRIS-only', () => {
   const submit = extractFunction(code, 'submitPayment');
   assert.ok(submit.includes("method !== 'QRIS'"));
