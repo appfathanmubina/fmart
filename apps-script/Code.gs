@@ -623,7 +623,7 @@ function getProductDetail(token, productId) {
 }
 
 function getCatalog(token) {
-  const session = requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
+  const session = requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
   const ss = getSS_();
   const categorySheet = ss.getSheetByName('Kategori');
   const productSheet = ss.getSheetByName('Produk');
