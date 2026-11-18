@@ -472,3 +472,23 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 - Tampilan mobile mendapat penyesuaian padding dan gap; tabel tetap menggunakan area horizontal-scroll yang sudah tersedia.
 - Perubahan hanya pada CSS presentasi di `apps-script/Index.html`; tidak mengubah endpoint, aturan role, checkout, QRIS, stok, maupun alur transaksi.
 - Pemeriksaan statis: keseimbangan kurung CSS dan keberadaan aturan responsive diperiksa. Belum dilakukan screenshot/browser test atau pengujian runtime Apps Script; hasil visual final perlu dikonfirmasi setelah sinkronisasi/deployment.
+
+
+## Finalisasi Alur Pesanan — Tahap B
+
+### Metode Ambil di FMart (AMBIL_FMART)
+- Setelah pembayaran diverifikasi, pesanan mengikuti tahapan Gudang: DIBAYAR → DIPROSES → DISIAPKAN → SIAP_DIAMBIL.
+- Pada status SIAP_DIAMBIL, status Pengiriman juga SIAP_DIAMBIL dan Wali menerima notifikasi bahwa barang siap diambil.
+- Setelah barang diserahkan secara langsung, Wali mengonfirmasi penerimaan dari detail pesanan. Server memvalidasi kepemilikan pesanan dan kedua status SIAP_DIAMBIL, lalu menyinkronkan Pesanan dan Pengiriman menjadi DITERIMA.
+- Metode ambil langsung tidak membuat penugasan Petugas Pengantar, tidak memerlukan foto bukti pengantaran, dan tidak menggunakan auto-konfirmasi 7 hari.
+
+### Metode Antar ke Pesantren (ANTAR_PESANTREN)
+- Setelah disiapkan Gudang, pesanan masuk Distribusi untuk ditugaskan kepada Petugas Pengantar.
+- Petugas menerima tugas dan memulai perjalanan; pada saat itu status Pesanan dan Pengiriman berubah menjadi DIANTAR.
+- Petugas mengunggah bukti foto. Wali mengonfirmasi penerimaan atau mengajukan komplain; auto-konfirmasi tetap mengikuti tenggat 7 hari dan hanya berlaku untuk metode antar.
+- Jika pengantaran gagal sebelum bukti diunggah, penugasan menjadi GAGAL dan Pesanan serta Pengiriman kembali ke DISIAPKAN untuk penugasan ulang.
+
+### Sinkronisasi
+- Perubahan tahap pembayaran dan pemenuhan memperbarui status Pengiriman terkait bersama status Pesanan.
+- Status SIAP_DIAMBIL hanya berlaku untuk AMBIL_FMART. Status DIANTAR hanya dicapai melalui perjalanan Petugas Pengantar untuk ANTAR_PESANTREN.
+- Pemeriksaan Tahap B yang dilakukan pada repository bersifat statis; uji transaksi pada Spreadsheet aktif, browser/perangkat, dan deployment Apps Script tetap perlu dilakukan setelah sinkronisasi sumber.
