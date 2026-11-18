@@ -542,3 +542,27 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 
 - Pembayaran lama yang sudah menunggu verifikasi sebelum sheet ReservasiStok tersedia akan mencoba membuat reservasi saat petugas memverifikasi. Jika stok sudah tidak cukup, sistem menolak verifikasi agar tidak terjadi penjualan melebihi stok.
 - Pembatalan manual oleh Admin juga langsung melepas reservasi dan menolak pengajuan pembayaran yang masih menunggu keputusan.
+
+## Fondasi POS Kasir Penjualan Langsung — Tahap 1
+
+Tahap 1 menyiapkan struktur data untuk penjualan langsung di toko FMart tanpa mencampur transaksi toko dengan pesanan Wali Santri.
+
+### Sheet baru
+- `PenjualanToko`: satu baris per transaksi toko, mencatat nomor transaksi, jenis dan identitas pembeli opsional, subtotal/diskon/total, metode pembayaran, uang diterima/kembalian, status pembayaran/transaksi, kasir, catatan, dan waktu transaksi.
+- `DetailPenjualanToko`: rincian produk/variasi, SKU, snapshot nama dan harga saat transaksi, jumlah, serta subtotal per baris.
+
+### Kebijakan data awal
+- Pembeli dapat dipilih sebagai UMUM, diisi nama, atau dipilih dari data Santri. Relasi Santri bersifat opsional.
+- Kasir yang membuat transaksi wajib tercatat sebagai referensi akun Users.
+- Rincian transaksi terhubung ke PenjualanToko, Produk, dan VariasiProduk (jika ada).
+- Skema ini belum menjalankan transaksi, mengurangi stok, memproses tunai/QRIS, atau membuat struk. Fungsi-fungsi tersebut dibangun bertahap setelah fondasi data siap.
+- Sheet baru ditambahkan secara non-destruktif oleh `setupFMartDatabase_()`; fungsi setup mengisi header sheet yang belum ada dan tidak menghapus data sheet yang sudah ada.
+- `auditFMartDatabaseIntegrity_()` kini memeriksa keberadaan, header, ID utama, dan relasi dasar kedua sheet POS.
+
+### Langkah sinkronisasi
+1. Sinkronkan file `apps-script/SetupDatabase.gs` dari repository ke project Apps Script.
+2. Jalankan `setupFMartDatabase_()` satu kali dari Apps Script Editor untuk membuat dua sheet POS yang baru.
+3. Jalankan `auditFMartDatabaseIntegrity_()` dan periksa bahwa `PenjualanToko` serta `DetailPenjualanToko` muncul tanpa masalah skema/relasi.
+4. Jangan membuat transaksi uji pada database aktif sebelum endpoint POS dan prosedur pembatalan/pemulihan selesai dibuat pada tahap berikutnya.
+
+Pemeriksaan pada tahap ini bersifat statis terhadap repository. Belum ada perubahan pada `Code.gs` atau `Index.html`, dan belum dilakukan pengujian runtime Apps Script/Spreadsheet aktif.
