@@ -2944,6 +2944,46 @@ function createCashierSale(token,payload) {
   }finally{lock.releaseLock();}
 }
 
+
+/** Antrean QRIS penjualan toko; menampilkan detail dan masa berlaku reservasi. */
+function getCashierQrisQueue(token) {
+  requireRole_(token,[FMART.ROLES.KASIR,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  const ss=getSS_(),sales=readRows_(ss.getSheetByName('PenjualanToko'));
+  const details=readRows_(ss.getSheetByName('DetailPenjualanToko'));
+  const reservations=readRows_(ss.getSheetByName('ReservasiStokToko'));
+  const users=readRows_(ss.getSheetByName('Users')),userMap={};
+  users.forEach(function(r){userMap[String(r[0])]=String(r[4]||'');});
+  const detailMap={},reservationMap={};
+  details.forEach(function(r){
+    const saleId=String(r[1]||'');
+    if(!detailMap[saleId])detailMap[saleId]=[];
+    detailMap[saleId].push({productId:String(r[2]||''),variationId:String(r[3]||''),sku:String(r[4]||''),name:String(r[5]||''),variationName:String(r[6]||''),unitPrice:Number(r[7])||0,qty:Number(r[8])||0,subtotal:Number(r[9])||0});
+  });
+  reservations.forEach(function(r){
+    const saleId=String(r[1]||'');
+    if(!reservationMap[saleId])reservationMap[saleId]=[];
+    reservationMap[saleId].push(r);
+  });
+  const now=Date.now(),queue=[];
+  sales.forEach(function(r){
+    if(String(r[8]||'').toUpperCase()!=='QRIS'||String(r[11]||'').toUpperCase()!=='MENUNGGU_KONFIRMASI')return;
+    const saleId=String(r[0]||''),saleReservations=reservationMap[saleId]||[];
+    const active=saleReservations.filter(function(x){return String(x[5]||'').toUpperCase()==='AKTIF';});
+    const expiries=active.map(function(x){return new Date(x[7]||0).getTime();}).filter(function(x){return Number.isFinite(x)&&x>0;});
+    const expiresAt=expiries.length?Math.min.apply(null,expiries):0;
+    const validReservation=active.some(function(x){const expiry=new Date(x[7]||0).getTime();return Number.isFinite(expiry)&&expiry>now;});
+    queue.push({
+      saleId:saleId,number:String(r[1]||''),buyerType:String(r[2]||''),buyerName:String(r[3]||'Umum'),
+      total:Number(r[7])||0,status:String(r[12]||''),createdAt:r[15] instanceof Date?r[15].toISOString():String(r[15]||''),
+      cashierName:userMap[String(r[13]||'')]||'Kasir',note:String(r[14]||''),expiresAt:expiresAt?new Date(expiresAt).toISOString():'',
+      remainingMs:expiresAt?expiresAt-now:0,expired:!validReservation,
+      items:detailMap[saleId]||[],reservationCount:active.length
+    });
+  });
+  queue.sort(function(a,b){return new Date(a.createdAt||0).getTime()-new Date(b.createdAt||0).getTime();});
+  return {ok:true,queue:queue,serverTime:new Date(now).toISOString()};
+}
+
 /** Konfirmasi QRIS hanya setelah kasir memeriksa dana masuk pada aplikasi/bank merchant. */
 function confirmCashierQrisPayment(token,saleId,reference) {
   const session=requireRole_(token,[FMART.ROLES.KASIR,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
