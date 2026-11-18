@@ -857,3 +857,49 @@ Penyempurnaan difokuskan pada pengalaman Kasir di layar desktop dan HP. Tidak ad
 - Pemeriksaan visual lintas ukuran layar dan interaksi sentuh tetap memerlukan uji browser pada perangkat HP serta desktop sebenarnya.
 
 **Status:** penyempurnaan repository selesai; verifikasi visual dan uji perangkat nyata masih menunggu UAT.
+
+
+## Tahap 11 — Audit Integrasi dan Keamanan POS
+
+Tahap ini memperkuat validasi sisi server, pemeriksaan status pembayaran, reservasi stok, dan konsistensi mutasi. Perubahan tidak mengubah skema sheet maupun aturan hak akses role.
+
+### Perbaikan server-side
+- Konfirmasi QRIS sekarang memeriksa metode pembayaran QRIS sebelum mengembalikan respons idempoten transaksi LUNAS. Endpoint tidak lagi menganggap transaksi tunai LUNAS sebagai konfirmasi QRIS yang berhasil.
+- Respons idempoten QRIS LUNAS hanya diterima bila status transaksi juga SELESAI.
+- Konfirmasi QRIS mensyaratkan status awal MENUNGGU_KONFIRMASI dan MENUNGGU_PEMBAYARAN.
+- Jumlah reservasi QRIS harus berupa bilangan bulat positif dan harus sama persis dengan total kuantitas detail per kombinasi ProdukId/VariasiId.
+- Reservasi aktif yang tidak memiliki pasangan detail transaksi menyebabkan konfirmasi dihentikan.
+- Penjualan POS menolak baris stok yang hilang, duplikat, negatif, pecahan, atau bukan bilangan bulat aman.
+- Sebelum pengurangan stok, seluruh item diperiksa lebih dahulu: indeks baris, kuantitas, stok awal, duplikasi item, kecocokan stok aktual, dan validitas variasi. Penulisan baru dimulai setelah seluruh rencana lolos preflight.
+- Audit integritas POS kini memeriksa metode pembayaran yang dikenal, aritmetika harga × kuantitas per detail, kuantitas reservasi QRIS yang harus sama persis, serta reservasi untuk item yang tidak ada pada detail.
+
+### Konkurensi dan batas jaminan
+- LockService ScriptLock tetap digunakan pada pembuatan penjualan, konfirmasi/pembatalan QRIS, checkout Wali, verifikasi pembayaran Wali, dan mutasi stok gudang. Ini menyerialkan eksekusi yang menggunakan lock yang sama dalam proyek Apps Script FMart.
+- RequestKey tetap menjadi kunci idempotensi untuk retry pembuatan POS; payload bisnis dan pemilik transaksi harus cocok.
+- Preflight stok mengurangi risiko kesalahan data menyebabkan sebagian item diproses sebelum item lain tervalidasi.
+- Google Sheets tidak menyediakan transaksi database multi-sheet yang atomik. Jika layanan gagal di tengah beberapa operasi tulis, rollback otomatis belum dijamin. Eksekusi dari proyek Apps Script lain atau edit manual langsung pada Spreadsheet juga tidak berbagi ScriptLock proyek ini. Audit dan rekonsiliasi tetap diperlukan.
+
+### Audit read-only
+Jalankan dari Apps Script Editor setelah Code.gs terbaru disinkronkan:
+- `auditCashierPOSIntegrity_()` — memeriksa transaksi, detail, RequestKey, reservasi QRIS, dan mutasi stok POS.
+- `auditFMartOperationalSync_()` — memeriksa konsistensi master produk, variasi, stok, mutasi, dan referensi santri.
+
+Kedua fungsi audit tersebut bersifat read-only; hasilnya tidak memperbaiki atau mengubah data. Simpan hasil audit dan tindak lanjuti setiap issue sebelum operasional.
+
+### Matriks UAT keamanan dan integrasi
+1. Transaksi tunai valid mengurangi stok tepat satu kali.
+2. Nominal tunai kurang ditolak tanpa membuat transaksi.
+3. Retry dengan RequestKey dan payload identik mengembalikan transaksi yang sama.
+4. RequestKey sama dengan payload berbeda ditolak.
+5. Dua permintaan serentak dengan RequestKey sama tidak membuat dua penjualan.
+6. Dua kasir memperebutkan stok terakhir; hanya transaksi yang masih memiliki stok tersedia yang boleh berhasil.
+7. Penjualan QRIS membuat reservasi tanpa mengurangi stok fisik.
+8. Konfirmasi QRIS kedua kali menghasilkan respons idempoten tanpa mutasi stok kedua.
+9. Endpoint konfirmasi QRIS terhadap transaksi tunai ditolak.
+10. Reservasi QRIS kurang, berlebih, atau berisi item tak dikenal menolak konfirmasi.
+11. Baris stok duplikat atau kuantitas stok tidak valid menolak transaksi.
+12. Mutasi gudang keluar tidak boleh menurunkan stok di bawah reservasi aktif.
+13. Kasir tidak dapat mengonfirmasi atau membatalkan transaksi milik kasir lain.
+14. Admin/Superadmin tetap dapat menjalankan kewenangan sesuai matriks hak akses.
+
+**Status:** perbaikan repository selesai dan pemeriksaan sintaks/static berhasil. UAT multi-akun, simulasi konkurensi nyata, dan audit terhadap Spreadsheet aktif belum dijalankan. Jangan menganggap hasil live terverifikasi sebelum UAT.
