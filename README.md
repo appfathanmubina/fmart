@@ -492,3 +492,32 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 - Perubahan tahap pembayaran dan pemenuhan memperbarui status Pengiriman terkait bersama status Pesanan.
 - Status SIAP_DIAMBIL hanya berlaku untuk AMBIL_FMART. Status DIANTAR hanya dicapai melalui perjalanan Petugas Pengantar untuk ANTAR_PESANTREN.
 - Pemeriksaan Tahap B yang dilakukan pada repository bersifat statis; uji transaksi pada Spreadsheet aktif, browser/perangkat, dan deployment Apps Script tetap perlu dilakukan setelah sinkronisasi sumber.
+
+
+## Pembayaran dan Persediaan — Tahap C
+
+### Akses bukti pembayaran
+- File bukti pembayaran tetap disimpan pada folder Drive FMart tanpa membagikan file secara publik.
+- Admin, Kasir, dan Superadmin membuka bukti melalui endpoint server getPaymentProofData; server memvalidasi role, ID pembayaran, lokasi file di folder bukti FMart, MIME, dan ukuran sebelum mengirim data file ke viewer internal.
+- URL Drive tidak lagi dikirim pada ringkasan antrean operasional. Wali tidak mendapat akses ke bukti milik pesanan lain.
+- Viewer mendukung JPG, PNG, WEBP, dan PDF. File yang tidak ditemukan atau tidak berada di folder bukti FMart akan ditolak.
+
+### Kebijakan reservasi stok
+- Saat checkout berhasil, jumlah setiap produk/variasi dicatat pada sheet ReservasiStok dengan status AKTIF.
+- Masa reservasi awal default 30 menit (STOCK_RESERVATION_MINUTES). Setelah bukti pembayaran berhasil diajukan, masa reservasi diperpanjang default 120 menit (PAYMENT_RESERVATION_MINUTES) agar petugas punya waktu memeriksa transaksi.
+- Katalog, detail produk, keranjang, dan checkout Wali menghitung stok tersedia setelah dikurangi reservasi aktif. Checkout tetap memvalidasi ulang di bawah ScriptLock.
+- Mutasi stok keluar manual ditolak jika akan menurunkan stok fisik di bawah total stok yang sedang direservasi.
+- Ketika pembayaran diverifikasi, reservasi ditandai DIGUNAKAN dan stok fisik dikurangi satu kali. Jika pembayaran ditolak, reservasi dilepas (DILEPAS) agar Wali dapat mengajukan ulang.
+- Reservasi yang kedaluwarsa dilepas; jika pesanan masih menunggu pembayaran, pesanan dan pengiriman ditandai DIBATALKAN, pengajuan pembayaran tertunda ditolak, dan Wali diberi notifikasi. Pengecekan kedaluwarsa berjalan saat checkout, pengajuan pembayaran, dan verifikasi pembayaran.
+- Setup database menambahkan sheet ReservasiStok dan pengaturan masa reservasi. Setup bersifat idempotent dan tidak menghapus data sheet lain.
+
+### Antrean verifikasi pembayaran
+- Batas antrean default 50 pengajuan (PAYMENT_VERIFICATION_QUEUE_LIMIT).
+- Pengajuan baru ditolak sementara saat jumlah pengajuan MENUNGGU_VERIFIKASI mencapai batas; Wali mendapat pesan agar mencoba kembali setelah antrean diproses.
+- Dashboard dan workspace Kasir menampilkan antrean terlama lebih dahulu, maksimal sesuai batas, dan menampilkan jumlah total yang menunggu serta kapasitas antrean.
+- Pembayaran tetap diverifikasi manual setelah dana QRIS benar-benar diterima; tidak ada verifikasi otomatis.
+
+### Pemeriksaan Tahap C dan batas pengujian
+- Pemeriksaan statis mencakup akses bukti berbasis role, validasi folder Drive, reservasi checkout, pengurangan stok tersedia, pelepasan reservasi, pengamanan mutasi stok, pembatasan antrean, dan sintaks frontend/backend.
+- Belum dilakukan uji unggah/buka file pada Drive aktif, uji checkout bersamaan dari beberapa akun, simulasi reservasi kedaluwarsa, transaksi pembayaran nyata, atau uji browser dan deployment Apps Script.
+- Setelah sinkronisasi, jalankan setupFMartDatabase_() sekali agar sheet ReservasiStok dan tiga pengaturan kebijakan dibuat. Periksa izin akses akun deployment ke folder Drive bukti. Tidak perlu membagikan folder atau file bukti kepada publik.
