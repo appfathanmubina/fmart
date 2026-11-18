@@ -3321,7 +3321,7 @@ function auditFMartStockReconciliation_() {
       STOCK_RESERVATION_OVERCOMMITTED:'Periksa reservasi pesanan dan QRIS yang masih aktif, status transaksi, serta masa berlakunya. Jangan mengurangi reservasi secara manual tanpa memeriksa transaksi asal.',
       POS_SALE_MUTATION_INCOMPLETE:'Periksa PenjualanToko, DetailPenjualanToko, MutasiStok, dan saldo fisik. Jangan menambahkan mutasi atau mengurangi stok ulang hanya berdasarkan status penjualan.',
       ORDER_STOCK_MUTATION_INCOMPLETE:'Periksa Pesanan, DetailPesanan, Pembayaran, MutasiStok, dan saldo fisik. Pastikan pembayaran terverifikasi serta pengurangan stok belum terjadi sebelum tindakan pemulihan.',
-      MUTATION_REFERENCE_ORPHAN:'Telusuri referensi dokumen sumber. Mutasi tanpa dokumen sumber harus diperiksa sebelum dilakukan koreksi.',
+      MUTATION_ID_DUPLICATE:'Telusuri referensi dokumen sumber. Mutasi tanpa dokumen sumber harus diperiksa sebelum dilakukan koreksi.',
       MUTATION_ARITHMETIC_INVALID:'Bandingkan kuantitas, saldo sebelum/sesudah, dan dokumen sumber. Jangan mengedit histori mutasi langsung.'
     };
     return guidance[code]||'Lakukan pemeriksaan manual terhadap dokumen sumber dan stok fisik. Tidak ada perbaikan otomatis.';
@@ -3336,7 +3336,7 @@ function auditFMartStockReconciliation_() {
   });
   mutations.forEach(function(r,i){
     const id=String(r[0]||''),key=String(r[1]||'')+'|'+String(r[2]||''),type=String(r[3]||'').toUpperCase();
-    if(id){if(mutationIds[id])issue('MUTATION_REFERENCE_ORPHAN',key,'MutasiId duplikat pada baris '+(i+2)+'.');else mutationIds[id]=i+2;}
+    if(id){if(mutationIds[id])issue('MUTATION_ID_DUPLICATE',key,'MutasiId duplikat pada baris '+(i+2)+'.');else mutationIds[id]=i+2;}
     if(!mutationRowsByKey[key])mutationRowsByKey[key]=[];
     mutationRowsByKey[key].push({row:i+2,id:id,ref:String(r[7]||''),type:type,qty:Number(r[4]),before:Number(r[5]),after:Number(r[6])});
     if(!Number.isSafeInteger(Number(r[4]))||Number(r[4])<1||!Number.isSafeInteger(Number(r[5]))||!Number.isSafeInteger(Number(r[6]))||
