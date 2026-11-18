@@ -2192,7 +2192,7 @@ button:disabled,[role="button"][aria-disabled="true"]{cursor:not-allowed}
       <section class="hero"><h1 id="greeting">Belanja lebih mudah</h1><p>Pesan kebutuhan anak Anda dengan praktis.</p></section>
       <section class="section buyer-catalog-section" id="buyerCatalog">
         <div class="buyer-search-toolbar"><div class="search buyer-search"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="Cari nama produk atau deskripsi..." autocomplete="off" aria-label="Cari produk"><button type="button" id="clearProductSearch" class="hidden" aria-label="Hapus pencarian">×</button></div></div>
-        <div class="section-title buyer-category-heading"><div><h3>Kategori</h3><span class="muted">Jelajahi berdasarkan kebutuhan</span></div><div class="buyer-category-actions"><div class="buyer-catalog-sort"><select id="productSort" aria-label="Pilih urutan produk"><option value="featured">Rekomendasi</option><option value="name-asc">Nama A–Z</option><option value="price-asc">Harga terendah</option><option value="price-desc">Harga tertinggi</option><option value="stock-desc">Stok tersedia</option></select></div></div></div><div id="categories" class="categories buyer-categories"></div>
+        <div class="section-title buyer-category-heading"><div><h3>Kategori</h3><span class="muted">Jelajahi berdasarkan kebutuhan</span></div><div class="buyer-category-actions"><div class="buyer-catalog-sort"><select id="productSort" aria-label="Pilih urutan produk"><option value="featured">Rekomendasi</option><option value="name-asc">Nama A–Z</option><option value="price-asc">Harga terendah</option><option value="price-desc">Harga tertinggi</option></select></div></div></div><div id="categories" class="categories buyer-categories"></div>
         <div class="section-title dashboard-products-head buyer-results-heading"><div><h3 id="buyerResultsTitle">Semua Produk</h3><span id="productCount" class="muted"></span></div><button type="button" class="secondary" id="viewAllProducts">Lihat semua</button></div><div id="searchSummary" class="buyer-search-summary" aria-live="polite"></div><div id="products" class="products"></div><div id="productLoadStatus" class="product-load-status" role="status" aria-live="polite"></div><div id="productLoadSentinel" class="product-load-sentinel" aria-hidden="true"></div>
       </section>
       <section id="waliProfilePage" class="hidden" aria-label="Halaman Profil"><div class="section-title"><div><div class="eyebrow">AKUN FMart</div><h2>Profil</h2></div></div><div id="waliProfilePageBody"></div></section>
@@ -2279,7 +2279,7 @@ button:disabled,[role="button"][aria-disabled="true"]{cursor:not-allowed}
     const FMART_PORTAL_MODE = '<?= portalMode ?>';
     document.body.classList.toggle('admin-portal', FMART_PORTAL_MODE === 'ADMINFMART16720');
     document.body.classList.toggle('buyer-portal', FMART_PORTAL_MODE !== 'ADMINFMART16720');
-    const state={token:sessionStorage.getItem('fmartToken')||'',pendingLoginOtpChallengeId:'',data:null,profile:null,waliDashboard:null,selectedChildId:sessionStorage.getItem('fmartSelectedChildId')||'',checkoutSantriId:'',productFeed:{offset:0,total:0,hasMore:false,loading:false,query:'',categoryId:'',sort:'featured',requestId:0,observer:null},cart:null,currentProduct:null,currentVariationId:'',currentProductQty:1,currentOrderId:'',currentPaymentOrderId:'',catalogSort:'featured',cashierPOS:{products:[],cart:[],qrisQueue:[],qrisQueueError:'',qrisQueueLoaded:false,salesHistory:[],salesHistoryError:'',salesHistoryLoaded:false,salesQuery:'',salesFrom:'',salesTo:'',buyerType:'UMUM',buyerName:'',santriId:'',santriLabel:'',students:[],paymentMethod:'TUNAI',amountReceived:'',note:'',requestKey:'',loading:false,search:''}};
+    const state={token:sessionStorage.getItem('fmartToken')||'',pendingLoginOtpChallengeId:'',data:null,profile:null,waliDashboard:null,selectedChildId:sessionStorage.getItem('fmartSelectedChildId')||'',checkoutSantriId:'',productFeed:{offset:0,total:0,hasMore:false,loading:false,query:'',categoryId:'',sort:'featured',requestId:0,observer:null,initialized:false},cart:null,currentProduct:null,currentVariationId:'',currentProductQty:1,currentOrderId:'',currentPaymentOrderId:'',catalogSort:'featured',cashierPOS:{products:[],cart:[],qrisQueue:[],qrisQueueError:'',qrisQueueLoaded:false,salesHistory:[],salesHistoryError:'',salesHistoryLoaded:false,salesQuery:'',salesFrom:'',salesTo:'',buyerType:'UMUM',buyerName:'',santriId:'',santriLabel:'',students:[],paymentMethod:'TUNAI',amountReceived:'',note:'',requestKey:'',loading:false,search:''}};
     const $=id=>document.getElementById(id);
     document.title = FMART_PORTAL_MODE === 'ADMINFMART16720' ? 'FMart Admin' : 'FMart';
     if(FMART_PORTAL_MODE==='ADMINFMART16720'){ document.querySelector('.login-brand .brand-name').textContent='FMart Admin'; $('loginIntro').textContent='Masuk ke portal petugas FMart menggunakan email dan password.'; $('usernameLabel').textContent='Email Staf'; $('username').inputMode='email'; $('username').placeholder='nama@fathanmubina.com'; $('usernameHint').textContent='Gunakan alamat email akun staf FMart.'; $('registerBtn').classList.add('hidden'); }
@@ -2380,7 +2380,7 @@ async function filterProducts(){
   return resetBuyerProductFeed();
 }
 async function resetBuyerProductFeed(){
-  const feed=state.productFeed;feed.requestId++;feed.offset=0;feed.total=0;feed.hasMore=false;feed.loading=false;
+  const feed=state.productFeed;feed.requestId++;feed.offset=0;feed.total=0;feed.hasMore=false;feed.loading=false;feed.initialized=false;
   if(feed.observer)feed.observer.disconnect();
   $('products').innerHTML='';
   $('productCount').textContent='Memuat katalog…';
@@ -2389,7 +2389,7 @@ async function resetBuyerProductFeed(){
 }
 async function loadNextBuyerProductBatch(){
   const feed=state.productFeed;
-  if(feed.loading||!feed.hasMore&&feed.offset>0)return;
+  if(feed.loading||(feed.initialized&&!feed.hasMore))return;
   const requestId=feed.requestId;feed.loading=true;
   $('productLoadStatus').innerHTML='<span class="spinner" aria-hidden="true"></span>Memuat produk berikutnya…';
   try{
@@ -2400,7 +2400,7 @@ async function loadNextBuyerProductBatch(){
     if(!state.data.products)state.data.products=[];
     if(feed.offset===0)state.data.products=[];
     state.data.products=state.data.products.concat(items);
-    feed.offset=Number(result.offset||0)+items.length;feed.total=Number(result.total)||0;feed.hasMore=!!result.hasMore;
+    feed.offset=Number(result.offset||0)+items.length;feed.total=Number(result.total)||0;feed.hasMore=!!result.hasMore;feed.initialized=true;
     $('productCount').textContent=feed.total+' produk tersedia'+(feed.total?' · menampilkan '+feed.offset:'');
     if(items.length){
       $('products').insertAdjacentHTML('beforeend',items.map(productCardMarkup).join(''));
@@ -2414,7 +2414,7 @@ async function loadNextBuyerProductBatch(){
     if(requestId===feed.requestId){$('productLoadStatus').innerHTML='Produk belum dapat dimuat. <button type="button" class="secondary" id="retryProductBatch">Coba lagi</button>';const retry=$('retryProductBatch');if(retry)retry.onclick=loadNextBuyerProductBatch;}
   }finally{if(requestId===feed.requestId){feed.loading=false;if(feed.observer&&feed.hasMore)feed.observer.observe($('productLoadSentinel'));}}
 }
-function renderProducts(items,homeMode){const all=items||[];const list=homeMode?all.slice(0,12):all;$('productCount').textContent=homeMode?all.length+' produk tersedia':all.length+' produk ditemukan';$('products').classList.toggle('home-product-limit',!!homeMode);$('products').innerHTML=list.map(productCardMarkup).join('');document.querySelectorAll('[data-open-product]').forEach(b=>b.onclick=()=>openProduct(b.dataset.openProduct))}function renderProducts(items,homeMode){const all=items||[],list=homeMode?all.slice(0,8):all;$('productCount').textContent=homeMode?all.length+' produk tersedia':all.length+' produk ditemukan';$('products').classList.toggle('home-product-limit',!!homeMode);$('products').innerHTML=list.length?list.map(p=>'<article class="product" data-product-id="'+escapeHtml(p.id)+'"><div class="product-photo">'+(p.photoUrl?'<img src="'+safeUrl(p.photoUrl)+'" alt="'+escapeHtml(p.name)+'" loading="lazy">':'<svg viewBox="0 0 24 24" aria-hidden="true" style="width:42px;height:42px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M4 8h16l-1 12H5L4 8Z"></path><path d="M8 8a4 4 0 0 1 8 0"></path></svg>')+'</div><div class="product-body"><div class="product-name">'+escapeHtml(p.name)+'</div><div class="product-buy-row"><div><div class="price">Rp '+formatMoney(p.price)+'</div></div><button type="button" class="product-add-icon" data-open-product="'+escapeHtml(p.id)+'" aria-label="Tambah '+escapeHtml(p.name)+' ke keranjang" title="Tambah ke keranjang" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h2l1.5 10.5h10L20 8H7"></path><circle cx="9" cy="19" r="1.4"></circle><circle cx="17" cy="19" r="1.4"></circle><path d="M16 2v6M13 5h6"></path></svg></button></div></div></article>').join(''):'<div class="buyer-empty-results"><span>⌕</span><strong>Produk tidak ditemukan</strong><p>Coba kata kunci lain atau hapus filter kategori.</p><button type="button" id="emptyResetCatalog" class="secondary">Tampilkan semua produk</button></div>';document.querySelectorAll('[data-open-product]').forEach(b=>b.onclick=()=>openProduct(b.dataset.openProduct));const emptyReset=$('emptyResetCatalog');if(emptyReset)emptyReset.onclick=resetBuyerCatalogFilters}
+function renderProducts(items,homeMode){const all=items||[];const list=homeMode?all.slice(0,12):all;$('productCount').textContent=homeMode?all.length+' produk tersedia':all.length+' produk ditemukan';$('products').classList.toggle('home-product-limit',!!homeMode);$('products').innerHTML=list.map(productCardMarkup).join('');document.querySelectorAll('[data-open-product]').forEach(b=>b.onclick=()=>openProduct(b.dataset.openProduct))}
     function showCustomerApp(){$('customerNav').classList.remove('hidden');$('staffNav').classList.add('hidden');$('operationsView').classList.add('hidden');$('appView').querySelector('.main').classList.remove('hidden')}
 function setCustomerNav(id){document.querySelectorAll('#customerNav .nav-btn').forEach(x=>x.classList.remove('active'));if($(id))$(id).classList.add('active')}
 function showBuyerHome(){$('waliProfilePage').classList.add('hidden');$('buyerCatalog').classList.remove('hidden');document.querySelector('.hero').classList.remove('hidden')}
