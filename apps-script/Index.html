@@ -1276,89 +1276,6 @@ body.buyer-portal #profileModal .modal-card{
 
 
 
-/* Perbaikan ruang tepi dan kepadatan konten pop-up detail produk pada HP */
-@media(max-width:600px){
-  body.buyer-portal #productModal{
-    padding:12px 12px max(10px,env(safe-area-inset-bottom));
-    align-items:end;
-    justify-items:center;
-  }
-  body.buyer-portal #productModal .modal-card{
-    width:100%;
-    max-width:520px;
-    max-height:calc(92vh - env(safe-area-inset-top));
-    max-height:calc(92dvh - env(safe-area-inset-top));
-    margin:0 auto;
-    padding:18px clamp(16px,4.5vw,22px) calc(16px + env(safe-area-inset-bottom));
-    border:1px solid #eee4f3;
-    border-radius:22px;
-    box-shadow:0 16px 48px rgba(28,12,40,.22);
-  }
-  body.buyer-portal #productModal .modal-head{
-    top:-18px;
-    margin:0 0 16px;
-    padding:0 0 13px;
-  }
-  body.buyer-portal #productModal .buyer-detail-layout{gap:16px}
-  body.buyer-portal #productModal .buyer-detail-photo{
-    max-height:230px;
-    aspect-ratio:16/9;
-    border-radius:15px;
-  }
-  body.buyer-portal #productModal .buyer-detail-info{padding:0 1px}
-  body.buyer-portal #productModal .buyer-detail-category{font-size:10px}
-  body.buyer-portal #productModal .buyer-detail-name{
-    margin-top:9px;
-    font-size:19px;
-    line-height:1.35;
-  }
-  body.buyer-portal #productModal .buyer-detail-price{
-    margin:8px 0 11px;
-    font-size:22px;
-  }
-  body.buyer-portal #productModal .buyer-detail-description{
-    padding:11px 12px;
-    border-radius:12px;
-  }
-  body.buyer-portal #productModal .buyer-detail-description p{
-    font-size:12px;
-    line-height:1.55;
-  }
-  body.buyer-portal #productModal .buyer-variation-section{margin-top:13px}
-  body.buyer-portal #productModal .buyer-variation-list{gap:8px}
-  body.buyer-portal #productModal .buyer-variation-option{
-    min-height:46px;
-    padding:9px 10px;
-    border-radius:11px;
-  }
-  body.buyer-portal #productModal .buyer-quantity-panel{
-    margin-top:13px;
-    padding:10px 11px;
-    border-radius:12px;
-  }
-  body.buyer-portal #productModal .buyer-detail-actions{
-    bottom:calc(-16px - env(safe-area-inset-bottom));
-    margin:14px calc(-1 * clamp(16px,4.5vw,22px)) calc(-16px - env(safe-area-inset-bottom));
-    padding:12px clamp(16px,4.5vw,22px) calc(16px + env(safe-area-inset-bottom));
-    border-radius:0 0 20px 20px;
-  }
-}
-@media(max-width:380px){
-  body.buyer-portal #productModal{padding-inline:10px}
-  body.buyer-portal #productModal .modal-card{
-    max-height:90dvh;
-    padding-inline:15px;
-  }
-  body.buyer-portal #productModal .buyer-detail-photo{max-height:195px}
-  body.buyer-portal #productModal .buyer-detail-name{font-size:18px}
-  body.buyer-portal #productModal .buyer-detail-actions{
-    margin-inline:-15px;
-    padding-inline:15px;
-  }
-}
-
-
-
 .login-otp-panel{margin-top:14px;padding:16px;border:1px solid #eaddec;border-radius:16px;background:#faf6fc}
 .login-otp-panel p{margin:0 0 12px;color:#6f5c76;font-size:13px;line-height:1.55}
 .login-otp-panel input{width:100%;min-height:48px;padding:12px;border:1px solid #dfd0e5;border-radius:12px;text-align:center;font-size:20px;font-weight:800;letter-spacing:.3em}
@@ -2043,10 +1960,10 @@ body.buyer-portal #productModal .buyer-detail-actions button{min-width:0;white-s
  body.buyer-portal #productModal .buyer-detail-actions{position:sticky;bottom:-28px;margin:16px -2px -2px;padding:14px 2px 2px;background:linear-gradient(180deg,rgba(255,255,255,.9),#fff 25%)}
 }
 
-/* Mobile: bottom sheet with one scroll area and reachable action buttons */
+/* Mobile: floating detail sheet with balanced outer spacing and one scroll area */
 @media(max-width:600px){
- body.buyer-portal #productModal{display:grid;align-items:end;justify-items:center;padding:0;padding-top:max(8px,env(safe-area-inset-top));padding-bottom:0}
- body.buyer-portal #productModal .modal-card{width:100%;max-width:620px;max-height:calc(94vh - env(safe-area-inset-top));max-height:calc(94dvh - env(safe-area-inset-top));margin:0 auto;padding:16px 15px calc(12px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0;overflow-x:hidden;overflow-y:auto}
+ body.buyer-portal #productModal{display:grid;align-items:end;justify-items:center;padding:12px 12px calc(12px + env(safe-area-inset-bottom));overflow-y:auto}
+ body.buyer-portal #productModal .modal-card{width:100%;max-width:620px;max-height:calc(92vh - env(safe-area-inset-top) - 12px);max-height:calc(92dvh - env(safe-area-inset-top) - 12px);margin:0 auto 12px;padding:16px 15px calc(12px + env(safe-area-inset-bottom));border:1px solid #eee4f3;border-radius:24px;box-shadow:0 16px 48px rgba(28,12,40,.22);overflow-x:hidden;overflow-y:auto}
  body.buyer-portal #productModal .modal-head{top:-16px;margin:0 0 14px;padding:0 0 12px}
  body.buyer-portal #productModal .modal-head h2{font-size:18px}
  body.buyer-portal #productModal .icon-btn{width:40px;height:40px;flex-basis:40px}
@@ -2070,7 +1987,8 @@ body.buyer-portal #productModal .buyer-detail-actions button{min-width:0;white-s
  body.buyer-portal #productModal .buyer-detail-actions button{min-height:46px;padding:10px 8px;font-size:12px}
 }
 @media(max-width:380px){
- body.buyer-portal #productModal .modal-card{padding-inline:12px}
+ body.buyer-portal #productModal{padding-inline:10px}
+ body.buyer-portal #productModal .modal-card{max-height:90vh;max-height:90dvh;margin-bottom:10px;padding-inline:12px}
  body.buyer-portal #productModal .buyer-detail-photo{max-height:220px}
  body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:1fr}
  body.buyer-portal #productModal .buyer-quantity-panel{align-items:center;gap:8px}
