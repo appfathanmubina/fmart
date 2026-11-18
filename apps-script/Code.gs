@@ -1654,15 +1654,25 @@ function createStockReceipt(token, payload) {
       if(activeVariations.length&&!item.variationId)throw new Error('Pilih variasi untuk produk '+String(product[3]||'')+'.');
       let variation=null;
       if(item.variationId){variation=variationRows.find(function(v){return String(v[0])===item.variationId&&String(v[1])===item.productId;});if(!variation||String(variation[6]||'').toUpperCase()!=='AKTIF')throw new Error('Variasi tidak valid atau tidak aktif untuk produk '+String(product[3]||'')+'.');}
-      const stockIndex=stockRows.findIndex(function(r){return String(r[1])===item.productId&&String(r[2]||'')===item.variationId;});
-      const before=stockIndex>=0?Math.max(0,Number(stockRows[stockIndex][3])||0):(variation?Math.max(0,Number(variation[5])||0):0);
-      const after=before+item.qty;
+      const stockMatches=[];stockRows.forEach(function(r,index){if(String(r[1])===item.productId&&String(r[2]||'')===item.variationId)stockMatches.push(index);});
+      if(stockMatches.length>1)throw new Error('Ditemukan baris stok ganda untuk '+String(product[3]||'produk')+'. Penerimaan dihentikan sampai data Gudang diperiksa.');
+      const stockIndex=stockMatches.length?stockMatches[0]:-1;
+      const rawBefore=stockIndex>=0?Number(stockRows[stockIndex][3]):(variation?Number(variation[5]):0);
+      if(!Number.isSafeInteger(rawBefore)||rawBefore<0)throw new Error('Saldo stok awal tidak valid untuk '+String(product[3]||'produk')+'.');
+      const before=rawBefore,after=before+item.qty;
       if(!Number.isSafeInteger(after))throw new Error('Hasil stok terlalu besar.');
       return {productId:item.productId,variationId:item.variationId,qty:item.qty,product:product,variation:variation,stockIndex:stockIndex,before:before,after:after};
+    });
+    prepared.forEach(function(x){
+      if(x.stockIndex>=0){
+        const live=Number(stockSheet.getRange(x.stockIndex+2,4).getValue());
+        if(!Number.isSafeInteger(live)||live!==x.before)throw new Error('Saldo stok berubah saat penerimaan diproses. Muat ulang data Gudang.');
+      }
     });
     const now=new Date(),receiptId=makeFMartId_('RCV'),receiptNumber='PN-'+Utilities.formatDate(now,Session.getScriptTimeZone(),'yyyyMMdd-HHmmss')+'-'+Utilities.getUuid().slice(0,4).toUpperCase();
     const totalQty=prepared.reduce(function(sum,x){return sum+x.qty;},0);if(!Number.isSafeInteger(totalQty))throw new Error('Total jumlah penerimaan terlalu besar.');
     const receiptSheet=ss.getSheetByName('PenerimaanBarang'),detailSheet=ss.getSheetByName('DetailPenerimaanBarang'),mutationSheet=ss.getSheetByName('MutasiStok');
+    if(!receiptSheet||!detailSheet||!mutationSheet)throw new Error('Sheet penerimaan atau mutasi belum tersedia.');
     receiptSheet.appendRow([receiptId,receiptNumber,supplier,reference,receivedAt,note,prepared.length,totalQty,session.userId,now]);
     detailSheet.getRange(detailSheet.getLastRow()+1,1,prepared.length,8).setValues(prepared.map(function(x){return [makeFMartId_('DRC'),receiptId,x.productId,x.variationId,x.qty,x.before,x.after,''];}));
     prepared.forEach(function(x){
@@ -1755,8 +1765,12 @@ function adjustStock(token, productId, variationId, type, qty, note) {
   try{const ss=getSS_();const product=findRowById_(ss.getSheetByName('Produk'),productId,1);if(!product)throw new Error('Produk tidak ditemukan.');
     const activeVariations=readRows_(ss.getSheetByName('VariasiProduk')).filter(v=>String(v[1])===productId&&String(v[6]||'').toUpperCase()==='AKTIF');if(activeVariations.length&&!variationId)throw new Error('Pilih variasi produk yang akan dimutasi.');
     if(variationId){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(!vr||String(vr.values[1])!==productId||String(vr.values[6]||'').toUpperCase()!=='AKTIF')throw new Error('Variasi tidak valid atau tidak aktif.');}
-    if(String(product.values[8]||'').toUpperCase()!=='AKTIF')throw new Error('Produk nonaktif tidak dapat dimutasi.');const sheet=ss.getSheetByName('Stok'),currentStockRows=readRows_(sheet);let row=currentStockRows.findIndex(r=>String(r[1])===productId&&String(r[2]||'')===variationId);const variationRow=variationId?findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1):null;const before=row>=0?Math.max(0,Number(currentStockRows[row][3])||0):(variationRow?Math.max(0,Number(variationRow.values[5])||0):0);const after=type==='MASUK'?before+qty:before-qty;const reservedNow=(getStockReservationMap_(ss,'')[productId+'|'+variationId]||0)+(getStoreSaleReservationMap_(ss)[productId+'|'+variationId]||0);if(type==='KELUAR'&&after<reservedNow)throw new Error('Stok tidak dapat dikurangi di bawah jumlah yang sedang direservasi ('+reservedNow+' unit).');if(!Number.isSafeInteger(after))throw new Error('Hasil stok tidak valid atau terlalu besar.');if(after<0)throw new Error('Stok tidak mencukupi.');const now=new Date();
-    if(row>=0){sheet.getRange(row+2,4).setValue(after);sheet.getRange(row+2,6).setValue(now);}else sheet.appendRow([makeFMartId_('STK'),productId,variationId,after,Number(product.values[6])||0,now]);
+    if(String(product.values[8]||'').toUpperCase()!=='AKTIF')throw new Error('Produk nonaktif tidak dapat dimutasi.');const sheet=ss.getSheetByName('Stok'),currentStockRows=readRows_(sheet),stockMatches=[];currentStockRows.forEach(function(r,index){if(String(r[1])===productId&&String(r[2]||'')===variationId)stockMatches.push(index);});if(stockMatches.length>1)throw new Error('Ditemukan baris stok ganda. Mutasi dihentikan sampai data diperiksa.');let row=stockMatches.length?stockMatches[0]:-1;const variationRow=variationId?findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1):null;const rawBefore=row>=0?Number(currentStockRows[row][3]):(variationRow?Number(variationRow.values[5]):0);if(!Number.isSafeInteger(rawBefore)||rawBefore<0)throw new Error('Saldo stok saat ini tidak valid.');const before=rawBefore;const after=type==='MASUK'?before+qty:before-qty;const reservedNow=(getStockReservationMap_(ss,'')[productId+'|'+variationId]||0)+(getStoreSaleReservationMap_(ss)[productId+'|'+variationId]||0);if(type==='KELUAR'&&after<reservedNow)throw new Error('Stok tidak dapat dikurangi di bawah jumlah yang sedang direservasi ('+reservedNow+' unit).');if(!Number.isSafeInteger(after))throw new Error('Hasil stok tidak valid atau terlalu besar.');if(after<0)throw new Error('Stok tidak mencukupi.');const now=new Date();
+    if(row>=0){
+      const live=Number(sheet.getRange(row+2,4).getValue());
+      if(!Number.isSafeInteger(live)||live!==before)throw new Error('Saldo stok berubah atau tidak valid. Muat ulang data Gudang.');
+      sheet.getRange(row+2,4).setValue(after);sheet.getRange(row+2,6).setValue(now);
+    }else sheet.appendRow([makeFMartId_('STK'),productId,variationId,after,Number(product.values[6])||0,now]);
     if(variationId){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(vr)ss.getRange(vr.rowNumber,6,1,3).setValues([[after,String(vr.values[6]||'AKTIF'),now]]);}
     ss.getSheetByName('MutasiStok').appendRow([makeFMartId_('MUT'),productId,variationId,type,qty,before,after,'',note,session.userId,now]);writeAudit_(session.userId,session.role,'ADJUST_STOCK','STOK',productId,JSON.stringify({variationId:variationId,stock:before}),JSON.stringify({variationId:variationId,stock:after,type:type,qty:qty}),'Mutasi stok manual');SpreadsheetApp.flush();return getOperationsDashboard(token);
   }finally{lock.releaseLock();}
