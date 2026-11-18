@@ -1569,36 +1569,44 @@ function saveProduct(token, data) {
 
 function saveVariation(token, data) {
   const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
-  const lock=LockService.getScriptLock(); lock.waitLock(10000);
-  try {
-  if(!data||typeof data!=='object')throw new Error('Data variasi tidak valid.');
-  const id=String(data.id||'').trim(), productId=String(data.productId||'').trim(), name=String(data.name||'').trim().slice(0,80), value=String(data.value||'').trim().slice(0,100), addition=Math.round(Number(data.priceAddition)||0), requestedStock=Math.max(0,Math.floor(Number(data.stock)||0)), status=String(data.status||'AKTIF').toUpperCase();
-  if(!productId||!name||!value||addition<0)throw new Error('Data variasi belum lengkap.'); if(['AKTIF','NONAKTIF'].indexOf(status)<0)throw new Error('Status variasi tidak valid.');
-  const ss=getSS_(); const product=findRowById_(ss.getSheetByName('Produk'),productId,1); if(!product)throw new Error('Produk tidak ditemukan.');
-  const sheet=ss.getSheetByName('VariasiProduk'); const now=new Date(); let variationId=id; let stock=requestedStock;
-  const stockRowsBefore=readRows_(ss.getSheetByName('Stok'));
-  let beforeData='';
-  if(id){
-    const row=findRowById_(sheet,id,1);
-    if(!row)throw new Error('Variasi tidak ditemukan.');
-    if(String(row.values[1]||'')!==productId)throw new Error('Variasi tidak dapat dipindahkan ke produk lain. Buat variasi baru pada produk tujuan.');
-    beforeData=JSON.stringify(row.values);variationId=id;stock=Math.max(0,Number(row.values[5])||0);
-  }else{
-    variationId=makeFMartId_('VAR');
-  }
-  const matchingStockRows=stockRowsBefore.filter(function(r){return String(r[1])===productId&&String(r[2]||'')===variationId;});
-  if(matchingStockRows.length>1)throw new Error('Ditemukan baris stok ganda untuk variasi ini. Perbaiki data Gudang sebelum menyimpan variasi.');
-  if(!id)sheet.appendRow([variationId,productId,name,value,addition,stock,status,now,now]);
-  upsertStockRow_(ss,productId,variationId,stock,session.userId);
-  if(!id&&stock>0){
-    const mutationSheet=ss.getSheetByName('MutasiStok');
-    if(!mutationSheet)throw new Error('Sheet MutasiStok tidak tersedia untuk mencatat stok awal variasi.');
-    mutationSheet.appendRow([makeFMartId_('MUT'),productId,variationId,'MASUK',stock,0,stock,variationId,'Stok awal saat variasi dibuat',session.userId,now]);
-  }
-  writeAudit_(session.userId,session.role,id?'UPDATE_VARIATION':'CREATE_VARIATION','VARIASI_PRODUK',variationId,beforeData,JSON.stringify({productId,name,value,addition,stock,status}),'Perubahan variasi; stok awal dicatat sebagai mutasi MASUK saat variasi baru dibuat');
-  SpreadsheetApp.flush();
-  return getAdminCatalog(token);
-  } finally { lock.releaseLock(); }
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{
+    if(!data||typeof data!=='object')throw new Error('Data variasi tidak valid.');
+    const id=String(data.id||'').trim(),productId=String(data.productId||'').trim(),name=String(data.name||'').trim().slice(0,80),value=String(data.value||'').trim().slice(0,100),addition=Math.round(Number(data.priceAddition)||0),requestedStock=Math.max(0,Math.floor(Number(data.stock)||0)),status=String(data.status||'AKTIF').toUpperCase();
+    if(!productId||!name||!value||addition<0)throw new Error('Data variasi belum lengkap.');
+    if(!Number.isSafeInteger(requestedStock)||requestedStock<0)throw new Error('Stok awal variasi tidak valid.');
+    if(['AKTIF','NONAKTIF'].indexOf(status)<0)throw new Error('Status variasi tidak valid.');
+    const ss=getSS_(),product=findRowById_(ss.getSheetByName('Produk'),productId,1);
+    if(!product)throw new Error('Produk tidak ditemukan.');
+    const sheet=ss.getSheetByName('VariasiProduk'),stockSheet=ss.getSheetByName('Stok'),stockRows=readRows_(stockSheet),now=new Date();
+    let variationId=id,stock=requestedStock,beforeData='',existingVariation=null;
+    if(id){
+      existingVariation=findRowById_(sheet,id,1);
+      if(!existingVariation)throw new Error('Variasi tidak ditemukan.');
+      if(String(existingVariation.values[1]||'')!==productId)throw new Error('Variasi tidak dapat dipindahkan ke produk lain. Buat variasi baru pada produk tujuan.');
+      const matches=stockRows.filter(function(r){return String(r[1])===productId&&String(r[2]||'')===id;});
+      if(matches.length!==1)throw new Error(matches.length?'Ditemukan baris stok ganda untuk variasi ini. Perbaiki data Gudang sebelum menyimpan variasi.':'Baris stok variasi tidak ditemukan. Jalankan audit Gudang sebelum mengubah variasi.');
+      stock=Number(matches[0][3]);
+      if(!Number.isSafeInteger(stock)||stock<0)throw new Error('Saldo stok kanonis variasi tidak valid.');
+      beforeData=JSON.stringify(existingVariation.values);
+    }else{
+      variationId=makeFMartId_('VAR');
+      if(stockRows.some(function(r){return String(r[1])===productId&&String(r[2]||'')===variationId;}))throw new Error('ID variasi bentrok dengan data stok yang sudah ada.');
+    }
+    // Semua validasi selesai sebelum sheet master atau stok ditulis.
+    if(existingVariation)sheet.getRange(existingVariation.rowNumber,2,1,7).setValues([[productId,name,value,addition,stock,status,now]]);
+    else sheet.appendRow([variationId,productId,name,value,addition,stock,status,now,now]);
+    if(!existingVariation)stockSheet.appendRow([makeFMartId_('STK'),productId,variationId,stock,Math.max(0,Number(product.values[6])||0),now]);
+    else stockSheet.getRange(stockRows.findIndex(function(r){return String(r[1])===productId&&String(r[2]||'')===variationId;})+2,4,1,3).setValues([[stock,Number(product.values[6])||0,now]]);
+    if(!existingVariation&&stock>0){
+      const mutationSheet=ss.getSheetByName('MutasiStok');
+      if(!mutationSheet)throw new Error('Sheet MutasiStok tidak tersedia untuk mencatat stok awal variasi.');
+      mutationSheet.appendRow([makeFMartId_('MUT'),productId,variationId,'MASUK',stock,0,stock,variationId,'Stok awal saat variasi dibuat',session.userId,now]);
+    }
+    writeAudit_(session.userId,session.role,id?'UPDATE_VARIATION':'CREATE_VARIATION','VARIASI_PRODUK',variationId,beforeData,JSON.stringify({productId,name,value,addition,stock,status}),'Perubahan variasi; saldo Stok menjadi sumber utama dan stok awal variasi baru dicatat sebagai mutasi MASUK');
+    SpreadsheetApp.flush();
+    return getAdminCatalog(token);
+  }finally{lock.releaseLock();}
 }
 
 function ensureReceivingSheets_(ss) {
