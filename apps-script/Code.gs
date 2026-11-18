@@ -589,10 +589,11 @@ function getProductDetail(token, productId) {
   const cat = findRowById_(categorySheet, String(r[1] || ''), 1);
   if (!cat || String(cat.values[4] || '').toUpperCase() !== 'AKTIF') throw new Error('Kategori produk tidak tersedia.');
 
+  const reservedByKey=session.role===FMART.ROLES.WALI_SANTRI?getStockReservationMap_(ss,''):{};
   const variations = readRows_(ss.getSheetByName('VariasiProduk')).filter(function(v) {
     return String(v[1]) === productId && String(v[6] || '').toUpperCase() === 'AKTIF';
   }).map(function(v) {
-    return {id:String(v[0]), name:String(v[2] || ''), value:String(v[3] || ''), priceAddition:Number(v[4]) || 0, stock:Number(v[5]) || 0};
+    const vid=String(v[0]);return {id:vid, name:String(v[2] || ''), value:String(v[3] || ''), priceAddition:Number(v[4]) || 0, stock:Math.max(0,(Number(v[5])||0)-(reservedByKey[productId+'|'+vid]||0))};
   });
 
   const stocks = readRows_(ss.getSheetByName('Stok')).filter(function(st) {
@@ -602,7 +603,7 @@ function getProductDetail(token, productId) {
   const variationStock = {};
   stocks.forEach(function(st){ if(st[2]) variationStock[String(st[2])] = Number(st[3]) || 0; });
   variations.forEach(function(v){ if(Object.prototype.hasOwnProperty.call(variationStock,v.id)) v.stock=variationStock[v.id]; });
-  const stock = variations.length ? variations.reduce(function(total,v){return total + Math.max(0,v.stock);},0) : (baseStockRows.length ? Number(baseStockRows[0][3]) || 0 : 0);
+  const stock = variations.length ? variations.reduce(function(total,v){return total + Math.max(0,v.stock);},0) : (baseStockRows.length ? Math.max(0,(Number(baseStockRows[0][3])||0)-(reservedByKey[productId+'|']||0)) : 0);
 
   return {ok:true, product:{
     id:String(r[0]), categoryId:String(r[1] || ''), categoryName:String(cat.values[1] || ''), sku:String(r[2] || ''),
@@ -633,6 +634,7 @@ function getCatalog(token) {
   const activeCategoryIds = {};
   categories.forEach(function(c){ activeCategoryIds[c.id] = true; });
 
+  const reservedByKey=session.role===FMART.ROLES.WALI_SANTRI?getStockReservationMap_(ss,''):{};
   const products = readRows_(productSheet).filter(function(r){
     return String(r[8] || '').toUpperCase() === 'AKTIF' && activeCategoryIds[String(r[1] || '')];
   }).map(function(r){
@@ -662,7 +664,7 @@ function getCatalog(token) {
     variationsByProduct[pid].push({
       id:vid,
       priceAddition:Number(r[4]) || 0,
-      stock:Object.prototype.hasOwnProperty.call(stockByKey,key) ? stockByKey[key] : Math.max(0,Number(r[5]) || 0)
+      stock:Math.max(0,(Object.prototype.hasOwnProperty.call(stockByKey,key) ? stockByKey[key] : Math.max(0,Number(r[5]) || 0))-(reservedByKey[key]||0))
     });
   });
 
@@ -671,7 +673,7 @@ function getCatalog(token) {
     if (vars.length) {
       p.stock = vars.reduce(function(sum,v){ return sum + Math.max(0,v.stock); }, 0);
     } else {
-      p.stock = Object.prototype.hasOwnProperty.call(stockByKey,p.id+'|') ? stockByKey[p.id+'|'] : 0;
+      p.stock = Math.max(0,(Object.prototype.hasOwnProperty.call(stockByKey,p.id+'|') ? stockByKey[p.id+'|'] : 0)-(reservedByKey[p.id+'|']||0));
     }
   });
 
@@ -691,6 +693,7 @@ function getCart(token) {
   const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
   const ss = getSS_();
   const rows = readRows_(ss.getSheetByName('Keranjang'));
+  const reservedByKey=getStockReservationMap_(ss,'');
   const items = [];
   let subtotal = 0;
   rows.forEach(function(r) {
@@ -698,7 +701,8 @@ function getCart(token) {
     const qty = Math.max(0, Math.floor(Number(r[5]) || 0));
     if (!qty) return;
     const snap = getProductSnapshot_(ss, r[3], r[4]);
-    const available = snap ? Math.max(0, snap.stock) : 0;
+    const reservationKey=String(r[3])+'|'+String(r[4]||'');
+    const available = snap ? Math.max(0, snap.stock-(reservedByKey[reservationKey]||0)) : 0;
     const lineSubtotal = snap ? snap.unitPrice * qty : 0;
     subtotal += lineSubtotal;
     items.push({
