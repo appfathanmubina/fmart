@@ -3453,8 +3453,12 @@ function auditFMartStockReconciliation_() {
   const saleDetailMap=Object.create(null),saleMutationMap=Object.create(null);
   saleDetails.forEach(function(r){const id=String(r[1]||'');if(!saleDetailMap[id])saleDetailMap[id]=[];saleDetailMap[id].push(r);});
   cashierMutations.forEach(function(r){if(String(r[3]||'').toUpperCase()!=='KELUAR')return;const ref=String(r[7]||'');if(!saleMutationMap[ref])saleMutationMap[ref]=[];saleMutationMap[ref].push(r);});
+  const cashierCutoverTime=cashierMutations.reduce(function(min,r){const t=r[10] instanceof Date?r[10].getTime():new Date(r[10]||0).getTime();return Number.isFinite(t)&&t>0?Math.min(min,t):min;},Infinity);
   sales.forEach(function(s){
     if(String(s[11]||'').toUpperCase()!=='LUNAS')return;
+    const finalizedAt=s[16] instanceof Date?s[16].getTime():new Date(s[16]||s[15]||0).getTime();
+    // Riwayat POS sebelum mutasi Kasir pertama merupakan histori legacy dari era stok gabungan.
+    if(!Number.isFinite(cashierCutoverTime)||!Number.isFinite(finalizedAt)||finalizedAt<cashierCutoverTime)return;
     const id=String(s[0]||''),expected=Object.create(null),actual=Object.create(null);
     (saleDetailMap[id]||[]).forEach(function(d){const key=String(d[2]||'')+'|'+String(d[3]||''),qty=Number(d[8]);expected[key]=(expected[key]||0)+(Number.isSafeInteger(qty)&&qty>0?qty:0);});
     (saleMutationMap[id]||[]).forEach(function(m){const key=String(m[1]||'')+'|'+String(m[2]||'');actual[key]=(actual[key]||0)+(Number(m[4])||0);});
