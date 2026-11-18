@@ -10,10 +10,15 @@ const serviceWorker = fs.readFileSync('service-worker.js', 'utf8');
 const readme = fs.readFileSync('README.md', 'utf8');
 
 function extractFunction(source, name) {
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = source.match(new RegExp('function\\s+' + escaped + '\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}', 'm'));
-  assert.ok(match, 'Function not found: ' + name);
-  return match[0];
+  const marker = 'function ' + name + '(';
+  const start = source.indexOf(marker);
+  assert.notEqual(start, -1, 'Function not found: ' + name);
+  if (name === 'getPaymentProofData') {
+    return source.slice(start, source.indexOf('\\n', start));
+  }
+  const end = source.indexOf('\\n}', start);
+  assert.notEqual(end, -1, 'Function end not found: ' + name);
+  return source.slice(start, end + 2);
 }
 
 function signedBytes(buffer) {
@@ -41,8 +46,8 @@ function makeUtilitiesMock() {
 }
 
 test('Service worker only removes FMart-owned caches', () => {
-  assert.match(serviceWorker, /const FMART_CACHE_PREFIX = ['"]fmart-['"]/);
-  assert.match(serviceWorker, /key\\.startsWith\\(FMART_CACHE_PREFIX\\) && key !== CACHE/);
+  assert.ok(serviceWorker.includes("const FMART_CACHE_PREFIX = 'fmart-'"));
+  assert.ok(serviceWorker.includes('key.startsWith(FMART_CACHE_PREFIX) && key !== CACHE'));
   const existing = ['fmart-shell-v14', 'psb-shell-v9', 'gps-fm-shell-v2', 'other-app-cache'];
   const removed = existing.filter(key => key.startsWith('fmart-') && key !== 'fmart-shell-v15');
   assert.deepEqual(removed, ['fmart-shell-v14']);
@@ -61,29 +66,30 @@ test('QRIS approval validator accepts only matching order, owner, method and exa
   assert.throws(() => sandbox.validate(payment.slice(0, 1).concat(['ORD-LAIN'], payment.slice(2)), order), /Identitas pesanan/);
 });
 
-test('Kasir has limited QRIS proof and verification permission, not general admin access', () => {
+test('Kasir has limited QRIS proof and verification permission', () => {
   const verify = extractFunction(code, 'verifyPayment');
   const proof = extractFunction(code, 'getPaymentProofData');
-  assert.match(verify, /FMART\\.ROLES\\.KASIR/);
-  assert.match(verify, /session\\.role===FMART\\.ROLES\\.KASIR && paymentMethod!=='QRIS'/);
-  assert.match(proof, /FMART\\.ROLES\\.KASIR/);
-  assert.match(proof, /session\\.role===FMART\\.ROLES\\.KASIR&&String\\(pay\\.values\\[2\\]\\|\\|''\\)\\.toUpperCase\\(\\)!=='QRIS'/);
-  assert.match(index, /KASIR:\\['staffDashboard','staffPOS','staffPaymentVerification'\\]/);
-  assert.match(index, /staffPaymentVerification/);
+  assert.ok(verify.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN,FMART.ROLES.KASIR'));
+  assert.ok(verify.includes("session.role===FMART.ROLES.KASIR && paymentMethod!=='QRIS'"));
+  assert.ok(verify.includes('validateQrisPaymentForApproval_(pay.values,order.values)'));
+  assert.ok(proof.includes('FMART.ROLES.KASIR'));
+  assert.ok(proof.includes("session.role===FMART.ROLES.KASIR&&String(pay.values[2]||'').toUpperCase()!=='QRIS'"));
+  assert.ok(index.includes("KASIR:['staffDashboard','staffPOS','staffPaymentVerification']"));
+  assert.ok(index.includes('staffPaymentVerification'));
 });
 
 test('Staff login cannot create a session before email OTP succeeds', () => {
   const login = extractFunction(code, 'login');
   const verifyOtp = extractFunction(code, 'verifyAdminLoginOtp');
-  assert.match(login, /issueAdminLoginOtp_\\(r, rate\\)/);
-  assert.match(login, /return otpResult/);
+  assert.ok(login.includes('issueAdminLoginOtp_(r, rate)'));
+  assert.ok(login.includes('return otpResult'));
   assert.ok(login.indexOf('return otpResult') < login.indexOf('const token = Utilities.getUuid()'));
-  assert.match(verifyOtp, /challenge\\.attempts>=5/);
-  assert.match(verifyOtp, /constantTimeEqual_\\(adminOtpHash_/);
-  assert.match(verifyOtp, /setValue\\(true\\)/);
-  assert.match(index, /id="loginOtpPanel"/);
-  assert.match(index, /runServer\\('verifyAdminLoginOtp'/);
-  assert.match(index, /pendingLoginOtpChallengeId/);
+  assert.ok(verifyOtp.includes('challenge.attempts>=5'));
+  assert.ok(verifyOtp.includes('constantTimeEqual_(adminOtpHash_'));
+  assert.ok(verifyOtp.includes('setValue(true)'));
+  assert.ok(index.includes('id="loginOtpPanel"'));
+  assert.ok(index.includes("runServer('verifyAdminLoginOtp'"));
+  assert.ok(index.includes('pendingLoginOtpChallengeId'));
 });
 
 test('PBKDF2 implementation matches the RFC 8018 SHA-256 test vector', () => {
@@ -97,18 +103,18 @@ test('PBKDF2 implementation matches the RFC 8018 SHA-256 test vector', () => {
 });
 
 test('PBKDF2 activation is runtime-gated and preserves legacy hash compatibility', () => {
-  assert.match(code, /PASSWORD_HASH_MODE_PROPERTY: 'FMART_PASSWORD_HASH_MODE'/);
-  assert.match(code, /function passwordHashMode_\\(\\)/);
-  assert.match(code, /function activatePbkdf2PasswordHashing_\\(\\)/);
-  assert.match(code, /const maxLoginHashMs = 1500/);
-  assert.match(code, /if \(passwordHashMode_\\(\\) === 'PBKDF2'\)/);
-  assert.match(code, /legacyHashPassword_\\(password, salt\\)/);
-  assert.match(readme, /activatePbkdf2PasswordHashing_\\(\\)/);
+  assert.ok(code.includes("PASSWORD_HASH_MODE_PROPERTY: 'FMART_PASSWORD_HASH_MODE'"));
+  assert.ok(code.includes('function passwordHashMode_()'));
+  assert.ok(code.includes('function activatePbkdf2PasswordHashing_()'));
+  assert.ok(code.includes('const maxLoginHashMs = 1500'));
+  assert.ok(code.includes("if (passwordHashMode_() === 'PBKDF2')"));
+  assert.ok(code.includes('return legacyHashPassword_(password, salt)'));
+  assert.ok(readme.includes('activatePbkdf2PasswordHashing_()'));
 });
 
 test('Wali payment submission remains QRIS-only', () => {
   const submit = extractFunction(code, 'submitPayment');
-  assert.match(submit, /method !== 'QRIS'/);
-  assert.match(readme, /Wali hanya dapat mengajukan pembayaran melalui QRIS/);
-  assert.doesNotMatch(readme, /Wali dapat memilih Transfer Bank atau QRIS/);
+  assert.ok(submit.includes("method !== 'QRIS'"));
+  assert.ok(readme.includes('Wali hanya dapat mengajukan pembayaran melalui QRIS'));
+  assert.ok(!readme.includes('Wali dapat memilih Transfer Bank atau QRIS'));
 });
