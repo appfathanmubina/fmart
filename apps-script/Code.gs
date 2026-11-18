@@ -2934,14 +2934,19 @@ function createCashierSale(token,payload) {
     Object.keys(grouped).forEach(function(key){
       const item=grouped[key],snap=getProductSnapshot_(ss,item.productId,item.variationId);
       if(!snap||!snap.active)throw new Error('Produk atau variasi sudah tidak aktif.');
-      const stockIndex=stockRows.findIndex(function(r){return String(r[1])===item.productId&&String(r[2]||'')===item.variationId;});
-      if(stockIndex<0)throw new Error('Data stok produk belum tersedia untuk '+snap.name+'. Hubungi bagian Gudang.');
-      const available=Math.max(0,Number(stockRows[stockIndex][3])||0)-(waliReserved[key]||0)-(storeReserved[key]||0);
+      const stockMatches=[];stockRows.forEach(function(r,index){if(String(r[1])===item.productId&&String(r[2]||'')===item.variationId)stockMatches.push(index);});
+      if(!stockMatches.length)throw new Error('Data stok produk belum tersedia untuk '+snap.name+'. Hubungi bagian Gudang.');
+      if(stockMatches.length!==1)throw new Error('Ditemukan data stok ganda untuk '+snap.name+'. Transaksi dihentikan; hubungi bagian Gudang.');
+      const stockIndex=stockMatches[0],physicalStock=Number(stockRows[stockIndex][3]);
+      if(!Number.isSafeInteger(physicalStock)||physicalStock<0)throw new Error('Nilai stok tidak valid untuk '+snap.name+'. Hubungi bagian Gudang.');
+      const reservedQty=(waliReserved[key]||0)+(storeReserved[key]||0);
+      if(!Number.isSafeInteger(reservedQty)||reservedQty<0)throw new Error('Data reservasi stok tidak valid untuk '+snap.name+'.');
+      const available=physicalStock-reservedQty;
       if(item.qty>available)throw new Error('Stok tersedia untuk '+snap.name+' hanya '+Math.max(0,available)+' unit.');
       const lineTotal=snap.unitPrice*item.qty;
       if(!Number.isSafeInteger(lineTotal))throw new Error('Nilai transaksi tidak valid.');
       subtotal+=lineTotal;
-      plan.push({productId:item.productId,variationId:item.variationId,sku:snap.sku,name:snap.name,variationName:snap.variationName,unitPrice:snap.unitPrice,qty:item.qty,lineTotal:lineTotal,stockRow:stockIndex,before:Number(stockRows[stockIndex][3])||0});
+      plan.push({productId:item.productId,variationId:item.variationId,sku:snap.sku,name:snap.name,variationName:snap.variationName,unitPrice:snap.unitPrice,qty:item.qty,lineTotal:lineTotal,stockRow:stockIndex,before:physicalStock});
     });
     if(!Number.isSafeInteger(subtotal)||subtotal<1)throw new Error('Total transaksi tidak valid.');
     const discount=0,total=subtotal-discount;
@@ -3048,14 +3053,23 @@ function confirmCashierQrisPayment(token,saleId,reference) {
     const ss=getSS_(),salesSheet=ss.getSheetByName('PenjualanToko'),sale=findRowById_(salesSheet,saleId,1);
     if(!sale)throw new Error('Transaksi toko tidak ditemukan.');
     if(session.role===FMART.ROLES.KASIR&&String(sale.values[13]||'')!==String(session.userId))throw new Error('Kasir hanya dapat mengonfirmasi transaksi QRIS yang dibuat oleh akunnya. Hubungi Admin jika perlu bantuan.');
-    if(String(sale.values[11]||'').toUpperCase()==='LUNAS')return {ok:true,duplicate:true,saleId:saleId,number:String(sale.values[1]),status:'SELESAI'};
-    if(String(sale.values[11]||'').toUpperCase()!=='MENUNGGU_KONFIRMASI'||String(sale.values[8]||'').toUpperCase()!=='QRIS')throw new Error('Transaksi ini tidak menunggu konfirmasi QRIS.');
+    if(String(sale.values[8]||'').toUpperCase()!=='QRIS')throw new Error('Konfirmasi ini hanya berlaku untuk transaksi QRIS.');
+    if(String(sale.values[11]||'').toUpperCase()==='LUNAS'){
+      if(String(sale.values[12]||'').toUpperCase()!=='SELESAI')throw new Error('Status pembayaran dan transaksi tidak konsisten. Hubungi Admin untuk pemeriksaan.');
+      return {ok:true,duplicate:true,saleId:saleId,number:String(sale.values[1]),status:'SELESAI',paymentStatus:'LUNAS'};
+    }
+    if(String(sale.values[11]||'').toUpperCase()!=='MENUNGGU_KONFIRMASI'||String(sale.values[12]||'').toUpperCase()!=='MENUNGGU_PEMBAYARAN')throw new Error('Transaksi ini tidak berada pada status menunggu konfirmasi QRIS.');
     const reservationSheet=ss.getSheetByName('ReservasiStokToko'),reservations=readRows_(reservationSheet),active=reservations.filter(function(r){return String(r[1])===saleId&&String(r[5]||'').toUpperCase()==='AKTIF'&&new Date(r[7]||0).getTime()>Date.now();});
     if(!active.length)throw new Error('Reservasi stok transaksi sudah berakhir. Batalkan transaksi ini dan buat transaksi baru.');
     const details=readRows_(ss.getSheetByName('DetailPenjualanToko')).filter(function(r){return String(r[1])===saleId;});
     if(!details.length)throw new Error('Rincian transaksi tidak ditemukan.');
     const reservedForSale={},groupedDetails={};
-    active.forEach(function(r){const key=String(r[2]||'')+'|'+String(r[3]||'');reservedForSale[key]=(reservedForSale[key]||0)+(Number(r[4])||0);});
+    active.forEach(function(r){
+      const key=String(r[2]||'')+'|'+String(r[3]||''),qty=Number(r[4]);
+      if(!Number.isSafeInteger(qty)||qty<1)throw new Error('Jumlah reservasi QRIS tidak valid. Hubungi Admin untuk pemeriksaan.');
+      reservedForSale[key]=(reservedForSale[key]||0)+qty;
+      if(!Number.isSafeInteger(reservedForSale[key]))throw new Error('Total reservasi QRIS tidak valid.');
+    });
     details.forEach(function(d){
       const pid=String(d[2]||''),vid=String(d[3]||''),qty=Number(d[8]),key=pid+'|'+vid;
       if(!pid||!Number.isSafeInteger(qty)||qty<1)throw new Error('Jumlah produk pada transaksi tidak valid.');
@@ -3066,12 +3080,16 @@ function confirmCashierQrisPayment(token,saleId,reference) {
     const stockRows=readRows_(ss.getSheetByName('Stok')),plan=[];
     Object.keys(groupedDetails).forEach(function(key){
       const item=groupedDetails[key],pid=item.productId,vid=item.variationId,qty=item.qty;
-      if((reservedForSale[key]||0)<qty)throw new Error('Reservasi stok tidak lengkap untuk salah satu barang. Batalkan transaksi dan buat transaksi baru.');
-      const idx=stockRows.findIndex(function(r){return String(r[1])===pid&&String(r[2]||'')===vid;});
-      if(idx<0)throw new Error('Data stok produk tidak ditemukan.');
+      if((reservedForSale[key]||0)!==qty)throw new Error('Jumlah reservasi tidak sama dengan rincian transaksi untuk salah satu barang. Transaksi ditahan untuk pemeriksaan Admin.');
+      const stockMatches=[];stockRows.forEach(function(r,index){if(String(r[1])===pid&&String(r[2]||'')===vid)stockMatches.push(index);});
+      if(stockMatches.length!==1)throw new Error(stockMatches.length?'Data stok ganda ditemukan. Konfirmasi QRIS dihentikan.':'Data stok produk tidak ditemukan.');
+      const idx=stockMatches[0],physicalStock=Number(stockRows[idx][3]);
       const snap=getProductSnapshot_(ss,pid,vid);
-      if(!snap||!snap.active||Number(stockRows[idx][3])<qty)throw new Error('Stok fisik tidak mencukupi untuk menyelesaikan transaksi.');
-      plan.push({productId:pid,variationId:vid,qty:qty,stockRow:idx,before:Number(stockRows[idx][3])||0});
+      if(!snap||!snap.active||!Number.isSafeInteger(physicalStock)||physicalStock<qty)throw new Error('Stok fisik tidak mencukupi atau tidak valid untuk menyelesaikan transaksi.');
+      plan.push({productId:pid,variationId:vid,qty:qty,stockRow:idx,before:physicalStock});
+    });
+    Object.keys(reservedForSale).forEach(function(key){
+      if(!Object.prototype.hasOwnProperty.call(groupedDetails,key))throw new Error('Ditemukan reservasi QRIS yang tidak tercantum pada rincian transaksi. Konfirmasi dihentikan.');
     });
     const now=new Date();
     applyCashierSaleStock_(ss,saleId,plan,session,now);
@@ -3171,15 +3189,27 @@ function getStoreSaleReservationMap_(ss) {
 
 function applyCashierSaleStock_(ss,saleId,items,session,now) {
   const stockSheet=ss.getSheetByName('Stok'),variationSheet=ss.getSheetByName('VariasiProduk'),mutationSheet=ss.getSheetByName('MutasiStok');
+  if(!stockSheet||!mutationSheet)throw new Error('Sheet stok atau mutasi belum tersedia.');
+  const prepared=[],seen=Object.create(null);
+  // Preflight seluruh baris sebelum ada penulisan agar kesalahan data tidak
+  // meninggalkan sebagian item transaksi sudah terpotong stoknya.
   items.forEach(function(item){
-    const idx=Number(item.stockRow),before=Number(item.before)||0,after=before-Number(item.qty);
-    if(!Number.isInteger(idx)||idx<0||after<0)throw new Error('Rencana pengurangan stok tidak valid.');
-    stockSheet.getRange(idx+2,4,1,3).setValues([[after,Number(stockSheet.getRange(idx+2,5).getValue())||0,now]]);
+    const idx=Number(item.stockRow),before=Number(item.before),qty=Number(item.qty),key=String(item.productId)+'|'+String(item.variationId||'');
+    if(!Number.isInteger(idx)||idx<0||!Number.isSafeInteger(before)||before<0||!Number.isSafeInteger(qty)||qty<1||before<qty||seen[key])throw new Error('Rencana pengurangan stok tidak valid atau memuat item ganda.');
+    seen[key]=true;
+    const liveStock=Number(stockSheet.getRange(idx+2,4).getValue());
+    if(!Number.isSafeInteger(liveStock)||liveStock!==before)throw new Error('Stok berubah saat transaksi diproses. Muat ulang POS sebelum mencoba kembali.');
+    let variation=null;
     if(item.variationId){
-      const variation=findRowById_(variationSheet,item.variationId,1);
-      if(variation)variationSheet.getRange(variation.rowNumber,6,1,3).setValues([[after,String(variation.values[6]||'AKTIF'),now]]);
+      variation=findRowById_(variationSheet,item.variationId,1);
+      if(!variation||String(variation.values[1])!==String(item.productId)||String(variation.values[6]||'').toUpperCase()!=='AKTIF')throw new Error('Data variasi berubah atau tidak valid. Transaksi dihentikan.');
     }
-    mutationSheet.appendRow([makeFMartId_('MUT'),item.productId,item.variationId,'KELUAR',item.qty,before,after,saleId,'Penjualan langsung toko FMart',session.userId,now]);
+    prepared.push({item:item,idx:idx,before:before,after:before-qty,qty:qty,variation:variation});
+  });
+  prepared.forEach(function(x){
+    stockSheet.getRange(x.idx+2,4,1,3).setValues([[x.after,Number(stockSheet.getRange(x.idx+2,5).getValue())||0,now]]);
+    if(x.variation)variationSheet.getRange(x.variation.rowNumber,6,1,3).setValues([[x.after,String(x.variation.values[6]||'AKTIF'),now]]);
+    mutationSheet.appendRow([makeFMartId_('MUT'),x.item.productId,x.item.variationId,'KELUAR',x.qty,x.before,x.after,saleId,'Penjualan langsung toko FMart',session.userId,now]);
   });
 }
 
