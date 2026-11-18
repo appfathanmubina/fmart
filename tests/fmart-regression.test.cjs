@@ -278,3 +278,20 @@ test('Wali Santri relationships are presented and used as saved delivery address
  assert.ok(index.includes('name="checkoutSantriId"'));
  assert.ok(index.includes('Catatan titik penerimaan (opsional)'));
 });
+
+
+test('Wali can link an active Santri immediately without Admin approval',()=>{
+ const link=extractFunction(code,'requestWaliSantriLink');
+ const classes=extractFunction(code,'getSantriClassesForWaliSelf');
+ const search=extractFunction(code,'searchSantriForWaliSelf');
+ assert.ok(link.includes("requireRole_(token,[FMART.ROLES.WALI_SANTRI])"));
+ assert.ok(link.includes("['AKTIF',now,hubungan]"));
+ assert.ok(link.includes("'AKTIF',now,hubungan"));
+ assert.ok(!link.includes('MENUNGGU_VERIFIKASI'));
+ assert.ok(link.includes('activeCount>=2'));
+ assert.ok(classes.includes("String(r[3]||'').toUpperCase()==='AKTIF'"));
+ assert.ok(search.includes("String(r[3]||'').toUpperCase()==='AKTIF'"));
+ assert.ok(index.includes('Hubungan langsung aktif tanpa persetujuan Admin.'));
+ assert.ok(index.includes('Hubungkan Santri'));
+ assert.ok(!index.includes('Pengajuan dari Wali harus disetujui Admin/Superadmin.'));
+});

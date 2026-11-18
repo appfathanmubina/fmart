@@ -2190,7 +2190,7 @@ function getSantriClassesForWaliSelf(token){
   if(!wali) throw new Error('Data Wali Santri tidak ditemukan.');
   const relRows=readRows_(ss.getSheetByName('WaliSantriSantri'));
   const blocked={};
-  relRows.forEach(function(r){if(String(r[1]||'')===String(wali.waliId) && ['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(r[3]||'').toUpperCase())>=0) blocked[String(r[2]||'')]=true;});
+  relRows.forEach(function(r){if(String(r[1]||'')===String(wali.waliId) && String(r[3]||'').toUpperCase()==='AKTIF') blocked[String(r[2]||'')]=true;});
   const santriSheet=ss.getSheetByName('Santri'), santriMap=getSantriColumnMap_(santriSheet), rows=readSantriRows_(santriSheet), classes={};
   rows.forEach(function(r){const child=santriRecord_(r,santriMap),id=child.id,cls=child.className.trim();if(!id||!cls||child.status.toUpperCase()!=='AKTIF'||blocked[id])return;classes[cls]=true;});
   return {ok:true,classes:Object.keys(classes).sort(function(a,b){return a.localeCompare(b,'id',{numeric:true,sensitivity:'base'});})};
@@ -2211,7 +2211,7 @@ function searchSantriForWaliSelf(token,query,className){
   if(!wali) throw new Error('Data Wali Santri tidak ditemukan.');
   const relRows=readRows_(ss.getSheetByName('WaliSantriSantri'));
   const blocked={};
-  relRows.forEach(function(r){if(String(r[1]||'')===String(wali.waliId) && ['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(r[3]||'').toUpperCase())>=0) blocked[String(r[2]||'')]=true;});
+  relRows.forEach(function(r){if(String(r[1]||'')===String(wali.waliId) && String(r[3]||'').toUpperCase()==='AKTIF') blocked[String(r[2]||'')]=true;});
   const santriSheet=ss.getSheetByName('Santri'), santriMap=getSantriColumnMap_(santriSheet), rows=readSantriRows_(santriSheet), result=[];
   rows.forEach(function(r){
     const child=santriRecord_(r,santriMap),id=child.id,nis=child.nis,name=child.name,cls=child.className;
@@ -2236,13 +2236,14 @@ function requestWaliSantriLink(token,santriId,hubungan){
     const wali=findWaliByUserId_(ss,session.userId); if(!wali) throw new Error('Data Wali Santri tidak ditemukan.');
     const santri=findSantriRowById_(santriSheet,santriId), santriMap=getSantriColumnMap_(santriSheet); if(!santri||santriRecord_(santri.values,santriMap).status.toUpperCase()!=='AKTIF') throw new Error('Data Santri tidak ditemukan atau tidak aktif.');
     const relRows=readRows_(rs), existing=relRows.find(function(r){return String(r[1]||'')===wali.waliId&&String(r[2]||'')===santriId;});
-    const activeOrPendingCount=relRows.filter(function(r){return String(r[2]||'')===santriId&&['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(r[3]||'').toUpperCase())>=0;}).length;
-    if(!existing && activeOrPendingCount>=2) throw new Error('Santri ini sudah memiliki maksimal 2 Wali Santri aktif/pending.');
-    if(existing){const st=String(existing[3]||'').toUpperCase();if(st==='AKTIF')throw new Error('Santri sudah terhubung dengan akun Anda.');if(st==='MENUNGGU_VERIFIKASI')throw new Error('Pengajuan untuk Santri ini masih menunggu verifikasi.');}
+    const activeCount=relRows.filter(function(r){return String(r[2]||'')===santriId&&String(r[3]||'').toUpperCase()==='AKTIF';}).length;
+    if(existing&&String(existing[3]||'').toUpperCase()==='AKTIF') throw new Error('Santri sudah terhubung dengan akun Anda.');
+    if(activeCount>=2) throw new Error('Santri ini sudah memiliki maksimal 2 Wali Santri aktif.');
     const now=new Date();
-    if(existing){const rowNum=relRows.indexOf(existing)+2;rs.getRange(rowNum,4,1,3).setValues([['MENUNGGU_VERIFIKASI',now,hubungan]]);}else{rs.appendRow([makeFMartId_('REL'),wali.waliId,santriId,'MENUNGGU_VERIFIKASI',now,hubungan]);}
-    writeAudit_(session.userId,session.role,'REQUEST_WALI_SANTRI_LINK','WALI_SANTRI_SANTRI',wali.waliId,'',JSON.stringify({waliId:wali.waliId,santriId:santriId,status:'MENUNGGU_VERIFIKASI',hubungan:hubungan}),'Wali mengajukan hubungan dengan Santri');
-    SpreadsheetApp.flush();return {ok:true,message:'Pengajuan hubungan berhasil dikirim dan menunggu verifikasi Admin.'};
+    if(existing){const rowNum=relRows.indexOf(existing)+2;rs.getRange(rowNum,4,1,3).setValues([['AKTIF',now,hubungan]]);}
+    else{rs.appendRow([makeFMartId_('REL'),wali.waliId,santriId,'AKTIF',now,hubungan]);}
+    writeAudit_(session.userId,session.role,'LINK_WALI_SANTRI_SELF','WALI_SANTRI_SANTRI',wali.waliId,'',JSON.stringify({waliId:wali.waliId,santriId:santriId,status:'AKTIF',hubungan:hubungan}),'Wali menghubungkan Santri tanpa persetujuan Admin');
+    SpreadsheetApp.flush();return {ok:true,message:'Hubungan berhasil diaktifkan. Santri sekarang tersedia sebagai alamat pengiriman.'};
   }finally{lock.releaseLock();}
 }
 
