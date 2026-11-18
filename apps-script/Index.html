@@ -2841,7 +2841,7 @@ async function saveWaliProfile(event){
     $('userBtn').textContent=nama;$('greeting').textContent='Halo, '+nama;
     showToast(result.message||'Profil berhasil diperbarui.','success');
     const refreshed=await runServer('getWaliProfileManagement',state.token);
-    state.waliProfileManagement=refreshed;renderWaliProfileManagement(refreshed);;
+    state.waliProfileManagement=refreshed;renderWaliProfileManagement(refreshed);
   }catch(e){showToast(e.message||'Profil gagal disimpan.','error')}
   finally{loading(false);const current=$('waliProfileSave');if(current)current.disabled=false}
 }
@@ -2854,7 +2854,7 @@ async function cancelWaliProfileRequest(relationId){
     const refreshed=await runServer('getWaliProfileManagement',state.token);
     state.waliProfileManagement=refreshed;renderWaliProfileManagement(refreshed);
     const children=await runServer('getMyChildren',state.token);
-    state.data.children=children.children||[];renderChildren(state.data.children);;
+    state.data.children=children.children||[];renderChildren(state.data.children);
   }catch(e){showToast(e.message||'Pengajuan tidak dapat dibatalkan.','error')}
   finally{loading(false)}
 }
@@ -2970,7 +2970,6 @@ async function submitCheckout(){
     closeCheckout();closeCart();
     $('successBody').innerHTML='<div class="empty-box" style="text-align:center"><div style="font-size:34px;margin-bottom:8px">✓</div><strong style="font-size:18px">Pesanan berhasil dibuat</strong><p class="muted">Nomor pesanan: <strong>'+escapeHtml(r.nomorPesanan)+'</strong></p><p class="muted">Untuk santri: <strong>'+escapeHtml(r.child&&r.child.name||'Santri terpilih')+'</strong></p><p class="muted">Metode: <strong>'+(method==='ANTAR_PESANTREN'?'Antar ke pesantren':'Ambil di FMart')+'</strong></p><p class="muted">Status saat ini: <strong>Menunggu Pembayaran</strong></p><p class="muted">Anda dapat membuka menu Pesanan untuk melihat rincian dan mengajukan pembayaran.</p></div><button type="button" class="primary" id="successCloseBtn" style="margin-top:12px">Selesai</button>';
     $('successModal').classList.remove('hidden');$('successCloseBtn').onclick=closeSuccess;
-    ;
   }catch(e){showToast(e.message||'Checkout gagal.');await openCart()}
   finally{btn.disabled=false;loading(false)}
 }
