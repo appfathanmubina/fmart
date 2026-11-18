@@ -1522,6 +1522,18 @@ body.buyer-portal #profileModal .modal-card{
           showStaffApp();
           $('opsRefresh').classList.add('hidden');$('opsStats').classList.add('hidden');renderDeliveryWorkspace();loading(false);return;
         }
+        if(session.user.role==='KASIR'){
+          // Kasir tidak memerlukan katalog Gudang. Data POS dimuat dari endpoint
+          // khusus StokKasir agar saldo Gudang tidak pernah dikirim ke browser Kasir.
+          state.data={user:session.user,categories:[],products:[],children:[]};
+          if(window.parent!==window)window.parent.postMessage({type:'FMART_ONESIGNAL_LOGIN',externalId:String(session.user.userId||'')},'https://appfathanmubina.github.io');
+          showApp();
+          $('waliNotificationBtn').classList.add('hidden');$('headerCartBtn').classList.add('hidden');$('headerOrdersBtn').classList.add('hidden');
+          showStaffApp();
+          loading(false);
+          loadOps();
+          return;
+        }
         const catalog=await runServer('getCatalog',state.token);
         if(!catalog||!catalog.ok)throw new Error('Data FMart tidak dapat dimuat.');
         state.data=catalog;
