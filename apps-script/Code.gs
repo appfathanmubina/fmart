@@ -2701,7 +2701,7 @@ function auditFMartRuntime_() {
     return result;
   }
 
-  const names = ['Users','WaliSantri','Santri','Produk','Stok','MutasiStok','Pesanan','DetailPesanan','Pembayaran','Pengiriman','Pengantaran','BuktiPengantaran','KonfirmasiPengantaran','KomplainPengantaran','ReservasiStok','Notifikasi','AuditLog'];
+  const names = ['Users','WaliSantri','Santri','Produk','Stok','MutasiStok','Pesanan','DetailPesanan','Pembayaran','Pengiriman','Pengantaran','BuktiPengantaran','KonfirmasiPengantaran','KomplainPengantaran','ReservasiStok','PenjualanToko','DetailPenjualanToko','ReservasiStokToko','Notifikasi','AuditLog'];
   names.forEach(function(name) {
     const sheet = ss.getSheetByName(name);
     if (!sheet) {
@@ -2740,7 +2740,9 @@ function auditFMartRuntime_() {
     paymentsByStatus: countStatuses_('Pembayaran', 5),
     shipmentsByStatus: countStatuses_('Pengiriman', 4),
     deliveryAssignmentsByStatus: countStatuses_('Pengantaran', 3),
-    complaintsByStatus: countStatuses_('KomplainPengantaran', 6)
+    complaintsByStatus: countStatuses_('KomplainPengantaran', 6),
+    storeSalesByStatus: countStatuses_('PenjualanToko', 12),
+    storeSalesPaymentByStatus: countStatuses_('PenjualanToko', 11)
   };
 
   [
@@ -2895,7 +2897,10 @@ function createCashierSale(token,payload) {
     const ss=getSS_(),salesSheet=ss.getSheetByName('PenjualanToko'),detailSheet=ss.getSheetByName('DetailPenjualanToko'),reservationSheet=ss.getSheetByName('ReservasiStokToko');
     if(!salesSheet||!detailSheet||!reservationSheet)throw new Error('Struktur POS belum lengkap. Sinkronkan SetupDatabase.gs dan jalankan setupFMartDatabase_().');
     const existing=readRows_(salesSheet).find(function(r){return String(r[17]||'')===requestKey;});
-    if(existing)return {ok:true,duplicate:true,saleId:String(existing[0]),number:String(existing[1]),total:Number(existing[7])||0,paymentStatus:String(existing[11]||''),status:String(existing[12]||'')};
+    if(existing){
+      if(String(existing[13]||'')!==String(session.userId))throw new Error('Kunci transaksi sudah pernah digunakan. Muat ulang kasir dan buat transaksi baru.');
+      return {ok:true,duplicate:true,saleId:String(existing[0]),number:String(existing[1]),total:Number(existing[7])||0,paymentStatus:String(existing[11]||''),status:String(existing[12]||'')};
+    }
     let resolvedBuyerName=buyerType==='NAMA'?buyerName:'';
     if(buyerType==='SANTRI'){
       const student=findSantriRowById_(ss.getSheetByName('Santri'),santriId);
