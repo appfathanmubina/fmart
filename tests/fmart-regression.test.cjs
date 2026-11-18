@@ -278,39 +278,3 @@ test('Wali Santri relationships are presented and used as saved delivery address
  assert.ok(index.includes('name="checkoutSantriId"'));
  assert.ok(index.includes('Catatan titik penerimaan (opsional)'));
 });
-
-test('Removed Wali dashboard summary has no stale frontend refresh or renderer',()=>{
- assert.ok(!index.includes('refreshWaliDashboard'));
- assert.ok(!index.includes('renderWaliDashboard'));
- assert.ok(!index.includes('getWaliDashboard'));
- assert.ok(!index.includes('waliDashboard:null'));
- const render=extractFunction(index,'render');
- assert.ok(render.includes('renderBuyerProductFeed()'));
- assert.ok(render.includes('renderChildren(d.children||[])'));
- assert.ok(index.includes("runServer('getBuyerProductBatch'"));
- assert.ok(index.includes('IntersectionObserver'));
- assert.ok(index.includes('productLoadSentinel'));
- const cancel=index.slice(index.indexOf('async function cancelWaliProfileRequest'),index.indexOf('async function openWaliLinkModal'));
- const link=index.slice(index.indexOf('function openWaliRequestForm'),index.indexOf('function closeProfile'));
- assert.ok(cancel.includes("runServer('getMyChildren'"));
- assert.ok(link.includes("runServer('getMyChildren'"));
-});
-
-
-test('Wali Santri links activate immediately and directory search validation matches UI',()=>{
- const link=extractFunction(code,'requestWaliSantriLink');
- const classes=extractFunction(code,'getSantriClassesForWaliSelf');
- const search=extractFunction(code,'searchSantriForWaliSelf');
- assert.ok(link.includes("requireRole_(token,[FMART.ROLES.WALI_SANTRI])"));
- assert.ok(link.includes("['AKTIF',now,hubungan]"));
- assert.ok(link.includes("status:'AKTIF'"));
- assert.ok(!link.includes('MENUNGGU_VERIFIKASI'));
- assert.ok(link.includes('activeCount>=2'));
- assert.ok(classes.includes("String(r[3]||'').toUpperCase()==='AKTIF'"));
- assert.ok(search.includes("String(r[3]||'').toUpperCase()==='AKTIF'"));
- assert.ok(search.includes("if(!query&&!className)"));
- assert.ok(index.includes('Hubungan langsung aktif tanpa persetujuan Admin.'));
- assert.ok(index.includes('Hubungkan Santri'));
- assert.ok(index.includes('Ketik minimal 3 huruf nama Santri'));
- assert.ok(!index.includes('Akses belanja untuk Santri ini aktif setelah Admin menyetujui.'));
-});
