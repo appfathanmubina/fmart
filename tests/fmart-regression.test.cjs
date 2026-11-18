@@ -44,6 +44,11 @@ assert.match(backend, /FMART\.ROLES\.ADMIN,FMART\.ROLES\.KASIR,FMART\.ROLES\.SUP
 assert.match(html, /const method='TRANSFER'/, 'Guardian UI must submit TRANSFER');
 assert.match(html, /Rekening Transfer FMart/, 'Staff settings must manage bank account details');
 assert.match(html, /copyBankAccountBtn/, 'Guardian UI must offer account-number copy');
+const waliPaymentStart = html.indexOf('async function openPayment(');
+const waliPaymentEnd = html.indexOf('function copyPaymentText(', waliPaymentStart);
+assert.ok(waliPaymentStart >= 0 && waliPaymentEnd > waliPaymentStart, 'Guardian payment flow must be present');
+assert.doesNotMatch(html.slice(waliPaymentStart, waliPaymentEnd), /QRIS/i, 'Guardian payment flow must not expose QRIS');
+assert.match(backend, /replace\\(\/\\\\s\+\/g, ''\\)/, 'Bank account input must normalize whitespace');
 assert.match(backend, /function confirmCashierQrisPayment\(/, 'POS QRIS confirmation must remain available');
 assert.match(backend, /function getCashierQrisQueue\(/, 'POS QRIS queue must remain available');
 
