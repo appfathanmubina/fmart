@@ -1015,3 +1015,12 @@ Uji transaksi bersamaan, Drive ACL, trigger, dan browser nyata tetap wajib dilak
 - Regression test memeriksa konsolidasi style, baseline aksesibilitas, breakpoint desktop/tablet/HP, dan guard role pada laporan/pengaturan QRIS.
 
 Audit statis repository tidak menggantikan inspeksi visual. Sebelum produksi, lakukan screenshot dan uji interaksi pada browser desktop, tablet, serta HP untuk seluruh role, terutama login/OTP, Dashboard, POS, Gudang, penerimaan, QRIS, laporan, tabel, formulir, dan modal.
+
+
+## Tahap 4 — UAT dan kesiapan produksi
+
+Checklist lengkap role, transaksi, concurrency, audit database/Drive/stok/POS/penerimaan, trigger, Executions, serta browser/perangkat tersedia di `docs/UAT-TAHAP-4-FMART.md`.
+
+Untuk memudahkan sinkronisasi Apps Script, `setupFMartDatabase()` menjadi entry point publik untuk migrasi header yang additive. Setelah setup pada Spreadsheet yang benar, jalankan `runFMartReadinessAudit()` untuk audit gabungan read-only. Fungsi audit tidak mengubah data dan tidak memasang trigger.
+
+Status: CI Tahap 2 (18/18) dan Tahap 3 (22/22) lulus. Runtime UAT belum dijalankan karena project Apps Script/Spreadsheet tidak tersedia melalui koneksi repository ini. Jangan menguji transaksi duplikat/gagal/bersamaan pada data produksi; gunakan salinan Spreadsheet dan project uji dengan data dummy. Hasil UAT harus diisi PASS/FAIL/BLOCKED dengan Execution ID dan bukti yang sudah disamarkan.
