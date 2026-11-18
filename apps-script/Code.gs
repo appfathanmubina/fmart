@@ -1040,15 +1040,16 @@ function submitPayment(token, orderId, method, nominal, fileName, mimeType, base
     if(queueCount>=queueLimit)throw new Error('Antrean verifikasi pembayaran sedang penuh ('+queueLimit+' pengajuan). Silakan coba kembali setelah petugas memproses antrean.');
     const existing = readRows_(paymentSheet).filter(function(r){ return String(r[1]) === orderId; }).sort(function(a,b){ return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime(); })[0];
     if (existing && ['MENUNGGU_VERIFIKASI','TERVERIFIKASI'].indexOf(String(existing[5]||'').toUpperCase()) !== -1) throw new Error('Pembayaran untuk pesanan ini sudah diajukan.');
-    const reservations=readRows_(ensureStockReservationSheet_(ss)).filter(function(r){return String(r[1])===orderId&&String(r[5]||'').toUpperCase()==='AKTIF';});
-    if(reservations.length)setOrderReservationStatus_(ss,orderId,'AKTIF',new Date(Date.now()+(Number(getSettingValue_('PAYMENT_RESERVATION_MINUTES'))||120)*60000));
-    else {const detailRows=readRows_(ss.getSheetByName('DetailPesanan')).filter(function(r){return String(r[1])===orderId;}).map(function(r){return {productId:String(r[2]),variationId:String(r[3]||''),qty:Number(r[8])||0};});reserveOrderStock_(ss,orderId,detailRows,Number(getSettingValue_('PAYMENT_RESERVATION_MINUTES'))||120);}
     const cleanName = sanitizeFileName_(fileName || 'bukti-qris');
     const mime = String(mimeType || '').toLowerCase();
     if (!['image/jpeg','image/png','image/webp','application/pdf'].includes(mime)) throw new Error('Format bukti pembayaran harus JPG, PNG, WEBP, atau PDF.');
     const raw = String(base64Data).replace(/^data:[^;]+;base64,/, '');
     const bytes = Utilities.base64Decode(raw);
     if (bytes.length > 5 * 1024 * 1024) throw new Error('Ukuran bukti pembayaran maksimal 5 MB.');
+    const reservations=readRows_(ensureStockReservationSheet_(ss)).filter(function(r){return String(r[1])===orderId&&String(r[5]||'').toUpperCase()==='AKTIF';});
+    if(reservations.length)setOrderReservationStatus_(ss,orderId,'AKTIF',new Date(Date.now()+(Number(getSettingValue_('PAYMENT_RESERVATION_MINUTES'))||120)*60000));
+    else {const detailRows=readRows_(ss.getSheetByName('DetailPesanan')).filter(function(r){return String(r[1])===orderId;}).map(function(r){return {productId:String(r[2]),variationId:String(r[3]||''),qty:Number(r[8])||0};});reserveOrderStock_(ss,orderId,detailRows,Number(getSettingValue_('PAYMENT_RESERVATION_MINUTES'))||120);}
+
     const folder = getPaymentProofFolder_();
     const file = folder.createFile(Utilities.newBlob(bytes, mime, orderId + '-' + cleanName));
     const buktiUrl = file.getUrl();
