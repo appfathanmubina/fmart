@@ -1933,9 +1933,9 @@ function getStockManagement(token) {
     const pid=String(m[1]||'');const vid=String(m[2]||'');const product=productRows.find(function(p){return String(p[0])===pid;});const variation=vid?variationRows.find(function(v){return String(v[0])===vid;}):null;
     return {id:String(m[0]||''),productName:product?String(product[3]||''):'Produk tidak ditemukan',sku:product?String(product[2]||''):'-',variationName:variation?[String(variation[2]||''),String(variation[3]||'')].filter(Boolean).join(': '):'',type:String(m[3]||''),qty:Number(m[4])||0,before:Number(m[5])||0,after:Number(m[6])||0,referenceId:String(m[7]||''),note:String(m[8]||''),actor:userMap[String(m[9])]||'-',createdAt:dateIso_(m[10]),sortAt:m[10] instanceof Date?m[10].getTime():new Date(m[10]||0).getTime()};
   }).sort(function(a,b){return b.sortAt-a.sortAt;}).slice(0,100).map(function(x){delete x.sortAt;return x;});
-  let totalUnits=0,lowStock=0,outOfStock=0;
-  items.forEach(function(x){totalUnits+=x.stock;if(x.stock<=0)outOfStock++;else if(x.stock<=x.minStock)lowStock++;});
-  return {ok:true,summary:{totalItems:items.length,totalUnits:totalUnits,lowStock:lowStock,outOfStock:outOfStock},items:items,history:history};
+  let totalUnits=0,lowStock=0,outOfStock=0,missingStockRows=0;
+  items.forEach(function(x){totalUnits+=x.stock;if(x.stockRecordMissing)missingStockRows++;if(x.stock<=0)outOfStock++;else if(x.stock<=x.minStock)lowStock++;});
+  return {ok:true,summary:{totalItems:items.length,totalUnits:totalUnits,lowStock:lowStock,outOfStock:outOfStock,missingStockRows:missingStockRows},items:items,history:history};
 }
 
 function setStockMinimum(token, productId, variationId, minStock) {
