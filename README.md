@@ -1005,3 +1005,13 @@ Setelah memperbarui Code.gs, SetupDatabase.gs, dan Index.html dari main, jalanka
 - Periode laporan memakai tanggal kalender Asia/Jakarta secara inklusif. Ringkasan Wali tetap terpisah dari POS; POS, metode pembayaran, detail produk, dan mutasi stok Kasir ditampilkan tanpa mencampur lokasi stok.
 
 Uji transaksi bersamaan, Drive ACL, trigger, dan browser nyata tetap wajib dilakukan pada project Apps Script oleh operator sebelum dinyatakan siap produksi.
+
+
+## Tahap 3 — Konsolidasi UI/UX dan aksesibilitas
+
+- Style global dari halaman utama, portal Wali, Gudang, POS, QRIS, dan perbaikan responsif dikonsolidasikan ke satu style block di head. Style khusus struk cetak tetap terisolasi pada dokumen cetak. Aturan CSS dipindahkan tanpa mengubah urutan cascade sehingga override yang telah ada tetap dipertahankan.
+- Ditambahkan baseline komponen bersama untuk target sentuh minimal 44px, fokus keyboard yang jelas, modal dengan scroll containment, tabel responsif, skip link, dan reduced motion/high contrast.
+- Navigasi petugas tetap dibatasi per role dan memakai aria-hidden/tabIndex untuk menu yang tidak berhak diakses. Pembatasan endpoint server tetap menjadi kontrol utama; CSS/visibility bukan pengganti otorisasi.
+- Regression test memeriksa konsolidasi style, baseline aksesibilitas, breakpoint desktop/tablet/HP, dan guard role pada laporan/pengaturan QRIS.
+
+Audit statis repository tidak menggantikan inspeksi visual. Sebelum produksi, lakukan screenshot dan uji interaksi pada browser desktop, tablet, serta HP untuk seluruh role, terutama login/OTP, Dashboard, POS, Gudang, penerimaan, QRIS, laporan, tabel, formulir, dan modal.
