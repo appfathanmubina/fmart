@@ -1678,9 +1678,7 @@ async function openProduct(productId){
     if(!r.ok)throw new Error(r.message||'Produk tidak tersedia.');
     const p=r.product||{};
     p.variations=Array.isArray(p.variations)?p.variations:[];
-    p.stock=Math.max(0,Number(p.stock)||0);
     p.price=Math.max(0,Number(p.price)||0);
-    p.minStock=Math.max(0,Number(p.minStock)||0);
     state.currentProduct=p;
     state.currentVariationId='';
     state.currentProductQty=1;
@@ -1699,10 +1697,10 @@ async function openProduct(productId){
           '<h3 class="buyer-detail-name">'+escapeHtml(p.name||'Produk')+'</h3>'+
           ''+
           '<div id="detailPrice" class="buyer-detail-price">Rp '+formatMoney(p.price)+'</div>'+
-          '<div id="detailStock" class="buyer-detail-stock '+(noStock?'empty':(p.stock<=p.minStock?'limited':'ready'))+'">'+(noStock?'Stok habis':(p.stock<=p.minStock?'Stok terbatas · ':'Stok tersedia · ')+formatMoney(p.stock)+' unit')+'</div>'+
+          '<div id="detailStock" class="buyer-detail-stock ready">Produk dapat dipesan</div>'+
           '<div class="buyer-detail-description"><strong>Deskripsi produk</strong><p>'+escapeHtml(p.description||'Belum ada deskripsi untuk produk ini.')+'</p></div>'+
           (hasVariants?'<section class="buyer-variation-section"><div class="buyer-variation-heading"><strong>Pilih variasi</strong><span>Wajib dipilih</span></div><div id="detailVariations" class="variation-list buyer-variation-list">'+p.variations.map(v=>{return '<button type="button" class="variation-option buyer-variation-option" data-variation-id="'+escapeHtml(v.id)+'" ><span class="buyer-variation-main"><strong>'+escapeHtml(v.name+(v.value?': '+v.value:''))+'</strong><small>Tersedia untuk dipesan</small></span><span class="buyer-variation-price">'+(Number(v.priceAddition)>0?'+ Rp '+formatMoney(v.priceAddition):'Harga dasar')+'</span></button>'}).join('')+'</div></section>':'')+
-          '<div class="buyer-quantity-panel"><div><strong>Jumlah</strong><small id="detailQtyHint">'+(noStock?'Produk sedang tidak tersedia':'Maksimal mengikuti stok tersedia')+'</small></div><div class="qty-control buyer-qty-control"><button type="button" id="detailQtyMinus" aria-label="Kurangi jumlah">−</button><input id="detailQty" type="number" min="1" max="10000" value="1" inputmode="numeric" '+(noStock?'disabled':'')+'><button type="button" id="detailQtyPlus" aria-label="Tambah jumlah">+</button></div></div>'+
+          '<div class="buyer-quantity-panel"><div><strong>Jumlah</strong><small id="detailQtyHint">Masukkan jumlah pesanan</small></div><div class="qty-control buyer-qty-control"><button type="button" id="detailQtyMinus" aria-label="Kurangi jumlah">−</button><input id="detailQty" type="number" min="1" max="10000" value="1" inputmode="numeric" '+(noStock?'disabled':'')+'><button type="button" id="detailQtyPlus" aria-label="Tambah jumlah">+</button></div></div>'+
           '<div class="buyer-detail-actions"><button type="button" class="secondary" id="detailCartNow" '+(noStock?'disabled':'')+'>Tambah ke keranjang</button><button type="button" class="primary" id="detailBuyNow" '+(noStock?'disabled':'')+'>Beli sekarang</button></div>'+
         '</div>'+
       '</div>';
@@ -1719,19 +1717,11 @@ function syncDetailStockUI(){
   const p=state.currentProduct;if(!p)return;
   const v=getCurrentDetailVariation();
   const hasVariants=p.variations.length>0;
-  const available=hasVariants?(v?Math.max(0,Number(v.stock)||0):0):Math.max(0,Number(p.stock)||0);
   const price=Number(p.price||0)+(v?Number(v.priceAddition||0):0);
-  const stock=$('detailStock');
   $('detailPrice').textContent='Rp '+formatMoney(price);
-  if(hasVariants&&!v){
-    stock.className='buyer-detail-stock empty';stock.textContent='Pilih variasi untuk melihat stok';
-  }else if(available<1){
-    stock.className='buyer-detail-stock empty';stock.textContent='Stok Gudang habis · tetap dapat dipesan';
-  }else{
-    const limited=available<=Number(p.minStock||0);
-    stock.className='buyer-detail-stock '+(limited?'limited':'ready');
-    stock.textContent=(limited?'Stok terbatas · ':'Stok tersedia · ')+formatMoney(available)+' unit';
-  }
+  const badge=$('detailStock');
+  badge.className='buyer-detail-stock ready';
+  badge.textContent='Produk dapat dipesan';
   const qty=$('detailQty');
   qty.max='10000';
   state.currentProductQty=Math.min(10000,Math.max(1,Number(state.currentProductQty)||1));
@@ -1741,7 +1731,7 @@ function syncDetailStockUI(){
   $('detailQtyPlus').disabled=state.currentProductQty>=10000;
   $('detailCartNow').disabled=hasVariants&&!v;
   $('detailBuyNow').disabled=hasVariants&&!v;
-  $('detailQtyHint').textContent=hasVariants&&!v?'Pilih variasi terlebih dahulu':'Jika stok kurang, pesanan menunggu jumlah lengkap tersedia';
+  $('detailQtyHint').textContent=hasVariants&&!v?'Pilih variasi terlebih dahulu':'Masukkan jumlah yang ingin dipesan';
 }
 function bindProductDetailControls(){
   const p=state.currentProduct;if(!p)return;
@@ -1776,10 +1766,8 @@ async function addCurrentProduct(buyNow){
   const p=state.currentProduct;if(!p)return;
   if(p.variations.length&&!state.currentVariationId){showToast('Pilih variasi terlebih dahulu.');return}
   const v=getCurrentDetailVariation();
-  const max=v?Math.max(0,Number(v.stock)||0):Math.max(0,Number(p.stock)||0);
-  if(max<1){showToast('Stok produk atau variasi sedang habis.');return}
   const qty=Math.floor(Number(state.currentProductQty)||0);
-  if(qty<1||qty>max){showToast('Jumlah harus sesuai stok yang tersedia.');syncDetailStockUI();return}
+  if(qty<1||qty>10000){showToast('Jumlah pesanan harus antara 1 sampai 10.000.');syncDetailStockUI();return}
   loading(true,'Menambahkan ke keranjang...');
   try{
     await runServer('addToCart',state.token,p.id,state.currentVariationId,qty);
@@ -2009,7 +1997,7 @@ function openCheckout(){
   const selected=getSelectedCartItems();
   if(!selected.length){showToast('Pilih barang yang akan di-checkout.');return}
   const invalid=selected.find(i=>!i.available);
-  if(invalid){showToast('Periksa ketersediaan stok '+invalid.name+'.');return}
+  if(invalid){showToast('Produk '+invalid.name+' tidak tersedia untuk dipesan.');return}
   const children=(state.data&&state.data.children||[]);
   if(!children.length){showToast('Belum ada santri aktif yang terhubung. Hubungkan santri melalui menu Profil.');return}
   const total=selected.reduce((sum,i)=>sum+Number(i.subtotal||0),0);
@@ -2054,7 +2042,7 @@ function closeCheckout(){$('checkoutModal').classList.add('hidden')}
 function closeSuccess(){$('successModal').classList.add('hidden')}
 function showToast(text,type='info'){const t=$('toast');const kind=type==='error'?'toast-error':type==='success'?'toast-success':'';const icon=type==='error'?'⚠':type==='success'?'✓':'i';t.setAttribute('role',type==='error'?'alert':'status');t.setAttribute('aria-live',type==='error'?'assertive':'polite');t.className='toast '+kind;t.innerHTML='<span class="toast-icon" aria-hidden="true">'+icon+'</span><span class="toast-text">'+escapeHtml(text||'')+'</span>';t.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>t.classList.remove('show'),4200)}
 
-function statusLabel(s){const m={MENUNGGU_PEMBAYARAN:'Menunggu Pembayaran',MENUNGGU_STOK:'Menunggu Stok Lengkap',DIBAYAR:'Dibayar',DIPROSES:'Diproses',DISIAPKAN:'Disiapkan',DIANTAR:'Diantar',DITERIMA:'Diterima',SIAP_DIAMBIL:'Siap Diambil',DIBATALKAN:'Dibatalkan'};return m[String(s||'').toUpperCase()]||String(s||'').replace(/_/g,' ')}
+function statusLabel(s){if(state.data&&state.data.user&&state.data.user.role==='WALI_SANTRI'&&String(s||'').toUpperCase()==='MENUNGGU_STOK')return 'Diproses';const m={MENUNGGU_PEMBAYARAN:'Menunggu Pembayaran',MENUNGGU_STOK:'Menunggu Stok Lengkap',DIBAYAR:'Dibayar',DIPROSES:'Diproses',DISIAPKAN:'Disiapkan',DIANTAR:'Diantar',DITERIMA:'Diterima',SIAP_DIAMBIL:'Siap Diambil',DIBATALKAN:'Dibatalkan'};return m[String(s||'').toUpperCase()]||String(s||'').replace(/_/g,' ')}
 function paymentStatusLabel(s){const m={MENUNGGU_VERIFIKASI:'Menunggu Verifikasi',TERVERIFIKASI:'Terverifikasi',DITOLAK:'Ditolak'};return m[String(s||'').toUpperCase()]||String(s||'').replace(/_/g,' ')}
 function formatDate(v){if(!v)return '-';try{return new Date(v).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}catch(e){return '-'}}
 async function openOrders(){

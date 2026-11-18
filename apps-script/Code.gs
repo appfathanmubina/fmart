@@ -559,7 +559,11 @@ function getInitialData(token) {
   const result = {user:{userId:session.userId,username:session.username,nama:session.nama,role:session.role},categories:[],products:[],children:[]};
 
   result.categories = readRows_(ss.getSheetByName('Kategori')).filter(function(r){return String(r[4]).toUpperCase()==='AKTIF';}).map(function(r){return {id:r[0],name:r[1],description:r[2],order:r[3]||0};});
-  result.products = readRows_(ss.getSheetByName('Produk')).filter(function(r){return String(r[8]).toUpperCase()==='AKTIF';}).map(function(r){return {id:r[0],categoryId:r[1],sku:r[2],name:r[3],description:r[4],price:Number(r[5])||0,minStock:Number(r[6])||0,photoUrl:r[7]||''};});
+  result.products = readRows_(ss.getSheetByName('Produk')).filter(function(r){return String(r[8]).toUpperCase()==='AKTIF';}).map(function(r){
+    const product={id:r[0],categoryId:r[1],sku:r[2],name:r[3],description:r[4],price:Number(r[5])||0,photoUrl:r[7]||''};
+    if(session.role!==FMART.ROLES.WALI_SANTRI) product.minStock=Number(r[6])||0;
+    return product;
+  });
   if (session.role === FMART.ROLES.WALI_SANTRI) result.children = getChildrenForWali_(ss, session.userId);
   return result;
 }
@@ -605,11 +609,17 @@ function getProductDetail(token, productId) {
   variations.forEach(function(v){ if(Object.prototype.hasOwnProperty.call(variationStock,v.id)) v.stock=Math.max(0,variationStock[v.id]-(reservedByKey[productId+'|'+v.id]||0)); });
   const stock = variations.length ? variations.reduce(function(total,v){return total + Math.max(0,v.stock);},0) : (baseStockRows.length ? Math.max(0,(Number(baseStockRows[0][3])||0)-(reservedByKey[productId+'|']||0)) : 0);
 
-  return {ok:true, product:{
+  const productResult={
     id:String(r[0]), categoryId:String(r[1] || ''), categoryName:String(cat.values[1] || ''), sku:String(r[2] || ''),
     name:String(r[3] || ''), description:String(r[4] || ''), price:Number(r[5]) || 0, minStock:Number(r[6]) || 0,
     photoUrl:String(r[7] || ''), stock:Math.max(0,stock), variations:variations
-  }};
+  };
+  if(session.role===FMART.ROLES.WALI_SANTRI){
+    delete productResult.stock;
+    delete productResult.minStock;
+    productResult.variations=variations.map(function(v){return {id:v.id,name:v.name,value:v.value,priceAddition:v.priceAddition};});
+  }
+  return {ok:true,product:productResult};
 }
 
 function getCatalog(token) {
@@ -857,12 +867,21 @@ function checkoutCart(token, santriId, selectedCartIds, catatan, metodePengirima
 function getMyNotifications(token) {
   const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.PETUGAS_PENGANTAR]);
   const rows=readRows_(getSS_().getSheetByName('Notifikasi')).filter(function(r){return String(r[1]||'')===String(session.userId);}).sort(function(a,b){return new Date(b[7]||0).getTime()-new Date(a[7]||0).getTime();});
+  const waitingStockOrderIds={};
+  if(session.role===FMART.ROLES.WALI_SANTRI){
+    readRows_(getSS_().getSheetByName('Pesanan')).forEach(function(order){
+      if(String(order[2]||'')===String(session.userId) && String(order[8]||'').toUpperCase()==='MENUNGGU_STOK') waitingStockOrderIds[String(order[0])]=true;
+    });
+  }
   const notifications=rows.slice(0,100).map(function(r){
+    const orderId=String(r[2]||'');
     let title=String(r[3]||''),message=String(r[4]||'');
-    if(session.role===FMART.ROLES.WALI_SANTRI && /stok|restok|persediaan|barang tersedia/i.test(title+' '+message)){
-      title='Pesanan sedang diproses'; message='Pesanan Anda sedang diproses. Informasi perkembangan berikutnya akan kami sampaikan melalui aplikasi.';
+    const stockRelated=/stok|restok|persediaan|barang tersedia|ketersediaan|belum terpenuhi|belum lengkap|kekurangan|antrean gudang/i.test(title+' '+message);
+    if(session.role===FMART.ROLES.WALI_SANTRI && (waitingStockOrderIds[orderId]||stockRelated)){
+      title='Pesanan sedang diproses';
+      message='Pesanan Anda sedang diproses. Informasi perkembangan berikutnya akan kami sampaikan melalui aplikasi.';
     }
-    return{id:String(r[0]||''),orderId:String(r[2]||''),title:title,message:message,type:String(r[5]||''),isRead:r[6]===true||String(r[6]).toUpperCase()==='TRUE',createdAt:dateIso_(r[7])};
+    return{id:String(r[0]||''),orderId:orderId,title:title,message:message,type:String(r[5]||''),isRead:r[6]===true||String(r[6]).toUpperCase()==='TRUE',createdAt:dateIso_(r[7])};
   });
   return {ok:true,notifications:notifications,unreadCount:notifications.filter(function(n){return !n.isRead;}).length};
 }
