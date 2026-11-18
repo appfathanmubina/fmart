@@ -613,7 +613,7 @@ function getProductDetail(token, productId) {
   const variations = readRows_(ss.getSheetByName('VariasiProduk')).filter(function(v) {
     return String(v[1]) === productId && String(v[6] || '').toUpperCase() === 'AKTIF';
   }).map(function(v) {
-    const vid=String(v[0]);return {id:vid, name:String(v[2] || ''), value:String(v[3] || ''), priceAddition:Number(v[4]) || 0, stock:Math.max(0,(Number(v[5])||0)-(reservedByKey[productId+'|'+vid]||0))};
+    const vid=String(v[0]);return {id:vid, name:String(v[2] || ''), value:String(v[3] || ''), priceAddition:Number(v[4]) || 0, stock:0};
   });
 
   const stocks = readRows_(ss.getSheetByName('Stok')).filter(function(st) {
@@ -712,7 +712,7 @@ function getCatalog(token) {
       name:String(r[2] || ''),
       value:String(r[3] || ''),
       priceAddition:Number(r[4]) || 0,
-      stock:Math.max(0,(Object.prototype.hasOwnProperty.call(stockByKey,key) ? stockByKey[key] : Math.max(0,Number(r[5]) || 0))-(reservedByKey[key]||0))
+      stock:Math.max(0,(Object.prototype.hasOwnProperty.call(stockByKey,key) ? stockByKey[key] : 0)-(reservedByKey[key]||0))
     });
   });
 
@@ -1486,7 +1486,6 @@ function getOperationsDashboard(token) {
   const shipMap = {}; shipments.forEach(r => { const id=String(r[1]); const old=shipMap[id]; if(!old || new Date(r[8]||0).getTime()>new Date(old[8]||0).getTime()) shipMap[id]=r; });
   const stockMap = {};
   stockRows.forEach(r => { const key=String(r[1])+'|'+String(r[2]||''); if(stockMap[key]===undefined) stockMap[key]=Number(r[3])||0; });
-  variationRows.forEach(r => { const key=String(r[1])+'|'+String(r[0]); if(stockMap[key]===undefined) stockMap[key]=Number(r[5])||0; });
   const productMap = {}; products.forEach(r => productMap[String(r[0])] = {id:String(r[0]),categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),price:Number(r[5])||0,status:String(r[8]||''),photoUrl:String(r[7]||'')});
   const categoryMap = {}; cats.forEach(r => categoryMap[String(r[0])] = String(r[1]||''));
   const resultOrders = orders.slice().sort((a,b)=>new Date(b[10]||0).getTime()-new Date(a[10]||0).getTime()).slice(0,60).map(r => {
@@ -1744,7 +1743,9 @@ function getAdminCatalog(token) {
   const ss=getSS_();
   const categories=readRows_(ss.getSheetByName('Kategori')).map(r=>({id:String(r[0]),name:String(r[1]||''),description:String(r[2]||''),order:Number(r[3])||0,status:String(r[4]||'')}));
   const products=readRows_(ss.getSheetByName('Produk')).map(r=>({id:String(r[0]),categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),description:String(r[4]||''),price:Number(r[5])||0,minStock:Number(r[6])||0,photoUrl:String(r[7]||''),status:String(r[8]||'')}));
-  const variations=readRows_(ss.getSheetByName('VariasiProduk')).map(r=>({id:String(r[0]),productId:String(r[1]),name:String(r[2]||''),value:String(r[3]||''),priceAddition:Number(r[4])||0,stock:Number(r[5])||0,status:String(r[6]||'')}));
+  const stockRows=readRows_(ss.getSheetByName('Stok')),stockByKey=Object.create(null);
+  stockRows.forEach(function(r){const key=String(r[1]||'')+'|'+String(r[2]||'');if(!Object.prototype.hasOwnProperty.call(stockByKey,key))stockByKey[key]=Math.max(0,Number(r[3])||0);});
+  const variations=readRows_(ss.getSheetByName('VariasiProduk')).map(r=>{const key=String(r[1]||'')+'|'+String(r[0]||'');return {id:String(r[0]),productId:String(r[1]),name:String(r[2]||''),value:String(r[3]||''),priceAddition:Number(r[4])||0,stock:Object.prototype.hasOwnProperty.call(stockByKey,key)?stockByKey[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockByKey,key),status:String(r[6]||'')};});
   return {ok:true,categories:categories,products:products,variations:variations};
 }
 
@@ -1892,7 +1893,7 @@ function getStockCatalog(token) {
   requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
   const ss=getSS_(),products=readRows_(ss.getSheetByName('Produk')).filter(function(r){return String(r[8]||'').toUpperCase()==='AKTIF';}),vars=readRows_(ss.getSheetByName('VariasiProduk')).filter(function(r){return String(r[6]||'').toUpperCase()==='AKTIF';}),stocks=readRows_(ss.getSheetByName('Stok'));
   const stockMap=Object.create(null);stocks.forEach(function(r){const key=String(r[1])+'|'+String(r[2]||'');if(!Object.prototype.hasOwnProperty.call(stockMap,key))stockMap[key]=Math.max(0,Number(r[3])||0);});
-  return {ok:true,products:products.map(function(p){const pid=String(p[0]),vs=vars.filter(function(v){return String(v[1])===pid;}).map(function(v){const key=pid+'|'+String(v[0]);return {id:String(v[0]),name:String(v[2]||''),value:String(v[3]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,key)?stockMap[key]:Math.max(0,Number(v[5])||0)};}),baseKey=pid+'|';return {id:pid,name:String(p[3]||''),sku:String(p[2]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,baseKey)?stockMap[baseKey]:0,variations:vs};})};
+  return {ok:true,products:products.map(function(p){const pid=String(p[0]),vs=vars.filter(function(v){return String(v[1])===pid;}).map(function(v){const key=pid+'|'+String(v[0]);return {id:String(v[0]),name:String(v[2]||''),value:String(v[3]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,key)?stockMap[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,key)};}),baseKey=pid+'|';return {id:pid,name:String(p[3]||''),sku:String(p[2]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,baseKey)?stockMap[baseKey]:0,variations:vs};})};
 }
 
 
@@ -1919,9 +1920,9 @@ function getStockManagement(token) {
     if(vars.length){
       vars.forEach(function(v){
         const vid=String(v[0]||'');const sr=stockMap[pid+'|'+vid];
-        const qty=sr?Math.max(0,Number(sr[3])||0):Math.max(0,Number(v[5])||0);
+        const qty=sr?Math.max(0,Number(sr[3])||0):0;
         const min=sr&&!(sr[4] instanceof Date)&&String(sr[4]||'').trim()!==''&&Number.isFinite(Number(sr[4]))?Math.max(0,Number(sr[4])||0):baseMin;
-        items.push({key:pid+'|'+vid,productId:pid,variationId:vid,name:String(p[3]||''),sku:String(p[2]||''),categoryName:categoryMap[String(p[1])]||'-',variationName:[String(v[2]||''),String(v[3]||'')].filter(Boolean).join(': '),stock:qty,minStock:min,productStatus:String(p[8]||''),variationStatus:String(v[6]||'')});
+        items.push({key:pid+'|'+vid,productId:pid,variationId:vid,name:String(p[3]||''),sku:String(p[2]||''),categoryName:categoryMap[String(p[1])]||'-',variationName:[String(v[2]||''),String(v[3]||'')].filter(Boolean).join(': '),stock:qty,stockRecordMissing:!sr,minStock:min,productStatus:String(p[8]||''),variationStatus:String(v[6]||'')});
       });
     }else{
       const sr=stockMap[pid+'|'];const qty=sr?Math.max(0,Number(sr[3])||0):0;const min=sr&&!(sr[4] instanceof Date)&&String(sr[4]||'').trim()!==''&&Number.isFinite(Number(sr[4]))?Math.max(0,Number(sr[4])||0):baseMin;
@@ -1951,7 +1952,7 @@ function setStockMinimum(token, productId, variationId, minStock) {
     const stockSheet=ss.getSheetByName('Stok'),stockRows=readRows_(stockSheet),index=stockRows.findIndex(r=>String(r[1])===productId&&String(r[2]||'')===variationId);
     const now=new Date(),before=index>=0?(Number(stockRows[index][4])||0):(Number(product.values[6])||0);
     if(index>=0)stockSheet.getRange(index+2,5,1,2).setValues([[minStock,now]]);
-    else stockSheet.appendRow([makeFMartId_('STK'),productId,variationId,variation?Math.max(0,Number(variation.values[5])||0):0,minStock,now]);
+    else stockSheet.appendRow([makeFMartId_('STK'),productId,variationId,0,minStock,now]);
     if(!variationId)ss.getSheetByName('Produk').getRange(product.rowNumber,7).setValue(minStock);
     writeAudit_(session.userId,session.role,'SET_STOCK_MINIMUM','STOK',productId,JSON.stringify({variationId:variationId,minStock:before}),JSON.stringify({variationId:variationId,minStock:minStock}),'Perubahan batas stok minimum');
     SpreadsheetApp.flush();return getStockManagement(token);
@@ -2743,7 +2744,7 @@ function getProductSnapshot_(ss, productId, variationId, stockLocation) {
   let addition=0,variationName='';if(variationId){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(!vr||String(vr.values[1])!==productId||String(vr.values[6]||'').toUpperCase()!=='AKTIF')return {active:false,stock:0};addition=Number(vr.values[4])||0;variationName=String(vr.values[2]||'')+(vr.values[3]?': '+String(vr.values[3]):'');}
   const sheetName=stockLocation==='KASIR'?'StokKasir':'Stok',sheet=ss.getSheetByName(sheetName);if(!sheet)throw new Error('Sheet '+sheetName+' belum tersedia. Jalankan setupFMartDatabase_().');
   const matches=readRows_(sheet).filter(function(r){return String(r[1])===productId&&String(r[2]||'')===variationId;});if(matches.length>1)throw new Error('Ditemukan baris stok ganda pada lokasi '+stockLocation+'.');
-  const sr=matches.length?matches[0]:null;let stock=sr?Number(sr[3]):0;if(!sr&&stockLocation==='GUDANG'&&variationId){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);stock=vr?Number(vr.values[5])||0:0;}
+  const sr=matches.length?matches[0]:null;const stock=sr?Number(sr[3]):0;
   if(!Number.isSafeInteger(stock)||stock<0)throw new Error('Saldo stok '+stockLocation+' tidak valid.');
   return {active:true,id:productId,name:String(p[3]||''),sku:String(p[2]||''),photoUrl:String(p[7]||''),unitPrice:Math.max(0,(Number(p[5])||0)+addition),stock:stock,variationId:variationId,variationName:variationName,stockLocation:stockLocation};
 }
