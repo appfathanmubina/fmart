@@ -2396,13 +2396,25 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
     }
     function renderCashierQrisQueue_(){
       const host=$('cashierQrisQueueBody');if(!host)return;
+      if(!window._cashierQrisClock)window._cashierQrisClock=window.setInterval(function(){
+        document.querySelectorAll('[data-qris-expiry]').forEach(function(el){
+          const expiry=new Date(el.getAttribute('data-qris-expiry')||0).getTime(),left=expiry-Date.now();
+          if(!Number.isFinite(expiry)||expiry<=0||left<=0){
+            el.textContent='Reservasi kedaluwarsa';
+            const card=el.closest('.cashier-qris-card');if(card){card.classList.add('is-expired');const state=card.querySelector('.cashier-qris-state');if(state){state.classList.add('is-expired');state.textContent='RESERVASI HABIS'}const check=card.querySelector('.cashierQrisVerified'),confirmBtn=card.querySelector('.cashier-qris-confirm');if(check)check.disabled=true;if(confirmBtn)confirmBtn.disabled=true}
+          }else{
+            const minutes=Math.floor(left/60000),seconds=Math.floor((left%60000)/1000);
+            el.textContent='Sisa '+minutes+' menit '+String(seconds).padStart(2,'0')+' detik';
+          }
+        });
+      },1000);
       const pos=state.cashierPOS,rows=pos.qrisQueue||[];
       if(pos.qrisQueueError){host.innerHTML='<div class="empty-box">'+escapeHtml(pos.qrisQueueError)+' <button type="button" class="text-button" id="cashierQrisRetry">Coba lagi</button></div>';const retry=$('cashierQrisRetry');if(retry)retry.onclick=loadCashierQrisQueue_;return}
       if(!rows.length){host.innerHTML='<div class="cashier-qris-empty"><span>✓</span><strong>Tidak ada transaksi QRIS yang menunggu.</strong><small>Transaksi QRIS baru akan muncul di sini setelah dibuat dari POS.</small></div>';return}
       host.innerHTML=rows.map(q=>{
         const expired=!!q.expired||!q.expiresAt||new Date(q.expiresAt).getTime()<=Date.now();
-        return '<article class="cashier-qris-card '+(expired?'is-expired':'')+'"><div class="cashier-qris-card-head"><div><strong>'+escapeHtml(q.number)+'</strong><small>'+escapeHtml(q.buyerName||'Umum')+' · '+escapeHtml(formatDate(q.createdAt))+'</small></div><span class="cashier-qris-state '+(expired?'is-expired':'')+'">'+(expired?'RESERVASI HABIS':'MENUNGGU QRIS')+'</span></div>'+
-          '<div class="cashier-qris-summary"><strong>Rp '+formatMoney(q.total)+'</strong><span>'+escapeHtml(cashierQrisRemaining_(q))+'</span></div>'+
+        return '<article class="cashier-qris-card '+(expired?'is-expired':'')+'" data-qris-card-id="'+escapeHtml(q.saleId)+'"><div class="cashier-qris-card-head"><div><strong>'+escapeHtml(q.number)+'</strong><small>'+escapeHtml(q.buyerName||'Umum')+' · '+escapeHtml(formatDate(q.createdAt))+'</small></div><span class="cashier-qris-state '+(expired?'is-expired':'')+'">'+(expired?'RESERVASI HABIS':'MENUNGGU QRIS')+'</span></div>'+
+          '<div class="cashier-qris-summary"><strong>Rp '+formatMoney(q.total)+'</strong><span data-qris-expiry="'+escapeHtml(q.expiresAt||'')+'">'+escapeHtml(cashierQrisRemaining_(q))+'</span></div>'+
           '<div class="cashier-qris-items">'+(q.items||[]).map(x=>'<div><span>'+escapeHtml(x.name)+(x.variationName?' · '+escapeHtml(x.variationName):'')+' × '+formatMoney(x.qty)+'</span><strong>Rp '+formatMoney(x.subtotal)+'</strong></div>').join('')+'</div>'+
           '<div class="cashier-qris-meta"><span>Kasir: '+escapeHtml(q.cashierName||'-')+'</span>'+(q.note?'<span>Catatan: '+escapeHtml(q.note)+'</span>':'')+'</div>'+
           '<div class="cashier-qris-confirm"><label class="cashier-qris-check"><input type="checkbox" class="cashierQrisVerified" data-id="'+escapeHtml(q.saleId)+'" '+(expired?'disabled':'')+'> Saya sudah memeriksa kanal merchant dan memastikan dana transaksi ini benar-benar masuk.</label>'+
