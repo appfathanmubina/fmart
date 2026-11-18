@@ -1408,7 +1408,7 @@ body.buyer-portal #profileModal .modal-card{
     const FMART_PORTAL_MODE = '<?= portalMode ?>';
     document.body.classList.toggle('admin-portal', FMART_PORTAL_MODE === 'ADMINFMART16720');
     document.body.classList.toggle('buyer-portal', FMART_PORTAL_MODE !== 'ADMINFMART16720');
-    const state={token:sessionStorage.getItem('fmartToken')||'',data:null,profile:null,waliDashboard:null,selectedChildId:sessionStorage.getItem('fmartSelectedChildId')||'',cart:null,currentProduct:null,currentVariationId:'',currentProductQty:1,currentOrderId:'',currentPaymentOrderId:'',catalogSort:'featured',cashierPOS:{products:[],cart:[],qrisQueue:[],qrisQueueError:'',qrisQueueLoaded:false,buyerType:'UMUM',buyerName:'',santriId:'',santriLabel:'',students:[],paymentMethod:'TUNAI',amountReceived:'',note:'',requestKey:'',loading:false,search:''}};
+    const state={token:sessionStorage.getItem('fmartToken')||'',data:null,profile:null,waliDashboard:null,selectedChildId:sessionStorage.getItem('fmartSelectedChildId')||'',cart:null,currentProduct:null,currentVariationId:'',currentProductQty:1,currentOrderId:'',currentPaymentOrderId:'',catalogSort:'featured',cashierPOS:{products:[],cart:[],qrisQueue:[],qrisQueueError:'',qrisQueueLoaded:false,salesHistory:[],salesHistoryError:'',salesHistoryLoaded:false,salesQuery:'',salesFrom:'',salesTo:'',buyerType:'UMUM',buyerName:'',santriId:'',santriLabel:'',students:[],paymentMethod:'TUNAI',amountReceived:'',note:'',requestKey:'',loading:false,search:''}};
     const $=id=>document.getElementById(id);
     document.title = FMART_PORTAL_MODE === 'ADMINFMART16720' ? 'FMart Admin' : 'FMart';
     if(FMART_PORTAL_MODE==='ADMINFMART16720'){ document.querySelector('.login-brand .brand-name').textContent='FMart Admin'; $('loginIntro').textContent='Masuk ke portal petugas FMart menggunakan email dan password.'; $('usernameLabel').textContent='Email Staf'; $('username').type='email'; $('username').inputMode='email'; $('username').placeholder='nama@fathanmubina.com'; $('usernameHint').textContent='Gunakan alamat email akun staf FMart.'; $('registerBtn').classList.add('hidden'); }
@@ -2450,6 +2450,33 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       }catch(e){showToast(e.message||'Pembatalan QRIS gagal.','error');if(btn)btn.disabled=false}
       finally{loading(false)}
     }
+
+    async function loadCashierSalesHistory_(){
+      const pos=state.cashierPOS,body=$('cashierSalesHistoryBody');if(body)body.innerHTML='<div class="muted">Memuat riwayat penjualan...</div>';
+      try{const r=await runServer('getCashierSalesHistory',state.token,{query:pos.salesQuery||'',from:pos.salesFrom||'',to:pos.salesTo||''});if(!r||!r.ok)throw new Error('Riwayat penjualan belum dapat dimuat.');pos.salesHistory=Array.isArray(r.rows)?r.rows:[];pos.salesHistoryError='';pos.salesHistoryLoaded=true}
+      catch(e){pos.salesHistoryError=e.message||'Riwayat penjualan gagal dimuat.';pos.salesHistoryLoaded=false}
+      renderCashierSalesHistory_();
+    }
+    function cashierSaleStatus_(s){return s.paymentStatus==='LUNAS'?'LUNAS':s.paymentStatus==='MENUNGGU_KONFIRMASI'?'MENUNGGU QRIS':String(s.paymentStatus||s.status||'-').replace(/_/g,' ')}
+    function renderCashierSalesHistory_(){
+      const host=$('cashierSalesHistoryBody');if(!host)return;const pos=state.cashierPOS,rows=pos.salesHistory||[];
+      if(pos.salesHistoryError){host.innerHTML='<div class="empty-box">'+escapeHtml(pos.salesHistoryError)+' <button type="button" class="text-button" id="cashierSalesRetry">Coba lagi</button></div>';const retry=$('cashierSalesRetry');if(retry)retry.onclick=loadCashierSalesHistory_;return}
+      if(!rows.length){host.innerHTML='<div class="cashier-sales-empty">Belum ada transaksi yang sesuai dengan pencarian atau rentang tanggal.</div>';return}
+      host.innerHTML='<div class="cashier-sales-count">Menampilkan '+rows.length+' transaksi terakhir (maksimal 150 hasil).</div>'+rows.map(s=>'<article class="cashier-sale-row"><div class="cashier-sale-main"><div><strong>'+escapeHtml(s.number)+'</strong><small>'+escapeHtml(formatDate(s.createdAt))+' · '+escapeHtml(s.buyerName||'Umum')+'</small></div><div class="cashier-sale-total"><strong>Rp '+formatMoney(s.total)+'</strong><span class="'+(s.paymentStatus==='LUNAS'?'is-paid':'is-pending')+'">'+escapeHtml(cashierSaleStatus_(s))+'</span></div></div><div class="cashier-sale-meta"><span>'+escapeHtml(s.paymentMethod)+'</span><span>Kasir: '+escapeHtml(s.cashierName)+'</span><span>'+(s.items||[]).length+' jenis barang</span></div><div class="cashier-sale-actions"><button type="button" class="secondary cashier-sale-detail" data-id="'+escapeHtml(s.saleId)+'">Lihat Rincian</button><button type="button" class="primary cashier-sale-print" data-id="'+escapeHtml(s.saleId)+'" '+(s.paymentStatus!=='LUNAS'?'disabled title="Struk final tersedia setelah pembayaran lunas"':'')+'>Cetak Struk</button></div><div class="cashier-sale-detail-body" id="cashierSaleDetail_'+escapeHtml(s.saleId)+'" hidden></div></article>').join('');
+      host.querySelectorAll('.cashier-sale-detail').forEach(b=>b.onclick=()=>toggleCashierSaleDetail_(b.dataset.id));
+      host.querySelectorAll('.cashier-sale-print').forEach(b=>b.onclick=()=>printCashierSaleReceipt_(b.dataset.id));
+    }
+    function toggleCashierSaleDetail_(id){
+      const s=(state.cashierPOS.salesHistory||[]).find(x=>x.saleId===id),body=$('cashierSaleDetail_'+id);if(!s||!body)return;if(!body.hidden){body.hidden=true;return}body.hidden=false;
+      body.innerHTML='<div class="cashier-sale-detail-head"><strong>Rincian '+escapeHtml(s.number)+'</strong><span>'+escapeHtml(s.paymentMethod)+' · '+escapeHtml(cashierSaleStatus_(s))+'</span></div><div class="cashier-sale-lines">'+(s.items||[]).map(it=>'<div><span>'+escapeHtml(it.name)+(it.variationName?' · '+escapeHtml(it.variationName):'')+'<small>'+formatMoney(it.qty)+' × Rp '+formatMoney(it.unitPrice)+'</small></span><strong>Rp '+formatMoney(it.subtotal)+'</strong></div>').join('')+'</div><div class="cashier-sale-detail-total"><span>Subtotal</span><strong>Rp '+formatMoney(s.subtotal)+'</strong><span>Diskon</span><strong>Rp '+formatMoney(s.discount)+'</strong><span>Total</span><strong>Rp '+formatMoney(s.total)+'</strong>'+(s.paymentMethod==='TUNAI'?'<span>Uang diterima</span><strong>Rp '+formatMoney(s.amountReceived)+'</strong><span>Kembalian</span><strong>Rp '+formatMoney(s.change)+'</strong>':'')+'</div>'+(s.paymentReference?'<small>Referensi: '+escapeHtml(s.paymentReference)+'</small>':'')+'<div class="cashier-sale-detail-foot">Pembeli: '+escapeHtml(s.buyerName||'Umum')+' · Kasir: '+escapeHtml(s.cashierName)+' · '+escapeHtml(formatDate(s.createdAt))+'</div>';
+    }
+    function printCashierSaleReceipt_(id){
+      const s=(state.cashierPOS.salesHistory||[]).find(x=>x.saleId===id);if(!s||s.paymentStatus!=='LUNAS')return;
+      const w=window.open('','_blank','width=420,height=720');if(!w){showToast('Izinkan pop-up browser untuk mencetak struk.','error');return}
+      const lines=(s.items||[]).map(it=>'<tr><td>'+escapeHtml(it.name)+(it.variationName?'<br>'+escapeHtml(it.variationName):'')+'<br><small>'+formatMoney(it.qty)+' × '+formatMoney(it.unitPrice)+'</small></td><td style="text-align:right">Rp '+formatMoney(it.subtotal)+'</td></tr>').join('');
+      const html='<!doctype html><html><head><meta charset="utf-8"><title>Struk '+escapeHtml(s.number)+'</title><style>body{font:12px Arial,sans-serif;color:#111;width:300px;margin:18px auto}h2,p{text-align:center;margin:4px 0}h2{font-size:17px}.line{border-top:1px dashed #555;margin:10px 0}table{width:100%;border-collapse:collapse}td{padding:5px 0;vertical-align:top}.total{font-weight:bold;font-size:14px}.right{text-align:right}.muted{color:#555}</style></head><body onload="window.print()"><h2>FMART FATHAN MUBINA</h2><p>Struk Penjualan Toko</p><div class="line"></div><div>No: '+escapeHtml(s.number)+'</div><div>Tanggal: '+escapeHtml(formatDate(s.createdAt))+'</div><div>Kasir: '+escapeHtml(s.cashierName)+'</div><div>Pembeli: '+escapeHtml(s.buyerName||'Umum')+'</div><div class="line"></div><table>'+lines+'</table><div class="line"></div><table><tr><td>Subtotal</td><td class="right">Rp '+formatMoney(s.subtotal)+'</td></tr><tr><td>Diskon</td><td class="right">Rp '+formatMoney(s.discount)+'</td></tr><tr class="total"><td>TOTAL</td><td class="right">Rp '+formatMoney(s.total)+'</td></tr>'+(s.paymentMethod==='TUNAI'?'<tr><td>Tunai</td><td class="right">Rp '+formatMoney(s.amountReceived)+'</td></tr><tr><td>Kembalian</td><td class="right">Rp '+formatMoney(s.change)+'</td></tr>':'')+'</table><div class="line"></div><p>Pembayaran: '+escapeHtml(s.paymentMethod)+' · LUNAS</p>'+(s.paymentReference?'<p>Referensi: '+escapeHtml(s.paymentReference)+'</p>':'')+'<div class="line"></div><p>Terima kasih telah berbelanja</p><p class="muted">Pesantren Fathan Mubina</p></body></html>';
+      w.document.open();w.document.write(html);w.document.close();
+    }
     function cashierPOSCartTotal_(){return (state.cashierPOS.cart||[]).reduce((sum,x)=>sum+(Number(x.unitPrice)||0)*(Number(x.qty)||0),0)}
     function renderCashierPOSPanel_(){
       const pos=state.cashierPOS,box=$('cashierPOSPanel');if(!box)return;
@@ -2469,7 +2496,10 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         (pos.paymentMethod==='TUNAI'?'<label for="cashierAmountReceived">Uang diterima</label><input id="cashierAmountReceived" type="number" min="'+total+'" step="1" inputmode="numeric" placeholder="Masukkan nominal" value="'+escapeHtml(pos.amountReceived)+'"><div class="cashier-change">Kembalian: <strong>'+cashierPOSMoney_(Math.max(0,(Number(pos.amountReceived)||0)-total))+'</strong></div>':'<div class="notice">QRIS akan berstatus menunggu konfirmasi. Kasir harus memastikan dana masuk sebelum transaksi dinyatakan lunas.</div>')+
         '<label for="cashierSaleNote">Catatan (opsional)</label><input id="cashierSaleNote" maxlength="300" placeholder="Catatan transaksi" value="'+escapeHtml(pos.note)+'">'+
         '<button type="button" class="primary cashier-pos-submit" id="cashierPOSSubmit" '+(!cart.length?'disabled':'')+'>Proses Transaksi · '+cashierPOSMoney_(total)+'</button></div></aside></div>'+
-        '<section class="cashier-qris-queue"><div class="cashier-qris-queue-head"><div><div class="eyebrow">PEMBAYARAN PENJUALAN TOKO</div><h3>Antrean Konfirmasi QRIS</h3><p>Periksa dana pada kanal merchant sebelum mengonfirmasi pembayaran.</p></div><button type="button" class="secondary" id="cashierQrisRefresh">↻ Perbarui antrean</button></div><div id="cashierQrisQueueBody"><div class="muted">Memuat antrean QRIS...</div></div></section>';
+        '<section class="cashier-qris-queue"><div class="cashier-qris-queue-head"><div><div class="eyebrow">PEMBAYARAN PENJUALAN TOKO</div><h3>Antrean Konfirmasi QRIS</h3><p>Periksa dana pada kanal merchant sebelum mengonfirmasi pembayaran.</p></div><button type="button" class="secondary" id="cashierQrisRefresh">↻ Perbarui antrean</button></div><div id="cashierQrisQueueBody"><div class="muted">Memuat antrean QRIS...</div></div></section>'+
+        '<section class="cashier-sales-history"><div class="cashier-sales-head"><div><div class="eyebrow">ARSIP PENJUALAN TOKO</div><h3>Riwayat Penjualan</h3><p>Telusuri transaksi, lihat rincian, dan cetak struk.</p></div><button type="button" class="secondary" id="cashierSalesRefresh">↻ Muat ulang</button></div>'+
+        '<div class="cashier-sales-filters"><input type="search" id="cashierSalesSearch" placeholder="Cari nomor transaksi, pembeli, produk, SKU..." value="'+escapeHtml(pos.salesQuery||'')+'"><label>Dari tanggal<input type="date" id="cashierSalesFrom" value="'+escapeHtml(pos.salesFrom||'')+'"></label><label>Sampai tanggal<input type="date" id="cashierSalesTo" value="'+escapeHtml(pos.salesTo||'')+'"></label><button type="button" class="secondary" id="cashierSalesApply">Terapkan</button></div>'+
+        '<div id="cashierSalesHistoryBody"><div class="muted">Memuat riwayat penjualan...</div></div></section>';
       bindCashierPOSPanel_();
     }
     function bindCashierPOSPanel_(){
@@ -2489,7 +2519,11 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       const note=$('cashierSaleNote');if(note)note.oninput=()=>pos.note=note.value;
       const submit=$('cashierPOSSubmit');if(submit)submit.onclick=checkoutCashierPOS_;
       const qrisRefresh=$('cashierQrisRefresh');if(qrisRefresh)qrisRefresh.onclick=loadCashierQrisQueue_;
-      renderCashierQrisQueue_();
+      const salesRefresh=$('cashierSalesRefresh'),salesApply=$('cashierSalesApply');
+      if(salesRefresh)salesRefresh.onclick=()=>loadCashierSalesHistory_();
+      if(salesApply)salesApply.onclick=()=>{pos.salesQuery=$('cashierSalesSearch').value.trim();pos.salesFrom=$('cashierSalesFrom').value;pos.salesTo=$('cashierSalesTo').value;loadCashierSalesHistory_()};
+      const salesSearch=$('cashierSalesSearch');if(salesSearch)salesSearch.onkeydown=e=>{if(e.key==='Enter'){pos.salesQuery=salesSearch.value.trim();loadCashierSalesHistory_()}};
+      renderCashierQrisQueue_();renderCashierSalesHistory_();
     }
     async function checkoutCashierPOS_(){
       const pos=state.cashierPOS,btn=$('cashierPOSSubmit');if(!pos.cart.length||!btn||btn.disabled)return;
@@ -3207,4 +3241,37 @@ body.admin-portal .cashier-qris-empty>span{display:grid;place-items:center;width
 body.admin-portal .cashier-qris-empty strong{color:#4c3154;font-size:13px}
 body.admin-portal .cashier-qris-empty small{font-size:11px}
 @media(max-width:560px){body.admin-portal .cashier-qris-queue{padding:12px}body.admin-portal .cashier-qris-queue-head{align-items:flex-start;flex-direction:column}body.admin-portal .cashier-qris-queue-head button{width:100%}body.admin-portal .cashier-qris-card{padding:11px}body.admin-portal .cashier-qris-actions{display:grid;grid-template-columns:1fr}body.admin-portal .cashier-qris-actions button{width:100%}}
+</style>
+
+<style>
+body.admin-portal .cashier-sales-history{margin-top:18px;padding:16px;border:1px solid #e7d9ed;border-radius:18px;background:#fff}
+body.admin-portal .cashier-sales-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+body.admin-portal .cashier-sales-head h3{margin:3px 0 5px;color:#57145f;font-size:18px}
+body.admin-portal .cashier-sales-head p{margin:0;color:#756b85;font-size:12px}
+body.admin-portal .cashier-sales-filters{display:grid;grid-template-columns:minmax(180px,2fr) minmax(120px,1fr) minmax(120px,1fr) auto;gap:9px;align-items:end;margin-bottom:14px}
+body.admin-portal .cashier-sales-filters label{display:grid;gap:4px;color:#65556e;font-size:11px;font-weight:700}
+body.admin-portal .cashier-sales-filters input{width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid #e4dbe8;border-radius:9px;background:#fff}
+body.admin-portal .cashier-sales-count{margin-bottom:9px;color:#766a80;font-size:11px}
+body.admin-portal .cashier-sale-row{padding:13px 0;border-top:1px solid #eee7f0}
+body.admin-portal .cashier-sale-main{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+body.admin-portal .cashier-sale-main>div:first-child{display:grid;gap:4px;min-width:0}
+body.admin-portal .cashier-sale-main strong{color:#4f1858;font-size:13px}
+body.admin-portal .cashier-sale-main small,body.admin-portal .cashier-sale-meta{font-size:11px;color:#796d82}
+body.admin-portal .cashier-sale-total{display:grid;justify-items:end;gap:4px;white-space:nowrap}
+body.admin-portal .cashier-sale-total>strong{font-size:14px}
+body.admin-portal .cashier-sale-total span{font-size:9px;font-weight:800;border-radius:20px;padding:4px 7px;background:#e7f7ed;color:#187342}
+body.admin-portal .cashier-sale-total span.is-pending{background:#fff1d5;color:#8b5d0b}
+body.admin-portal .cashier-sale-meta{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}
+body.admin-portal .cashier-sale-actions{display:flex;gap:8px;flex-wrap:wrap}
+body.admin-portal .cashier-sale-actions button{min-height:36px;font-size:11px}
+body.admin-portal .cashier-sale-detail-body{margin-top:10px;padding:12px;border-radius:11px;background:#faf7fc}
+body.admin-portal .cashier-sale-detail-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#5a2262;font-size:12px}
+body.admin-portal .cashier-sale-lines{display:grid;gap:8px;margin:10px 0}
+body.admin-portal .cashier-sale-lines>div{display:flex;justify-content:space-between;gap:12px;font-size:11px}
+body.admin-portal .cashier-sale-lines small{display:block;margin-top:3px;color:#796d82}
+body.admin-portal .cashier-sale-detail-total{display:grid;grid-template-columns:1fr auto;gap:5px 12px;padding-top:8px;border-top:1px dashed #ded2e3;font-size:11px}
+body.admin-portal .cashier-sale-detail-foot{margin-top:9px;color:#786c80;font-size:10px}
+body.admin-portal .cashier-sales-empty{padding:22px;text-align:center;color:#796d82;font-size:12px;background:#faf8fb;border-radius:10px}
+@media(max-width:700px){body.admin-portal .cashier-sales-filters{grid-template-columns:1fr 1fr}body.admin-portal .cashier-sales-filters input[type=search]{grid-column:1/-1}body.admin-portal .cashier-sales-filters button{grid-column:1/-1;width:100%}}
+@media(max-width:480px){body.admin-portal .cashier-sales-history{padding:12px}body.admin-portal .cashier-sales-head{align-items:flex-start;flex-direction:column}body.admin-portal .cashier-sales-head button{width:100%}body.admin-portal .cashier-sale-actions button{flex:1}}
 </style>
