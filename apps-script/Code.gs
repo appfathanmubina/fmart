@@ -1937,18 +1937,14 @@ function buildOrderStockPlan_(ss,orderId){
  return {available:missing.length===0,plan:plan,missing:missing};
 }
 
-function applyOrderStockPlan_(ss,orderId,plan,actor,now){
+function applyOrderStockPlan_(ss,orderId,plan,actor,now,finalizeReservations){
  const stock=ss.getSheetByName('Stok'),vars=ss.getSheetByName('VariasiProduk'),mut=ss.getSheetByName('MutasiStok');
  plan.forEach(x=>{
-  const rows=readRows_(mut),matches=rows.map((r,i)=>({row:r,rowNumber:i+2})).filter(m=>String(m.row[7]||'')===String(orderId)&&String(m.row[1]||'')===String(x.pid)&&String(m.row[2]||'')===String(x.vid||'')&&String(m.row[3]||'').toUpperCase()==='KELUAR');
+  const matches=readRows_(mut).map((r,i)=>({row:r,rowNumber:i+2})).filter(m=>String(m.row[7]||'')===String(orderId)&&String(m.row[1]||'')===String(x.pid)&&String(m.row[2]||'')===String(x.vid||'')&&String(m.row[3]||'').toUpperCase()==='KELUAR');
   if(matches.length>1)throw new Error('Mutasi stok ganda untuk pesanan '+orderId+'.');
-  let mutation=matches[0]||null;
-  if(mutation){
-   const m=mutation.row;if(Number(m[4])!==Number(x.qty)||Number(m[5])!==Number(x.before)||Number(m[6])!==Number(x.after))throw new Error('Mutasi stok pesanan tidak sesuai dengan detail.');
-  }else{
-   mutationSheetAppend_();
-   function mutationSheetAppend_(){mut.appendRow([makeFMartId_('MUT'),x.pid,x.vid,'KELUAR',x.qty,x.before,x.after,String(orderId),'Penjualan '+orderId,String(actor||'SYSTEM'),now]);}
-  }
+  const mutation=matches[0]||null;
+  if(mutation){const m=mutation.row;if(Number(m[4])!==Number(x.qty)||Number(m[5])!==Number(x.before)||Number(m[6])!==Number(x.after))throw new Error('Mutasi stok pesanan tidak sesuai dengan detail.');}
+  else mut.appendRow([makeFMartId_('MUT'),x.pid,x.vid,'KELUAR',x.qty,x.before,x.after,String(orderId),'Penjualan '+orderId,String(actor||'SYSTEM'),now]);
   const liveRow=x.index>=0?stock.getRange(x.index+2,1,1,6).getValues()[0]:null;
   const live=liveRow?Number(liveRow[3]):Number((getProductSnapshot_(ss,x.pid,x.vid,'GUDANG')||{}).stock);
   if(live===Number(x.before)){
@@ -1957,7 +1953,7 @@ function applyOrderStockPlan_(ss,orderId,plan,actor,now){
   }else if(live!==Number(x.after))throw new Error('Saldo stok berubah. Pemulihan transaksi dihentikan.');
   if(x.vid){const v=findRowById_(vars,x.vid,1);if(v){const mirror=Number(v.values[5]);if(mirror===Number(x.before))vars.getRange(v.rowNumber,6,1,3).setValues([[x.after,String(v.values[6]||'AKTIF'),now]]);else if(mirror!==Number(x.after))throw new Error('Saldo variasi tidak cocok dengan mutasi pesanan.');}}
  });
- setOrderReservationStatus_(ss,orderId,'DIGUNAKAN');
+ if(finalizeReservations!==false)setOrderReservationStatus_(ss,orderId,'DIGUNAKAN');
 }
 
 function setOrderFulfillmentStatus_(ss,order,status,actor,note,now){
@@ -1965,10 +1961,28 @@ function setOrderFulfillmentStatus_(ss,order,status,actor,note,now){
  const sh=ss.getSheetByName('Pengiriman'),row=latestShipmentRow_(sh,String(order.values[0]));if(row)sh.getRange(row,5,1,5).setValues([[status,'','',String(actor||'SYSTEM'),now]]);
 }
 function processPendingStockOrders_(ss,actor,source,actorRole){
- const sheet=ss.getSheetByName('Pesanan'),payments=readRows_(ss.getSheetByName('Pembayaran')),orders=readRows_(sheet).map((r,i)=>({values:r,rowNumber:i+2})).filter(o=>String(o.values[8]||'').toUpperCase()==='MENUNGGU_STOK').sort((a,b)=>new Date(a.values[10]||0)-new Date(b.values[10]||0)),blocked=Object.create(null),done=[];
- orders.forEach(order=>{const id=String(order.values[0]),pay=latestPaymentForOrder_(payments,id);if(!pay||String(pay.status).toUpperCase()!=='TERVERIFIKASI')return;const plan=buildOrderStockPlan_(ss,id);if(plan.missing.some(m=>blocked[m.key]))return;if(!plan.available){plan.missing.forEach(m=>blocked[m.key]=true);return;}const now=new Date();applyOrderStockPlan_(ss,id,plan.plan,actor||'SYSTEM',now);setOrderFulfillmentStatus_(ss,order,'DIBAYAR',actor||'SYSTEM','Stok lengkap. Pesanan siap diproses Gudang.',now);writeAudit_(actor||'SYSTEM',actorRole||(actor==='SYSTEM'?'SYSTEM':'GUDANG'),'UPDATE_ORDER_STATUS','PESANAN',id,JSON.stringify({status:'MENUNGGU_STOK'}),JSON.stringify({status:'DIBAYAR'}),'Stok pesanan lengkap; siap diproses',now);ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Pesanan sedang diproses','Pesanan Anda sedang diproses. Kami akan menginformasikan perkembangan selanjutnya melalui aplikasi.','PESANAN',false,now]);writeAudit_(actor||'SYSTEM',actorRole|| (actor==='SYSTEM'?'SYSTEM':'GUDANG'),'FULFILL_WAITING_STOCK_ORDER','PESANAN',id,JSON.stringify({status:'MENUNGGU_STOK'}),JSON.stringify({status:'DIBAYAR',source:String(source||'STOCK_IN')}),'Stok lengkap; pesanan masuk antrean pemenuhan',now);done.push(id);});
+ const sheet=ss.getSheetByName('Pesanan'),payments=readRows_(ss.getSheetByName('Pembayaran'));
+ const orders=readRows_(sheet).map((r,i)=>({values:r,rowNumber:i+2})).filter(o=>String(o.values[8]||'').toUpperCase()==='MENUNGGU_STOK').sort((a,b)=>new Date(a.values[10]||0)-new Date(b.values[10]||0));
+ const blocked=Object.create(null),done=[];
+ orders.forEach(order=>{
+  const id=String(order.values[0]),pay=latestPaymentForOrder_(payments,id);if(!pay||String(pay.status).toUpperCase()!=='TERVERIFIKASI')return;
+  const plan=buildOrderStockPlan_(ss,id),recovery=plan.plan.filter(x=>x.existingMutation);
+  // Pulihkan lebih dulu item yang sudah memiliki jejak mutasi, walaupun item lain masih kekurangan stok.
+  if(recovery.length)applyOrderStockPlan_(ss,id,recovery,actor||'SYSTEM',new Date(),false);
+  if(plan.missing.some(m=>blocked[m.key]))return;
+  if(!plan.available){plan.missing.forEach(m=>blocked[m.key]=true);return;}
+  const now=new Date(),fresh=buildOrderStockPlan_(ss,id);
+  if(!fresh.available){fresh.missing.forEach(m=>blocked[m.key]=true);return;}
+  applyOrderStockPlan_(ss,id,fresh.plan,actor||'SYSTEM',now,true);
+  setOrderFulfillmentStatus_(ss,order,'DIBAYAR',actor||'SYSTEM','Stok lengkap. Pesanan siap diproses Gudang.',now);
+  writeAudit_(actor||'SYSTEM',actorRole||(actor==='SYSTEM'?'SYSTEM':'GUDANG'),'UPDATE_ORDER_STATUS','PESANAN',id,JSON.stringify({status:'MENUNGGU_STOK'}),JSON.stringify({status:'DIBAYAR'}),'Stok pesanan lengkap; siap diproses',now);
+  ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Pesanan sedang diproses','Pesanan Anda sedang diproses. Kami akan menginformasikan perkembangan selanjutnya melalui aplikasi.','PESANAN',false,now]);
+  writeAudit_(actor||'SYSTEM',actorRole||(actor==='SYSTEM'?'SYSTEM':'GUDANG'),'FULFILL_WAITING_STOCK_ORDER','PESANAN',id,JSON.stringify({status:'MENUNGGU_STOK'}),JSON.stringify({status:'DIBAYAR',source:String(source||'STOCK_IN')}),'Stok lengkap; pesanan masuk antrean pemenuhan',now);
+  done.push(id);
+ });
  return {processed:done.length,orderIds:done};
 }
+
 function validateQrisPaymentForApproval_(payment, order) {
   if (!payment || !order) throw new Error('Data pembayaran atau pesanan tidak lengkap.');
   if (String(payment[1] || '') !== String(order[0] || '')) throw new Error('Identitas pesanan pada pembayaran tidak cocok.');
