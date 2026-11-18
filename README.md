@@ -753,3 +753,32 @@ Pemeriksaan pada Tahap 2 bersifat statis terhadap repository. Tidak ada akses ru
 4. Ulangi uji riwayat dan cetak pada perangkat kasir yang benar-benar akan digunakan.
 5. Setelah seluruh hasil tercatat dan temuan ditutup, baru lakukan sinkronisasi ke deployment operasional.
 
+
+
+## Tahap 8 — Integrasi Operasional dan Sinkronisasi Data
+
+Tahap ini menyamakan aturan pembacaan stok lintas katalog Wali, POS Kasir, dashboard operasional, dan modul Gudang tanpa mengubah skema database.
+
+### Aturan sumber data
+- Sheet `Stok` menjadi sumber utama jumlah stok fisik untuk kombinasi `ProdukId|VariasiId`.
+- Kolom `VariasiProduk.Stok` dipertahankan sebagai mirror/kompatibilitas. Pembacaan stok variasi menggunakan baris `Stok` lebih dahulu; kolom variasi hanya menjadi fallback jika baris stok belum tersedia.
+- Jika ditemukan baris stok ganda untuk kombinasi yang sama, pembacaan operasional memakai baris pertama (sesuai perilaku pencarian/perubahan stok yang sudah ada). Audit akan melaporkan duplikasi agar dapat diperiksa dan diselesaikan secara manual.
+- Produk tanpa variasi menggunakan kunci `ProdukId|`; produk yang memiliki variasi menggunakan stok per variasi dan tidak mencampur stok induk dengan stok variasi.
+- Mutasi barang masuk/keluar tetap tercatat pada `MutasiStok`; penerimaan Gudang juga tercatat pada `PenerimaanBarang` dan `DetailPenerimaanBarang`.
+- Data santri tetap bersumber dari sheet master `Santri`, dipetakan berdasarkan nama header. POS menyimpan `SantriId` sebagai referensi, bukan menyalin atau membuat data santri baru.
+
+### Penyempurnaan
+- POS Kasir dan katalog Gudang memakai fallback stok variasi yang sama.
+- Katalog Gudang, manajemen stok, POS, dan dashboard memilih baris stok kanonis pertama secara konsisten ketika data lama memiliki duplikasi.
+- Variasi yang sudah dibuat tidak dapat dipindahkan ke ProdukId lain melalui edit. Buat variasi baru pada produk tujuan agar referensi stok lama tidak menjadi yatim.
+- Ditambahkan `auditFMartOperationalSync_()` sebagai pemeriksaan read-only untuk master Produk/Kategori/Variasi, baris stok, mirror stok variasi, aritmetika MutasiStok, serta referensi Santri pada pesanan dan penjualan POS.
+- Audit tidak memperbaiki data otomatis. Temuan harus ditinjau sebelum koreksi manual agar riwayat stok dan transaksi tidak berubah tanpa jejak.
+
+### Cara validasi setelah sinkronisasi Apps Script
+1. Sinkronkan `apps-script/Code.gs` dari branch `main` ke project Apps Script.
+2. Jalankan `auditFMartOperationalSync_()` dari Apps Script Editor.
+3. Periksa `issueCount` dan setiap kode temuan. Khusus `STOCK_KEY_DUPLICATE`, `VARIATION_STOCK_MIRROR_MISMATCH`, dan `MUTATION_ARITHMETIC_INVALID`, jangan menghapus atau mengubah baris sebelum mencocokkan bukti mutasi/penerimaan/penjualan.
+4. Jalankan juga `auditFMartDatabaseIntegrity_()` dan `auditCashierPOSIntegrity_()`.
+5. Lakukan UAT dengan akun Gudang, Kasir, Admin, dan Wali pada Spreadsheet uji: penerimaan barang, mutasi MASUK/KELUAR, penjualan tunai, QRIS, reservasi Wali, katalog, dan pencarian santri.
+
+**Status:** perubahan repository dan pemeriksaan statis; menunggu eksekusi audit serta UAT pada runtime Apps Script/Spreadsheet. Tidak ada data operasional yang diubah oleh audit Tahap 8.
