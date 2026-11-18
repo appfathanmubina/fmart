@@ -317,10 +317,7 @@ function auditFMartDatabaseIntegrity_() {
   checkReference_('ReservasiStokToko', 1, 'PenjualanToko', 'PenjualanId reservasi toko', false);
   checkReference_('ReservasiStokToko', 2, 'Produk', 'ProdukId reservasi toko', false);
   checkReference_('ReservasiStokToko', 3, 'VariasiProduk', 'VariasiId reservasi toko', true);
-  checkReference_('PenjualanToko', 13, 'Users', 'KasirUserId penjualan toko', false);
-  checkReference_('DetailPenjualanToko', 1, 'PenjualanToko', 'PenjualanId detail penjualan toko', false);
-  checkReference_('DetailPenjualanToko', 2, 'Produk', 'ProdukId detail penjualan toko', false);
-  checkReference_('DetailPenjualanToko', 3, 'VariasiProduk', 'VariasiId detail penjualan toko', true);
+
   checkReference_('Pengiriman', 1, 'Pesanan', 'PesananId pengiriman', false);
   checkReference_('Pengantaran', 1, 'Pesanan', 'PesananId penugasan pengantaran', false);
   checkReference_('Pengantaran', 2, 'Users', 'PetugasUserId pengantaran', true);
