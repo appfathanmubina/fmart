@@ -40,8 +40,9 @@ const FMART_DB = Object.freeze({
     NOTIFIKASI: ['NotifikasiId','UserId','PesananId','Judul','Pesan','Jenis','IsRead','CreatedAt'],
     PENGATURAN: ['Key','Value','Description','UpdatedAt'],
     RESERVASI_STOK: ['ReservasiId','PesananId','ProdukId','VariasiId','Qty','Status','CreatedAt','ExpiresAt','UpdatedAt'],
-    PENJUALAN_TOKO: ['PenjualanId','NomorTransaksi','JenisPembeli','NamaPembeli','SantriId','Subtotal','Diskon','Total','MetodePembayaran','NominalDiterima','Kembalian','StatusPembayaran','StatusTransaksi','KasirUserId','Catatan','CreatedAt','UpdatedAt'],
+    PENJUALAN_TOKO: ['PenjualanId','NomorTransaksi','JenisPembeli','NamaPembeli','SantriId','Subtotal','Diskon','Total','MetodePembayaran','NominalDiterima','Kembalian','StatusPembayaran','StatusTransaksi','KasirUserId','Catatan','CreatedAt','UpdatedAt','RequestKey','ReferensiPembayaran'],
     DETAIL_PENJUALAN_TOKO: ['DetailPenjualanId','PenjualanId','ProdukId','VariasiId','SKU','NamaProduk','NamaVariasi','Harga','Qty','Subtotal'],
+    RESERVASI_STOK_TOKO: ['ReservasiId','PenjualanId','ProdukId','VariasiId','Qty','Status','CreatedAt','ExpiresAt','UpdatedAt'],
     AUDIT_LOG: ['AuditId','ActorUserId','ActorRole','Action','EntityType','EntityId','BeforeData','AfterData','Note','CreatedAt']
   }
 });
@@ -97,7 +98,7 @@ function sheetNameForKey_(key) {
     PENGIRIMAN:'Pengiriman', PENGANTARAN:'Pengantaran', BUKTI_PENGANTARAN:'BuktiPengantaran',
     KONFIRMASI_PENGANTARAN:'KonfirmasiPengantaran', KOMPLAIN_PENGANTARAN:'KomplainPengantaran',
     RIWAYAT_PENGANTARAN:'RiwayatPengantaran', RESERVASI_STOK:'ReservasiStok',
-    PENJUALAN_TOKO:'PenjualanToko', DETAIL_PENJUALAN_TOKO:'DetailPenjualanToko',
+    PENJUALAN_TOKO:'PenjualanToko', DETAIL_PENJUALAN_TOKO:'DetailPenjualanToko', RESERVASI_STOK_TOKO:'ReservasiStokToko',
     NOTIFIKASI:'Notifikasi', PENGATURAN:'Pengaturan', AUDIT_LOG:'AuditLog'
   };
   return map[key] || key;
@@ -309,6 +310,13 @@ function auditFMartDatabaseIntegrity_() {
   checkReference_('DetailPesanan', 3, 'VariasiProduk', 'VariasiId detail', true);
   checkReference_('Pembayaran', 1, 'Pesanan', 'PesananId pembayaran', false);
   checkReference_('PenjualanToko', 4, 'Santri', 'SantriId penjualan toko', true);
+  checkReference_('PenjualanToko', 13, 'Users', 'KasirUserId penjualan toko', false);
+  checkReference_('DetailPenjualanToko', 1, 'PenjualanToko', 'PenjualanId detail penjualan toko', false);
+  checkReference_('DetailPenjualanToko', 2, 'Produk', 'ProdukId detail penjualan toko', false);
+  checkReference_('DetailPenjualanToko', 3, 'VariasiProduk', 'VariasiId detail penjualan toko', true);
+  checkReference_('ReservasiStokToko', 1, 'PenjualanToko', 'PenjualanId reservasi toko', false);
+  checkReference_('ReservasiStokToko', 2, 'Produk', 'ProdukId reservasi toko', false);
+  checkReference_('ReservasiStokToko', 3, 'VariasiProduk', 'VariasiId reservasi toko', true);
   checkReference_('PenjualanToko', 13, 'Users', 'KasirUserId penjualan toko', false);
   checkReference_('DetailPenjualanToko', 1, 'PenjualanToko', 'PenjualanId detail penjualan toko', false);
   checkReference_('DetailPenjualanToko', 2, 'Produk', 'ProdukId detail penjualan toko', false);
