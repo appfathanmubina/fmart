@@ -3043,13 +3043,19 @@ function confirmCashierQrisPayment(token,saleId,reference) {
     if(!active.length)throw new Error('Reservasi stok transaksi sudah berakhir. Batalkan transaksi ini dan buat transaksi baru.');
     const details=readRows_(ss.getSheetByName('DetailPenjualanToko')).filter(function(r){return String(r[1])===saleId;});
     if(!details.length)throw new Error('Rincian transaksi tidak ditemukan.');
-    const reservedForSale={};
+    const reservedForSale={},groupedDetails={};
     active.forEach(function(r){const key=String(r[2]||'')+'|'+String(r[3]||'');reservedForSale[key]=(reservedForSale[key]||0)+(Number(r[4])||0);});
-    const stockRows=readRows_(ss.getSheetByName('Stok')),plan=[];
     details.forEach(function(d){
-      const pid=String(d[2]||''),vid=String(d[3]||''),qty=Number(d[8]);
-      if(!Number.isSafeInteger(qty)||qty<1)throw new Error('Jumlah produk pada transaksi tidak valid.');
-      if((reservedForSale[pid+'|'+vid]||0)<qty)throw new Error('Reservasi stok tidak lengkap untuk salah satu barang. Batalkan transaksi dan buat transaksi baru.');
+      const pid=String(d[2]||''),vid=String(d[3]||''),qty=Number(d[8]),key=pid+'|'+vid;
+      if(!pid||!Number.isSafeInteger(qty)||qty<1)throw new Error('Jumlah produk pada transaksi tidak valid.');
+      if(!groupedDetails[key])groupedDetails[key]={productId:pid,variationId:vid,qty:0};
+      groupedDetails[key].qty+=qty;
+      if(!Number.isSafeInteger(groupedDetails[key].qty))throw new Error('Jumlah produk pada transaksi terlalu besar.');
+    });
+    const stockRows=readRows_(ss.getSheetByName('Stok')),plan=[];
+    Object.keys(groupedDetails).forEach(function(key){
+      const item=groupedDetails[key],pid=item.productId,vid=item.variationId,qty=item.qty;
+      if((reservedForSale[key]||0)<qty)throw new Error('Reservasi stok tidak lengkap untuk salah satu barang. Batalkan transaksi dan buat transaksi baru.');
       const idx=stockRows.findIndex(function(r){return String(r[1])===pid&&String(r[2]||'')===vid;});
       if(idx<0)throw new Error('Data stok produk tidak ditemukan.');
       const snap=getProductSnapshot_(ss,pid,vid);
@@ -3075,6 +3081,7 @@ function cancelCashierQrisSale(token,saleId,reason) {
     const ss=getSS_(),sheet=ss.getSheetByName('PenjualanToko'),sale=findRowById_(sheet,saleId,1);
     if(!sale)throw new Error('Transaksi toko tidak ditemukan.');
     if(String(sale.values[8]||'').toUpperCase()!=='QRIS'||String(sale.values[11]||'').toUpperCase()!=='MENUNGGU_KONFIRMASI')throw new Error('Hanya transaksi QRIS yang belum dibayar dapat dibatalkan.');
+    if(session.role===FMART.ROLES.KASIR&&String(sale.values[13]||'')!==String(session.userId))throw new Error('Kasir hanya dapat membatalkan transaksi QRIS yang dibuat oleh akunnya. Hubungi Admin jika perlu bantuan.');
     const now=new Date(),reservations=readRows_(ss.getSheetByName('ReservasiStokToko'));
     reservations.forEach(function(r,i){if(String(r[1])===saleId&&String(r[5]||'').toUpperCase()==='AKTIF')ss.getSheetByName('ReservasiStokToko').getRange(i+2,6,1,4).setValues([['DILEPAS',r[6],r[7],now]]);});
     sheet.getRange(sale.rowNumber,12,1,6).setValues([['DIBATALKAN','DIBATALKAN',String(sale.values[13]||''),reason||String(sale.values[14]||''),sale.values[15]||now,now]]);
@@ -3098,7 +3105,7 @@ function auditCashierPOSIntegrity_() {
   function issue(code,saleId,detail){if(issues.length<500)issues.push({code:code,saleId:saleId||'',detail:detail||''});}
   details.forEach(function(r){const id=String(r[1]||'');if(!detailMap[id])detailMap[id]=[];detailMap[id].push(r);});
   reservations.forEach(function(r){const id=String(r[1]||'');if(!reservationMap[id])reservationMap[id]=[];reservationMap[id].push(r);});
-  mutations.forEach(function(r){const id=String(r[7]||'');if(!id)return;if(!mutationMap[id])mutationMap[id]=[];mutationMap[id].push(r);});
+  mutations.forEach(function(r){const id=String(r[7]||'');if(!id||String(r[3]||'').toUpperCase()!=='KELUAR')return;if(!mutationMap[id])mutationMap[id]=[];mutationMap[id].push(r);});
   const now=Date.now();
   sales.forEach(function(s){
     const id=String(s[0]||''),requestKey=String(s[17]||''),method=String(s[8]||'').toUpperCase();
@@ -3128,9 +3135,11 @@ function auditCashierPOSIntegrity_() {
       issue('UNEXPECTED_ACTIVE_RESERVATION',id,'Transaksi bukan QRIS pending tetapi masih memiliki reservasi berstatus AKTIF.');
     }
     if(payment==='LUNAS'){
-      const saleMutations=mutationMap[id]||[],seen=Object.create(null);
-      saleMutations.forEach(function(m){const key=String(m[1]||'')+'|'+String(m[2]||'');seen[key]=(seen[key]||0)+1;});
-      lines.forEach(function(r){const key=String(r[2]||'')+'|'+String(r[3]||'');if(!seen[key])issue('SALE_STOCK_MUTATION_MISSING',id,'Mutasi stok keluar tidak ditemukan untuk '+String(r[5]||'produk')+'.');else if(seen[key]>1)issue('SALE_STOCK_MUTATION_DUPLICATE',id,'Mutasi stok ganda untuk '+String(r[5]||'produk')+'.');});
+      const saleMutations=mutationMap[id]||[],seen=Object.create(null),expected=Object.create(null);
+      saleMutations.forEach(function(m){const key=String(m[1]||'')+'|'+String(m[2]||'');if(!seen[key])seen[key]={count:0,qty:0};seen[key].count++;seen[key].qty+=Number(m[4])||0;});
+      lines.forEach(function(r){const key=String(r[2]||'')+'|'+String(r[3]||'');expected[key]=(expected[key]||0)+(Number(r[8])||0);});
+      Object.keys(expected).forEach(function(key){const actual=seen[key];if(!actual)issue('SALE_STOCK_MUTATION_MISSING',id,'Mutasi stok keluar tidak ditemukan untuk '+key+'.');else if(actual.count>1)issue('SALE_STOCK_MUTATION_DUPLICATE',id,'Mutasi stok keluar ganda untuk '+key+'.');else if(actual.qty!==expected[key])issue('SALE_STOCK_MUTATION_QTY_MISMATCH',id,'Jumlah mutasi stok tidak sama dengan jumlah barang terjual untuk '+key+'.');});
+      Object.keys(seen).forEach(function(key){if(!Object.prototype.hasOwnProperty.call(expected,key))issue('UNEXPECTED_SALE_STOCK_MUTATION',id,'Mutasi stok keluar tidak cocok dengan detail penjualan: '+key+'.');});
     }
   });
   return {checkedAt:new Date().toISOString(),mode:'READ_ONLY',salesChecked:sales.length,detailsChecked:details.length,reservationsChecked:reservations.length,issues:issues,issueCount:issues.length,truncated:issues.length>=500};
