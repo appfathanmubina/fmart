@@ -3065,8 +3065,8 @@ function resetBuyerCatalogFilters(){$('searchInput').value='';$('productSort').v
     try{
       const result=await runServer('verifyAdminLoginOtp',state.pendingLoginOtpChallengeId,code,FMART_PORTAL_MODE);
       if(!result||!result.ok){$('loginError').textContent=(result&&result.message)||'Verifikasi OTP gagal.';return;}
+      resetLoginOtpPanel_();
       if($('rememberMe').checked)await storeRememberedLoginCredential();
-      state.pendingLoginOtpChallengeId='';
       state.token=result.token;sessionStorage.setItem('fmartToken',result.token);
       await loadInitial();
     }catch(err){$('loginError').textContent=err.message||'Verifikasi OTP tidak dapat dilakukan.'}
