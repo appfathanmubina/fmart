@@ -324,6 +324,8 @@ test('Admin PWA resolves its own portal, token namespace, and distinct login lay
  assert.ok(index.includes("new URLSearchParams(window.location.search).get('portal')"));
  assert.ok(index.includes("'fmartToken_admin'"));
  assert.ok(index.includes("'fmartToken_buyer'"));
+ assert.ok(index.includes("sessionStorage.getItem('fmartToken')"));
+ assert.ok(index.includes("sessionStorage.setItem(FMART_SESSION_TOKEN_KEY,legacyToken)"));
  assert.ok(index.includes("body.admin-portal .login-showcase{display:none}"));
  assert.ok(index.includes("Masuk Portal Petugas"));
 });
