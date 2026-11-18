@@ -2413,7 +2413,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
           '<div class="cashier-qris-summary"><strong>Rp '+formatMoney(q.total)+'</strong><span data-qris-expiry="'+escapeHtml(q.expiresAt||'')+'">'+escapeHtml(cashierQrisRemaining_(q))+'</span></div>'+
           '<div class="cashier-qris-items">'+(q.items||[]).map(x=>'<div><span>'+escapeHtml(x.name)+(x.variationName?' · '+escapeHtml(x.variationName):'')+' × '+formatMoney(x.qty)+'</span><strong>Rp '+formatMoney(x.subtotal)+'</strong></div>').join('')+'</div>'+
           '<div class="cashier-qris-meta"><span>Kasir: '+escapeHtml(q.cashierName||'-')+'</span>'+(q.note?'<span>Catatan: '+escapeHtml(q.note)+'</span>':'')+'</div>'+
-          '<div class="cashier-qris-confirm"><label class="cashier-qris-check"><input type="checkbox" class="cashierQrisVerified" data-id="'+escapeHtml(q.saleId)+'" '+(expired?'disabled':'')+'> Saya sudah memeriksa kanal merchant dan memastikan dana transaksi ini benar-benar masuk.</label>'+
+          '<div class="cashier-qris-confirm-panel"><label class="cashier-qris-check"><input type="checkbox" class="cashierQrisVerified" data-id="'+escapeHtml(q.saleId)+'" '+(expired?'disabled':'')+'> Saya sudah memeriksa kanal merchant dan memastikan dana transaksi ini benar-benar masuk.</label>'+
           '<label for="cashierQrisRef_'+escapeHtml(q.saleId)+'">Referensi pembayaran (opsional)</label><input id="cashierQrisRef_'+escapeHtml(q.saleId)+'" class="cashier-qris-reference" maxlength="100" placeholder="Nomor referensi / catatan bank">'+
           '<div class="cashier-qris-actions"><button type="button" class="primary cashier-qris-confirm" data-id="'+escapeHtml(q.saleId)+'" '+(expired?'disabled':'')+'>Konfirmasi Lunas</button><button type="button" class="secondary cashier-qris-cancel" data-id="'+escapeHtml(q.saleId)+'">Batalkan & Lepas Stok</button></div>'+
           (expired?'<small class="cashier-qris-warning">Waktu reservasi 15 menit telah habis. Pembayaran tidak dapat dikonfirmasi dari transaksi ini. Jika dana ternyata sudah masuk, periksa transaksi merchant dan ikuti prosedur penjualan baru sesuai kebijakan toko.</small>':'')+
@@ -3194,7 +3194,7 @@ body.admin-portal .cashier-qris-items{display:grid;gap:6px}
 body.admin-portal .cashier-qris-items>div{display:flex;justify-content:space-between;gap:10px;font-size:12px}
 body.admin-portal .cashier-qris-items>div span{overflow-wrap:anywhere}
 body.admin-portal .cashier-qris-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
-body.admin-portal .cashier-qris-confirm{display:grid;gap:8px;margin-top:13px;padding-top:12px;border-top:1px dashed #e5d8e9}
+body.admin-portal .cashier-qris-confirm-panel{display:grid;gap:8px;margin-top:13px;padding-top:12px;border-top:1px dashed #e5d8e9}
 body.admin-portal .cashier-qris-check{display:flex;align-items:flex-start;gap:8px;color:#4d3b54;font-size:12px;line-height:1.5}
 body.admin-portal .cashier-qris-check input{margin-top:2px;flex:0 0 auto}
 body.admin-portal .cashier-qris-confirm>label:not(.cashier-qris-check){font-size:11px;font-weight:700;color:#62536a}
