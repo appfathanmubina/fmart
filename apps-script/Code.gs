@@ -2890,7 +2890,8 @@ function readRows_(sheet) {
  * Jalankan manual dari Apps Script Editor: auditFMartRuntime_()
  * Tidak membuat folder/trigger, tidak mengubah data, dan tidak mengirim notifikasi.
  */
-function auditFMartRuntime_() {
+function auditFMartRuntime_(options) {
+  const skipSantriData=!!(options&&options.skipSantriData===true);
   const result = {
     checkedAt: new Date().toISOString(),
     mode: 'READ_ONLY',
@@ -2925,6 +2926,7 @@ function auditFMartRuntime_() {
   }
 
   const names = ['Users','WaliSantri','Santri','Produk','Stok','MutasiStok','StokKasir','MutasiStokKasir','Pesanan','DetailPesanan','Pembayaran','Pengiriman','Pengantaran','BuktiPengantaran','KonfirmasiPengantaran','KomplainPengantaran','ReservasiStok','PenjualanToko','DetailPenjualanToko','ReservasiStokToko','Notifikasi','AuditLog'];
+  if(skipSantriData) names.splice(names.indexOf('Santri'),1);
   names.forEach(function(name) {
     const sheet = ss.getSheetByName(name);
     if (!sheet) {
@@ -3777,7 +3779,7 @@ function runFMartReadinessAuditSkipSantri() {
     }
   }
   run_('database', function(){return auditFMartDatabaseIntegrity_({skipSantriData:true});});
-  run_('runtime', auditFMartRuntime_);
+  run_('runtime', function(){return auditFMartRuntime_({skipSantriData:true});});
   run_('operationalSync', function(){return auditFMartOperationalSync_({skipSantriData:true});});
   run_('stockAndPOS', auditFMartStockReconciliation_);
   run_('cashierPOS', auditCashierPOSIntegrity_);
@@ -3795,7 +3797,7 @@ function runFMartReadinessAuditSkipSantri() {
     summary:summary,
     totalIssues:summary.reduce(function(total,item){return total+item.issueCount;},0),
     checks:checks,
-    note:'Isi dan referensi data Santri dilewati. Keberadaan dan header sheet Santri tetap diperiksa. Tidak ada perbaikan otomatis.'
+    note:'Seluruh pemeriksaan Sheet Santri dilewati. Tidak ada perbaikan otomatis.'
   };
   Logger.log(JSON.stringify(report,null,2));
   return report;
