@@ -295,3 +295,22 @@ test('Removed Wali dashboard summary has no stale frontend refresh or renderer',
  assert.ok(cancel.includes("runServer('getMyChildren'"));
  assert.ok(link.includes("runServer('getMyChildren'"));
 });
+
+
+test('Wali Santri links activate immediately and directory search validation matches UI',()=>{
+ const link=extractFunction(code,'requestWaliSantriLink');
+ const classes=extractFunction(code,'getSantriClassesForWaliSelf');
+ const search=extractFunction(code,'searchSantriForWaliSelf');
+ assert.ok(link.includes("requireRole_(token,[FMART.ROLES.WALI_SANTRI])"));
+ assert.ok(link.includes("['AKTIF',now,hubungan]"));
+ assert.ok(link.includes("status:'AKTIF'"));
+ assert.ok(!link.includes('MENUNGGU_VERIFIKASI'));
+ assert.ok(link.includes('activeCount>=2'));
+ assert.ok(classes.includes("String(r[3]||'').toUpperCase()==='AKTIF'"));
+ assert.ok(search.includes("String(r[3]||'').toUpperCase()==='AKTIF'"));
+ assert.ok(search.includes("if(!query&&!className)"));
+ assert.ok(index.includes('Hubungan langsung aktif tanpa persetujuan Admin.'));
+ assert.ok(index.includes('Hubungkan Santri'));
+ assert.ok(index.includes('Ketik minimal 3 huruf nama Santri'));
+ assert.ok(!index.includes('Akses belanja untuk Santri ini aktif setelah Admin menyetujui.'));
+});
