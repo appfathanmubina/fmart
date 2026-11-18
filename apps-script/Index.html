@@ -2626,7 +2626,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       $('warehouseSearch').addEventListener('input',draw);$('warehouseStatus').addEventListener('change',draw);$('warehouseRefresh').onclick=async()=>{await loadOps();renderOpsWarehouse()};draw();
     }
 
-    let warehouseReportData=null,warehouseReportTab='orders';
+    let warehouseReportData=null,warehouseReportTab='orders',warehouseCardData=null,warehouseCardLoading=false;
     async function renderOpsWarehouseReports(){
       $('opsMainTitle').textContent='Riwayat & Laporan Gudang';
       const now=new Date(),end=localDateInput_(now),start=localDateInput_(new Date(now.getFullYear(),now.getMonth(),now.getDate()-29));
@@ -2643,7 +2643,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       loading(true,'Mengambil riwayat Gudang...');
       try{
         warehouseReportData=await runServer('getWarehouseHistoryReport',state.token,start,end);
-        warehouseReportTab='orders';drawWarehouseHistoryReport();
+        warehouseCardData=null;warehouseReportTab='orders';drawWarehouseHistoryReport();
       }catch(e){$('warehouseReportBody').innerHTML='<div class="empty-box">Riwayat Gudang belum dapat dimuat. '+escapeHtml(e.message||'Silakan coba kembali.')+' <button type="button" class="secondary" id="warehouseReportRetry">Coba lagi</button></div>';if($('warehouseReportRetry'))$('warehouseReportRetry').onclick=loadWarehouseHistoryReport;showToast(e.message||'Gagal memuat laporan Gudang.','error');}
       finally{loading(false);}
     }
@@ -2661,14 +2661,14 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         stock:{name:'riwayat-mutasi-stok',headers:['Waktu','Produk','SKU','Variasi','Jenis','Qty','Stok Sebelum','Stok Sesudah','Referensi','Petugas','Catatan'],rows:warehouseReportData.stockHistory||[],values:x=>[x.createdAt,x.productName,x.sku,x.variationName,x.type,x.qty,x.before,x.after,x.referenceId,x.actor,x.note]},
         receiving:{name:'riwayat-penerimaan',headers:['Tanggal','Nomor Penerimaan','Pemasok','Referensi','Jumlah Baris','Total Qty','Petugas','Catatan'],rows:warehouseReportData.receivingHistory||[],values:x=>[x.receivedAt,x.number,x.supplier,x.reference,x.lineCount,x.totalQty,x.actor,x.note]}
       };
-      const cfg=maps[warehouseReportTab],csv=[cfg.headers].concat(cfg.rows.map(cfg.values)).map(row=>row.map(warehouseCsvCell_).join(',')).join('\\r\\n');
+      const cfg=maps[warehouseReportTab];if(!cfg)return;const csv=[cfg.headers].concat(cfg.rows.map(cfg.values)).map(row=>row.map(warehouseCsvCell_).join(',')).join('\\r\\n');
       const blob=new Blob(['\\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
       a.href=url;a.download=cfg.name+'-'+(warehouseReportData.period.start||'')+'-'+(warehouseReportData.period.end||'')+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
     }
     function drawWarehouseHistoryReport(){
       if(!warehouseReportData||!$('warehouseReportBody'))return;
-      const sum=warehouseReportData.summary||{},tabs=[['orders','Pemenuhan Pesanan'],['delivery','Pengantaran'],['stock','Mutasi Stok'],['receiving','Penerimaan'],['consistency','Konsistensi Stok']];
-      const active=warehouseReportTab,rows=active==='orders'?(warehouseReportData.orderHistory||[]):active==='delivery'?(warehouseReportData.deliveryHistory||[]):active==='stock'?(warehouseReportData.stockHistory||[]):active==='consistency'?(warehouseReportData.stockConsistency||[]):(warehouseReportData.receivingHistory||[]);
+      const sum=warehouseReportData.summary||{},tabs=[['orders','Pemenuhan Pesanan'],['delivery','Pengantaran'],['stock','Mutasi Stok'],['card','Kartu Persediaan'],['valuation','Nilai Persediaan'],['receiving','Penerimaan'],['consistency','Konsistensi Stok']];
+      const active=warehouseReportTab;if(active==='card'){drawWarehouseCardReport_();return;}if(active==='valuation'){$('warehouseReportBody').innerHTML='<section class="section"><div class="warehouse-home-intro"><div><span class="warehouse-home-eyebrow">VALUASI PERSEDIAAN</span><h3>Nilai persediaan belum dapat dihitung</h3><p>Database FMart saat ini menyimpan harga jual produk, tetapi belum menyimpan harga pokok atau biaya perolehan per produk/variasi maupun biaya satuan pada dokumen penerimaan.</p></div></div><div class="notice"><strong>Perlindungan akurasi laporan</strong><p>FMart tidak akan mengalikan stok dengan harga jual karena hasilnya bukan nilai modal persediaan. Tambahkan kebijakan pencatatan harga pokok terlebih dahulu sebelum laporan nilai persediaan diaktifkan.</p></div><div class="warehouse-report-metrics"><article><small>Saldo kuantitas</small><strong>Sudah tersedia</strong></article><article><small>Harga pokok</small><strong>Belum tersedia</strong></article><article><small>Nilai persediaan</small><strong>Belum dihitung</strong></article></div></section>';return;}const rows=active==='orders'?(warehouseReportData.orderHistory||[]):active==='delivery'?(warehouseReportData.deliveryHistory||[]):active==='stock'?(warehouseReportData.stockHistory||[]):active==='consistency'?(warehouseReportData.stockConsistency||[]):(warehouseReportData.receivingHistory||[]);
       const q=($('warehouseReportSearch')&&$('warehouseReportSearch').value||'').trim().toLowerCase();
       const filtered=rows.filter(x=>Object.keys(x).some(k=>String(x[k]===null?'':x[k]).toLowerCase().includes(q)));
       let table='';
@@ -2680,11 +2680,43 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       if(!filtered.length)table='<div class="empty-box">Tidak ada catatan yang sesuai pada periode dan pencarian ini.</div>';
       $('warehouseReportBody').innerHTML=
         '<div class="warehouse-report-metrics"><article><small>Perubahan tahapan pesanan</small><strong>'+formatMoney(sum.orderChanges)+'</strong></article><article><small>Aktivitas pengantaran</small><strong>'+formatMoney(sum.deliveryEvents||0)+'</strong></article><article><small>Mutasi stok</small><strong>'+formatMoney(sum.stockMutations)+'</strong></article><article><small>Barang masuk / keluar</small><strong>'+formatMoney(sum.inboundQty)+' / '+formatMoney(sum.outboundQty)+' unit</strong></article><article><small>Temuan konsistensi stok</small><strong>'+formatMoney(sum.stockConsistencyIssues||0)+'</strong></article><article><small>Dokumen penerimaan</small><strong>'+formatMoney(sum.receipts)+'</strong></article></div>'+
-        '<section class="section warehouse-report-workspace"><div class="warehouse-report-toolbar"><div class="report-tabs">'+tabs.map(t=>'<button type="button" class="report-tab '+(active===t[0]?'active':'')+'" data-warehouse-report-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div><div class="warehouse-report-actions"><input id="warehouseReportSearch" type="search" value="'+escapeHtml(q)+'" placeholder="Cari riwayat..."><button type="button" class="secondary" id="warehouseReportExport">Ekspor CSV</button></div></div>'+
+        '<section class="section warehouse-report-workspace"><div class="warehouse-report-toolbar"><div class="report-tabs">'+tabs.map(t=>'<button type="button" class="report-tab '+(active===t[0]?'active':'')+'" data-warehouse-report-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div><div class="warehouse-report-actions"><input id="warehouseReportSearch" type="search" value="'+escapeHtml(q)+'" placeholder="Cari riwayat..." '+(['card','valuation'].includes(active)?'hidden':'')+'><button type="button" class="secondary" id="warehouseReportExport" '+(['card','valuation'].includes(active)?'hidden':'')+'>Ekspor CSV</button></div></div>'+
         '<div class="warehouse-report-count">Menampilkan '+formatMoney(filtered.length)+' dari '+formatMoney(rows.length)+' catatan'+(rows.length>=500?' · batas tampilan 500 catatan per kategori':'')+'</div>'+table+'</section>';
-      document.querySelectorAll('[data-warehouse-report-tab]').forEach(b=>b.onclick=()=>{warehouseReportTab=b.dataset.warehouseReportTab;drawWarehouseHistoryReport()});
+      document.querySelectorAll('[data-warehouse-report-tab]').forEach(b=>b.onclick=()=>{warehouseReportTab=b.dataset.warehouseReportTab;drawWarehouseHistoryReport();if(warehouseReportTab==='card'&&!warehouseCardData&&!warehouseCardLoading)loadWarehouseCardReport_()});
       $('warehouseReportSearch').addEventListener('input',drawWarehouseHistoryReport);
       $('warehouseReportExport').onclick=downloadWarehouseHistoryCsv;
+    }
+
+    async function loadWarehouseCardReport_(selectedKey){
+      if(warehouseCardLoading)return;
+      warehouseCardLoading=true;
+      const body=$('warehouseReportBody');
+      if(body)body.innerHTML='<div class="stock-loading">Memuat kartu persediaan...</div>';
+      try{
+        let key=selectedKey||'';
+        if(!key){
+          const stock=await runServer('getStockManagement',state.token),first=(stock.items||[])[0];
+          if(!first)throw new Error('Belum ada item persediaan yang dapat ditampilkan.');
+          key=first.key;
+        }
+        const parts=key.split('|'),start=$('warehouseReportStart').value,end=$('warehouseReportEnd').value;
+        warehouseCardData=await runServer('getStockCardReport',state.token,parts[0],parts[1]||'',start,end);
+        drawWarehouseHistoryReport();
+      }catch(e){
+        warehouseCardData=null;
+        if(body)body.innerHTML='<div class="empty-box">Kartu persediaan belum dapat dimuat. '+escapeHtml(e.message||'Silakan coba kembali.')+' <button type="button" class="secondary" id="warehouseCardRetry">Coba lagi</button></div>';
+        if($('warehouseCardRetry'))$('warehouseCardRetry').onclick=()=>loadWarehouseCardReport_(selectedKey);
+        showToast(e.message||'Gagal memuat kartu persediaan.','error');
+      }finally{warehouseCardLoading=false;}
+    }
+    function drawWarehouseCardReport_(){
+      const body=$('warehouseReportBody');
+      if(!body)return;
+      if(!warehouseCardData){body.innerHTML='<div class="stock-loading">Memuat kartu persediaan...</div>';return;}
+      const d=warehouseCardData,s=d.summary||{},opts=(d.items||[]).map(x=>'<option value="'+escapeHtml(x.key)+'" '+(x.key===d.item.productId+'|'+d.item.variationId?'selected':'')+'>'+escapeHtml(x.label)+'</option>').join('');
+      const rows=(d.movements||[]).map(x=>'<tr><td>'+escapeHtml(formatDate(x.createdAt))+'</td><td>'+escapeHtml(x.type)+'</td><td>'+formatMoney(x.qty)+'</td><td>'+formatMoney(x.before)+' → <strong>'+formatMoney(x.after)+'</strong></td><td>'+escapeHtml(x.referenceId||'-')+'</td><td>'+escapeHtml(x.actor)+'</td><td>'+(x.valid?'<span class="status-badge">Validasi cocok</span>':'<span class="status-badge">Perlu diperiksa</span>')+'</td></tr>').join('');
+      body.innerHTML='<section class="section"><div class="field"><label for="warehouseCardSelect">Produk / variasi</label><select id="warehouseCardSelect">'+opts+'</select></div><div class="warehouse-report-metrics"><article><small>Saldo awal periode</small><strong>'+(s.openingBalance===null?'Tidak diketahui':formatMoney(s.openingBalance))+'</strong></article><article><small>Barang masuk</small><strong>'+formatMoney(s.inboundQty||0)+' unit</strong></article><article><small>Barang keluar</small><strong>'+formatMoney(s.outboundQty||0)+' unit</strong></article><article><small>Saldo akhir periode</small><strong>'+(s.closingBalance===null?'Tidak diketahui':formatMoney(s.closingBalance))+'</strong></article><article><small>Stok fisik saat ini</small><strong>'+(s.currentPhysicalStock===null?'Tidak tersedia':formatMoney(s.currentPhysicalStock))+'</strong></article><article><small>Jumlah mutasi</small><strong>'+formatMoney(s.movementCount||0)+'</strong></article></div>'+(d.issues&&d.issues.length?'<div class="notice"><strong>Perlu pemeriksaan</strong><ul>'+d.issues.map(x=>'<li>'+escapeHtml(x)+'</li>').join('')+'</ul></div>':'<div class="notice">Tidak ditemukan ketidaksesuaian pada mutasi item dalam periode yang dipilih.</div>')+'<div class="table-wrap"><table class="data-table warehouse-report-table"><thead><tr><th>Waktu</th><th>Jenis</th><th>Qty</th><th>Saldo sebelum → sesudah</th><th>Referensi</th><th>Petugas</th><th>Pemeriksaan</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+(rows.length?'':'<div class="empty-box">Tidak ada mutasi pada periode ini.</div>')+'</section>';
+      $('warehouseCardSelect').onchange=e=>loadWarehouseCardReport_(e.target.value);
     }
 
     async function renderOpsReceiving(){
