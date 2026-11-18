@@ -25,6 +25,8 @@ const FMART_DB = Object.freeze({
     VARIASI_PRODUK: ['VariasiId','ProdukId','NamaVariasi','NilaiVariasi','HargaTambahan','Stok','Status','CreatedAt','UpdatedAt'],
     STOK: ['StokId','ProdukId','VariasiId','StokSaatIni','StokMinimum','UpdatedAt'],
     MUTASI_STOK: ['MutasiId','ProdukId','VariasiId','Jenis','Qty','StokSebelum','StokSesudah','ReferensiId','Keterangan','CreatedBy','CreatedAt'],
+    STOK_KASIR: ['StokKasirId','ProdukId','VariasiId','StokSaatIni','StokMinimum','UpdatedAt'],
+    MUTASI_STOK_KASIR: ['MutasiKasirId','ProdukId','VariasiId','Jenis','Qty','StokSebelum','StokSesudah','ReferensiId','Keterangan','CreatedBy','CreatedAt'],
     PENERIMAAN_BARANG: ['PenerimaanId','NomorPenerimaan','Pemasok','ReferensiDokumen','TanggalTerima','Catatan','JumlahBaris','TotalQty','CreatedBy','CreatedAt'],
     DETAIL_PENERIMAAN_BARANG: ['DetailPenerimaanId','PenerimaanId','ProdukId','VariasiId','Qty','StokSebelum','StokSesudah','Catatan'],
     KERANJANG: ['KeranjangId','UserId','SantriId','ProdukId','VariasiId','Qty','CreatedAt','UpdatedAt'],
@@ -93,7 +95,7 @@ function ensureSheet_(ss, headers, sheetName) {
 function sheetNameForKey_(key) {
   const map = {
     USERS:'Users', WALI_SANTRI:'WaliSantri', SANTRI:'Santri', WALI_SANTRI_SANTRI:'WaliSantriSantri',
-    KATEGORI:'Kategori', PRODUK:'Produk', VARIASI_PRODUK:'VariasiProduk', STOK:'Stok', MUTASI_STOK:'MutasiStok', PENERIMAAN_BARANG:'PenerimaanBarang', DETAIL_PENERIMAAN_BARANG:'DetailPenerimaanBarang',
+    KATEGORI:'Kategori', PRODUK:'Produk', VARIASI_PRODUK:'VariasiProduk', STOK:'Stok', MUTASI_STOK:'MutasiStok', STOK_KASIR:'StokKasir', MUTASI_STOK_KASIR:'MutasiStokKasir', PENERIMAAN_BARANG:'PenerimaanBarang', DETAIL_PENERIMAAN_BARANG:'DetailPenerimaanBarang',
     KERANJANG:'Keranjang', PESANAN:'Pesanan', DETAIL_PESANAN:'DetailPesanan', PEMBAYARAN:'Pembayaran',
     PENGIRIMAN:'Pengiriman', PENGANTARAN:'Pengantaran', BUKTI_PENGANTARAN:'BuktiPengantaran',
     KONFIRMASI_PENGANTARAN:'KonfirmasiPengantaran', KOMPLAIN_PENGANTARAN:'KomplainPengantaran',
@@ -299,6 +301,10 @@ function auditFMartDatabaseIntegrity_() {
   checkReference_('Stok', 2, 'VariasiProduk', 'VariasiId stok', true);
   checkReference_('MutasiStok', 1, 'Produk', 'ProdukId mutasi stok', false);
   checkReference_('MutasiStok', 2, 'VariasiProduk', 'VariasiId mutasi stok', true);
+  checkReference_('StokKasir', 1, 'Produk', 'ProdukId stok kasir', false);
+  checkReference_('StokKasir', 2, 'VariasiProduk', 'VariasiId stok kasir', true);
+  checkReference_('MutasiStokKasir', 1, 'Produk', 'ProdukId mutasi stok kasir', false);
+  checkReference_('MutasiStokKasir', 2, 'VariasiProduk', 'VariasiId mutasi stok kasir', true);
   checkReference_('Keranjang', 1, 'Users', 'UserId keranjang', false);
   checkReference_('Keranjang', 2, 'Santri', 'SantriId keranjang', false);
   checkReference_('Keranjang', 3, 'Produk', 'ProdukId keranjang', false);
