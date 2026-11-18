@@ -521,3 +521,6 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 - Pemeriksaan statis mencakup akses bukti berbasis role, validasi folder Drive, reservasi checkout, pengurangan stok tersedia, pelepasan reservasi, pengamanan mutasi stok, pembatasan antrean, dan sintaks frontend/backend.
 - Belum dilakukan uji unggah/buka file pada Drive aktif, uji checkout bersamaan dari beberapa akun, simulasi reservasi kedaluwarsa, transaksi pembayaran nyata, atau uji browser dan deployment Apps Script.
 - Setelah sinkronisasi, jalankan setupFMartDatabase_() sekali agar sheet ReservasiStok dan tiga pengaturan kebijakan dibuat. Periksa izin akses akun deployment ke folder Drive bukti. Tidak perlu membagikan folder atau file bukti kepada publik.
+
+- Pembayaran lama yang sudah menunggu verifikasi sebelum sheet ReservasiStok tersedia akan mencoba membuat reservasi saat petugas memverifikasi. Jika stok sudah tidak cukup, sistem menolak verifikasi agar tidak terjadi penjualan melebihi stok.
+- Pembatalan manual oleh Admin juga langsung melepas reservasi dan menolak pengajuan pembayaran yang masih menunggu keputusan.
