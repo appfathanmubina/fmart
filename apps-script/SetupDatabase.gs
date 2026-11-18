@@ -94,7 +94,7 @@ function sheetNameForKey_(key) {
     KERANJANG:'Keranjang', PESANAN:'Pesanan', DETAIL_PESANAN:'DetailPesanan', PEMBAYARAN:'Pembayaran',
     PENGIRIMAN:'Pengiriman', PENGANTARAN:'Pengantaran', BUKTI_PENGANTARAN:'BuktiPengantaran',
     KONFIRMASI_PENGANTARAN:'KonfirmasiPengantaran', KOMPLAIN_PENGANTARAN:'KomplainPengantaran',
-    RIWAYAT_PENGANTARAN:'RiwayatPengantaran', NOTIFIKASI:'Notifikasi', PENGATURAN:'Pengaturan', AUDIT_LOG:'AuditLog'
+    RIWAYAT_PENGANTARAN:'RiwayatPengantaran', RESERVASI_STOK:'ReservasiStok', NOTIFIKASI:'Notifikasi', PENGATURAN:'Pengaturan', AUDIT_LOG:'AuditLog'
   };
   return map[key] || key;
 }
