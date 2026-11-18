@@ -854,18 +854,18 @@ function checkoutCart(token, santriId, selectedCartIds, catatan, metodePengirima
 
 /** Notifikasi pribadi Wali; hanya notifikasi milik sesi aktif yang dikembalikan. */
 function getMyNotifications(token) {
-  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
+  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.PETUGAS_PENGANTAR]);
   const rows=readRows_(getSS_().getSheetByName('Notifikasi')).filter(function(r){return String(r[1]||'')===String(session.userId);}).sort(function(a,b){return new Date(b[7]||0).getTime()-new Date(a[7]||0).getTime();});
   const notifications=rows.slice(0,100).map(function(r){return{id:String(r[0]||''),orderId:String(r[2]||''),title:String(r[3]||''),message:String(r[4]||''),type:String(r[5]||''),isRead:r[6]===true||String(r[6]).toUpperCase()==='TRUE',createdAt:dateIso_(r[7])};});
   return {ok:true,notifications:notifications,unreadCount:notifications.filter(function(n){return !n.isRead;}).length};
 }
 function markMyNotificationRead(token, notificationId) {
-  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);notificationId=String(notificationId||'').trim();if(!notificationId)throw new Error('Notifikasi tidak valid.');
+  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.PETUGAS_PENGANTAR]);notificationId=String(notificationId||'').trim();if(!notificationId)throw new Error('Notifikasi tidak valid.');
   const lock=LockService.getScriptLock();lock.waitLock(10000);
   try{const sheet=getSS_().getSheetByName('Notifikasi');const row=findRowById_(sheet,notificationId,1);if(!row||String(row.values[1]||'')!==String(session.userId))throw new Error('Notifikasi tidak ditemukan.');if(row.values[6]!==true&&String(row.values[6]).toUpperCase()!=='TRUE')sheet.getRange(row.rowNumber,7).setValue(true);SpreadsheetApp.flush();return {ok:true};}finally{lock.releaseLock();}
 }
 function markAllMyNotificationsRead(token) {
-  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);const lock=LockService.getScriptLock();lock.waitLock(10000);
+  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.PETUGAS_PENGANTAR]);const lock=LockService.getScriptLock();lock.waitLock(10000);
   try{const sheet=getSS_().getSheetByName('Notifikasi');const rows=readRows_(sheet);let changed=0;rows.forEach(function(r,i){if(String(r[1]||'')===String(session.userId)&&r[6]!==true&&String(r[6]).toUpperCase()!=='TRUE'){sheet.getRange(i+2,7).setValue(true);changed++;}});SpreadsheetApp.flush();return {ok:true,updated:changed};}finally{lock.releaseLock();}
 }
 /** Fase 4: pesanan dan pembayaran Wali Santri. */
@@ -1158,6 +1158,10 @@ function reportDeliveryComplaint(token,orderId,issueType,description) {
     confSheet.getRange(confRow,5).setValue('KOMPLAIN_AKTIF');
     confSheet.getRange(confRow,9,1,2).setValues([[true,now]]);
     ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),session.userId,orderId,'Komplain pengantaran dicatat','Laporan Anda telah diterima. Konfirmasi otomatis dihentikan sementara sampai Admin menyelesaikan pemeriksaan.','PENGANTARAN',false,now]);
+    const noticeSheet=ss.getSheetByName('Notifikasi'),orderNumber=String(order.values[1]||orderId),staffRows=readRows_(ss.getSheetByName('Users'));
+    staffRows.filter(function(u){return ['ADMIN','SUPERADMIN'].indexOf(String(u[5]||'').toUpperCase())>=0&&String(u[6]||'').toUpperCase()==='AKTIF';}).forEach(function(u){noticeSheet.appendRow([makeFMartId_('NTF'),String(u[0]),orderId,'Komplain pengantaran baru','Komplain pesanan '+orderNumber+' menunggu penanganan Admin. Periksa menu Komplain Pengantaran.','PENGANTARAN',false,now]);});
+    const activeAssignment=readRows_(ss.getSheetByName('Pengantaran')).filter(function(a){return String(a[1]||'')===orderId&&['DITUGASKAN','DITERIMA','DITERIMA_PETUGAS','DALAM_PERJALANAN'].indexOf(String(a[3]||'').toUpperCase())>=0;}).pop();
+    if(activeAssignment&&String(activeAssignment[2]||''))noticeSheet.appendRow([makeFMartId_('NTF'),String(activeAssignment[2]),orderId,'Komplain pada pesanan yang ditangani','Wali melaporkan kendala pada pesanan '+orderNumber+'. Periksa pembaruan tugas melalui Admin.','PENGANTARAN',false,now]);
     recordDeliveryHistory_(ss,'',orderId,session,'KOMPLAIN_DIAJUKAN','MENUNGGU_KONFIRMASI','KOMPLAIN_AKTIF',description);
     writeAudit_(session.userId,session.role,'REPORT_DELIVERY_COMPLAINT','KOMPLAIN_PENGANTARAN',complaintId,'',JSON.stringify({orderId:orderId,type:issueType}),'Wali melaporkan masalah pengantaran');
     SpreadsheetApp.flush();
@@ -1171,12 +1175,13 @@ function getDeliveryComplaintWorkspace(token) {
   const ss=getSS_(),complaints=readRows_(ss.getSheetByName('KomplainPengantaran'));
   const orders=readRows_(ss.getSheetByName('Pesanan')),users=readRows_(ss.getSheetByName('Users'));
   const confirmations=readRows_(ss.getSheetByName('KonfirmasiPengantaran'));
-  const orderMap={},userMap={},confirmationMap={};
+  const orderMap={},userMap={},waliByUserId={},confirmationMap={};
   orders.forEach(r=>orderMap[String(r[0]||'')]=r);
   users.forEach(r=>userMap[String(r[0]||'')]={name:String(r[4]||''),phone:String(r[1]||'')});
+  readRows_(ss.getSheetByName('WaliSantri')).forEach(function(r){if(String(r[1]||''))waliByUserId[String(r[1])]={name:String(r[2]||''),phone:String(r[3]||'')};});
   confirmations.forEach(r=>confirmationMap[String(r[0]||'')]=r);
   const items=complaints.map(function(r){
-    const order=orderMap[String(r[1]||'')]||[],wali=userMap[String(r[3]||'')]||{},conf=confirmationMap[String(r[2]||'')]||[];
+    const order=orderMap[String(r[1]||'')]||[],wali=waliByUserId[String(r[3]||'')]||userMap[String(r[3]||'')]||{},conf=confirmationMap[String(r[2]||'')]||[];
     return {complaintId:String(r[0]||''),orderId:String(r[1]||''),orderNumber:String(order[1]||r[1]||''),orderStatus:String(order[8]||''),waliName:wali.name||'Wali Santri',waliPhone:wali.phone||'',issueType:String(r[4]||''),description:String(r[5]||''),status:String(r[6]||''),reportedAt:dateIso_(r[7]),confirmationDeadline:dateIso_(conf[3]),resolution:String(r[9]||''),handledBy:String(r[8]||'')};
   }).filter(x=>['MENUNGGU_PENANGANAN','DIPROSES'].indexOf(x.status.toUpperCase())>=0)
     .sort((a,b)=>new Date(a.reportedAt||0)-new Date(b.reportedAt||0));
@@ -1211,6 +1216,9 @@ function resolveDeliveryComplaint(token,complaintId,resolution,reopenConfirmatio
     }
     complaintSheet.getRange(complaint.rowNumber,7,1,6).setValues([['SELESAI',complaint.values[7],session.userId,resolution,now,now]]);
     ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(complaint.values[3]||''),orderId,'Komplain pengantaran selesai',reopen?'Admin menyelesaikan pemeriksaan. Masa konfirmasi penerimaan dibuka kembali selama 7 hari.':'Admin menyelesaikan pemeriksaan. Proses konfirmasi dilanjutkan sesuai tenggat sebelumnya.','PENGANTARAN',false,now]);
+    const assignedDriver=readRows_(ss.getSheetByName('Pengantaran')).filter(function(a){return String(a[1]||'')===orderId&&String(a[2]||'')&&['DITUGASKAN','DITERIMA','DITERIMA_PETUGAS','DALAM_PERJALANAN'].indexOf(String(a[3]||'').toUpperCase())>=0;}).pop();
+    if(assignedDriver)ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(assignedDriver[2]),orderId,'Komplain pesanan diperbarui','Admin telah menyelesaikan komplain pesanan '+String(order.values[1]||orderId)+'. Periksa status tugas Anda.','PENGANTARAN',false,now]);
+    ['24H','48H','72H'].forEach(function(stage){PropertiesService.getScriptProperties().deleteProperty(deliveryComplaintReminderKey_(complaintId,stage));});
     recordDeliveryHistory_(ss,'',orderId,session,'KOMPLAIN_DISELESAIKAN','KOMPLAIN_AKTIF','MENUNGGU_KONFIRMASI',resolution);
     writeAudit_(session.userId,session.role,'RESOLVE_DELIVERY_COMPLAINT','KOMPLAIN_PENGANTARAN',complaintId,JSON.stringify({status:complaint.values[6]}),JSON.stringify({status:'SELESAI',reopenConfirmation:reopen}),'Admin menyelesaikan komplain pengantaran');
     SpreadsheetApp.flush();
@@ -1225,20 +1233,39 @@ function deliveryAutoConfirmEnabled_(){
   return row?String(row[1]||'').toUpperCase()==='TRUE':true;
 }
 
+function deliveryComplaintReminderKey_(complaintId,stage){return 'FMART_COMPLAINT_REMINDER_'+String(complaintId||'').replace(/[^A-Za-z0-9_-]/g,'').slice(0,70)+'_'+stage;}
+function processDeliveryComplaintReminders_(ss,now){
+  const complaints=readRows_(ss.getSheetByName('KomplainPengantaran')),orders=readRows_(ss.getSheetByName('Pesanan')),users=readRows_(ss.getSheetByName('Users')),props=PropertiesService.getScriptProperties(),orderMap={},activeStaff=users.filter(function(u){return ['ADMIN','SUPERADMIN'].indexOf(String(u[5]||'').toUpperCase())>=0&&String(u[6]||'').toUpperCase()==='AKTIF';});
+  orders.forEach(function(r){orderMap[String(r[0]||'')]=r;});
+  const noticeSheet=ss.getSheetByName('Notifikasi');let sent=0,checked=0;
+  complaints.forEach(function(r){
+    const id=String(r[0]||''),orderId=String(r[1]||''),status=String(r[6]||'').toUpperCase();
+    if(!id||['MENUNGGU_PENANGANAN','DIPROSES'].indexOf(status)<0)return;
+    const reportedAt=new Date(r[7]||0).getTime();if(!Number.isFinite(reportedAt)||reportedAt<=0)return;
+    const age=now.getTime()-reportedAt,order=orderMap[orderId]||[],number=String(order[1]||orderId),waliId=String(r[3]||'');checked++;
+    if(age>=24*60*60*1000){const key=deliveryComplaintReminderKey_(id,'24H');if(props.getProperty(key)!=='1'){activeStaff.forEach(function(u){noticeSheet.appendRow([makeFMartId_('NTF'),String(u[0]),orderId,'Pengingat komplain belum ditangani','Komplain pesanan '+number+' telah menunggu lebih dari 24 jam. Mohon periksa dan tindak lanjuti.','PENGANTARAN',false,now]);});props.setProperty(key,'1');sent+=activeStaff.length;}}
+    if(age>=48*60*60*1000){const key=deliveryComplaintReminderKey_(id,'48H');if(props.getProperty(key)!=='1'&&waliId){noticeSheet.appendRow([makeFMartId_('NTF'),waliId,orderId,'Pembaruan komplain','Komplain pesanan '+number+' masih dalam proses penanganan. Kami akan memberi tahu Anda setelah pemeriksaan selesai.','PENGANTARAN',false,now]);props.setProperty(key,'1');sent++;}}
+    if(age>=72*60*60*1000){const key=deliveryComplaintReminderKey_(id,'72H');if(props.getProperty(key)!=='1'){activeStaff.forEach(function(u){noticeSheet.appendRow([makeFMartId_('NTF'),String(u[0]),orderId,'Eskalasi komplain','Komplain pesanan '+number+' belum diselesaikan setelah 72 jam. Mohon prioritaskan tindak lanjut.','PENGANTARAN',false,now]);});props.setProperty(key,'1');sent+=activeStaff.length;}}
+  });
+  return {checked:checked,sent:sent};
+}
+
 /** Handler trigger per jam; idempotent dan mengejar tenggat yang terlewat. */
 function processDeliveryAutoConfirmation_() {
   const lock=LockService.getScriptLock();
   if(!lock.tryLock(20000)) return {ok:false,skipped:'LOCKED'};
   try {
-    if(!deliveryAutoConfirmEnabled_()) return {ok:true,disabled:true};
-    const ss=getSS_(),orders=readRows_(ss.getSheetByName('Pesanan')),proofs=readRows_(ss.getSheetByName('BuktiPengantaran'));
+    const ss=getSS_(),now=new Date();
+    const complaintReminderResult=processDeliveryComplaintReminders_(ss,now);
+    if(!deliveryAutoConfirmEnabled_()) return {ok:true,disabled:true,complaintReminders:complaintReminderResult};
+    const orders=readRows_(ss.getSheetByName('Pesanan')),proofs=readRows_(ss.getSheetByName('BuktiPengantaran'));
     const confirmations=readRows_(ss.getSheetByName('KonfirmasiPengantaran')),shipments=readRows_(ss.getSheetByName('Pengiriman'));
     const complaints=readRows_(ss.getSheetByName('KomplainPengantaran')),orderMap={},proofByOrder={},shipmentByOrder={},activeComplaint={};
     orders.forEach(r=>orderMap[String(r[0]||'')]=r);
     proofs.forEach(r=>{const id=String(r[1]||'');if(id&&(!proofByOrder[id]||new Date(r[10]||0)>new Date(proofByOrder[id][10]||0)))proofByOrder[id]=r;});
     shipments.forEach(r=>{const id=String(r[1]||'');if(id&&(!shipmentByOrder[id]||new Date(r[8]||0)>=new Date(shipmentByOrder[id][8]||0)))shipmentByOrder[id]=r;});
     complaints.forEach(r=>{if(['MENUNGGU_PENANGANAN','DIPROSES'].indexOf(String(r[6]||'').toUpperCase())>=0)activeComplaint[String(r[1]||'')]=true;});
-    const now=new Date(),props=PropertiesService.getScriptProperties();let reminders=0,autoConfirmed=0,skipped=0;
+    const props=PropertiesService.getScriptProperties();let reminders=0,autoConfirmed=0,skipped=0;
     confirmations.forEach(function(conf,index){
       const confId=String(conf[0]||''),orderId=String(conf[1]||'');
       if(!confId||String(conf[4]||'').toUpperCase()!=='MENUNGGU_KONFIRMASI')return;
@@ -1267,7 +1294,7 @@ function processDeliveryAutoConfirmation_() {
       props.setProperty(key,JSON.stringify(sent));
     });
     SpreadsheetApp.flush();
-    return {ok:true,reminders:reminders,autoConfirmed:autoConfirmed,skipped:skipped,checkedAt:now.toISOString()};
+    return {ok:true,reminders:reminders,complaintReminders:complaintReminderResult,autoConfirmed:autoConfirmed,skipped:skipped,checkedAt:now.toISOString()};
   } finally {lock.releaseLock();}
 }
 
@@ -1983,8 +2010,11 @@ function updateWaliSantri(token,waliId,nama,noHp,email,alamat){
     const now=new Date();
     ws.getRange(row.rowNumber,3,1,7).setValues([[nama,noHp,email,alamat,String(row.values[6]||'AKTIF'),row.values[7]||now,now]]);
     ws.getRange(row.rowNumber,4).setNumberFormat('@');
-    us.getRange(userRow.rowNumber,5).setValue(nama); us.getRange(userRow.rowNumber,9).setValue(now);
-    writeAudit_(session.userId,session.role,'UPDATE_WALI_SANTRI','WALI_SANTRI',waliId,JSON.stringify({nama:String(row.values[2]||''),noHp:String(row.values[3]||''),email:String(row.values[4]||''),alamat:String(row.values[5]||'')}),JSON.stringify({nama:nama,noHp:noHp,email:email,alamat:alamat}),'Memperbarui data Wali Santri');
+    const allUsers=readRows_(us);
+    if(allUsers.some(function(u){return String(u[0]||'')!==userId&&String(u[1]||'').trim()===noHp;}))throw new Error('Nomor HP sudah digunakan sebagai username akun lain.');
+    us.getRange(userRow.rowNumber,2).setNumberFormat('@');us.getRange(userRow.rowNumber,2).setValue(noHp);
+    us.getRange(userRow.rowNumber,5).setValue(nama);us.getRange(userRow.rowNumber,9).setValue(now);
+    writeAudit_(session.userId,session.role,'UPDATE_WALI_SANTRI','WALI_SANTRI',waliId,JSON.stringify({nama:String(row.values[2]||''),noHp:String(row.values[3]||''),email:String(row.values[4]||''),alamat:String(row.values[5]||'')}),JSON.stringify({nama:nama,noHp:noHp,username:noHp,email:email,alamat:alamat}),'Memperbarui data Wali Santri');
     SpreadsheetApp.flush(); return {ok:true};
   }finally{lock.releaseLock();}
 }
@@ -2067,6 +2097,7 @@ function getDeliveryDashboard(token) {
     const id = String(row[0] || '');
     if (id) userById[id] = {name:String(row[4] || ''), username:String(row[1] || '')};
   });
+  const waliByUserId={};readRows_(ss.getSheetByName('WaliSantri')).forEach(function(row){const id=String(row[1]||'');if(id)waliByUserId[id]={name:String(row[2]||''),phone:String(row[3]||'')};});
   const orderById = {};
   orders.forEach(function(row) {
     const id = String(row[0] || '');
@@ -2095,7 +2126,7 @@ function getDeliveryDashboard(token) {
     const order = orderById[orderId];
     if (!order) return null;
     const child = santriById[String(order[3] || '')] || {};
-    const wali = userById[String(order[2] || '')] || {};
+    const wali = waliByUserId[String(order[2] || '')] || userById[String(order[2] || '')] || {};
     const shipment = shipmentByOrder[orderId] || [];
     const proof = proofByAssignment[String(row[0]||'')] || [];
     return {
@@ -2116,7 +2147,7 @@ function getDeliveryDashboard(token) {
       childName:String(child.name || 'Santri'),
       className:String(child.className || ''),
       recipientName:String(wali.name || 'Wali Santri'),
-      recipientContact:String(wali.username || ''),
+      recipientContact:String(wali.phone || wali.username || ''),
       destination:String(shipment[3] || ''),
       shipmentStatus:String(shipment[4] || '')
     };
@@ -2131,7 +2162,8 @@ function getDeliveryDashboard(token) {
     else if (['SELESAI','DITERIMA_WALI'].indexOf(task.assignmentStatus) >= 0) summary.completed++;
     else if (['GAGAL','DITOLAK'].indexOf(task.assignmentStatus) >= 0) summary.failed++;
   });
-  return {ok:true,summary:summary,tasks:tasks,updatedAt:new Date().toISOString()};
+  const notificationRows=readRows_(ss.getSheetByName('Notifikasi')).filter(function(r){return String(r[1]||'')===String(session.userId);}).sort(function(a,b){return new Date(b[7]||0).getTime()-new Date(a[7]||0).getTime();}).slice(0,30).map(function(r){return{id:String(r[0]||''),orderId:String(r[2]||''),title:String(r[3]||''),message:String(r[4]||''),type:String(r[5]||''),isRead:r[6]===true||String(r[6]).toUpperCase()==='TRUE',createdAt:dateIso_(r[7])};});
+  return {ok:true,summary:summary,tasks:tasks,notifications:notificationRows,unreadCount:notificationRows.filter(function(n){return !n.isRead;}).length,updatedAt:new Date().toISOString()};
 }
 
 
@@ -2160,6 +2192,7 @@ function respondDeliveryAssignment(token, assignmentId, decision, reason) {
     sheet.getRange(found.rowNumber,13).setValue(now);
     recordDeliveryHistory_(ss,assignmentId,String(row[1]),session,'RESPONS_'+decision,before,after,reason||'Petugas menerima tugas');
     if(decision==='DITOLAK'&&String(row[4]||'')) ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(row[4]),String(row[1]),'Penugasan ditolak','Petugas menolak tugas pengantaran. Alasan: '+reason,'PENGANTARAN',false,now]);
+    if(decision==='DITERIMA'&&String(row[4]||''))ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(row[4]),String(row[1]),'Tugas pengantaran diterima','Petugas telah menerima tugas pengantaran.','PENGANTARAN',false,now]);
     writeAudit_(session.userId,session.role,'DELIVERY_'+decision,'PENGANTARAN',assignmentId,JSON.stringify({status:before}),JSON.stringify({status:after,reason:reason}),'Respons penugasan pengantaran');
     SpreadsheetApp.flush();
     return {ok:true,message:decision==='DITERIMA'?'Tugas berhasil diterima.':'Tugas ditolak dan dikembalikan ke antrean Distribusi.'};
@@ -2326,13 +2359,14 @@ function getDeliveryAssignmentWorkspace(token) {
   const santriSheet=ss.getSheetByName('Santri'),santriMap=getSantriColumnMap_(santriSheet),santriById={};
   readSantriRows_(santriSheet).forEach(r=>{const x=santriRecord_(r,santriMap);if(x.id)santriById[x.id]=x;});
   const userById={};userRows.forEach(r=>{userById[String(r[0]||'')]={name:String(r[4]||'Wali Santri'),username:String(r[1]||'')};});
+  const waliByUserId={};readRows_(ss.getSheetByName('WaliSantri')).forEach(function(r){if(String(r[1]||''))waliByUserId[String(r[1])]={name:String(r[2]||''),phone:String(r[3]||'')};});
   const ready=[],assigned=[];
   orders.forEach(r=>{
     const id=String(r[0]||''),status=String(r[8]||'').toUpperCase();if(!id||['DISIAPKAN','DIANTAR'].indexOf(status)<0)return;
     const pay=latestPayment[id],ship=latestShipment[id]||[];
     if(String(pay&&pay[5]||'').toUpperCase()!=='TERVERIFIKASI'||String(ship[2]||'').toUpperCase()!=='ANTAR_PESANTREN')return;
-    const child=santriById[String(r[3]||'')]||{},wali=userById[String(r[2]||'')]||{};
-    const task={orderId:id,number:String(r[1]||id),status:status,total:Number(r[7])||0,childName:String(child.name||'Santri'),className:String(child.className||''),waliName:String(wali.name||'Wali Santri'),waliContact:String(wali.username||''),destination:String(ship[3]||''),shipmentStatus:String(ship[4]||'')};
+    const child=santriById[String(r[3]||'')]||{},wali=waliByUserId[String(r[2]||'')]||userById[String(r[2]||'')]||{};
+    const task={orderId:id,number:String(r[1]||id),status:status,total:Number(r[7])||0,childName:String(child.name||'Santri'),className:String(child.className||''),waliName:String(wali.name||'Wali Santri'),waliContact:String(wali.phone||wali.username||''),destination:String(ship[3]||''),shipmentStatus:String(ship[4]||'')};
     const current=activeAssignment[id];
     if(current){const driver=userById[String(current[2]||'')]||{};task.assignedAt=dateIso_(current[5]);task.driverName=String(driver.name||'Petugas');task.driverId=String(current[2]||'');task.assignmentStatus=String(current[3]||'');assigned.push(task);}
     else if(status==='DISIAPKAN')ready.push(task);
