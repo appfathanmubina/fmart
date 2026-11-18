@@ -602,7 +602,7 @@ function getProductDetail(token, productId) {
   const baseStockRows = stocks.filter(function(st){ return !st[2]; });
   const variationStock = {};
   stocks.forEach(function(st){ if(st[2]) variationStock[String(st[2])] = Number(st[3]) || 0; });
-  variations.forEach(function(v){ if(Object.prototype.hasOwnProperty.call(variationStock,v.id)) v.stock=variationStock[v.id]; });
+  variations.forEach(function(v){ if(Object.prototype.hasOwnProperty.call(variationStock,v.id)) v.stock=Math.max(0,variationStock[v.id]-(reservedByKey[productId+'|'+v.id]||0)); });
   const stock = variations.length ? variations.reduce(function(total,v){return total + Math.max(0,v.stock);},0) : (baseStockRows.length ? Math.max(0,(Number(baseStockRows[0][3])||0)-(reservedByKey[productId+'|']||0)) : 0);
 
   return {ok:true, product:{
@@ -743,7 +743,9 @@ function addToCart(token, productId, variationId, qty) {
       }
     }
     const nextQty = currentQty + qty;
-    if (nextQty > snap.stock) throw new Error('Jumlah melebihi stok tersedia (' + snap.stock + ').');
+    const reservedNow=getStockReservationMap_(ss,'')[productId+'|'+variationId]||0;
+    const availableStock=Math.max(0,snap.stock-reservedNow);
+    if (nextQty > availableStock) throw new Error('Jumlah melebihi stok tersedia setelah reservasi pesanan lain (' + availableStock + ').');
     const now = new Date();
     if (matchingRows.length) {
       const keepRow = matchingRows[0];
