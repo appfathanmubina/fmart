@@ -182,16 +182,23 @@ function issueAdminLoginOtp_(userRow, rateKey) {
   const cache = CacheService.getScriptCache();
   const userId = String(userRow[0] || '');
   const cooldownKey = adminOtpCooldownKey_(userId);
-  if (cache.get(cooldownKey)) return {ok:false,message:'Kode OTP baru saja dikirim. Periksa email atau tunggu sebelum meminta kode baru.'};
-  const code = String(100000 + (parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16) % 900000));
-  const challengeId = Utilities.getUuid() + Utilities.getUuid();
-  const challenge = {
-    userId:userId, role:String(userRow[5] || '').toUpperCase(), email:email,
-    authUpdatedAt:userRow[8] instanceof Date ? userRow[8].getTime() : (new Date(userRow[8] || 0).getTime() || 0),
-    otpHash:adminOtpHash_(challengeId,code), attempts:0, createdAt:Date.now()
-  };
-  cache.put(adminOtpChallengeKey_(challengeId),JSON.stringify(challenge),300);
-  cache.put(cooldownKey,'1',60);
+  const lock = LockService.getScriptLock();
+  let code, challengeId;
+  lock.waitLock(5000);
+  try {
+    if (cache.get(cooldownKey)) return {ok:false,message:'Kode OTP baru saja dikirim. Periksa email atau tunggu sebelum meminta kode baru.'};
+    code = String(100000 + (parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16) % 900000));
+    challengeId = Utilities.getUuid() + Utilities.getUuid();
+    const challenge = {
+      userId:userId, role:String(userRow[5] || '').toUpperCase(), email:email,
+      authUpdatedAt:userRow[8] instanceof Date ? userRow[8].getTime() : (new Date(userRow[8] || 0).getTime() || 0),
+      otpHash:adminOtpHash_(challengeId,code), attempts:0, createdAt:Date.now()
+    };
+    cache.put(adminOtpChallengeKey_(challengeId),JSON.stringify(challenge),300);
+    cache.put(cooldownKey,'1',60);
+  } finally {
+    lock.releaseLock();
+  }
   try {
     MailApp.sendEmail({
       to:email,
@@ -1407,13 +1414,14 @@ function getOperationsDashboard(token) {
   });
   const pendingRows=payments.filter(r=>String(r[5]||'').toUpperCase()==='MENUNGGU_VERIFIKASI').sort((a,b)=>new Date(a[8]||0).getTime()-new Date(b[8]||0).getTime());
   const queueLimit=Math.max(1,Number(getSettingValue_('PAYMENT_VERIFICATION_QUEUE_LIMIT'))||50),pendingVerification=pendingRows.length,orderById={};orders.forEach(function(r){orderById[String(r[0])]=r;});
-  const pendingPayments=pendingRows.slice(0,queueLimit).map(function(p){const o=orderById[String(p[1])]||[],wali=userMap[String(o[2]||'')],child=childMap[String(o[3]||'')];return {orderId:String(p[1]),number:String(o[1]||p[1]),waliName:wali?wali.name:'-',childName:child?child.name:'-',className:child?child.className:'-',total:Number(o[7])||0,createdAt:dateIso_(p[8]),orderCreatedAt:dateIso_(o[10]),status:String(o[8]||''),payment:{id:String(p[0]),method:String(p[2]||''),nominal:Number(p[3])||0,status:String(p[5]||''),buktiUrl:'',createdAt:dateIso_(p[8]),catatan:String(p[12]||'')}};});
+  const mapPendingPayment=function(p){const o=orderById[String(p[1])]||[],wali=userMap[String(o[2]||'')],child=childMap[String(o[3]||'')];return {orderId:String(p[1]),number:String(o[1]||p[1]),waliName:wali?wali.name:'-',childName:child?child.name:'-',className:child?child.className:'-',total:Number(o[7])||0,createdAt:dateIso_(p[8]),orderCreatedAt:dateIso_(o[10]),status:String(o[8]||''),payment:{id:String(p[0]),method:String(p[2]||''),nominal:Number(p[3])||0,status:String(p[5]||''),buktiUrl:'',createdAt:dateIso_(p[8]),catatan:String(p[12]||'')}};};
+  const pendingPayments=pendingRows.slice(0,queueLimit).map(mapPendingPayment);
   const countStatus=st=>orders.filter(r=>String(r[8]||'').toUpperCase()===st).length;
   if(session.role===FMART.ROLES.KASIR){
     const ownSales=readRows_(ss.getSheetByName('PenjualanToko')).filter(function(r){return String(r[13]||'')===String(session.userId);});
     const todayKey=Utilities.formatDate(new Date(),Session.getScriptTimeZone()||'Asia/Jakarta','yyyy-MM-dd');
     const todaySales=ownSales.filter(function(r){const d=r[15] instanceof Date?r[15]:new Date(r[15]||0);return !isNaN(d.getTime())&&Utilities.formatDate(d,Session.getScriptTimeZone()||'Asia/Jakarta','yyyy-MM-dd')===todayKey;});
-    const waliQrisQueue=pendingPayments.filter(function(p){return String(p.payment.method||'').toUpperCase()==='QRIS';});
+    const waliQrisQueue=pendingRows.filter(function(p){return String(p[2]||'').toUpperCase()==='QRIS';}).slice(0,queueLimit).map(mapPendingPayment);
     const waliQrisPending=pendingRows.filter(function(p){return String(p[2]||'').toUpperCase()==='QRIS';}).length;
     return {ok:true,user:{userId:session.userId,nama:session.nama,role:session.role},stats:{cashierPendingQris:ownSales.filter(function(r){return String(r[8]||'').toUpperCase()==='QRIS'&&String(r[11]||'').toUpperCase()==='MENUNGGU_KONFIRMASI';}).length,cashierSalesToday:todaySales.length,cashierPaidToday:todaySales.filter(function(r){return String(r[11]||'').toUpperCase()==='LUNAS';}).length,pendingVerification:waliQrisPending,paymentQueueLimit:queueLimit,paymentQueueShown:waliQrisQueue.length,paymentQueueRemaining:Math.max(0,waliQrisPending-waliQrisQueue.length)},orders:[],pendingPayments:waliQrisQueue,products:[],categories:[]};
   }
