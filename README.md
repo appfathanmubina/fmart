@@ -991,3 +991,17 @@ Perubahan kode dan pemeriksaan sintaks/static dapat dilakukan di repository. Uji
 - Pemeriksaan sintaks/static pada repository bukan bukti bahwa data Spreadsheet aktif atau hasil kartu sudah benar di runtime. UAT Apps Script dan rekonsiliasi fisik tetap diperlukan.
 
 **Status:** fitur kartu persediaan dan tampilan status valuasi selesai pada repository. Nilai persediaan belum diaktifkan karena skema belum memiliki dasar harga pokok yang dapat dipertanggungjawabkan. Uji runtime dan verifikasi saldo historis masih menunggu UAT.
+
+
+## Tahap 2 — Integritas transaksi dan periode laporan
+
+Setelah memperbarui Code.gs, SetupDatabase.gs, dan Index.html dari main, jalankan setupFMartDatabase_() satu kali. Header tambahan dibuat di kolom paling kanan; kolom lama tidak dipindah atau dihapus.
+
+- Checkout Wali, penerimaan Gudang, dan pengajuan QRIS memakai request key serta fingerprint payload. Retry dengan key/payload identik mengembalikan transaksi yang sama, bukan membuat duplikasi.
+- Payload checkout dan penerimaan disimpan untuk pemulihan. recoverFMartTransactions_(token, limit) hanya melengkapi detail/pengiriman checkout dan detail/mutasi penerimaan yang hilang; saldo stok hanya dilanjutkan jika nilai aktual sama dengan nilai sebelum atau sesudah transaksi. Konflik saldo menghentikan pemulihan.
+- Bukti QRIS dan pengantaran memeriksa signature byte file. File Drive yang sudah dibuat sebelum eksekusi terhenti dapat digunakan kembali; bukti pengantaran juga melengkapi catatan konfirmasi/notifikasi/riwayat yang belum tertulis.
+- auditFMartTransactionRecovery_() bersifat read-only. Pemulihan tidak mengubah atau menyetujui pembayaran dan tidak mengubah status pembayaran.
+- Rekonsiliasi Gudang/Kasir tetap menggunakan auditFMartStockReconciliation_() dan auditWarehouseReceivingIntegrity_(); tidak ada penyesuaian stok otomatis tanpa bukti.
+- Periode laporan memakai tanggal kalender Asia/Jakarta secara inklusif. Ringkasan Wali tetap terpisah dari POS; POS, metode pembayaran, detail produk, dan mutasi stok Kasir ditampilkan tanpa mencampur lokasi stok.
+
+Uji transaksi bersamaan, Drive ACL, trigger, dan browser nyata tetap wajib dilakukan pada project Apps Script oleh operator sebelum dinyatakan siap produksi.

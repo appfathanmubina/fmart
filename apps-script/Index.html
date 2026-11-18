@@ -2116,7 +2116,11 @@ async function submitCheckout(){
   if(method==='ANTAR_PESANTREN'&&!tujuan){showToast('Isi titik atau pihak penerima untuk pengantaran ke pesantren.');$('checkoutTujuan').focus();return}
   btn.disabled=true;loading(true,'Memproses checkout...');
   try{
-    const r=await runServer('checkoutCart',state.token,santriId,selectedIds,$('checkoutCatatan').value,method,tujuan);
+    const checkoutNote=$('checkoutCatatan').value,checkoutSignature=JSON.stringify({santriId:santriId,selectedIds:selectedIds.slice().sort(),note:checkoutNote,method:method,tujuan:tujuan});
+    let checkoutPending=null;try{checkoutPending=JSON.parse(localStorage.getItem('fmart.checkout.pending')||'null')}catch(e){}
+    if(!checkoutPending||checkoutPending.signature!==checkoutSignature){checkoutPending={signature:checkoutSignature,key:'co_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,12)};try{localStorage.setItem('fmart.checkout.pending',JSON.stringify(checkoutPending))}catch(e){}}
+    const r=await runServer('checkoutCart',state.token,santriId,selectedIds,checkoutNote,method,tujuan,checkoutPending.key);
+    try{localStorage.removeItem('fmart.checkout.pending')}catch(e){}
     state.cart=await runServer('getCart',state.token);
     state.selectedCartIds=(state.selectedCartIds||[]).filter(id=>(state.cart.items||[]).some(i=>String(i.cartId)===String(id)));
     renderCart(state.cart);
@@ -2220,7 +2224,15 @@ function copyPaymentAmountFallback(value){
   showToast(ok?'Nominal berhasil disalin.':'Nominal: Rp '+formatMoney(value),ok?'success':'info');
 }
 function readFileBase64(file){return new Promise((resolve,reject)=>{if(!file)return resolve(null);const reader=new FileReader();reader.onload=()=>resolve({name:file.name,type:file.type,size:file.size,data:String(reader.result||'')});reader.onerror=()=>reject(new Error('Bukti pembayaran tidak dapat dibaca.'));reader.readAsDataURL(file)})}
-async function submitPayment(){const btn=$('submitPaymentBtn');if(!btn)return;btn.disabled=true;loading(true,'Mengirim bukti pembayaran...');try{const file=$('paymentProof').files[0]||null;if(!file)throw new Error('Bukti pembayaran wajib diupload.');if(file.size>5*1024*1024)throw new Error('Ukuran bukti pembayaran maksimal 5 MB.');const f=await readFileBase64(file);const nominal=Math.round(Number($('paymentNominal').value)||0);const method='QRIS';await runServer('submitPayment',state.token,state.currentPaymentOrderId,method,nominal,f.name,f.type,f.data);closePayment();await openOrderDetail(state.currentPaymentOrderId);showToast('Bukti pembayaran berhasil dikirim dan menunggu verifikasi Admin/Kasir.','success')}catch(e){showToast(e.message||'Pengajuan pembayaran gagal.')}finally{btn.disabled=false;loading(false)}}
+async function submitPayment(){
+ const btn=$('submitPaymentBtn');if(!btn)return;btn.disabled=true;loading(true,'Mengirim bukti pembayaran...');
+ try{const file=$('paymentProof').files[0]||null;if(!file)throw new Error('Bukti pembayaran wajib diupload.');if(file.size>5*1024*1024)throw new Error('Ukuran bukti pembayaran maksimal 5 MB.');
+  const f=await readFileBase64(file),nominal=Math.round(Number($('paymentNominal').value)||0),method='QRIS',signature=JSON.stringify({orderId:state.currentPaymentOrderId,nominal:nominal,name:f.name,size:f.size,type:f.type,lastModified:file.lastModified||0}),storageKey='fmart.payment.pending.'+String(state.currentPaymentOrderId);
+  let pending=null;try{pending=JSON.parse(localStorage.getItem(storageKey)||'null')}catch(e){}if(!pending||pending.signature!==signature){pending={signature:signature,key:'py_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,12)};try{localStorage.setItem(storageKey,JSON.stringify(pending))}catch(e){}}
+  await runServer('submitPayment',state.token,state.currentPaymentOrderId,method,nominal,f.name,f.type,f.data,pending.key);try{localStorage.removeItem(storageKey)}catch(e){}
+  closePayment();await openOrderDetail(state.currentPaymentOrderId);showToast('Bukti pembayaran berhasil dikirim dan menunggu verifikasi Admin/Kasir.','success');
+ }catch(e){showToast(e.message||'Pengajuan pembayaran gagal.')}finally{btn.disabled=false;loading(false)}
+}
 
 async function receiveOrder(orderId){if(!confirm('Konfirmasi bahwa pesanan dan barang telah Anda terima?'))return;loading(true,'Memperbarui status pesanan...');try{await runServer('markOrderReceived',state.token,orderId);showToast('Penerimaan pesanan berhasil dikonfirmasi.','success');await openOrders();if(!$('orderDetailModal').classList.contains('hidden'))await openOrderDetail(orderId)}catch(e){showToast(e.message||'Gagal memperbarui pesanan.')}finally{loading(false)}}
 function closeOrders(){$('orderModal').classList.add('hidden')}
@@ -2288,7 +2300,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         const daily=(r.daily||[]).map(x=>'<tr><td>'+escapeHtml(x.date)+'</td><td>'+formatMoney(x.orders)+'</td><td>Rp '+formatMoney(x.amount)+'</td></tr>').join('');
         const statuses=Object.keys(r.statusCounts||{}).sort().map(k=>'<div class="report-status-item"><span>'+escapeHtml(statusLabel(k))+'</span><strong>'+formatMoney(r.statusCounts[k])+'</strong></div>').join('');
         $('reportBody').innerHTML=
-          '<div class="report-metric-grid">'+[['Jumlah Pesanan',formatMoney(s.orders)],['Nilai Pesanan','Rp '+formatMoney(s.gross)],['Pembayaran Terverifikasi','Rp '+formatMoney(s.paid)],['Belum Terbayar','Rp '+formatMoney(s.unpaid)],['Rata-rata Pesanan','Rp '+formatMoney(s.averageOrder)],['Pesanan Aktif',formatMoney(s.activeOrders)]].map(x=>'<article class="report-metric"><span>'+escapeHtml(x[0])+'</span><strong>'+escapeHtml(x[1])+'</strong></article>').join('')+'</div>'+
+          '<div class="report-metric-grid">'+[['Jumlah Pesanan',formatMoney(s.orders)],['Nilai Pesanan','Rp '+formatMoney(s.gross)],['Pembayaran Terverifikasi','Rp '+formatMoney(s.paid)],['Belum Terbayar','Rp '+formatMoney(s.unpaid)],['Rata-rata Pesanan','Rp '+formatMoney(s.averageOrder)],['Pesanan Aktif',formatMoney(s.activeOrders)],['Penjualan POS',formatMoney(s.posSales)],['Nilai POS Lunas','Rp '+formatMoney(s.posPaid)]].map(x=>'<article class="report-metric"><span>'+escapeHtml(x[0])+'</span><strong>'+escapeHtml(x[1])+'</strong></article>').join('')+'</div>'+
           '<div class="report-two-col"><section class="section"><div class="section-title"><h2>Produk terlaris</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Produk</th><th>Qty</th><th>Penjualan</th></tr></thead><tbody>'+(rows||'<tr><td colspan="3">Belum ada transaksi.</td></tr>')+'</tbody></table></div></section>'+
           '<section class="section"><div class="section-title"><h2>Penjualan per kategori</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Kategori</th><th>Penjualan</th></tr></thead><tbody>'+(categories||'<tr><td colspan="2">Belum ada data.</td></tr>')+'</tbody></table></div></section>'+
           '<section class="section"><div class="section-title"><h2>Metode pembayaran terverifikasi</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Metode</th><th>Nominal</th></tr></thead><tbody>'+(methods||'<tr><td colspan="2">Belum ada pembayaran terverifikasi.</td></tr>')+'</tbody></table></div></section>'+
@@ -2848,7 +2860,12 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         const total=rows.reduce((sum,x)=>sum+Number(x.qty),0);
         if(!window.confirm('Konfirmasi penerimaan '+rows.length+' baris item dengan total '+formatMoney(total)+' unit? Stok akan langsung bertambah.'))return;
         btn.disabled=true;loading(true,'Menyimpan penerimaan dan memperbarui stok...');
-        try{const result=await runServer('createStockReceipt',state.token,payload);closeOpsModal();showToast('Penerimaan '+result.number+' berhasil dicatat.','success');await renderOpsReceiving()}
+        try{const receiptSignature=JSON.stringify(payload);
+        let receiptPending=null;try{receiptPending=JSON.parse(localStorage.getItem('fmart.receipt.pending')||'null')}catch(e){}
+        if(!receiptPending||receiptPending.signature!==receiptSignature){receiptPending={signature:receiptSignature,key:'rc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,12)};try{localStorage.setItem('fmart.receipt.pending',JSON.stringify(receiptPending))}catch(e){}}
+        payload.requestKey=receiptPending.key;
+        const result=await runServer('createStockReceipt',state.token,payload);try{localStorage.removeItem('fmart.receipt.pending')}catch(e){}
+        closeOpsModal();showToast('Penerimaan '+result.number+' berhasil dicatat.','success');await renderOpsReceiving()}
         catch(e){showToast(e.message||'Penerimaan gagal disimpan.','error')}
         finally{btn.disabled=false;loading(false)}
       };
