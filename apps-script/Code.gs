@@ -1342,7 +1342,7 @@ function getOperationsDashboard(token) {
 
 function parseWarehouseDate_(value,endOfDay){
   const text=String(value||'').trim();
-  if(!/^\\d{4}-\\d{2}-\\d{2}(?![\\s\\S])/.test(text))throw new Error('Format tanggal laporan tidak valid. Gunakan YYYY-MM-DD.');
+  if(!/^\d{4}-\d{2}-\d{2}(?![\s\S])/.test(text))throw new Error('Format tanggal laporan tidak valid. Gunakan YYYY-MM-DD.');
   const p=text.split('-').map(Number),d=new Date(p[0],p[1]-1,p[2],endOfDay?23:0,endOfDay?59:0,endOfDay?59:0,endOfDay?999:0);
   if(!Number.isFinite(d.getTime())||d.getFullYear()!==p[0]||d.getMonth()!==p[1]-1||d.getDate()!==p[2])throw new Error('Tanggal laporan tidak valid.');
   return d;
@@ -1353,7 +1353,7 @@ function getWarehouseHistoryReport(token, startDate, endDate) {
   const session=requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
   const parseDay=function(value,endOfDay){
     const text=String(value||'').trim();
-    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(text))throw new Error('Format periode laporan tidak valid.');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(text))throw new Error('Format periode laporan tidak valid.');
     const p=text.split('-').map(Number),d=new Date(p[0],p[1]-1,p[2],endOfDay?23:0,endOfDay?59:0,endOfDay?59:0,endOfDay?999:0);
     if(d.getFullYear()!==p[0]||d.getMonth()!==p[1]-1||d.getDate()!==p[2])throw new Error('Tanggal laporan tidak valid.');
     return d;
