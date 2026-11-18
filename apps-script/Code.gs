@@ -590,11 +590,10 @@ function getProductDetail(token, productId) {
   if (!cat || String(cat.values[4] || '').toUpperCase() !== 'AKTIF') throw new Error('Kategori produk tidak tersedia.');
 
   const reservedByKey=session.role===FMART.ROLES.WALI_SANTRI?getStockReservationMap_(ss,''):{};
-  const storeReservedByKey=session.role===FMART.ROLES.WALI_SANTRI?getStoreSaleReservationMap_(ss):{};
   const variations = readRows_(ss.getSheetByName('VariasiProduk')).filter(function(v) {
     return String(v[1]) === productId && String(v[6] || '').toUpperCase() === 'AKTIF';
   }).map(function(v) {
-    const vid=String(v[0]);return {id:vid, name:String(v[2] || ''), value:String(v[3] || ''), priceAddition:Number(v[4]) || 0, stock:Math.max(0,(Number(v[5])||0)-(reservedByKey[productId+'|'+vid]||0)-(storeReservedByKey[productId+'|'+vid]||0))};
+    const vid=String(v[0]);return {id:vid, name:String(v[2] || ''), value:String(v[3] || ''), priceAddition:Number(v[4]) || 0, stock:Math.max(0,(Number(v[5])||0)-(reservedByKey[productId+'|'+vid]||0))};
   });
 
   const stocks = readRows_(ss.getSheetByName('Stok')).filter(function(st) {
@@ -603,8 +602,8 @@ function getProductDetail(token, productId) {
   const baseStockRows = stocks.filter(function(st){ return !st[2]; });
   const variationStock = {};
   stocks.forEach(function(st){ if(st[2]) variationStock[String(st[2])] = Number(st[3]) || 0; });
-  variations.forEach(function(v){ if(Object.prototype.hasOwnProperty.call(variationStock,v.id)) v.stock=Math.max(0,variationStock[v.id]-(reservedByKey[productId+'|'+v.id]||0)-(storeReservedByKey[productId+'|'+v.id]||0)); });
-  const stock = variations.length ? variations.reduce(function(total,v){return total + Math.max(0,v.stock);},0) : (baseStockRows.length ? Math.max(0,(Number(baseStockRows[0][3])||0)-(reservedByKey[productId+'|']||0)-(storeReservedByKey[productId+'|']||0)) : 0);
+  variations.forEach(function(v){ if(Object.prototype.hasOwnProperty.call(variationStock,v.id)) v.stock=Math.max(0,variationStock[v.id]-(reservedByKey[productId+'|'+v.id]||0)); });
+  const stock = variations.length ? variations.reduce(function(total,v){return total + Math.max(0,v.stock);},0) : (baseStockRows.length ? Math.max(0,(Number(baseStockRows[0][3])||0)-(reservedByKey[productId+'|']||0)) : 0);
 
   return {ok:true, product:{
     id:String(r[0]), categoryId:String(r[1] || ''), categoryName:String(cat.values[1] || ''), sku:String(r[2] || ''),
@@ -918,6 +917,7 @@ function getWaliDashboard(token) {
 
   // Hitung ringkasan seluruh pesanan, bukan hanya lima pesanan terbaru.
   summary.activeOrders = 0;
+  summary.waitingStockOrders = 0;
   summary.unpaidOrders = 0;
   summary.awaitingPaymentVerification = 0;
   summary.rejectedPayments = 0;
@@ -927,7 +927,8 @@ function getWaliDashboard(token) {
     const status = String(row[8] || '');
     const payment = paymentMap[String(row[0])] || null;
     if (status === 'MENUNGGU_PEMBAYARAN' && (!payment || payment.status === 'DITOLAK')) summary.unpaidOrders++;
-    if (['DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR'].indexOf(status) !== -1) summary.activeOrders++;
+    if (['MENUNGGU_STOK','DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR'].indexOf(status) !== -1) summary.activeOrders++;
+    if (status === 'MENUNGGU_STOK') summary.waitingStockOrders++;
     if (status === 'DITERIMA') summary.completedOrders++;
     if (status === 'DIBATALKAN') summary.cancelledOrders++;
     if (payment && payment.status === 'MENUNGGU_VERIFIKASI') summary.awaitingPaymentVerification++;
@@ -1355,7 +1356,7 @@ function getOperationsDashboard(token) {
     const todaySales=ownSales.filter(function(r){const d=r[15] instanceof Date?r[15]:new Date(r[15]||0);return !isNaN(d.getTime())&&Utilities.formatDate(d,Session.getScriptTimeZone()||'Asia/Jakarta','yyyy-MM-dd')===todayKey;});
     return {ok:true,user:{userId:session.userId,nama:session.nama,role:session.role},stats:{cashierPendingQris:ownSales.filter(function(r){return String(r[8]||'').toUpperCase()==='QRIS'&&String(r[11]||'').toUpperCase()==='MENUNGGU_KONFIRMASI';}).length,cashierSalesToday:todaySales.length,cashierPaidToday:todaySales.filter(function(r){return String(r[11]||'').toUpperCase()==='LUNAS';}).length},orders:[],pendingPayments:[],products:[],categories:[]};
   }
-  return {ok:true,user:{userId:session.userId,nama:session.nama,role:session.role},stats:{pendingVerification:pendingVerification,paymentQueueLimit:queueLimit,paymentQueueShown:pendingPayments.length,paymentQueueRemaining:Math.max(0,pendingVerification-pendingPayments.length),menungguPembayaran:countStatus('MENUNGGU_PEMBAYARAN'),dibayar:countStatus('DIBAYAR'),diproses:countStatus('DIPROSES'),disiapkan:countStatus('DISIAPKAN'),diantar:countStatus('DIANTAR'),diterima:countStatus('DITERIMA'),siapDiambil:countStatus('SIAP_DIAMBIL'),activeProducts:products.filter(r=>String(r[8]||'').toUpperCase()==='AKTIF').length,lowStock:lowStock,categories:cats.filter(r=>String(r[4]||'').toUpperCase()==='AKTIF').length},categories:cats.map(r=>({id:String(r[0]),name:String(r[1]||''),description:String(r[2]||''),order:Number(r[3])||0,status:String(r[4]||'')})),orders:resultOrders,pendingPayments:pendingPayments,products:productStock};
+  return {ok:true,user:{userId:session.userId,nama:session.nama,role:session.role},stats:{pendingVerification:pendingVerification,paymentQueueLimit:queueLimit,paymentQueueShown:pendingPayments.length,paymentQueueRemaining:Math.max(0,pendingVerification-pendingPayments.length),menungguPembayaran:countStatus('MENUNGGU_PEMBAYARAN'),menungguStok:countStatus('MENUNGGU_STOK'),dibayar:countStatus('DIBAYAR'),diproses:countStatus('DIPROSES'),disiapkan:countStatus('DISIAPKAN'),diantar:countStatus('DIANTAR'),diterima:countStatus('DITERIMA'),siapDiambil:countStatus('SIAP_DIAMBIL'),activeProducts:products.filter(r=>String(r[8]||'').toUpperCase()==='AKTIF').length,lowStock:lowStock,categories:cats.filter(r=>String(r[4]||'').toUpperCase()==='AKTIF').length},categories:cats.map(r=>({id:String(r[0]),name:String(r[1]||''),description:String(r[2]||''),order:Number(r[3])||0,status:String(r[4]||'')})),orders:resultOrders,pendingPayments:pendingPayments,products:productStock};
 }
 
 
@@ -1863,7 +1864,7 @@ function adjustStock(token, productId, variationId, type, qty, note) {
       sheet.getRange(row+2,4).setValue(after);sheet.getRange(row+2,6).setValue(now);
     }else sheet.appendRow([makeFMartId_('STK'),productId,variationId,after,Number(product.values[6])||0,now]);
     if(variationId){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(vr)ss.getRange(vr.rowNumber,6,1,3).setValues([[after,String(vr.values[6]||'AKTIF'),now]]);}
-    ss.getSheetByName('MutasiStok').appendRow([makeFMartId_('MUT'),productId,variationId,type,qty,before,after,'',note,session.userId,now]);writeAudit_(session.userId,session.role,'ADJUST_STOCK','STOK',productId,JSON.stringify({variationId:variationId,stock:before}),JSON.stringify({variationId:variationId,stock:after,type:type,qty:qty}),'Mutasi stok manual',now);SpreadsheetApp.flush();return getOperationsDashboard(token);
+    ss.getSheetByName('MutasiStok').appendRow([makeFMartId_('MUT'),productId,variationId,type,qty,before,after,'',note,session.userId,now]);writeAudit_(session.userId,session.role,'ADJUST_STOCK','STOK',productId,JSON.stringify({variationId:variationId,stock:before}),JSON.stringify({variationId:variationId,stock:after,type:type,qty:qty}),'Mutasi stok manual',now);const queueResult=type==='MASUK'?processPendingStockOrders_(ss,session.userId,'PENYESUAIAN_STOK'):{processed:0};SpreadsheetApp.flush();const dashboard=getOperationsDashboard(token);dashboard.stockQueueProcessed=queueResult.processed;return dashboard;
   }finally{lock.releaseLock();}
 }
 
