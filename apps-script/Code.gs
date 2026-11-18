@@ -3030,7 +3030,7 @@ function cancelCashierQrisSale(token,saleId,reason) {
   try{
     const ss=getSS_(),sheet=ss.getSheetByName('PenjualanToko'),sale=findRowById_(sheet,saleId,1);
     if(!sale)throw new Error('Transaksi toko tidak ditemukan.');
-    if(String(sale.values[11]||'').toUpperCase()!=='MENUNGGU_KONFIRMASI')throw new Error('Hanya transaksi QRIS yang belum dibayar dapat dibatalkan.');
+    if(String(sale.values[8]||'').toUpperCase()!=='QRIS'||String(sale.values[11]||'').toUpperCase()!=='MENUNGGU_KONFIRMASI')throw new Error('Hanya transaksi QRIS yang belum dibayar dapat dibatalkan.');
     const now=new Date(),reservations=readRows_(ss.getSheetByName('ReservasiStokToko'));
     reservations.forEach(function(r,i){if(String(r[1])===saleId&&String(r[5]||'').toUpperCase()==='AKTIF')ss.getSheetByName('ReservasiStokToko').getRange(i+2,6,1,4).setValues([['DILEPAS',r[6],r[7],now]]);});
     sheet.getRange(sale.rowNumber,12,1,6).setValues([['DIBATALKAN','DIBATALKAN',String(sale.values[13]||''),reason||String(sale.values[14]||''),sale.values[15]||now,now]]);
