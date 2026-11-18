@@ -1073,9 +1073,12 @@ function submitPayment(token, orderId, method, nominal, fileName, mimeType, base
   orderId = String(orderId || '').trim();
   method = String(method || '').trim().toUpperCase();
   nominal = Math.round(Number(nominal));
-  if (!orderId || method !== 'QRIS' || !Number.isFinite(nominal) || nominal < 1) throw new Error('FMart hanya menerima pembayaran QRIS.');
-  if (!base64Data) throw new Error('Bukti pembayaran QRIS wajib diunggah.');
-  if (!/^https:\/\//i.test(getSettingValue_('PAYMENT_QRIS_IMAGE_URL'))) throw new Error('QRIS FMart belum dikonfigurasi.');
+  if (!orderId || method !== 'TRANSFER' || !Number.isFinite(nominal) || nominal < 1) throw new Error('FMart hanya menerima pembayaran melalui transfer bank.');
+  if (!base64Data) throw new Error('Bukti transfer wajib diunggah.');
+  const bankName = String(getSettingValue_('PAYMENT_BANK_NAME') || '').trim();
+  const accountNumber = String(getSettingValue_('PAYMENT_ACCOUNT_NUMBER') || '').trim();
+  const accountName = String(getSettingValue_('PAYMENT_ACCOUNT_NAME') || '').trim();
+  if (!bankName || !accountNumber || !accountName) throw new Error('Rekening pembayaran FMart belum dikonfigurasi lengkap. Silakan hubungi Admin FMart.');
   const lock = LockService.getScriptLock(); lock.waitLock(15000);
   try {
     const ss = getSS_();expireStockReservations_(ss,new Date());
@@ -1090,7 +1093,7 @@ function submitPayment(token, orderId, method, nominal, fileName, mimeType, base
     if(queueCount>=queueLimit)throw new Error('Antrean verifikasi pembayaran sedang penuh ('+queueLimit+' pengajuan). Silakan coba kembali setelah petugas memproses antrean.');
     const existing = readRows_(paymentSheet).filter(function(r){ return String(r[1]) === orderId; }).sort(function(a,b){ return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime(); })[0];
     if (existing && ['MENUNGGU_VERIFIKASI','TERVERIFIKASI'].indexOf(String(existing[5]||'').toUpperCase()) !== -1) throw new Error('Pembayaran untuk pesanan ini sudah diajukan.');
-    const cleanName = sanitizeFileName_(fileName || 'bukti-qris');
+    const cleanName = sanitizeFileName_(fileName || 'bukti-transfer');
     const mime = String(mimeType || '').toLowerCase();
     if (!['image/jpeg','image/png','image/webp','application/pdf'].includes(mime)) throw new Error('Format bukti pembayaran harus JPG, PNG, WEBP, atau PDF.');
     const raw = String(base64Data).replace(/^data:[^;]+;base64,/, '');
@@ -1101,33 +1104,42 @@ function submitPayment(token, orderId, method, nominal, fileName, mimeType, base
     const buktiUrl = file.getUrl();
     const now = new Date();
     const paymentId = makeFMartId_('PAY');
-    paymentSheet.appendRow([paymentId,orderId,'QRIS',nominal,buktiUrl,'MENUNGGU_VERIFIKASI','','',now,now,'APLIKASI',session.userId,'']);
-    writeAudit_(session.userId,session.role,'SUBMIT_PAYMENT','PEMBAYARAN',paymentId,'',JSON.stringify({orderId:orderId,method:'QRIS',nominal:nominal,hasProof:true,buktiSumber:'APLIKASI'}),'Pengajuan pembayaran QRIS dengan bukti');
+    paymentSheet.appendRow([paymentId,orderId,'TRANSFER',nominal,buktiUrl,'MENUNGGU_VERIFIKASI','','',now,now,'APLIKASI',session.userId,'']);
+    writeAudit_(session.userId,session.role,'SUBMIT_PAYMENT','PEMBAYARAN',paymentId,'',JSON.stringify({orderId:orderId,method:'TRANSFER',nominal:nominal,hasProof:true,buktiSumber:'APLIKASI'}),'Pengajuan pembayaran transfer bank dengan bukti');
     SpreadsheetApp.flush();
     return getOrderDetail(token, orderId);
   } finally { lock.releaseLock(); }
 }
 function getPaymentSettings(token) {
   requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.SUPERADMIN]);
-  return {ok:true,bankName:getSettingValue_('PAYMENT_BANK_NAME'),accountNumber:getSettingValue_('PAYMENT_ACCOUNT_NUMBER'),accountName:getSettingValue_('PAYMENT_ACCOUNT_NAME'),adminWhatsapp:getSettingValue_('PAYMENT_ADMIN_WHATSAPP'),qrisImageUrl:getSettingValue_('PAYMENT_QRIS_IMAGE_URL')};
+  return {ok:true,bankName:getSettingValue_('PAYMENT_BANK_NAME'),accountNumber:getSettingValue_('PAYMENT_ACCOUNT_NUMBER'),accountName:getSettingValue_('PAYMENT_ACCOUNT_NAME'),adminWhatsapp:getSettingValue_('PAYMENT_ADMIN_WHATSAPP')};
 }
 
-function savePaymentSettings(token, bankName, accountNumber, accountName, adminWhatsapp, qrisImageUrl) {
+function savePaymentSettings(token, bankName, accountNumber, accountName, adminWhatsapp) {
   const session = requireRole_(token,[FMART.ROLES.SUPERADMIN]);
+  bankName=String(bankName||'').trim().slice(0,100);
+  accountNumber=String(accountNumber||'').replace(/\\s+/g,'').slice(0,40);
+  accountName=String(accountName||'').trim().slice(0,120);
   adminWhatsapp=normalizePhone_(adminWhatsapp);
-  qrisImageUrl=String(qrisImageUrl||'').trim().slice(0,1000);
-  if(!/^https:\/\//i.test(qrisImageUrl)) throw new Error('URL gambar QRIS wajib diisi dan harus menggunakan HTTPS.');
+  if(!bankName) throw new Error('Nama bank wajib diisi.');
+  if(!/^[0-9]{6,40}$/.test(accountNumber)) throw new Error('Nomor rekening harus berisi 6 sampai 40 digit angka.');
+  if(!accountName) throw new Error('Nama pemilik rekening wajib diisi.');
   if(adminWhatsapp && adminWhatsapp.length<10) throw new Error('Nomor WhatsApp Admin/Kasir tidak valid.');
   const lock=LockService.getScriptLock();lock.waitLock(10000);
   try{
     const sheet=getSS_().getSheetByName('Pengaturan');
-    const updates=[['PAYMENT_ADMIN_WHATSAPP',adminWhatsapp,'Nomor WhatsApp Admin/Kasir untuk konfirmasi pembayaran'],['PAYMENT_QRIS_IMAGE_URL',qrisImageUrl,'URL HTTPS gambar kode QRIS FMart']];
+    const updates=[
+      ['PAYMENT_BANK_NAME',bankName,'Nama bank rekening pembayaran FMart'],
+      ['PAYMENT_ACCOUNT_NUMBER',accountNumber,'Nomor rekening pembayaran FMart'],
+      ['PAYMENT_ACCOUNT_NAME',accountName,'Nama pemilik rekening pembayaran FMart'],
+      ['PAYMENT_ADMIN_WHATSAPP',adminWhatsapp,'Nomor WhatsApp Admin/Kasir untuk konfirmasi pembayaran']
+    ];
     updates.forEach(function(item){
       const rows=readRows_(sheet),idx=rows.findIndex(function(row){return String(row[0])===item[0];});
       if(idx<0) sheet.appendRow([item[0],item[1],item[2],new Date()]);
       else {sheet.getRange(idx+2,2).setValue(item[1]);sheet.getRange(idx+2,4).setValue(new Date());}
     });
-    writeAudit_(session.userId,session.role,'UPDATE_PAYMENT_SETTINGS','PENGATURAN','PAYMENT','',JSON.stringify({hasWhatsapp:!!adminWhatsapp,hasQrisImage:true}),'Mengubah pengaturan QRIS FMart');
+    writeAudit_(session.userId,session.role,'UPDATE_PAYMENT_SETTINGS','PENGATURAN','PAYMENT','',JSON.stringify({bankName:bankName,hasAccountNumber:!!accountNumber,accountName:accountName,hasWhatsapp:!!adminWhatsapp}),'Mengubah rekening transfer bank FMart');
     SpreadsheetApp.flush();
     return getPaymentSettings(token);
   }finally{lock.releaseLock();}
@@ -1940,7 +1952,7 @@ function processPendingStockOrders_(ss,actor,source,actorRole){
  return {processed:done.length,orderIds:done};
 }
 function verifyPayment(token,paymentId,decision,note){
- const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);paymentId=String(paymentId||'').trim();decision=String(decision||'').toUpperCase();note=String(note||'').trim().slice(0,300);if(!paymentId||['TERIMA','TOLAK'].indexOf(decision)<0)throw new Error('Keputusan pembayaran tidak valid.');
+ const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.SUPERADMIN]);paymentId=String(paymentId||'').trim();decision=String(decision||'').toUpperCase();note=String(note||'').trim().slice(0,300);if(!paymentId||['TERIMA','TOLAK'].indexOf(decision)<0)throw new Error('Keputusan pembayaran tidak valid.');
  const lock=LockService.getScriptLock();lock.waitLock(15000);
  try{
   const ss=getSS_();expireStockReservations_(ss,new Date());const ps=ss.getSheetByName('Pembayaran'),pay=findRowById_(ps,paymentId,1);if(!pay)throw new Error('Pengajuan pembayaran tidak ditemukan.');if(String(pay.values[5]).toUpperCase()!=='MENUNGGU_VERIFIKASI')throw new Error('Pembayaran sudah diproses.');
