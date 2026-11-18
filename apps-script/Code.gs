@@ -559,7 +559,11 @@ function getInitialData(token) {
   const result = {user:{userId:session.userId,username:session.username,nama:session.nama,role:session.role},categories:[],products:[],children:[]};
 
   result.categories = readRows_(ss.getSheetByName('Kategori')).filter(function(r){return String(r[4]).toUpperCase()==='AKTIF';}).map(function(r){return {id:r[0],name:r[1],description:r[2],order:r[3]||0};});
-  result.products = readRows_(ss.getSheetByName('Produk')).filter(function(r){return String(r[8]).toUpperCase()==='AKTIF';}).map(function(r){return {id:r[0],categoryId:r[1],sku:r[2],name:r[3],description:r[4],price:Number(r[5])||0,minStock:Number(r[6])||0,photoUrl:r[7]||''};});
+  result.products = readRows_(ss.getSheetByName('Produk')).filter(function(r){return String(r[8]).toUpperCase()==='AKTIF';}).map(function(r){
+    const product={id:r[0],categoryId:r[1],sku:r[2],name:r[3],description:r[4],price:Number(r[5])||0,photoUrl:r[7]||''};
+    if(session.role!==FMART.ROLES.WALI_SANTRI) product.minStock=Number(r[6])||0;
+    return product;
+  });
   if (session.role === FMART.ROLES.WALI_SANTRI) result.children = getChildrenForWali_(ss, session.userId);
   return result;
 }
@@ -605,11 +609,17 @@ function getProductDetail(token, productId) {
   variations.forEach(function(v){ if(Object.prototype.hasOwnProperty.call(variationStock,v.id)) v.stock=Math.max(0,variationStock[v.id]-(reservedByKey[productId+'|'+v.id]||0)); });
   const stock = variations.length ? variations.reduce(function(total,v){return total + Math.max(0,v.stock);},0) : (baseStockRows.length ? Math.max(0,(Number(baseStockRows[0][3])||0)-(reservedByKey[productId+'|']||0)) : 0);
 
-  return {ok:true, product:{
+  const productResult={
     id:String(r[0]), categoryId:String(r[1] || ''), categoryName:String(cat.values[1] || ''), sku:String(r[2] || ''),
     name:String(r[3] || ''), description:String(r[4] || ''), price:Number(r[5]) || 0, minStock:Number(r[6]) || 0,
     photoUrl:String(r[7] || ''), stock:Math.max(0,stock), variations:variations
-  }};
+  };
+  if(session.role===FMART.ROLES.WALI_SANTRI){
+    delete productResult.stock;
+    delete productResult.minStock;
+    productResult.variations=variations.map(function(v){return {id:v.id,name:v.name,value:v.value,priceAddition:v.priceAddition};});
+  }
+  return {ok:true,product:productResult};
 }
 
 function getCatalog(token) {
