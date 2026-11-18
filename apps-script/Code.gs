@@ -2945,6 +2945,39 @@ function createCashierSale(token,payload) {
 }
 
 
+
+/** Riwayat dan detail ringkas penjualan toko untuk Kasir/Admin/Superadmin. */
+function getCashierSalesHistory(token,filters) {
+  const session=requireRole_(token,[FMART.ROLES.KASIR,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  filters=filters&&typeof filters==='object'?filters:{};
+  const query=String(filters.query||'').trim().toLowerCase().slice(0,100);
+  const from=String(filters.from||'').trim(),to=String(filters.to||'').trim();
+  const fromTime=from?new Date(from+'T00:00:00').getTime():0;
+  const toTime=to?new Date(to+'T23:59:59.999').getTime():Infinity;
+  if(from&&(!Number.isFinite(fromTime))||to&&(!Number.isFinite(toTime)))throw new Error('Rentang tanggal tidak valid.');
+  if(from&&to&&from>to)throw new Error('Tanggal awal tidak boleh melewati tanggal akhir.');
+  const ss=getSS_(),sales=readRows_(ss.getSheetByName('PenjualanToko'));
+  const details=readRows_(ss.getSheetByName('DetailPenjualanToko'));
+  const users=readRows_(ss.getSheetByName('Users')),userMap={};
+  users.forEach(function(r){userMap[String(r[0])]=String(r[4]||'');});
+  const detailMap={};
+  details.forEach(function(r){
+    const id=String(r[1]||'');if(!detailMap[id])detailMap[id]=[];
+    detailMap[id].push({sku:String(r[4]||''),name:String(r[5]||''),variationName:String(r[6]||''),unitPrice:Number(r[7])||0,qty:Number(r[8])||0,subtotal:Number(r[9])||0});
+  });
+  const rows=sales.map(function(r){
+    const created=r[15] instanceof Date?r[15].getTime():new Date(r[15]||0).getTime();
+    return {saleId:String(r[0]||''),number:String(r[1]||''),buyerType:String(r[2]||'UMUM'),buyerName:String(r[3]||''),santriId:String(r[4]||''),subtotal:Number(r[5])||0,discount:Number(r[6])||0,total:Number(r[7])||0,paymentMethod:String(r[8]||''),amountReceived:Number(r[9])||0,change:Number(r[10])||0,paymentStatus:String(r[11]||''),status:String(r[12]||''),cashierUserId:String(r[13]||''),cashierName:userMap[String(r[13]||'')]||'Kasir',note:String(r[14]||''),createdAt:Number.isFinite(created)?new Date(created).toISOString():'',updatedAt:r[16] instanceof Date?r[16].toISOString():String(r[16]||''),paymentReference:String(r[18]||''),items:detailMap[String(r[0]||'')]||[]};
+  }).filter(function(x){
+    const time=x.createdAt?new Date(x.createdAt).getTime():0;
+    if(time<fromTime||time>toTime)return false;
+    if(session.role===FMART.ROLES.KASIR&&x.cashierUserId!==String(session.userId))return false;
+    if(!query)return true;
+    return [x.number,x.buyerName,x.cashierName,x.paymentMethod,x.paymentStatus].concat(x.items.map(function(it){return it.name+' '+it.sku+' '+it.variationName;})).join(' ').toLowerCase().indexOf(query)>=0;
+  }).sort(function(a,b){return new Date(b.createdAt||0).getTime()-new Date(a.createdAt||0).getTime();}).slice(0,150);
+  return {ok:true,rows:rows,limit:150,serverTime:new Date().toISOString()};
+}
+
 /** Antrean QRIS penjualan toko; menampilkan detail dan masa berlaku reservasi. */
 function getCashierQrisQueue(token) {
   requireRole_(token,[FMART.ROLES.KASIR,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
