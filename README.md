@@ -677,3 +677,27 @@ Pemeriksaan pada Tahap 2 bersifat statis terhadap repository. Tidak ada akses ru
 - Riwayat diperbarui setelah POS dibuka, transaksi berhasil dibuat, dan pembayaran QRIS dikonfirmasi. Tombol muat ulang dan filter juga tersedia.
 - Tidak ada perubahan skema Spreadsheet pada Tahap 5.
 - Belum dilakukan pengujian browser/printer, pengujian akun Kasir/Admin, atau pengujian data transaksi pada Spreadsheet aktif. Hasil ini adalah pemeriksaan statis kode, bukan bukti cetak struk atau riwayat live telah diuji.
+
+## Audit dan Penyempurnaan POS Kasir — Tahap 6
+
+### Penguatan idempotensi
+- Penggunaan ulang `requestKey` kini diverifikasi terhadap isi transaksi yang tersimpan: pemilik/kasir, jenis dan identitas pembeli, metode pembayaran, nominal tunai, catatan, serta daftar produk/variasi dan kuantitas.
+- Retry dengan payload yang sama mengembalikan transaksi lama tanpa membuat penjualan baru.
+- Jika keranjang atau data pembayaran berubah tetapi `requestKey` masih sama, server menolak permintaan. Kasir harus memuat ulang alur dan membuat transaksi baru; jangan mengubah payload saat mengulang permintaan yang hasilnya belum diketahui.
+
+### Audit integritas POS
+- Fungsi baru `auditCashierPOSIntegrity_()` merupakan audit read-only untuk data POS.
+- Audit memeriksa ID penjualan dan `RequestKey` duplikat, detail transaksi yang hilang, kecocokan subtotal/total, konsistensi status tunai dan QRIS, cakupan reservasi QRIS yang masih berlaku, reservasi aktif yang tidak semestinya, serta keberadaan/duplikasi mutasi stok untuk transaksi lunas.
+- Hasil audit menampilkan waktu pemeriksaan, jumlah baris yang diperiksa, daftar kode masalah, dan maksimal 500 temuan. Fungsi ini tidak memperbaiki data secara otomatis.
+
+### Cara menjalankan audit
+1. Sinkronkan `apps-script/Code.gs` dari branch `main` ke Apps Script.
+2. Dari Apps Script Editor, pilih dan jalankan `auditCashierPOSIntegrity_()`.
+3. Periksa objek hasil eksekusi pada log. Jika ada temuan, cocokkan nomor transaksi dengan sheet `PenjualanToko`, `DetailPenjualanToko`, `ReservasiStokToko`, dan `MutasiStok` sebelum melakukan koreksi manual.
+4. Jalankan kembali audit setelah koreksi untuk memastikan temuan terkait sudah tidak muncul.
+
+### Batasan yang tetap perlu diperhatikan
+- Google Sheets tidak menyediakan transaksi database multi-sheet yang benar-benar atomik. Jika eksekusi terputus setelah sebagian penulisan (misalnya baris penjualan sudah tersimpan tetapi rincian atau mutasi stok belum lengkap), audit dapat mendeteksi sebagian ketidaksesuaian tetapi tidak melakukan rollback atau pemulihan otomatis.
+- Jangan menghapus atau mengubah transaksi yang terindikasi tidak lengkap sebelum memeriksa seluruh sheet dan catatan mutasinya. Lakukan pemulihan dengan prosedur administrasi yang terdokumentasi agar stok tidak dikurangi/dikembalikan dua kali.
+- Konfirmasi QRIS tetap manual setelah dana benar-benar diterima pada kanal merchant. Tahap ini tidak menambahkan payment gateway atau webhook.
+- Pemeriksaan sintaks repository berhasil dilakukan. Belum ada uji runtime pada Spreadsheet aktif, uji transaksi bersamaan, browser/perangkat kasir, atau printer fisik. Audit live harus dijalankan setelah file disinkronkan ke Apps Script.
