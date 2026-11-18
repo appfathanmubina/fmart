@@ -251,6 +251,18 @@ test('Readiness audit logs bounded diagnostic chunks without truncating the full
 });
 
 
+test('Warehouse stock ledger is authoritative and missing rows never fall back to variation mirrors',()=>{
+ const snapshot=extractFunction(code,'getProductSnapshot_'),catalog=extractFunction(code,'getCatalog'),detail=extractFunction(code,'getProductDetail'),admin=extractFunction(code,'getAdminCatalog'),stockCatalog=extractFunction(code,'getStockCatalog'),stockManagement=extractFunction(code,'getStockManagement'),minimum=extractFunction(code,'setStockMinimum'),dashboard=extractFunction(code,'getOperationsDashboard');
+ assert.ok(snapshot.includes("stock=sr?Number(sr[3]):0"));assert.ok(!snapshot.includes('vr.values[5]'));
+ assert.ok(catalog.includes('? stockByKey[key] : 0'));assert.ok(!catalog.includes('Number(r[5]) || 0'));
+ assert.ok(detail.includes('stock:0'));assert.ok(!detail.includes('Number(v[5])'));
+ assert.ok(admin.includes("getSheetByName('Stok')"));assert.ok(admin.includes('stockRecordMissing'));
+ assert.ok(stockCatalog.includes('stockRecordMissing'));assert.ok(!stockCatalog.includes('Number(v[5])'));
+ assert.ok(stockManagement.includes('stockRecordMissing'));assert.ok(!stockManagement.includes('Number(v[5])'));
+ assert.ok(minimum.includes('else stockSheet.appendRow([makeFMartId_(\'STK\'),productId,variationId,0,minStock,now])'));
+ assert.ok(!dashboard.includes("stockMap[key]=Number(r[5])||0"));
+});
+
 test('Wali catalog uses authenticated server-side pagination and never sends stock fields',()=>{
  const initial=extractFunction(code,'getCatalog'),page=extractFunction(code,'getBuyerProductBatch');
  assert.ok(initial.includes('session.role === FMART.ROLES.WALI_SANTRI'));
