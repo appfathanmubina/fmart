@@ -2896,17 +2896,28 @@ function createCashierSale(token,payload) {
   try{
     const ss=getSS_(),salesSheet=ss.getSheetByName('PenjualanToko'),detailSheet=ss.getSheetByName('DetailPenjualanToko'),reservationSheet=ss.getSheetByName('ReservasiStokToko');
     if(!salesSheet||!detailSheet||!reservationSheet)throw new Error('Struktur POS belum lengkap. Sinkronkan SetupDatabase.gs dan jalankan setupFMartDatabase_().');
-    const existing=readRows_(salesSheet).find(function(r){return String(r[17]||'')===requestKey;});
-    if(existing){
-      if(String(existing[13]||'')!==String(session.userId))throw new Error('Kunci transaksi sudah pernah digunakan. Muat ulang kasir dan buat transaksi baru.');
-      return {ok:true,duplicate:true,saleId:String(existing[0]),number:String(existing[1]),total:Number(existing[7])||0,paymentStatus:String(existing[11]||''),status:String(existing[12]||'')};
-    }
     let resolvedBuyerName=buyerType==='NAMA'?buyerName:'';
     if(buyerType==='SANTRI'){
       const student=findSantriRowById_(ss.getSheetByName('Santri'),santriId);
       if(!student||String(santriField_(student.values,getSantriColumnMap_(ss.getSheetByName('Santri')),'Status')||'').toUpperCase()!=='AKTIF')throw new Error('Santri tidak ditemukan atau tidak aktif.');
       resolvedBuyerName=String(santriField_(student.values,getSantriColumnMap_(ss.getSheetByName('Santri')),'nama_santri')||'');
       if(!resolvedBuyerName)throw new Error('Nama santri tidak tersedia.');
+    }
+    // Retry dengan requestKey yang sama hanya boleh mengembalikan transaksi
+    // bila payload bisnisnya identik; perubahan keranjang/pembeli/metode ditolak.
+    const existing=readRows_(salesSheet).find(function(r){return String(r[17]||'')===requestKey;});
+    if(existing){
+      if(String(existing[13]||'')!==String(session.userId))throw new Error('Kunci transaksi sudah pernah digunakan. Muat ulang kasir dan buat transaksi baru.');
+      const savedDetails=readRows_(detailSheet).filter(function(r){return String(r[1]||'')===String(existing[0]||'');});
+      const savedItems={};
+      savedDetails.forEach(function(r){const key=String(r[2]||'')+'|'+String(r[3]||'');savedItems[key]=(savedItems[key]||0)+(Number(r[8])||0);});
+      const requestedKeys=Object.keys(grouped).sort(),savedKeys=Object.keys(savedItems).sort();
+      const sameItems=requestedKeys.length===savedKeys.length&&requestedKeys.every(function(key,index){return key===savedKeys[index]&&grouped[key].qty===savedItems[key];});
+      const sameBuyer=String(existing[2]||'')===buyerType&&String(existing[3]||'')===resolvedBuyerName&&String(existing[4]||'')===santriId;
+      const samePayment=String(existing[8]||'').toUpperCase()===method&&(method!=='TUNAI'||Number(existing[9]||0)===received);
+      const sameNote=String(existing[14]||'')===note;
+      if(!sameItems||!sameBuyer||!samePayment||!sameNote)throw new Error('Kunci transaksi ini sudah terikat pada data transaksi sebelumnya. Jangan ubah keranjang atau pembayaran saat mengulang proses; muat ulang kasir untuk membuat transaksi baru.');
+      return {ok:true,duplicate:true,saleId:String(existing[0]),number:String(existing[1]),total:Number(existing[7])||0,paymentStatus:String(existing[11]||''),status:String(existing[12]||'')};
     }
     const waliReserved=getStockReservationMap_(ss,''),storeReserved=getStoreSaleReservationMap_(ss);
     const stockSheet=ss.getSheetByName('Stok'),stockRows=readRows_(stockSheet),plan=[];
