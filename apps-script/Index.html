@@ -1408,7 +1408,7 @@ body.buyer-portal #profileModal .modal-card{
     const FMART_PORTAL_MODE = '<?= portalMode ?>';
     document.body.classList.toggle('admin-portal', FMART_PORTAL_MODE === 'ADMINFMART16720');
     document.body.classList.toggle('buyer-portal', FMART_PORTAL_MODE !== 'ADMINFMART16720');
-    const state={token:sessionStorage.getItem('fmartToken')||'',data:null,profile:null,waliDashboard:null,selectedChildId:sessionStorage.getItem('fmartSelectedChildId')||'',cart:null,currentProduct:null,currentVariationId:'',currentProductQty:1,currentOrderId:'',currentPaymentOrderId:'',catalogSort:'featured',cashierPOS:{products:[],cart:[],buyerType:'UMUM',buyerName:'',santriId:'',santriLabel:'',students:[],paymentMethod:'TUNAI',amountReceived:'',note:'',requestKey:'',loading:false,search:''}};
+    const state={token:sessionStorage.getItem('fmartToken')||'',data:null,profile:null,waliDashboard:null,selectedChildId:sessionStorage.getItem('fmartSelectedChildId')||'',cart:null,currentProduct:null,currentVariationId:'',currentProductQty:1,currentOrderId:'',currentPaymentOrderId:'',catalogSort:'featured',cashierPOS:{products:[],cart:[],qrisQueue:[],qrisQueueError:'',buyerType:'UMUM',buyerName:'',santriId:'',santriLabel:'',students:[],paymentMethod:'TUNAI',amountReceived:'',note:'',requestKey:'',loading:false,search:''}};
     const $=id=>document.getElementById(id);
     document.title = FMART_PORTAL_MODE === 'ADMINFMART16720' ? 'FMart Admin' : 'FMart';
     if(FMART_PORTAL_MODE==='ADMINFMART16720'){ document.querySelector('.login-brand .brand-name').textContent='FMart Admin'; $('loginIntro').textContent='Masuk ke portal petugas FMart menggunakan email dan password.'; $('usernameLabel').textContent='Email Staf'; $('username').type='email'; $('username').inputMode='email'; $('username').placeholder='nama@fathanmubina.com'; $('usernameHint').textContent='Gunakan alamat email akun staf FMart.'; $('registerBtn').classList.add('hidden'); }
@@ -2366,10 +2366,81 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         pos.products=Array.isArray(r.products)?r.products:[];
         pos.recentSales=Array.isArray(r.recentSales)?r.recentSales:[];
         pos.serverTime=r.serverTime||'';
+        try{
+          const qr=await runServer('getCashierQrisQueue',state.token);
+          pos.qrisQueue=qr&&qr.ok&&Array.isArray(qr.queue)?qr.queue:[];
+          pos.qrisQueueError='';
+        }catch(qe){pos.qrisQueueError=qe.message||'Antrean QRIS belum dapat dimuat.'}
         renderCashierPOSPanel_();
         if(keepSearchFocus){const input=$('cashierPOSSearch');if(input){input.focus();const cursor=Math.min(Number(searchCursor)||input.value.length,input.value.length);input.setSelectionRange(cursor,cursor)}}
       }catch(e){if(panel)panel.innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Katalog POS gagal dimuat.')+'<button type="button" class="secondary" id="cashierPOSRetry" style="margin-top:10px">Coba lagi</button></div>';const retry=$('cashierPOSRetry');if(retry)retry.onclick=()=>loadCashierPOSData_(pos.search)}
       finally{pos.loading=false}
+    }
+
+    async function loadCashierQrisQueue_(){
+      const pos=state.cashierPOS;
+      try{
+        const r=await runServer('getCashierQrisQueue',state.token);
+        if(!r||!r.ok)throw new Error('Antrean QRIS belum dapat dimuat.');
+        pos.qrisQueue=Array.isArray(r.queue)?r.queue:[];
+        pos.qrisQueueError='';
+      }catch(e){pos.qrisQueueError=e.message||'Antrean QRIS belum dapat dimuat.'}
+      renderCashierQrisQueue_();
+    }
+    function cashierQrisRemaining_(item){
+      if(item.expired||!item.expiresAt)return 'Reservasi kedaluwarsa';
+      const ms=new Date(item.expiresAt).getTime()-Date.now();
+      if(!Number.isFinite(ms)||ms<=0)return 'Reservasi kedaluwarsa';
+      const minutes=Math.floor(ms/60000),seconds=Math.floor((ms%60000)/1000);
+      return 'Sisa '+minutes+' menit '+String(seconds).padStart(2,'0')+' detik';
+    }
+    function renderCashierQrisQueue_(){
+      const host=$('cashierQrisQueueBody');if(!host)return;
+      const pos=state.cashierPOS,rows=pos.qrisQueue||[];
+      if(pos.qrisQueueError){host.innerHTML='<div class="empty-box">'+escapeHtml(pos.qrisQueueError)+' <button type="button" class="text-button" id="cashierQrisRetry">Coba lagi</button></div>';const retry=$('cashierQrisRetry');if(retry)retry.onclick=loadCashierQrisQueue_;return}
+      if(!rows.length){host.innerHTML='<div class="cashier-qris-empty"><span>✓</span><strong>Tidak ada transaksi QRIS yang menunggu.</strong><small>Transaksi QRIS baru akan muncul di sini setelah dibuat dari POS.</small></div>';return}
+      host.innerHTML=rows.map(q=>{
+        const expired=!!q.expired||!q.expiresAt||new Date(q.expiresAt).getTime()<=Date.now();
+        return '<article class="cashier-qris-card '+(expired?'is-expired':'')+'"><div class="cashier-qris-card-head"><div><strong>'+escapeHtml(q.number)+'</strong><small>'+escapeHtml(q.buyerName||'Umum')+' · '+escapeHtml(formatDate(q.createdAt))+'</small></div><span class="cashier-qris-state '+(expired?'is-expired':'')+'">'+(expired?'RESERVASI HABIS':'MENUNGGU QRIS')+'</span></div>'+
+          '<div class="cashier-qris-summary"><strong>Rp '+formatMoney(q.total)+'</strong><span>'+escapeHtml(cashierQrisRemaining_(q))+'</span></div>'+
+          '<div class="cashier-qris-items">'+(q.items||[]).map(x=>'<div><span>'+escapeHtml(x.name)+(x.variationName?' · '+escapeHtml(x.variationName):'')+' × '+formatMoney(x.qty)+'</span><strong>Rp '+formatMoney(x.subtotal)+'</strong></div>').join('')+'</div>'+
+          '<div class="cashier-qris-meta"><span>Kasir: '+escapeHtml(q.cashierName||'-')+'</span>'+(q.note?'<span>Catatan: '+escapeHtml(q.note)+'</span>':'')+'</div>'+
+          '<div class="cashier-qris-confirm"><label class="cashier-qris-check"><input type="checkbox" class="cashierQrisVerified" data-id="'+escapeHtml(q.saleId)+'" '+(expired?'disabled':'')+'> Saya sudah memeriksa kanal merchant dan memastikan dana transaksi ini benar-benar masuk.</label>'+
+          '<label for="cashierQrisRef_'+escapeHtml(q.saleId)+'">Referensi pembayaran (opsional)</label><input id="cashierQrisRef_'+escapeHtml(q.saleId)+'" class="cashier-qris-reference" maxlength="100" placeholder="Nomor referensi / catatan bank">'+
+          '<div class="cashier-qris-actions"><button type="button" class="primary cashier-qris-confirm" data-id="'+escapeHtml(q.saleId)+'" '+(expired?'disabled':'')+'>Konfirmasi Lunas</button><button type="button" class="secondary cashier-qris-cancel" data-id="'+escapeHtml(q.saleId)+'">Batalkan & Lepas Stok</button></div>'+
+          (expired?'<small class="cashier-qris-warning">Waktu reservasi 15 menit telah habis. Pembayaran tidak dapat dikonfirmasi dari transaksi ini. Jika dana ternyata sudah masuk, periksa transaksi merchant dan ikuti prosedur penjualan baru sesuai kebijakan toko.</small>':'')+
+          '</div></article>';
+      }).join('');
+      document.querySelectorAll('.cashierQrisVerified').forEach(ch=>ch.onchange=()=>{const btn=host.querySelector('.cashier-qris-confirm[data-id="'+ch.dataset.id+'"]');if(btn)btn.disabled=!ch.checked});
+      document.querySelectorAll('.cashier-qris-confirm').forEach(btn=>btn.onclick=()=>confirmCashierQrisFromUI_(btn.dataset.id));
+      document.querySelectorAll('.cashier-qris-cancel').forEach(btn=>btn.onclick=()=>cancelCashierQrisFromUI_(btn.dataset.id));
+    }
+    async function confirmCashierQrisFromUI_(saleId){
+      const host=$('cashierQrisQueueBody'),check=host&&host.querySelector('.cashierQrisVerified[data-id="'+saleId+'"]');
+      const btn=host&&host.querySelector('.cashier-qris-confirm[data-id="'+saleId+'"]');
+      if(!check||!check.checked||!btn||btn.disabled)return;
+      if(!confirm('Pastikan dana transaksi QRIS ini benar-benar sudah masuk pada kanal merchant. Lanjutkan konfirmasi lunas?'))return;
+      const ref=$('cashierQrisRef_'+saleId),reference=ref?ref.value.trim():'';
+      btn.disabled=true;loading(true,'Mengonfirmasi pembayaran QRIS...');
+      try{
+        const r=await runServer('confirmCashierQrisPayment',state.token,saleId,reference);
+        if(!r||!r.ok)throw new Error('Konfirmasi QRIS belum berhasil.');
+        showToast('Pembayaran '+(r.number||'transaksi')+' berhasil dikonfirmasi. Stok telah dikurangi.','success');
+        await loadCashierQrisQueue_();await loadCashierPOSData_(state.cashierPOS.search);
+      }catch(e){showToast(e.message||'Konfirmasi QRIS gagal.','error');btn.disabled=false}
+      finally{loading(false)}
+    }
+    async function cancelCashierQrisFromUI_(saleId){
+      if(!confirm('Batalkan transaksi QRIS ini? Reservasi stok akan dilepas dan transaksi tidak dapat dikonfirmasi lagi.'))return;
+      const host=$('cashierQrisQueueBody'),btn=host&&host.querySelector('.cashier-qris-cancel[data-id="'+saleId+'"]');
+      if(btn)btn.disabled=true;loading(true,'Membatalkan transaksi QRIS...');
+      try{
+        const r=await runServer('cancelCashierQrisSale',state.token,saleId,'Dibatalkan dari antrean QRIS kasir');
+        if(!r||!r.ok)throw new Error('Transaksi QRIS belum dapat dibatalkan.');
+        showToast('Transaksi QRIS dibatalkan dan reservasi stok dilepas.','success');
+        await loadCashierQrisQueue_();await loadCashierPOSData_(state.cashierPOS.search);
+      }catch(e){showToast(e.message||'Pembatalan QRIS gagal.','error');if(btn)btn.disabled=false}
+      finally{loading(false)}
     }
     function cashierPOSCartTotal_(){return (state.cashierPOS.cart||[]).reduce((sum,x)=>sum+(Number(x.unitPrice)||0)*(Number(x.qty)||0),0)}
     function renderCashierPOSPanel_(){
@@ -2389,7 +2460,8 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         '</div><div class="cashier-pos-payment"><h4>Pembayaran</h4><select id="cashierPaymentMethod"><option value="TUNAI" '+(pos.paymentMethod==='TUNAI'?'selected':'')+'>Tunai</option><option value="QRIS" '+(pos.paymentMethod==='QRIS'?'selected':'')+'>QRIS</option></select>'+
         (pos.paymentMethod==='TUNAI'?'<label for="cashierAmountReceived">Uang diterima</label><input id="cashierAmountReceived" type="number" min="'+total+'" step="1" inputmode="numeric" placeholder="Masukkan nominal" value="'+escapeHtml(pos.amountReceived)+'"><div class="cashier-change">Kembalian: <strong>'+cashierPOSMoney_(Math.max(0,(Number(pos.amountReceived)||0)-total))+'</strong></div>':'<div class="notice">QRIS akan berstatus menunggu konfirmasi. Kasir harus memastikan dana masuk sebelum transaksi dinyatakan lunas.</div>')+
         '<label for="cashierSaleNote">Catatan (opsional)</label><input id="cashierSaleNote" maxlength="300" placeholder="Catatan transaksi" value="'+escapeHtml(pos.note)+'">'+
-        '<button type="button" class="primary cashier-pos-submit" id="cashierPOSSubmit" '+(!cart.length?'disabled':'')+'>Proses Transaksi · '+cashierPOSMoney_(total)+'</button></div></aside></div>';
+        '<button type="button" class="primary cashier-pos-submit" id="cashierPOSSubmit" '+(!cart.length?'disabled':'')+'>Proses Transaksi · '+cashierPOSMoney_(total)+'</button></div></aside></div>'+
+        '<section class="cashier-qris-queue"><div class="cashier-qris-queue-head"><div><div class="eyebrow">PEMBAYARAN PENJUALAN TOKO</div><h3>Antrean Konfirmasi QRIS</h3><p>Periksa dana pada kanal merchant sebelum mengonfirmasi pembayaran.</p></div><button type="button" class="secondary" id="cashierQrisRefresh">↻ Perbarui antrean</button></div><div id="cashierQrisQueueBody"><div class="muted">Memuat antrean QRIS...</div></div></section>';
       bindCashierPOSPanel_();
     }
     function bindCashierPOSPanel_(){
@@ -2408,6 +2480,8 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       const amount=$('cashierAmountReceived');if(amount)amount.oninput=()=>{pos.amountReceived=amount.value;const change=document.querySelector('.cashier-change strong');if(change)change.textContent=cashierPOSMoney_(Math.max(0,(Number(amount.value)||0)-cashierPOSCartTotal_()))};
       const note=$('cashierSaleNote');if(note)note.oninput=()=>pos.note=note.value;
       const submit=$('cashierPOSSubmit');if(submit)submit.onclick=checkoutCashierPOS_;
+      const qrisRefresh=$('cashierQrisRefresh');if(qrisRefresh)qrisRefresh.onclick=loadCashierQrisQueue_;
+      renderCashierQrisQueue_();
     }
     async function checkoutCashierPOS_(){
       const pos=state.cashierPOS,btn=$('cashierPOSSubmit');if(!pos.cart.length||!btn||btn.disabled)return;
@@ -3084,4 +3158,44 @@ body.admin-portal .cashier-pos-submit{width:100%;min-height:48px;margin-top:5px}
 @media(max-width:900px){body.admin-portal .cashier-pos-layout{grid-template-columns:1fr}body.admin-portal .cashier-pos-products{max-height:430px}}
 @media(max-width:560px){body.admin-portal .cashier-pos-panel{padding:12px;border-radius:16px}body.admin-portal .cashier-pos-head{align-items:flex-start;flex-direction:column}body.admin-portal .cashier-pos-head button{width:100%}body.admin-portal .cashier-pos-products{grid-template-columns:1fr 1fr;gap:8px;max-height:380px}body.admin-portal .cashier-pos-product{padding:9px}body.admin-portal .cashier-pos-product-info{min-height:72px}body.admin-portal .cashier-pos-product-foot{align-items:flex-start;flex-direction:column;gap:3px}body.admin-portal .cashier-pos-catalog,body.admin-portal .cashier-pos-checkout{padding:11px}}
 @media(max-width:360px){body.admin-portal .cashier-pos-products{grid-template-columns:1fr}}
+</style>
+
+
+<style>
+/* Tahap 4 — antrean dan konfirmasi QRIS penjualan toko */
+body.admin-portal .cashier-qris-queue{margin-top:18px;padding:16px;border:1px solid #e7d9ed;border-radius:18px;background:#fff}
+body.admin-portal .cashier-qris-queue-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+body.admin-portal .cashier-qris-queue-head h3{margin:3px 0 5px;color:#57145f;font-size:18px}
+body.admin-portal .cashier-qris-queue-head p{margin:0;color:#756b85;font-size:12px}
+body.admin-portal .cashier-qris-queue-head button{white-space:nowrap}
+body.admin-portal .cashier-qris-queue-body{display:grid;gap:12px}
+body.admin-portal .cashier-qris-card{padding:14px;border:1px solid #eadfed;border-radius:14px;background:#fcf9fd}
+body.admin-portal .cashier-qris-card.is-expired{border-color:#f0c9c5;background:#fffafa}
+body.admin-portal .cashier-qris-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+body.admin-portal .cashier-qris-card-head>div{display:grid;gap:4px;min-width:0}
+body.admin-portal .cashier-qris-card-head strong{color:#4e1857;font-size:14px}
+body.admin-portal .cashier-qris-card-head small,body.admin-portal .cashier-qris-meta{color:#756b85;font-size:11px}
+body.admin-portal .cashier-qris-state{padding:5px 8px;border-radius:20px;background:#fff0ce;color:#875800;font-size:10px;font-weight:800;white-space:nowrap}
+body.admin-portal .cashier-qris-state.is-expired{background:#fde8e7;color:#a32620}
+body.admin-portal .cashier-qris-summary{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:12px 0;padding:10px 0;border-top:1px solid #eee5f1;border-bottom:1px solid #eee5f1}
+body.admin-portal .cashier-qris-summary strong{font-size:19px;color:#5b145f}
+body.admin-portal .cashier-qris-summary span{font-size:12px;color:#8a5c10;font-weight:700}
+body.admin-portal .cashier-qris-card.is-expired .cashier-qris-summary span{color:#a32620}
+body.admin-portal .cashier-qris-items{display:grid;gap:6px}
+body.admin-portal .cashier-qris-items>div{display:flex;justify-content:space-between;gap:10px;font-size:12px}
+body.admin-portal .cashier-qris-items>div span{overflow-wrap:anywhere}
+body.admin-portal .cashier-qris-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+body.admin-portal .cashier-qris-confirm{display:grid;gap:8px;margin-top:13px;padding-top:12px;border-top:1px dashed #e5d8e9}
+body.admin-portal .cashier-qris-check{display:flex;align-items:flex-start;gap:8px;color:#4d3b54;font-size:12px;line-height:1.5}
+body.admin-portal .cashier-qris-check input{margin-top:2px;flex:0 0 auto}
+body.admin-portal .cashier-qris-confirm>label:not(.cashier-qris-check){font-size:11px;font-weight:700;color:#62536a}
+body.admin-portal .cashier-qris-reference{width:100%;min-height:40px;padding:9px 11px;border:1px solid #e5dce9;border-radius:9px;background:#fff}
+body.admin-portal .cashier-qris-actions{display:flex;gap:8px;flex-wrap:wrap}
+body.admin-portal .cashier-qris-actions button{min-height:39px}
+body.admin-portal .cashier-qris-warning{color:#a32620;font-size:11px;line-height:1.5}
+body.admin-portal .cashier-qris-empty{display:grid;justify-items:center;gap:7px;padding:26px 12px;text-align:center;color:#756b85}
+body.admin-portal .cashier-qris-empty>span{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#eaf7ef;color:#16834c;font-size:20px}
+body.admin-portal .cashier-qris-empty strong{color:#4c3154;font-size:13px}
+body.admin-portal .cashier-qris-empty small{font-size:11px}
+@media(max-width:560px){body.admin-portal .cashier-qris-queue{padding:12px}body.admin-portal .cashier-qris-queue-head{align-items:flex-start;flex-direction:column}body.admin-portal .cashier-qris-queue-head button{width:100%}body.admin-portal .cashier-qris-card{padding:11px}body.admin-portal .cashier-qris-actions{display:grid;grid-template-columns:1fr}body.admin-portal .cashier-qris-actions button{width:100%}}
 </style>
