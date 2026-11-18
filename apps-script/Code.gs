@@ -1800,7 +1800,7 @@ function adjustStock(token, productId, variationId, type, qty, note) {
       sheet.getRange(row+2,4).setValue(after);sheet.getRange(row+2,6).setValue(now);
     }else sheet.appendRow([makeFMartId_('STK'),productId,variationId,after,Number(product.values[6])||0,now]);
     if(variationId){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(vr)ss.getRange(vr.rowNumber,6,1,3).setValues([[after,String(vr.values[6]||'AKTIF'),now]]);}
-    ss.getSheetByName('MutasiStok').appendRow([makeFMartId_('MUT'),productId,variationId,type,qty,before,after,'',note,session.userId,now]);writeAudit_(session.userId,session.role,'ADJUST_STOCK','STOK',productId,JSON.stringify({variationId:variationId,stock:before}),JSON.stringify({variationId:variationId,stock:after,type:type,qty:qty}),'Mutasi stok manual');SpreadsheetApp.flush();return getOperationsDashboard(token);
+    ss.getSheetByName('MutasiStok').appendRow([makeFMartId_('MUT'),productId,variationId,type,qty,before,after,'',note,session.userId,now]);writeAudit_(session.userId,session.role,'ADJUST_STOCK','STOK',productId,JSON.stringify({variationId:variationId,stock:before}),JSON.stringify({variationId:variationId,stock:after,type:type,qty:qty}),'Mutasi stok manual',now);SpreadsheetApp.flush();return getOperationsDashboard(token);
   }finally{lock.releaseLock();}
 }
 
@@ -2693,12 +2693,12 @@ function recordLoginFailure_(rateKey) {
   }
 }
 
-function writeAudit_(userId, role, action, entityType, entityId, beforeData, afterData, note) {
+function writeAudit_(userId, role, action, entityType, entityId, beforeData, afterData, note, createdAt) {
   try {
     const sheet=getSS_().getSheetByName('AuditLog');
     if(!sheet) return;
     const safe=function(v){return String(v||'').slice(0,5000);};
-    sheet.appendRow([makeFMartId_('AUD'),String(userId||''),String(role||''),String(action||''),String(entityType||''),String(entityId||''),safe(beforeData),safe(afterData),safe(note),new Date()]);
+    sheet.appendRow([makeFMartId_('AUD'),String(userId||''),String(role||''),String(action||''),String(entityType||''),String(entityId||''),safe(beforeData),safe(afterData),safe(note),createdAt instanceof Date?createdAt:new Date()]);
   } catch(e) { console.warn('Audit log gagal dicatat:', e); }
 }
 
