@@ -3298,3 +3298,128 @@ function auditFMartOperationalSync_() {
   rows('Pesanan').forEach(function(r,i){const sid=String(r[3]||'');if(sid&&!santriById[sid])issue('ORDER_SANTRI_REFERENCE_MISSING','Pesanan',i+2,'SantriId pesanan tidak ditemukan pada master Santri.');});
   return {checkedAt:new Date().toISOString(),mode:'READ_ONLY',counts:{products:products.length,variations:variations.length,stockRows:stocks.length,mutations:mutations.length,santri:santriRows.length},issues:issues,issueCount:issues.length,truncated:issues.length>=maxIssues,stockAuthority:'Stok'};
 }
+
+
+/**
+ * Tahap 12 — Rekonsiliasi stok dan daftar kandidat pemulihan.
+ * READ-ONLY: tidak mengubah stok, mutasi, transaksi, reservasi, atau audit log.
+ * Riwayat MutasiStok dibaca sesuai urutan baris sheet sebagai urutan pencatatan.
+ */
+function auditFMartStockReconciliation_() {
+  const ss=getSS_(),issues=[],recoveryCandidates=[],maxIssues=1000;
+  function issue(code,key,detail,severity){
+    const item={code:code,stockKey:key||'',detail:detail||'',severity:severity||'ERROR'};
+    if(issues.length<maxIssues)issues.push(item);
+    recoveryCandidates.push({code:code,stockKey:key||'',recommendedAction:recoveryAction(code),automaticRepair:false});
+  }
+  function recoveryAction(code){
+    const guidance={
+      STOCK_MUTATION_CHAIN_BREAK:'Periksa baris MutasiStok yang berurutan untuk produk/variasi ini dan cocokkan dengan dokumen penerimaan/penjualan. Jangan mengubah saldo sebelum sumber selisih diketahui.',
+      STOCK_CURRENT_BALANCE_MISMATCH:'Cocokkan stok fisik melalui stock opname, lalu telusuri mutasi terakhir. Koreksi hanya melalui prosedur penyesuaian stok resmi dengan bukti dan AuditLog.',
+      STOCK_ROW_MISSING:'Periksa master Produk/VariasiProduk dan riwayat penerimaan. Buat baris stok hanya setelah saldo awal dapat dibuktikan.',
+      STOCK_ROW_DUPLICATE:'Hentikan transaksi pada item ini dan tentukan baris stok kanonis. Jangan menghapus baris sebelum referensi mutasi dan variasi diperiksa.',
+      STOCK_RESERVATION_OVERCOMMITTED:'Periksa reservasi pesanan dan QRIS yang masih aktif, status transaksi, serta masa berlakunya. Jangan mengurangi reservasi secara manual tanpa memeriksa transaksi asal.',
+      POS_SALE_MUTATION_INCOMPLETE:'Periksa PenjualanToko, DetailPenjualanToko, MutasiStok, dan saldo fisik. Jangan menambahkan mutasi atau mengurangi stok ulang hanya berdasarkan status penjualan.',
+      ORDER_STOCK_MUTATION_INCOMPLETE:'Periksa Pesanan, DetailPesanan, Pembayaran, MutasiStok, dan saldo fisik. Pastikan pembayaran terverifikasi serta pengurangan stok belum terjadi sebelum tindakan pemulihan.',
+      MUTATION_REFERENCE_ORPHAN:'Telusuri referensi dokumen sumber. Mutasi tanpa dokumen sumber harus diperiksa sebelum dilakukan koreksi.',
+      MUTATION_ARITHMETIC_INVALID:'Bandingkan kuantitas, saldo sebelum/sesudah, dan dokumen sumber. Jangan mengedit histori mutasi langsung.'
+    };
+    return guidance[code]||'Lakukan pemeriksaan manual terhadap dokumen sumber dan stok fisik. Tidak ada perbaikan otomatis.';
+  }
+  const stockSheet=ss.getSheetByName('Stok'),mutationSheet=ss.getSheetByName('MutasiStok');
+  const stocks=readRows_(stockSheet),mutations=readRows_(mutationSheet);
+  const stockRowsByKey=Object.create(null),mutationRowsByKey=Object.create(null),mutationIds=Object.create(null);
+  stocks.forEach(function(r,i){
+    const key=String(r[1]||'')+'|'+String(r[2]||'');
+    if(!stockRowsByKey[key])stockRowsByKey[key]=[];
+    stockRowsByKey[key].push({row:i+2,qty:Number(r[3])});
+  });
+  mutations.forEach(function(r,i){
+    const id=String(r[0]||''),key=String(r[1]||'')+'|'+String(r[2]||''),type=String(r[3]||'').toUpperCase();
+    if(id){if(mutationIds[id])issue('MUTATION_REFERENCE_ORPHAN',key,'MutasiId duplikat pada baris '+(i+2)+'.');else mutationIds[id]=i+2;}
+    if(!mutationRowsByKey[key])mutationRowsByKey[key]=[];
+    mutationRowsByKey[key].push({row:i+2,id:id,ref:String(r[7]||''),type:type,qty:Number(r[4]),before:Number(r[5]),after:Number(r[6])});
+    if(!Number.isSafeInteger(Number(r[4]))||Number(r[4])<1||!Number.isSafeInteger(Number(r[5]))||!Number.isSafeInteger(Number(r[6]))||
+      (type==='MASUK'&&Number(r[6])!==Number(r[5])+Number(r[4]))||
+      (type==='KELUAR'&&Number(r[6])!==Number(r[5])-Number(r[4]))||
+      ['MASUK','KELUAR'].indexOf(type)<0||Number(r[6])<0){
+      issue('MUTATION_ARITHMETIC_INVALID',key,'MutasiStok baris '+(i+2)+' memiliki jenis, kuantitas, atau saldo sebelum/sesudah yang tidak konsisten.');
+    }
+  });
+  const keys=Object.create(null);
+  Object.keys(stockRowsByKey).forEach(function(k){keys[k]=true;});
+  Object.keys(mutationRowsByKey).forEach(function(k){keys[k]=true;});
+  Object.keys(keys).forEach(function(key){
+    const stockMatches=stockRowsByKey[key]||[],history=mutationRowsByKey[key]||[];
+    if(!stockMatches.length){issue('STOCK_ROW_MISSING',key,'Ada histori mutasi tetapi baris saldo stok tidak ditemukan.');return;}
+    if(stockMatches.length>1){issue('STOCK_ROW_DUPLICATE',key,'Ditemukan '+stockMatches.length+' baris stok untuk satu kombinasi produk/variasi.');return;}
+    const current=stockMatches[0].qty;
+    if(!Number.isSafeInteger(current)||current<0)issue('STOCK_CURRENT_BALANCE_MISMATCH',key,'Saldo stok saat ini bukan bilangan bulat nol atau lebih.');
+    if(!history.length)return;
+    let previousAfter=null;
+    history.forEach(function(m){
+      if(previousAfter!==null&&m.before!==previousAfter){
+        issue('STOCK_MUTATION_CHAIN_BREAK',key,'Rantai saldo terputus pada MutasiStok baris '+m.row+'. Saldo sebelumnya '+previousAfter+', tetapi saldo sebelum mutasi tercatat '+m.before+'.');
+      }
+      previousAfter=m.after;
+    });
+    const last=history[history.length-1];
+    if(Number.isSafeInteger(current)&&current!==last.after){
+      issue('STOCK_CURRENT_BALANCE_MISMATCH',key,'Saldo Stok saat ini '+current+' berbeda dari saldo sesudah mutasi terakhir '+last.after+' (baris '+last.row+').');
+    }
+  });
+
+  const activeReservations=readRows_(ss.getSheetByName('ReservasiStok')).filter(function(r){
+    const expiry=new Date(r[7]||0).getTime();
+    return String(r[5]||'').toUpperCase()==='AKTIF'&&Number.isFinite(expiry)&&expiry>Date.now();
+  });
+  const activeStoreReservations=readRows_(ss.getSheetByName('ReservasiStokToko')).filter(function(r){
+    const expiry=new Date(r[7]||0).getTime();
+    return String(r[5]||'').toUpperCase()==='AKTIF'&&Number.isFinite(expiry)&&expiry>Date.now();
+  });
+  const reserved=Object.create(null);
+  activeReservations.concat(activeStoreReservations).forEach(function(r){
+    const key=String(r[2]||'')+'|'+String(r[3]||''),qty=Number(r[4]);
+    if(Number.isSafeInteger(qty)&&qty>0)reserved[key]=(reserved[key]||0)+qty;
+  });
+  Object.keys(reserved).forEach(function(key){
+    const matches=stockRowsByKey[key]||[];
+    if(matches.length===1&&Number.isSafeInteger(matches[0].qty)&&reserved[key]>matches[0].qty){
+      issue('STOCK_RESERVATION_OVERCOMMITTED',key,'Reservasi aktif '+reserved[key]+' unit melebihi stok fisik '+matches[0].qty+' unit.');
+    }
+  });
+
+  const sales=readRows_(ss.getSheetByName('PenjualanToko')),saleDetails=readRows_(ss.getSheetByName('DetailPenjualanToko'));
+  const saleDetailMap=Object.create(null),saleMutationMap=Object.create(null);
+  saleDetails.forEach(function(r){const id=String(r[1]||'');if(!saleDetailMap[id])saleDetailMap[id]=[];saleDetailMap[id].push(r);});
+  mutations.forEach(function(r){if(String(r[3]||'').toUpperCase()!=='KELUAR')return;const ref=String(r[7]||'');if(!saleMutationMap[ref])saleMutationMap[ref]=[];saleMutationMap[ref].push(r);});
+  sales.forEach(function(s){
+    if(String(s[11]||'').toUpperCase()!=='LUNAS')return;
+    const id=String(s[0]||''),expected=Object.create(null),actual=Object.create(null);
+    (saleDetailMap[id]||[]).forEach(function(d){const key=String(d[2]||'')+'|'+String(d[3]||''),qty=Number(d[8]);expected[key]=(expected[key]||0)+(Number.isSafeInteger(qty)&&qty>0?qty:0);});
+    (saleMutationMap[id]||[]).forEach(function(m){const key=String(m[1]||'')+'|'+String(m[2]||'');actual[key]=(actual[key]||0)+(Number(m[4])||0);});
+    const all=Object.create(null);Object.keys(expected).concat(Object.keys(actual)).forEach(function(k){all[k]=true;});
+    Object.keys(all).forEach(function(key){if((expected[key]||0)!==(actual[key]||0))issue('POS_SALE_MUTATION_INCOMPLETE',key,'Penjualan POS '+id+' berstatus LUNAS, tetapi total mutasi keluar '+(actual[key]||0)+' tidak sama dengan detail '+(expected[key]||0)+'.');});
+  });
+
+  const orders=readRows_(ss.getSheetByName('Pesanan')),orderDetails=readRows_(ss.getSheetByName('DetailPesanan')),orderDetailMap=Object.create(null),orderMutationMap=Object.create(null);
+  orderDetails.forEach(function(r){const id=String(r[1]||'');if(!orderDetailMap[id])orderDetailMap[id]=[];orderDetailMap[id].push(r);});
+  mutations.forEach(function(r){if(String(r[3]||'').toUpperCase()!=='KELUAR')return;const ref=String(r[7]||'');if(!orderMutationMap[ref])orderMutationMap[ref]=[];orderMutationMap[ref].push(r);});
+  const paidStatuses=['DIBAYAR','DIPROSES','DISIAPKAN','SIAP_DIAMBIL','DIANTAR','DITERIMA'];
+  orders.forEach(function(o){
+    if(paidStatuses.indexOf(String(o[8]||'').toUpperCase())<0)return;
+    const id=String(o[0]||''),expected=Object.create(null),actual=Object.create(null);
+    (orderDetailMap[id]||[]).forEach(function(d){const key=String(d[2]||'')+'|'+String(d[3]||''),qty=Number(d[8]);expected[key]=(expected[key]||0)+(Number.isSafeInteger(qty)&&qty>0?qty:0);});
+    (orderMutationMap[id]||[]).forEach(function(m){const key=String(m[1]||'')+'|'+String(m[2]||'');actual[key]=(actual[key]||0)+(Number(m[4])||0);});
+    const all=Object.create(null);Object.keys(expected).concat(Object.keys(actual)).forEach(function(k){all[k]=true;});
+    Object.keys(all).forEach(function(key){if((expected[key]||0)!==(actual[key]||0))issue('ORDER_STOCK_MUTATION_INCOMPLETE',key,'Pesanan '+id+' berstatus '+String(o[8])+' tetapi total mutasi keluar '+(actual[key]||0)+' tidak sama dengan detail '+(expected[key]||0)+'.');});
+  });
+
+  return {
+    checkedAt:new Date().toISOString(),mode:'READ_ONLY',
+    counts:{stockRows:stocks.length,mutationRows:mutations.length,activeOrderReservations:activeReservations.length,activeStoreReservations:activeStoreReservations.length,salesChecked:sales.length,ordersChecked:orders.length},
+    issueCount:issues.length,issues:issues,truncated:issues.length>=maxIssues,
+    recoveryCandidateCount:recoveryCandidates.length,recoveryCandidates:recoveryCandidates.slice(0,maxIssues),
+    recoveryPolicy:'NO_AUTOMATIC_STOCK_ADJUSTMENT'
+  };
+}
