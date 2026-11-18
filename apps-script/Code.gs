@@ -3146,19 +3146,38 @@ function auditCashierPOSIntegrity_() {
     const lines=detailMap[id]||[];
     if(!lines.length)issue('SALE_DETAIL_MISSING',id,'Transaksi tidak memiliki rincian barang.');
     const itemTotal=lines.reduce(function(sum,r){return sum+(Number(r[9])||0);},0);
+    lines.forEach(function(r){
+      const price=Number(r[7]),qty=Number(r[8]),lineSubtotal=Number(r[9]);
+      if(!Number.isSafeInteger(price)||price<0||!Number.isSafeInteger(qty)||qty<1||!Number.isSafeInteger(lineSubtotal)||lineSubtotal!==price*qty)issue('SALE_DETAIL_VALUE_INVALID',id,'Harga, jumlah, atau subtotal salah satu rincian tidak valid.');
+    });
     if(lines.length&&itemTotal!==Number(s[5]||0))issue('SALE_SUBTOTAL_MISMATCH',id,'Jumlah subtotal detail berbeda dari subtotal transaksi.');
     if(Number(s[5]||0)-Number(s[6]||0)!==Number(s[7]||0))issue('SALE_TOTAL_MISMATCH',id,'Subtotal dikurangi diskon tidak sama dengan total.');
+    if(['TUNAI','QRIS'].indexOf(method)<0)issue('SALE_METHOD_INVALID',id,'Metode pembayaran tidak dikenal.');
     if(method==='TUNAI'&&(payment!=='LUNAS'||status!=='SELESAI'))issue('CASH_STATUS_INVALID',id,'Transaksi tunai seharusnya LUNAS dan SELESAI.');
     if(method==='QRIS'&&payment==='MENUNGGU_KONFIRMASI'&&status!=='MENUNGGU_PEMBAYARAN')issue('QRIS_PENDING_STATUS_INVALID',id,'Status transaksi QRIS menunggu tidak konsisten.');
+    if(method==='QRIS'&&payment==='LUNAS'&&status!=='SELESAI')issue('QRIS_PAID_STATUS_INVALID',id,'QRIS LUNAS tidak berstatus SELESAI.');
     if(payment==='LUNAS'&&status!=='SELESAI')issue('PAID_STATUS_INVALID',id,'Pembayaran LUNAS tidak berstatus SELESAI.');
     if(payment==='DIBATALKAN'&&status!=='DIBATALKAN')issue('CANCEL_STATUS_INVALID',id,'Status pembayaran dan transaksi batal tidak konsisten.');
     const saleReservations=reservationMap[id]||[];
     const active=saleReservations.filter(function(r){return String(r[5]||'').toUpperCase()==='AKTIF';});
     if(payment==='MENUNGGU_KONFIRMASI'){
       const valid=active.filter(function(r){const t=new Date(r[7]||0).getTime();return Number.isFinite(t)&&t>now;});
-      const reserved=Object.create(null);
-      valid.forEach(function(r){const key=String(r[2]||'')+'|'+String(r[3]||'');reserved[key]=(reserved[key]||0)+(Number(r[4])||0);});
-      lines.forEach(function(r){const key=String(r[2]||'')+'|'+String(r[3]||'');if((reserved[key]||0)<Number(r[8]||0))issue('QRIS_RESERVATION_SHORT',id,'Reservasi aktif/kedaluwarsa tidak mencakup '+String(r[5]||'produk')+'.');});
+      const reserved=Object.create(null),expected=Object.create(null);
+      valid.forEach(function(r){
+        const key=String(r[2]||'')+'|'+String(r[3]||''),qty=Number(r[4]);
+        if(!Number.isSafeInteger(qty)||qty<1)issue('QRIS_RESERVATION_QTY_INVALID',id,'Jumlah reservasi aktif tidak valid.');
+        reserved[key]=(reserved[key]||0)+(Number.isSafeInteger(qty)&&qty>0?qty:0);
+      });
+      lines.forEach(function(r){
+        const key=String(r[2]||'')+'|'+String(r[3]||''),qty=Number(r[8]);
+        expected[key]=(expected[key]||0)+(Number.isSafeInteger(qty)&&qty>0?qty:0);
+      });
+      Object.keys(expected).forEach(function(key){
+        if((reserved[key]||0)!==expected[key])issue('QRIS_RESERVATION_QTY_MISMATCH',id,'Jumlah reservasi tidak sama dengan rincian transaksi untuk '+key+'.');
+      });
+      Object.keys(reserved).forEach(function(key){
+        if(!Object.prototype.hasOwnProperty.call(expected,key))issue('QRIS_RESERVATION_UNEXPECTED_ITEM',id,'Reservasi mencakup item yang tidak ada pada detail transaksi: '+key+'.');
+      });
       if(!valid.length)issue('QRIS_RESERVATION_EXPIRED',id,'Transaksi masih menunggu konfirmasi tetapi tidak memiliki reservasi yang berlaku.');
     }else if(active.length){
       issue('UNEXPECTED_ACTIVE_RESERVATION',id,'Transaksi bukan QRIS pending tetapi masih memiliki reservasi berstatus AKTIF.');
