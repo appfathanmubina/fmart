@@ -311,8 +311,8 @@ test('Wali can link an active Santri immediately without Admin approval',()=>{
 
 
 test('Buyer and staff inline application JavaScript parses after Apps Script template substitution',()=>{
- const match=index.match(/<script[^>]*>([\\s\\S]*?)<\\/script>/i);
+ const match=index.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
  assert.ok(match,'Inline application script must exist.');
- const clientScript=match[1].replace(/<\\?=\\s*portalMode\\s*\\?>/g,'BUYER');
+ const clientScript=match[1].replace(/<\?=\s*portalMode\s*\?>/g,'BUYER');
  assert.doesNotThrow(()=>new vm.Script(clientScript));
 });
