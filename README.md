@@ -829,3 +829,31 @@ Tahap ini mempertegas pembatasan menu dan otorisasi server. Pemeriksaan role di 
 7. Pastikan menu tersembunyi tidak menjadi satu-satunya perlindungan: ulangi pengujian dengan pemanggilan endpoint langsung dan pastikan penolakan berasal dari server.
 
 **Status:** perubahan repository dan pemeriksaan statis; uji role langsung di Apps Script/Spreadsheet masih menunggu UAT. Matriks ini mendokumentasikan izin yang diterapkan, bukan bukti bahwa seluruh akun produksi sudah diuji.
+
+
+## Tahap 10 — Audit UI/UX Kasir POS
+
+Penyempurnaan difokuskan pada pengalaman Kasir di layar desktop dan HP. Tidak ada perubahan pada skema database, perhitungan transaksi, reservasi stok, atau aturan hak akses.
+
+### Perubahan antarmuka
+- Area keranjang dibuat tetap terlihat saat menggulir pada layout desktop yang cukup lebar, agar total dan tindakan checkout lebih mudah dijangkau.
+- Pada HP, katalog dan checkout tersusun satu kolom; kartu produk tetap dua kolom pada lebar umum dan berubah satu kolom pada layar sangat sempit.
+- Area tombol tambah produk, pengatur kuantitas, konfirmasi QRIS, dan tindakan riwayat diperbesar untuk kemudahan sentuhan.
+- Pilihan identitas pembeli ditampilkan lebih jelas, sementara warna dan gaya Amethyst yang sudah ada dipertahankan.
+- Label stok katalog POS diubah menjadi "Tersedia" karena angka tersebut sudah mengurangi reservasi aktif Wali dan QRIS, bukan stok fisik mentah.
+- Fokus keyboard terlihat lebih jelas pada tombol dan input POS, QRIS, serta riwayat.
+- Input pada layar kecil menggunakan ukuran font 16px untuk mengurangi pembesaran otomatis browser mobile.
+- Area kosong dan informasi status diberi line-height yang lebih nyaman dibaca.
+
+### Penyempurnaan notifikasi dan pencarian
+- Toast menggunakan atribut aksesibilitas status/alert; pesan error diumumkan secara assertive, sedangkan informasi dan keberhasilan diumumkan secara polite.
+- Notifikasi ditampilkan sedikit lebih lama agar pesan transaksi dapat dibaca.
+- Ikon dekoratif pada toast dikecualikan dari pembaca layar.
+- Pencarian katalog memakai nomor urut permintaan; respons pencarian lama yang datang terlambat tidak menimpa hasil pencarian terbaru.
+
+### Pemeriksaan
+- Pemeriksaan sintaks JavaScript inline dan struktur perubahan CSS dilakukan pada repository.
+- Tidak ada perubahan pada endpoint, tabel database, atau proses create/confirm/cancel transaksi.
+- Pemeriksaan visual lintas ukuran layar dan interaksi sentuh tetap memerlukan uji browser pada perangkat HP serta desktop sebenarnya.
+
+**Status:** penyempurnaan repository selesai; verifikasi visual dan uji perangkat nyata masih menunggu UAT.
