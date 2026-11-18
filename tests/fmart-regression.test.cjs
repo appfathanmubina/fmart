@@ -259,8 +259,10 @@ test('Warehouse stock ledger is authoritative and missing rows never fall back t
  assert.ok(admin.includes("getSheetByName('Stok')"));assert.ok(admin.includes('stockRecordMissing'));
  assert.ok(stockCatalog.includes('stockRecordMissing'));assert.ok(!stockCatalog.includes('Number(v[5])'));
  assert.ok(stockManagement.includes('stockRecordMissing'));assert.ok(!stockManagement.includes('Number(v[5])'));
- assert.ok(stockManagement.includes('missingStockRows'));assert.ok(index.includes('Data stok belum lengkap'));assert.ok(index.includes('Saldo utama belum tercatat'));
- assert.ok(minimum.includes('else stockSheet.appendRow([makeFMartId_(\'STK\'),productId,variationId,0,minStock,now])'));
+ assert.ok(stockManagement.includes('missingStockRows'));assert.ok(index.includes('Data stok belum lengkap'));assert.ok(index.includes('Saldo utama belum tercatat'));assert.ok(index.includes('Saldo Gudang belum tercatat'));
+ assert.ok(minimum.includes('stockSheet.appendRow([makeFMartId_(\'STK\'),productId,variationId,0,minStock,now])'));
+ assert.ok(minimum.includes('Jalankan audit dan rekonsiliasi stok'));
+ assert.ok(stockManagement.includes("stockRecordMissing:!sr"));
  assert.ok(!dashboard.includes("stockMap[key]=Number(r[5])||0"));
 });
 
