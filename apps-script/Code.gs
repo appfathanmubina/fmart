@@ -868,8 +868,8 @@ function completeStockReceipt_(ss,receipt,payload,actor,actorRole){
    const live=Number(matches[0].row[3]);
    if(live===Number(x.before)){stock.getRange(matches[0].rowNumber,4).setValue(x.after);stock.getRange(matches[0].rowNumber,6).setValue(new Date());}
    else if(live!==Number(x.after))throw new Error('Saldo stok berubah dari nilai sebelum/sesudah penerimaan; pemulihan dihentikan untuk '+key+'.');
-  }else stock.appendRow([x.stockId,x.productId,x.variationId,x.after,x.productMin,new Date()]);
-  if(x.variationId){const v=findRowById_(vars,String(x.variationId),1);if(!v)throw new Error('Variasi tidak ditemukan saat pemulihan penerimaan.');const mirror=Number(v.values[5]);if(mirror===Number(x.before)||mirror!==Number(x.after))vars.getRange(v.rowNumber,6,1,3).setValues([[x.after,String(v.values[6]||'AKTIF'),new Date()]]);}
+  }else{if(x.stockRowExisted)throw new Error('Baris stok yang sebelumnya ada kini hilang. Pemulihan dihentikan untuk '+key+'.');stock.appendRow([x.stockId,x.productId,x.variationId,x.after,x.productMin,new Date()]);}
+  if(x.variationId){const v=findRowById_(vars,String(x.variationId),1);if(!v)throw new Error('Variasi tidak ditemukan saat pemulihan penerimaan.');const mirror=Number(v.values[5]);if(mirror===Number(x.before))vars.getRange(v.rowNumber,6,1,3).setValues([[x.after,String(v.values[6]||'AKTIF'),new Date()]]);else if(mirror!==Number(x.after))throw new Error('Saldo mirror variasi berubah; pemulihan dihentikan untuk '+key+'.');}
   const d=detailRows.find(function(r){return String(r[0])===String(x.detailId);});
   if(d){if(String(d[1])!==receiptId||String(d[2])!==String(x.productId)||String(d[3]||'')!==String(x.variationId||'')||Number(d[4])!==Number(x.qty))throw new Error('Detail penerimaan tidak cocok; pemulihan dihentikan.');}
   else detailSheet.appendRow([x.detailId,receiptId,x.productId,x.variationId,x.qty,x.before,x.after,payload.note||'']);
@@ -1810,10 +1810,10 @@ function createStockReceipt(token,payload){
    const matches=stocks.filter(r=>String(r[1])===item.productId&&String(r[2]||'')===item.variationId);if(matches.length>1)throw new Error('Ditemukan baris stok ganda. Penerimaan dihentikan.');
    const before=matches.length?Number(matches[0][3]):(v?Number(v[5]):0);if(!Number.isSafeInteger(before)||before<0)throw new Error('Saldo stok awal tidak valid.');
    const after=before+item.qty;if(!Number.isSafeInteger(after))throw new Error('Hasil stok terlalu besar.');
-   return {productId:item.productId,variationId:item.variationId,qty:item.qty,before:before,after:after,productMin:Math.max(0,Number(p[6])||0),detailId:makeFMartId_('DRC'),mutationId:makeFMartId_('MUT'),stockId:makeFMartId_('STK')};
+   return {productId:item.productId,variationId:item.variationId,qty:item.qty,before:before,after:after,productMin:Math.max(0,Number(p[6])||0),stockRowExisted:matches.length>0,detailId:makeFMartId_('DRC'),mutationId:makeFMartId_('MUT'),stockId:makeFMartId_('STK')};
   });
   stocks.forEach((r)=>{});const now=new Date(),receiptId=makeFMartId_('RCV'),receiptNumber='PN-'+Utilities.formatDate(now,FMART_DB.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Utilities.getUuid().slice(0,4).toUpperCase();
-  const saved={supplier:supplier,reference:reference,note:note,receivedAt:receivedAt.toISOString(),createdAt:now.toISOString(),createdBy:session.userId,receiptNumber:receiptNumber,items:prepared};
+  const saved={supplier:supplier,reference:reference,note:note,receivedDateInput:receivedDate,receivedAt:receivedAt.toISOString(),createdAt:now.toISOString(),createdBy:session.userId,receiptNumber:receiptNumber,items:prepared};
   const totalQty=prepared.reduce((n,x)=>n+x.qty,0);if(!Number.isSafeInteger(totalQty))throw new Error('Total jumlah penerimaan terlalu besar.');
   const row=[receiptId,receiptNumber,supplier,reference,receivedAt,note,prepared.length,totalQty,session.userId,now,requestKey,fingerprint,JSON.stringify(saved)];
   receiptSheet.appendRow(row);const result=completeStockReceipt_(ss,{values:row,rowNumber:receiptSheet.getLastRow()},saved,session.userId,session.role);
@@ -1911,17 +1911,55 @@ function adjustStock(token, productId, variationId, type, qty, note) {
 }
 
 function buildOrderStockPlan_(ss,orderId){
- const details=readRows_(ss.getSheetByName('DetailPesanan')).filter(r=>String(r[1])===String(orderId));if(!details.length)throw new Error('Detail pesanan tidak ditemukan.');
+ const details=readRows_(ss.getSheetByName('DetailPesanan')).filter(r=>String(r[1])===String(orderId));
+ if(!details.length)throw new Error('Detail pesanan tidak ditemukan.');
  const grouped=Object.create(null),reserved=getStockReservationMap_(ss,String(orderId)),stocks=readRows_(ss.getSheetByName('Stok'));
+ const orderMutations=readRows_(ss.getSheetByName('MutasiStok')).filter(r=>String(r[7]||'')===String(orderId)&&String(r[3]||'').toUpperCase()==='KELUAR');
  details.forEach(d=>{const pid=String(d[2]||''),vid=String(d[3]||''),qty=Number(d[8]),key=pid+'|'+vid;if(!pid||!Number.isSafeInteger(qty)||qty<1)throw new Error('Jumlah barang pada pesanan tidak valid.');if(!grouped[key])grouped[key]={pid:pid,vid:vid,qty:0};grouped[key].qty+=qty;});
- const plan=[],missing=[];Object.keys(grouped).forEach(key=>{const x=grouped[key],snap=getProductSnapshot_(ss,x.pid,x.vid,'GUDANG'),matches=[];stocks.forEach((r,i)=>{if(String(r[1])===x.pid&&String(r[2]||'')===x.vid)matches.push(i);});if(matches.length>1)throw new Error('Baris stok Gudang ganda ditemukan.');const before=matches.length?Number(stocks[matches[0]][3]):Number(snap&&snap.stock||0),other=Number(reserved[key]||0);if(!snap||!snap.active||!Number.isSafeInteger(before)||before<0||x.qty+other>before){missing.push({key:key,requested:x.qty,available:Math.max(0,(Number.isSafeInteger(before)?before:0)-other)});return;}plan.push({pid:x.pid,vid:x.vid,qty:x.qty,before:before,after:before-x.qty,index:matches.length?matches[0]:-1});});
+ const plan=[],missing=[];
+ Object.keys(grouped).forEach(key=>{
+  const x=grouped[key],snap=getProductSnapshot_(ss,x.pid,x.vid,'GUDANG'),matches=[];
+  stocks.forEach((r,i)=>{if(String(r[1])===x.pid&&String(r[2]||'')===x.vid)matches.push(i);});
+  if(matches.length>1)throw new Error('Baris stok Gudang ganda ditemukan.');
+  const prior=orderMutations.filter(m=>String(m[1])===x.pid&&String(m[2]||'')===x.vid);
+  if(prior.length>1)throw new Error('Mutasi keluar pesanan ganda ditemukan. Rekonsiliasi diperlukan sebelum melanjutkan.');
+  if(prior.length){
+   const m=prior[0],qty=Number(m[4]),before=Number(m[5]),after=Number(m[6]),current=matches.length?Number(stocks[matches[0]][3]):Number(snap&&snap.stock);
+   if(qty!==x.qty||!Number.isSafeInteger(before)||!Number.isSafeInteger(after)||after!==before-qty||after<0)throw new Error('Mutasi stok pesanan tidak konsisten.');
+   if(!Number.isSafeInteger(current)||(current!==before&&current!==after))throw new Error('Saldo stok tidak cocok dengan mutasi pesanan; pemulihan dihentikan.');
+   plan.push({pid:x.pid,vid:x.vid,qty:x.qty,before:before,after:after,index:matches.length?matches[0]:-1,existingMutation:true});
+   return;
+  }
+  const before=matches.length?Number(stocks[matches[0]][3]):Number(snap&&snap.stock||0),other=Number(reserved[key]||0);
+  if(!snap||!snap.active||!Number.isSafeInteger(before)||before<0||x.qty+other>before){missing.push({key:key,requested:x.qty,available:Math.max(0,(Number.isSafeInteger(before)?before:0)-other)});return;}
+  plan.push({pid:x.pid,vid:x.vid,qty:x.qty,before:before,after:before-x.qty,index:matches.length?matches[0]:-1,existingMutation:false});
+ });
  return {available:missing.length===0,plan:plan,missing:missing};
 }
+
 function applyOrderStockPlan_(ss,orderId,plan,actor,now){
  const stock=ss.getSheetByName('Stok'),vars=ss.getSheetByName('VariasiProduk'),mut=ss.getSheetByName('MutasiStok');
- plan.forEach(x=>{if(x.index>=0){const live=Number(stock.getRange(x.index+2,4).getValue());if(live!==x.before)throw new Error('Saldo stok berubah. Ulangi proses.');stock.getRange(x.index+2,4).setValue(x.after);stock.getRange(x.index+2,6).setValue(now);}else{const p=findRowById_(ss.getSheetByName('Produk'),x.pid,1);stock.appendRow([makeFMartId_('STK'),x.pid,x.vid,x.after,p?Math.max(0,Number(p.values[6])||0):0,now]);}if(x.vid){const v=findRowById_(vars,x.vid,1);if(v)vars.getRange(v.rowNumber,6,1,3).setValues([[x.after,String(v.values[6]||'AKTIF'),now]]);}mut.appendRow([makeFMartId_('MUT'),x.pid,x.vid,'KELUAR',x.qty,x.before,x.after,String(orderId),'Penjualan '+orderId,String(actor||'SYSTEM'),now]);});
+ plan.forEach(x=>{
+  const rows=readRows_(mut),matches=rows.map((r,i)=>({row:r,rowNumber:i+2})).filter(m=>String(m.row[7]||'')===String(orderId)&&String(m.row[1]||'')===String(x.pid)&&String(m.row[2]||'')===String(x.vid||'')&&String(m.row[3]||'').toUpperCase()==='KELUAR');
+  if(matches.length>1)throw new Error('Mutasi stok ganda untuk pesanan '+orderId+'.');
+  let mutation=matches[0]||null;
+  if(mutation){
+   const m=mutation.row;if(Number(m[4])!==Number(x.qty)||Number(m[5])!==Number(x.before)||Number(m[6])!==Number(x.after))throw new Error('Mutasi stok pesanan tidak sesuai dengan detail.');
+  }else{
+   mutationSheetAppend_();
+   function mutationSheetAppend_(){mut.appendRow([makeFMartId_('MUT'),x.pid,x.vid,'KELUAR',x.qty,x.before,x.after,String(orderId),'Penjualan '+orderId,String(actor||'SYSTEM'),now]);}
+  }
+  const liveRow=x.index>=0?stock.getRange(x.index+2,1,1,6).getValues()[0]:null;
+  const live=liveRow?Number(liveRow[3]):Number((getProductSnapshot_(ss,x.pid,x.vid,'GUDANG')||{}).stock);
+  if(live===Number(x.before)){
+   if(liveRow){stock.getRange(x.index+2,4).setValue(x.after);stock.getRange(x.index+2,6).setValue(now);}
+   else{const p=findRowById_(ss.getSheetByName('Produk'),x.pid,1);stock.appendRow([makeFMartId_('STK'),x.pid,x.vid,x.after,p?Math.max(0,Number(p.values[6])||0):0,now]);}
+  }else if(live!==Number(x.after))throw new Error('Saldo stok berubah. Pemulihan transaksi dihentikan.');
+  if(x.vid){const v=findRowById_(vars,x.vid,1);if(v){const mirror=Number(v.values[5]);if(mirror===Number(x.before))vars.getRange(v.rowNumber,6,1,3).setValues([[x.after,String(v.values[6]||'AKTIF'),now]]);else if(mirror!==Number(x.after))throw new Error('Saldo variasi tidak cocok dengan mutasi pesanan.');}}
+ });
  setOrderReservationStatus_(ss,orderId,'DIGUNAKAN');
 }
+
 function setOrderFulfillmentStatus_(ss,order,status,actor,note,now){
  ss.getSheetByName('Pesanan').getRange(order.rowNumber,9,1,3).setValues([[status,String(note||order.values[9]||''),now]]);
  const sh=ss.getSheetByName('Pengiriman'),row=latestShipmentRow_(sh,String(order.values[0]));if(row)sh.getRange(row,5,1,5).setValues([[status,'','',String(actor||'SYSTEM'),now]]);
@@ -3672,7 +3710,7 @@ function recoverFMartTransactions_(token,limit){
   receipts.map((r,i)=>({values:r,rowNumber:i+2})).filter(r=>String(r.values[12]||'')).forEach(r=>{
    if(results.length>=max)return;let p;try{p=JSON.parse(String(r.values[12]))}catch(e){results.push({id:String(r.values[0]),type:'RECEIPT',ok:false,error:'Payload tidak valid.'});return;}
    if((rdm[String(r.values[0])]||0)===(p.items||[]).length&&(rm[String(r.values[0])]||0)>=(p.items||[]).length)return;
-   try{if(sha256Hex_(JSON.stringify({supplier:p.supplier,reference:p.reference,note:p.note,receivedDate:String(r.values[4]||'') instanceof Date?'':String(r.values[4]||''),items:(p.items||[]).map(x=>({productId:x.productId,variationId:x.variationId,qty:x.qty})).sort((a,b)=>(a.productId+'|'+a.variationId).localeCompare(b.productId+'|'+b.variationId))}))==='')throw new Error('Fingerprint tidak valid.');const done=completeStockReceipt_(ss,r,p,session.userId,session.role);results.push({id:String(r.values[0]),type:'RECEIPT',ok:true,completed:done.totalLines});}catch(e){results.push({id:String(r.values[0]),type:'RECEIPT',ok:false,error:String(e.message||e)});}
+   try{const fingerprint=sha256Hex_(JSON.stringify({supplier:p.supplier,reference:p.reference,note:p.note,receivedDate:String(p.receivedDateInput||''),items:(p.items||[]).map(x=>({productId:x.productId,variationId:x.variationId,qty:x.qty})).sort((a,b)=>(a.productId+'|'+a.variationId).localeCompare(b.productId+'|'+b.variationId))}));if(fingerprint!==String(r.values[11]||''))throw new Error('Fingerprint penerimaan tidak cocok. Pemulihan dibatalkan.');const done=completeStockReceipt_(ss,r,p,session.userId,session.role);results.push({id:String(r.values[0]),type:'RECEIPT',ok:true,completed:done.totalLines});}catch(e){results.push({id:String(r.values[0]),type:'RECEIPT',ok:false,error:String(e.message||e)});}
   });
   return {ok:true,checked:results.length,recovered:results.filter(x=>x.ok).length,results:results,policy:'CHECKOUT_AND_RECEIPT_ONLY_NO_PAYMENT_REPAIR'};
  }finally{lock.releaseLock();}
