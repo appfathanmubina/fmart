@@ -121,7 +121,7 @@ test('Kasir queue is limited to QRIS Wali payments and legacy methods cannot be 
 
 test('Wali payment submission remains QRIS-only', () => {
   const submit = extractFunction(code, 'submitPayment');
-  assert.ok(submit.includes("method !== 'QRIS'"));
+  assert.ok(submit.includes("method!=='QRIS'"));
   assert.ok(readme.includes('Wali hanya dapat mengajukan pembayaran melalui QRIS'));
   assert.ok(!readme.includes('Wali dapat memilih Transfer Bank atau QRIS'));
 });
@@ -139,7 +139,7 @@ test('Stock receipt retry resumes missing rows without double-applying stock',()
  assert.ok(index.includes("localStorage.getItem('fmart.receipt.pending')"));
 });
 test('Payment retries are idempotent and file signatures are validated before Drive storage',()=>{
- const f=extractFunction(code,'submitPayment');assert.ok(f.includes('values[13]'));assert.ok(f.includes('values[14]'));
+ const f=extractFunction(code,'submitPayment');assert.ok(f.includes('values[13]'));assert.ok(f.includes('p[14]'));
  assert.ok(f.includes('validateUploadedFileSignature_(bytes,mime)'));assert.ok(f.includes('getOrCreateTransactionProofFile_'));
  assert.ok(index.includes('pending.key'));assert.ok(index.includes('localStorage.removeItem(storageKey)'));
 });
@@ -171,7 +171,7 @@ test('FIFO order stock release records mutation before changing balance and safe
  assert.ok(build.includes('existingMutation'));
  assert.ok(apply.indexOf("mut.appendRow")<apply.indexOf("stock.getRange(x.index+2,4).setValue(x.after)"));
  assert.ok(apply.includes('finalizeReservations!==false'));
- assert.ok(pending.includes('const recovery=plan.plan.filter(x=>x.existingMutation)'));
+ assert.ok(pending.includes('recovery=plan.plan.filter(x=>x.existingMutation)'));
  assert.ok(pending.includes('applyOrderStockPlan_(ss,id,recovery'));
 });
 test('Stock reconciliation and receiving audits remain read-only',()=>{
