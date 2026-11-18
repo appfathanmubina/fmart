@@ -319,3 +319,20 @@ test('Buyer and staff inline application JavaScript parses after Apps Script tem
  let parseError='';try{new vm.Script(clientScript,{filename:'apps-script/Index.html inline script'});}catch(error){parseError=String(error.stack||error);}
  assert.equal(parseError,'',parseError);
 });
+
+test('Admin PWA resolves its own portal, token namespace, and distinct login layout',()=>{
+ assert.ok(index.includes("new URLSearchParams(window.location.search).get('portal')"));
+ assert.ok(index.includes("'fmartToken_admin'"));
+ assert.ok(index.includes("'fmartToken_buyer'"));
+ assert.ok(index.includes("body.admin-portal .login-showcase{display:none}"));
+ assert.ok(index.includes("Masuk Portal Petugas"));
+});
+test('Staff portal opens its shell before dashboard data and does not load the buyer catalog',()=>{
+ const load= index.slice(index.indexOf('async function loadInitial(){'),index.indexOf('    function render(){',index.indexOf('async function loadInitial(){')));
+ assert.ok(load.indexOf("session.user.role!=='WALI_SANTRI'")<load.indexOf("showStaffApp()"));
+ assert.ok(load.indexOf("showStaffApp()")<load.indexOf("await loadOps()"));
+ const staffBranch=load.slice(load.indexOf("if(session.user.role!=='WALI_SANTRI')"),load.indexOf("const catalog=await runServer('getCatalog'"));
+ assert.ok(staffBranch.includes('showApp()'));
+ assert.ok(!staffBranch.includes("runServer('getCatalog'"));
+ assert.ok(load.includes('retryOpsStartup'));
+});
