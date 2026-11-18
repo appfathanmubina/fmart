@@ -1036,3 +1036,12 @@ Status: CI Tahap 2 (18/18) dan Tahap 3 (22/22) lulus. Runtime UAT belum dijalank
 - `FMART_AUDIT_COMPLETE`: penanda bahwa seluruh logging selesai.
 
 Perubahan ini hanya mengubah cara hasil audit dicatat ke Execution Log. Nilai report yang dikembalikan, cakupan pemeriksaan, aturan bisnis, dan sifat read-only audit tidak berubah. Tidak ada akun, folder Drive, transaksi, atau data Spreadsheet yang dibuat atau diperbaiki otomatis.
+
+
+## Katalog Wali dan alamat pengiriman Santri
+
+- Akun Wali memuat katalog produk dengan batch server-side (12 produk per permintaan). Pencarian, kategori, dan pengurutan diterapkan pada seluruh produk aktif sebelum pagination; pemuatan berikutnya dipicu saat sentinel mendekati viewport.
+- Katalog Wali tidak lagi mengirim seluruh daftar produk pada pemuatan awal dan tidak mengirim data stok.
+- Relasi Wali–Santri yang berstatus aktif ditampilkan sebagai alamat pengiriman tersimpan. Data nama, kelas, dan asrama Santri menjadi alamat dasar pada pesanan; Wali memilih satu Santri saat checkout.
+- Catatan titik penerimaan tetap dapat ditambahkan secara opsional. Relasi yang menunggu persetujuan tidak dapat dipilih sebagai alamat checkout.
+- Struktur sheet dan riwayat relasi tidak diubah; verifikasi Admin dan validasi server `assertWaliChild_` tetap menjadi pengaman akses.

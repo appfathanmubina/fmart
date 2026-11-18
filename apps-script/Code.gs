@@ -461,6 +461,7 @@ function getWaliProfileManagement(token) {
         santriId:String(row[2] || ''),
         name:String(child.name || ''),
         className:String(child.className || ''),
+        asrama:String(child.asrama || ''),
         nis:status === 'AKTIF' ? String(child.nis || '') : maskNis_(child.nis),
         hubungan:String(row[5] || ''),
         status:status,
@@ -659,7 +660,27 @@ function getCatalog(token) {
   const activeCategoryIds = {};
   categories.forEach(function(c){ activeCategoryIds[c.id] = true; });
 
-  const reservedByKey=session.role===FMART.ROLES.WALI_SANTRI?getStockReservationMap_(ss,''):{};
+  if (session.role === FMART.ROLES.WALI_SANTRI) {
+    const productCountsByCategory = {};
+    let totalProducts = 0;
+    readRows_(productSheet).forEach(function(r) {
+      const categoryId = String(r[1] || '');
+      if (String(r[8] || '').toUpperCase() !== 'AKTIF' || !activeCategoryIds[categoryId]) return;
+      totalProducts++;
+      productCountsByCategory[categoryId] = (productCountsByCategory[categoryId] || 0) + 1;
+    });
+    return {
+      ok:true,
+      user:{userId:session.userId,username:session.username,nama:session.nama,role:session.role},
+      categories:categories,
+      products:[],
+      productCountsByCategory:productCountsByCategory,
+      totalProducts:totalProducts,
+      children:getChildrenForWali_(ss,session.userId)
+    };
+  }
+
+  const reservedByKey={};
   const products = readRows_(productSheet).filter(function(r){
     return String(r[8] || '').toUpperCase() === 'AKTIF' && activeCategoryIds[String(r[1] || '')];
   }).map(function(r){
@@ -722,6 +743,48 @@ function getCatalog(token) {
     products:products,
     children:children
   };
+}
+
+/**
+ * Katalog Wali dengan pagination server-side. Filter, urutan, dan offset
+ * diproses terhadap seluruh produk aktif sebelum batch dikirim ke browser.
+ * Data stok tidak pernah dikirim ke akun Wali.
+ */
+function getBuyerProductBatch(token, options) {
+  requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
+  options = options && typeof options === 'object' ? options : {};
+  const offset = Math.max(0,Math.min(100000,Math.floor(Number(options.offset)||0)));
+  const limit = Math.max(4,Math.min(24,Math.floor(Number(options.limit)||12)));
+  const query = String(options.query||'').trim().toLowerCase().slice(0,100);
+  const categoryId = String(options.categoryId||'').trim().slice(0,120);
+  const sort = ['featured','name-asc','price-asc','price-desc'].indexOf(String(options.sort||'featured'))>=0 ? String(options.sort||'featured') : 'featured';
+  const ss = getSS_(), categories = readRows_(ss.getSheetByName('Kategori'));
+  const activeCategories = Object.create(null);
+  categories.forEach(function(r){if(String(r[4]||'').toUpperCase()==='AKTIF')activeCategories[String(r[0])]=true;});
+  if(categoryId&&!activeCategories[categoryId])throw new Error('Kategori produk tidak tersedia.');
+  const all = readRows_(ss.getSheetByName('Produk')).filter(function(r){
+    if(String(r[8]||'').toUpperCase()!=='AKTIF'||!activeCategories[String(r[1]||'')])return false;
+    if(categoryId&&String(r[1]||'')!==categoryId)return false;
+    return !query || (String(r[3]||'')+' '+String(r[4]||'')).toLowerCase().indexOf(query)>=0;
+  });
+  if(sort==='name-asc')all.sort(function(a,b){return String(a[3]||'').localeCompare(String(b[3]||''),'id');});
+  else if(sort==='price-asc')all.sort(function(a,b){return (Number(a[5])||0)-(Number(b[5])||0)||String(a[3]||'').localeCompare(String(b[3]||''),'id');});
+  else if(sort==='price-desc')all.sort(function(a,b){return (Number(b[5])||0)-(Number(a[5])||0)||String(a[3]||'').localeCompare(String(b[3]||''),'id');});
+  const page = all.slice(offset,offset+limit);
+  const pageIds = Object.create(null);
+  page.forEach(function(r){pageIds[String(r[0])]=true;});
+  const variationsByProduct = Object.create(null);
+  readRows_(ss.getSheetByName('VariasiProduk')).forEach(function(r){
+    const pid=String(r[1]||'');
+    if(!pageIds[pid]||String(r[6]||'').toUpperCase()!=='AKTIF')return;
+    if(!variationsByProduct[pid])variationsByProduct[pid]=[];
+    variationsByProduct[pid].push({id:String(r[0]),priceAddition:Number(r[4])||0});
+  });
+  const items=page.map(function(r){
+    const id=String(r[0]);
+    return {id:id,categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),description:String(r[4]||''),price:Number(r[5])||0,photoUrl:String(r[7]||''),variations:variationsByProduct[id]||[]};
+  });
+  return {ok:true,items:items,offset:offset,limit:limit,total:all.length,hasMore:offset+items.length<all.length};
 }
 
 /** Tahap Wali: keranjang umum per akun. Santri dipilih saat checkout. */
@@ -891,7 +954,9 @@ function checkoutCart(token,santriId,selectedCartIds,catatan,metodePengiriman,tu
  if(!/^[A-Za-z0-9_-]{12,80}$/.test(requestKey))throw new Error('Kunci checkout tidak valid. Muat ulang checkout dan coba kembali.');
  if(!santriId)throw new Error('Santri tujuan belum dipilih.');if(!selectedCartIds.length)throw new Error('Pilih minimal satu barang untuk checkout.');
  if(['AMBIL_FMART','ANTAR_PESANTREN'].indexOf(metodePengiriman)<0)throw new Error('Metode pengiriman tidak valid.');
- if(metodePengiriman==='ANTAR_PESANTREN'&&!tujuan)throw new Error('Titik atau pihak penerima wajib diisi untuk pengantaran.');
+ // Tujuan dasar berasal dari data Santri yang telah diverifikasi sebagai alamat pengiriman.
+ // Catatan titik penerimaan bersifat opsional dan ditambahkan ke alamat tersimpan.
+
  const fingerprint=sha256Hex_(JSON.stringify({userId:session.userId,santriId:santriId,selectedCartIds:selectedCartIds.slice().sort(),note:catatan,shippingMethod:metodePengiriman,requestedDestination:tujuan}));
  const lock=LockService.getScriptLock();lock.waitLock(15000);
  try{
@@ -908,7 +973,9 @@ function checkoutCart(token,santriId,selectedCartIds,catatan,metodePengiriman,tu
   const items=selected.map(r=>{const q=Math.max(0,Math.floor(Number(r[5])||0)),p=getProductSnapshot_(ss,r[3],r[4]);return {productId:String(r[3]),variationId:String(r[4]||''),qty:q,active:!!(p&&p.active),unitPrice:p?p.unitPrice:0,sku:p?p.sku:'',name:p?p.name:'Produk tidak tersedia',variationName:p?p.variationName:''};});
   const invalid=items.find(x=>!x.active||x.qty<1);if(!items.length||invalid)throw new Error(invalid?'Produk "'+invalid.name+'" tidak tersedia. Silakan periksa keranjang.':'Barang yang dipilih tidak ditemukan di keranjang.');
   const subtotal=items.reduce((n,x)=>n+x.unitPrice*x.qty,0),ongkir=0,diskon=0,total=subtotal+ongkir-diskon,now=new Date(),id=makeFMartId_('ORD');
-  const number='FM-'+Utilities.formatDate(now,FMART_DB.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Math.floor(1000+Math.random()*9000),destination=metodePengiriman==='ANTAR_PESANTREN'?tujuan:('Pengambilan langsung di FMart'+(tujuan?' — '+tujuan:''));
+  const number='FM-'+Utilities.formatDate(now,FMART_DB.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Math.floor(1000+Math.random()*9000);
+  const santriAddress=[child.name,child.className?'Kelas '+child.className:'',child.asrama?'Asrama '+child.asrama:''].filter(Boolean).join(' · ');
+  const destination=metodePengiriman==='ANTAR_PESANTREN'?[santriAddress,tujuan?'Catatan penerimaan: '+tujuan:''].filter(Boolean).join(' — '):('Pengambilan langsung di FMart'+(tujuan?' — '+tujuan:''));
   const payload={userId:session.userId,santriId:santriId,selectedCartIds:selectedCartIds,orderNumber:number,total:total,shippingMethod:metodePengiriman,shippingDestination:destination,requestedDestination:tujuan,createdAt:now.toISOString(),items:items.map(x=>({detailId:makeFMartId_('DTL'),productId:x.productId,variationId:x.variationId,qty:x.qty,unitPrice:x.unitPrice,sku:x.sku,name:x.name,variationName:x.variationName})),shipmentId:makeFMartId_('SHP')};
   const row=[id,number,session.userId,santriId,subtotal,ongkir,diskon,total,'MENUNGGU_PEMBAYARAN',catatan,now,now,requestKey,fingerprint,JSON.stringify(payload)];
   sheet.appendRow(row);const result=completeCheckoutOrder_(ss,{values:row,rowNumber:sheet.getLastRow()},payload,session.userId,session.role);result.child=child;return result;
@@ -2711,6 +2778,7 @@ function santriRecord_(row, map) {
     nis: String(santriField_(row, map, 'nis') || ''),
     name: String(santriField_(row, map, 'nama_santri') || ''),
     className: String(santriField_(row, map, 'kelas') || ''),
+    asrama: String(santriField_(row, map, 'asrama') || ''),
     status: String(santriField_(row, map, 'Status') || '')
   };
 }

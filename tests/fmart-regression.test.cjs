@@ -249,3 +249,32 @@ test('Readiness audit logs bounded diagnostic chunks without truncating the full
  assert.ok(logger.includes('totalParts: totalParts'));
  assert.ok(logger.includes('FMART_AUDIT_COMPLETE '));
 });
+
+
+test('Wali catalog uses authenticated server-side pagination and never sends stock fields',()=>{
+ const initial=extractFunction(code,'getCatalog'),page=extractFunction(code,'getBuyerProductBatch');
+ assert.ok(initial.includes('session.role === FMART.ROLES.WALI_SANTRI'));
+ assert.ok(initial.includes('products:[]'));
+ assert.ok(initial.includes('productCountsByCategory'));
+ assert.ok(page.includes("requireRole_(token,[FMART.ROLES.WALI_SANTRI])"));
+ assert.ok(page.includes('all.slice(offset,offset+limit)'));
+ assert.ok(page.includes('hasMore:offset+items.length<all.length'));
+ assert.ok(!page.includes('stock:'));
+ assert.ok(index.includes("runServer('getBuyerProductBatch'"));
+ assert.ok(index.includes('IntersectionObserver'));
+ assert.ok(index.includes('productLoadSentinel'));
+});
+
+test('Wali Santri relationships are presented and used as saved delivery addresses',()=>{
+ const record=extractFunction(code,'santriRecord_');
+ const profile=extractFunction(code,'getWaliProfileManagement');
+ const checkout=extractFunction(code,'checkoutCart');
+ assert.ok(record.includes("asrama: String(santriField_(row, map, 'asrama') || '')"));
+ assert.ok(profile.includes('asrama:String(child.asrama || \'\')'));
+ assert.ok(checkout.includes('const santriAddress='));
+ assert.ok(checkout.includes('child.asrama'));
+ assert.ok(index.includes('Alamat Pengiriman Santri'));
+ assert.ok(index.includes('checkout-address-card'));
+ assert.ok(index.includes('name="checkoutSantriId"'));
+ assert.ok(index.includes('Catatan titik penerimaan (opsional)'));
+});
