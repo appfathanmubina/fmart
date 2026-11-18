@@ -939,3 +939,36 @@ Fungsi mengembalikan `mode: 'READ_ONLY'`, jumlah data yang diperiksa, `issues`, 
 - Audit tidak membuktikan stok fisik di rak; tetap diperlukan stock opname.
 - Google Sheets tidak menyediakan transaksi multi-sheet atomik. Audit ini membantu mendeteksi sebagian kondisi penulisan terhenti, tetapi tidak menyediakan rollback otomatis.
 - Perubahan repository telah diperiksa secara statis. Uji terhadap Spreadsheet aktif dan pemulihan operasional nyata masih harus dilakukan sebelum FMart dinyatakan lolos rekonsiliasi.
+
+
+## Tahap 13 — Audit Penerimaan Barang dan Mutasi Gudang
+
+### Perbaikan proses Gudang
+- `createStockReceipt()` kini menolak kombinasi produk/variasi yang memiliki lebih dari satu baris stok, serta menolak saldo awal yang negatif, pecahan, atau bukan bilangan bulat aman.
+- Sebelum membuat dokumen penerimaan, detail, saldo stok, dan mutasi, saldo aktual setiap item yang sudah memiliki baris stok dibaca ulang dan harus sama dengan saldo hasil preflight.
+- `adjustStock()` kini menolak baris stok duplikat dan saldo stok yang tidak valid. Saldo aktual diverifikasi kembali sebelum diperbarui. Pengurangan tetap memperhitungkan reservasi aktif.
+- Perubahan variasi yang sudah ada menggunakan saldo dari sheet `Stok` sebagai sumber utama; perubahan nama/harga variasi tidak boleh menimpa saldo fisik berdasarkan nilai mirror lama.
+- Variasi baru dengan stok awal lebih dari nol mencatat mutasi `MASUK` dari 0 ke saldo awal, dengan referensi VariasiId dan jejak AuditLog. Variasi yang diedit tidak membuat mutasi stok baru.
+- Tidak ada perubahan tampilan UI atau penghapusan data.
+
+### Fungsi audit baru
+Jalankan setelah Code.gs terbaru disinkronkan:
+
+```javascript
+auditWarehouseReceivingIntegrity_()
+```
+
+Audit ini read-only dan memeriksa:
+- PenerimaanId dan NomorPenerimaan kosong/duplikat.
+- Detail penerimaan yatim, ID detail duplikat, aritmetika saldo, jumlah baris, dan total kuantitas header.
+- Mutasi MASUK yang tidak cocok dengan detail penerimaan, mutasi ganda, atau referensi penerimaan yang tidak ada.
+- Kecocokan qty dan saldo sebelum/sesudah antara DetailPenerimaanBarang dan MutasiStok.
+- Catatan AuditLog untuk setiap dokumen penerimaan.
+- Mutasi MASUK manual tanpa referensi yang tidak memiliki AuditLog penyesuaian stok yang cocok.
+- Mutasi stok awal variasi yang tidak dimulai dari saldo nol atau tidak konsisten dengan kuantitas awal.
+
+### Catatan pemulihan
+Audit tidak membuat ulang dokumen penerimaan, detail, mutasi, atau saldo stok. Jika penerimaan tercatat tetapi mutasinya tidak lengkap, cocokkan dokumen pemasok, barang fisik, detail penerimaan, saldo stok saat ini, dan mutasi setelah tanggal penerimaan sebelum melakukan koreksi resmi. Jangan menjalankan ulang penerimaan yang sama sebagai cara memperbaiki data karena dapat menggandakan stok.
+
+### Status
+Perubahan kode dan pemeriksaan sintaks/static dapat dilakukan di repository. Uji penerimaan barang, mutasi manual, saldo fisik, dan pemeriksaan Spreadsheet aktif tetap harus dijalankan sebagai UAT sebelum operasional.
