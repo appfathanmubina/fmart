@@ -701,3 +701,55 @@ Pemeriksaan pada Tahap 2 bersifat statis terhadap repository. Tidak ada akses ru
 - Jangan menghapus atau mengubah transaksi yang terindikasi tidak lengkap sebelum memeriksa seluruh sheet dan catatan mutasinya. Lakukan pemulihan dengan prosedur administrasi yang terdokumentasi agar stok tidak dikurangi/dikembalikan dua kali.
 - Konfirmasi QRIS tetap manual setelah dana benar-benar diterima pada kanal merchant. Tahap ini tidak menambahkan payment gateway atau webhook.
 - Pemeriksaan sintaks repository berhasil dilakukan. Belum ada uji runtime pada Spreadsheet aktif, uji transaksi bersamaan, browser/perangkat kasir, atau printer fisik. Audit live harus dijalankan setelah file disinkronkan ke Apps Script.
+
+## Uji Operasional POS dan Validasi Akhir — Tahap 7
+
+### Penyempurnaan hasil audit
+- Konfirmasi QRIS sekarang menggabungkan ulang detail yang memiliki produk/variasi sama sebelum memeriksa reservasi dan menyusun pengurangan stok. Ini mencegah baris detail ganda (misalnya data lama atau hasil koreksi manual) memakai snapshot stok yang sama lebih dari sekali.
+- Pembatalan QRIS oleh role Kasir dibatasi pada transaksi yang dibuat oleh akun Kasir tersebut. Admin dan Superadmin tetap dapat membantu pembatalan transaksi Kasir lain.
+- Audit POS menghitung mutasi stok keluar bertipe `KELUAR` saja, membandingkan jumlah mutasi dengan kuantitas detail, mendeteksi mutasi ganda, dan mendeteksi mutasi penjualan yang tidak memiliki pasangan detail.
+- Hasil retry POS ditampilkan lebih akurat: transaksi QRIS yang ternyata sudah LUNAS tidak lagi diberi pesan seolah-olah masih menunggu konfirmasi. Refresh riwayat setelah konfirmasi QRIS juga tidak dilakukan dua kali.
+
+### Matriks uji operasional yang wajib dijalankan
+
+**Persiapan aman**
+1. Gunakan Spreadsheet khusus uji, bukan database operasional.
+2. Siapkan satu akun Kasir A, Kasir B, Admin, dan Superadmin yang aktif.
+3. Siapkan produk tanpa variasi dan produk dengan variasi; masing-masing memiliki stok cukup serta stok terbatas.
+4. Catat stok awal, lalu pastikan tidak ada reservasi Wali atau QRIS lain yang mengganggu skenario.
+5. Gunakan nominal uji kecil dan jangan menggunakan pembayaran QRIS nyata. Untuk uji alur QRIS, transaksi boleh dibuat pending; lakukan konfirmasi hanya bila benar-benar ada dana masuk ke kanal merchant uji.
+
+| No. | Skenario | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| 1 | Tunai tepat | Buat transaksi tunai dengan uang diterima sama dengan total | LUNAS/SELESAI; stok berkurang sesuai qty; satu mutasi KELUAR per produk/variasi |
+| 2 | Tunai lebih | Bayar lebih besar dari total | LUNAS/SELESAI; kembalian tepat; stok berkurang satu kali |
+| 3 | Tunai kurang | Masukkan uang di bawah total | UI/server menolak; tidak ada penjualan, detail, mutasi, atau reservasi baru |
+| 4 | Stok kurang | Masukkan qty melebihi stok tersedia | Ditolak; stok fisik tidak berubah |
+| 5 | Pembeli opsional | Uji UMUM, NAMA, dan SANTRI aktif | Identitas tersimpan benar; NAMA wajib diisi; SANTRI wajib dipilih |
+| 6 | QRIS pending | Buat transaksi QRIS | MENUNGGU_KONFIRMASI; stok fisik belum berkurang; reservasi aktif 15 menit muncul di antrean |
+| 7 | QRIS konfirmasi | Periksa dana benar-benar masuk, lalu konfirmasi | LUNAS/SELESAI; stok berkurang sekali; reservasi menjadi DIGUNAKAN; referensi tersimpan bila diisi |
+| 8 | QRIS batal | Batalkan QRIS pending | DIBATALKAN; reservasi menjadi DILEPAS; stok fisik tidak berubah |
+| 9 | QRIS kedaluwarsa | Tunggu melewati 15 menit | Konfirmasi ditolak; stok tersedia kembali; transaksi harus dibatalkan, bukan diaktifkan ulang |
+| 10 | Retry jaringan | Ulangi payload yang sama dengan RequestKey yang sama setelah respons pertama tidak diketahui | Transaksi yang sama dikembalikan; tidak ada penjualan atau mutasi ganda |
+| 11 | RequestKey berbeda payload | Ubah qty/pembeli/metode tetapi tetap memakai RequestKey lama | Server menolak permintaan |
+| 12 | Dua kasir | Kasir A membuat QRIS; Kasir B mencoba membatalkan | Kasir B ditolak; Admin/Superadmin dapat membantu |
+| 13 | Sinkronisasi Wali/Gudang | Buat reservasi Wali, lalu coba jual stok yang sama; ulangi dengan mutasi keluar Gudang | POS tidak menjual stok yang sudah direservasi; Gudang tidak mengurangi stok di bawah total reservasi aktif |
+| 14 | Riwayat role | Kasir A dan B membuka riwayat; Admin/Superadmin membuka riwayat | Setiap Kasir hanya melihat transaksi miliknya; Admin/Superadmin melihat seluruh transaksi toko |
+| 15 | Struk | Cetak transaksi LUNAS dan coba cetak QRIS pending | Struk LUNAS memuat rincian dan nominal benar; transaksi pending tidak dapat dicetak sebagai struk final |
+| 16 | Audit akhir | Jalankan `auditCashierPOSIntegrity_()` setelah semua skenario | Tidak ada temuan baru yang tidak dapat dijelaskan; jumlah stok dan mutasi cocok dengan transaksi uji |
+
+### Pemeriksaan yang sudah dilakukan pada repository
+- Sintaks backend dan frontend diperiksa kembali setelah perubahan Tahap 7.
+- Pemeriksaan statis memeriksa penggabungan detail QRIS, pembatasan pembatalan Kasir, perbandingan kuantitas mutasi, respons retry, dan tidak adanya refresh riwayat ganda.
+- Tampilan POS, antrean QRIS, riwayat, dan cetak struk yang telah ada tetap dipertahankan.
+
+### Status pengujian runtime
+**Belum dinyatakan lulus operasional.** Akses repository tidak menjalankan Apps Script, tidak membuka Spreadsheet aktif, dan tidak dapat menguji printer fisik atau kanal merchant. Karena itu, semua skenario pada matriks di atas masih berstatus **MENUNGGU UJI LIVE** sampai dijalankan pada database uji dan perangkat kasir. Jangan menandai POS siap operasional hanya berdasarkan pemeriksaan sintaks.
+
+### Prosedur setelah uji
+1. Jalankan `auditFMartDatabaseIntegrity_()` dan `auditCashierPOSIntegrity_()` pada Spreadsheet uji.
+2. Cocokkan stok awal + mutasi masuk - mutasi keluar dengan stok akhir untuk setiap produk/variasi yang diuji.
+3. Pastikan tidak ada reservasi QRIS berstatus AKTIF yang tertinggal dari transaksi selesai/batal.
+4. Ulangi uji riwayat dan cetak pada perangkat kasir yang benar-benar akan digunakan.
+5. Setelah seluruh hasil tercatat dan temuan ditutup, baru lakukan sinkronisasi ke deployment operasional.
+
