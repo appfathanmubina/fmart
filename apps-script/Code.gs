@@ -1345,7 +1345,7 @@ function getOperationsDashboard(token) {
   const paymentMap = {}; payments.forEach(r => { const id=String(r[1]); const old=paymentMap[id]; if(!old || new Date(r[8]||0).getTime()>new Date(old[8]||0).getTime()) paymentMap[id]=r; });
   const shipMap = {}; shipments.forEach(r => { const id=String(r[1]); const old=shipMap[id]; if(!old || new Date(r[8]||0).getTime()>new Date(old[8]||0).getTime()) shipMap[id]=r; });
   const stockMap = {};
-  stockRows.forEach(r => { const key=String(r[1])+'|'+String(r[2]||''); stockMap[key]=Number(r[3])||0; });
+  stockRows.forEach(r => { const key=String(r[1])+'|'+String(r[2]||''); if(stockMap[key]===undefined) stockMap[key]=Number(r[3])||0; });
   variationRows.forEach(r => { const key=String(r[1])+'|'+String(r[0]); if(stockMap[key]===undefined) stockMap[key]=Number(r[5])||0; });
   const productMap = {}; products.forEach(r => productMap[String(r[0])] = {id:String(r[0]),categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),price:Number(r[5])||0,status:String(r[8]||''),photoUrl:String(r[7]||'')});
   const categoryMap = {}; cats.forEach(r => categoryMap[String(r[0])] = String(r[1]||''));
@@ -1674,7 +1674,7 @@ function createStockReceipt(token, payload) {
 function getStockCatalog(token) {
   requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
   const ss=getSS_(),products=readRows_(ss.getSheetByName('Produk')).filter(function(r){return String(r[8]||'').toUpperCase()==='AKTIF';}),vars=readRows_(ss.getSheetByName('VariasiProduk')).filter(function(r){return String(r[6]||'').toUpperCase()==='AKTIF';}),stocks=readRows_(ss.getSheetByName('Stok'));
-  const stockMap=Object.create(null);stocks.forEach(function(r){stockMap[String(r[1])+'|'+String(r[2]||'')]=Math.max(0,Number(r[3])||0);});
+  const stockMap=Object.create(null);stocks.forEach(function(r){const key=String(r[1])+'|'+String(r[2]||'');if(!Object.prototype.hasOwnProperty.call(stockMap,key))stockMap[key]=Math.max(0,Number(r[3])||0);});
   return {ok:true,products:products.map(function(p){const pid=String(p[0]),vs=vars.filter(function(v){return String(v[1])===pid;}).map(function(v){const key=pid+'|'+String(v[0]);return {id:String(v[0]),name:String(v[2]||''),value:String(v[3]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,key)?stockMap[key]:Math.max(0,Number(v[5])||0)};}),baseKey=pid+'|';return {id:pid,name:String(p[3]||''),sku:String(p[2]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,baseKey)?stockMap[baseKey]:0,variations:vs};})};
 }
 
@@ -1691,7 +1691,7 @@ function getStockManagement(token) {
   const userRows=readRows_(ss.getSheetByName('Users'));
   const categoryMap={};categoryRows.forEach(function(r){categoryMap[String(r[0])]=String(r[1]||'-');});
   const userMap={};userRows.forEach(function(r){userMap[String(r[0])]=String(r[4]||r[1]||'-');});
-  const stockMap={};stockRows.forEach(function(r){stockMap[String(r[1])+'|'+String(r[2]||'')]=r;});
+  const stockMap=Object.create(null);stockRows.forEach(function(r){const key=String(r[1])+'|'+String(r[2]||'');if(!Object.prototype.hasOwnProperty.call(stockMap,key))stockMap[key]=r;});
   const variationsByProduct={};
   variationRows.forEach(function(r){const pid=String(r[1]);if(!variationsByProduct[pid])variationsByProduct[pid]=[];variationsByProduct[pid].push(r);});
   const items=[];
@@ -2814,7 +2814,7 @@ function getCashierPOSData(token, searchText) {
   const reservedStore=getStoreSaleReservationMap_(ss);
   const categoryMap={};categories.forEach(function(r){categoryMap[String(r[0])]=String(r[4]||'').toUpperCase();});
   const variationMap={};variations.forEach(function(r){if(String(r[6]||'').toUpperCase()!=='AKTIF')return;const pid=String(r[1]);if(!variationMap[pid])variationMap[pid]=[];variationMap[pid].push(r);});
-  const stockMap={};stocks.forEach(function(r){stockMap[String(r[1])+'|'+String(r[2]||'')]=Math.max(0,Number(r[3])||0);});
+  const stockMap=Object.create(null);stocks.forEach(function(r){const key=String(r[1])+'|'+String(r[2]||'');if(!Object.prototype.hasOwnProperty.call(stockMap,key))stockMap[key]=Math.max(0,Number(r[3])||0);});
   // VariasiProduk.Stok adalah fallback kompatibilitas; Stok tetap sumber utama.
   variations.forEach(function(v){const key=String(v[1])+'|'+String(v[0]);if(!Object.prototype.hasOwnProperty.call(stockMap,key))stockMap[key]=Math.max(0,Number(v[5])||0);});
   const items=[];
