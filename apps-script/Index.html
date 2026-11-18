@@ -2361,10 +2361,13 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       try{
         const r=await runServer('getCashierPOSData',state.token,String(query||''));
         if(!r||!r.ok)throw new Error('Katalog POS tidak dapat dimuat.');
+        const keepSearchFocus=document.activeElement&&document.activeElement.id==='cashierPOSSearch';
+        const searchCursor=keepSearchFocus?document.activeElement.selectionStart:null;
         pos.products=Array.isArray(r.products)?r.products:[];
         pos.recentSales=Array.isArray(r.recentSales)?r.recentSales:[];
         pos.serverTime=r.serverTime||'';
         renderCashierPOSPanel_();
+        if(keepSearchFocus){const input=$('cashierPOSSearch');if(input){input.focus();const cursor=Math.min(Number(searchCursor)||input.value.length,input.value.length);input.setSelectionRange(cursor,cursor)}}
       }catch(e){if(panel)panel.innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Katalog POS gagal dimuat.')+'<button type="button" class="secondary" id="cashierPOSRetry" style="margin-top:10px">Coba lagi</button></div>';const retry=$('cashierPOSRetry');if(retry)retry.onclick=()=>loadCashierPOSData_(pos.search)}
       finally{pos.loading=false}
     }
@@ -2410,7 +2413,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       const pos=state.cashierPOS,btn=$('cashierPOSSubmit');if(!pos.cart.length||!btn||btn.disabled)return;
       if(pos.buyerType==='NAMA'&&!String(pos.buyerName||'').trim()){showToast('Nama pembeli perlu diisi.','error');return}
       if(pos.buyerType==='SANTRI'&&!pos.santriId){showToast('Pilih santri sebagai pembeli.','error');return}
-      const total=cashierPOSCartTotal_(),received=Number(pos.amountReceived)||0;
+      const total=cashierPOSCartTotal_(),received=Number(pos.amountReceived)||0,selectedMethod=pos.paymentMethod;
       if(pos.paymentMethod==='TUNAI'&&received<total){showToast('Uang diterima belum mencukupi total belanja.','error');return}
       if(!pos.requestKey)pos.requestKey=cashierPOSKey_();
       btn.disabled=true;loading(true,'Menyimpan transaksi POS...');
@@ -2419,7 +2422,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         const r=await runServer('createCashierSale',state.token,payload);if(!r||!r.ok)throw new Error('Transaksi belum dapat disimpan.');
         pos.cart=[];pos.requestKey='';pos.amountReceived='';pos.note='';pos.buyerType='UMUM';pos.buyerName='';pos.santriId='';pos.santriLabel='';pos.students=[];
         renderCashierPOSPanel_();
-        showToast(r.paymentMethod==='QRIS'?'Transaksi '+r.number+' dibuat. Menunggu konfirmasi dana QRIS.':'Transaksi '+r.number+' berhasil. Kembalian Rp '+formatMoney(r.change||0), 'success');
+        showToast(selectedMethod==='QRIS'?'Transaksi '+r.number+' dibuat. Menunggu konfirmasi dana QRIS.':'Transaksi '+r.number+' berhasil. Kembalian Rp '+formatMoney(r.change||0), 'success');
         await loadCashierPOSData_(pos.search);
       }catch(e){showToast(e.message||'Transaksi gagal. Kunci transaksi dipertahankan untuk mencegah transaksi ganda saat mencoba ulang.','error')}
       finally{loading(false);const current=$('cashierPOSSubmit');if(current)current.disabled=!pos.cart.length}
