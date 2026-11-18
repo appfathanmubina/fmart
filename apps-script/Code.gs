@@ -820,65 +820,101 @@ function updateCartItem(token, cartId, qty) {
 
 function removeCartItem(token, cartId) { return updateCartItem(token, cartId, 0); }
 
-/** Satu checkout menghasilkan satu pesanan untuk satu santri dan hanya item terpilih. */
-function checkoutCart(token, santriId, selectedCartIds, catatan, metodePengiriman, tujuan) {
-  const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
-  santriId = String(santriId || '').trim();
-  selectedCartIds = Array.isArray(selectedCartIds) ? selectedCartIds.map(function(id){return String(id || '').trim();}).filter(Boolean) : [];
-  catatan = String(catatan || '').trim().slice(0,500);
-  metodePengiriman = String(metodePengiriman || 'AMBIL_FMART').trim().toUpperCase();
-  tujuan = String(tujuan || '').trim().slice(0,500);
-  if (!santriId) throw new Error('Santri tujuan belum dipilih.');
-  if (!selectedCartIds.length) throw new Error('Pilih minimal satu barang untuk checkout.');
-  if (['AMBIL_FMART','ANTAR_PESANTREN'].indexOf(metodePengiriman) === -1) throw new Error('Metode pengiriman tidak valid.');
-  if (metodePengiriman === 'ANTAR_PESANTREN' && !tujuan) throw new Error('Titik atau pihak penerima wajib diisi untuk pengantaran.');
-  const selectedMap = {};
-  selectedCartIds.forEach(function(id){selectedMap[id]=true;});
-  const lock = LockService.getScriptLock(); lock.waitLock(15000);
-  try {
-    const ss = getSS_();expireStockReservations_(ss,new Date());
-    const child = assertWaliChild_(ss, session.userId, santriId);
-    const cartSheet = ss.getSheetByName('Keranjang');
-    const cartRows = readRows_(cartSheet);
-    const selectedRows = [];
-    cartRows.forEach(function(r,index){
-      if (String(r[1]) === session.userId && selectedMap[String(r[0])]) {
-        selectedRows.push({rowNumber:index+2,row:r});
-      }
-    });
-    if (selectedRows.length !== Object.keys(selectedMap).length) throw new Error('Sebagian barang keranjang tidak ditemukan. Muat ulang keranjang.');
-    const items = selectedRows.map(function(entry){
-      const r=entry.row, qty=Math.max(0,Math.floor(Number(r[5])||0));
-      const snap=getProductSnapshot_(ss,r[3],r[4]);
-      return {cartId:String(r[0]),rowNumber:entry.rowNumber,productId:String(r[3]),variationId:String(r[4]||''),
-        qty:qty,active:!!(snap&&snap.active),stock:snap?Math.max(0,snap.stock):0,
-        unitPrice:snap?snap.unitPrice:0,sku:snap?snap.sku:'',name:snap?snap.name:'Produk tidak tersedia',
-        variationName:snap?snap.variationName:''};
-    });
-    if (!items.length) throw new Error('Barang yang dipilih tidak ditemukan di keranjang.');
-    const invalid=items.find(function(i){return !i.active||i.qty<1;});
-    if (invalid) throw new Error('Produk "'+invalid.name+'" tidak tersedia. Silakan periksa keranjang.');
-    items.forEach(function(i){i.stockKey=i.productId+'|'+i.variationId;});
-     const subtotal=items.reduce(function(sum,i){return sum+i.unitPrice*i.qty;},0);
-    const ongkir=0,diskon=0,total=subtotal+ongkir-diskon,now=new Date();
-    const orderId=makeFMartId_('ORD');
-    const nomorPesanan='FM-'+Utilities.formatDate(now,FMART_DB.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Math.floor(1000+Math.random()*9000);
-    ss.getSheetByName('Pesanan').appendRow([orderId,nomorPesanan,session.userId,santriId,subtotal,ongkir,diskon,total,'MENUNGGU_PEMBAYARAN',catatan,now,now]);
-    const detailSheet=ss.getSheetByName('DetailPesanan');
-    items.forEach(function(i){
-      detailSheet.appendRow([makeFMartId_('DTL'),orderId,i.productId,i.variationId,i.sku,i.name,i.variationName,i.unitPrice,i.qty,i.unitPrice*i.qty]);
-    });
-    
-    const tujuanPengiriman = metodePengiriman === 'ANTAR_PESANTREN' ? tujuan : ('Pengambilan langsung di FMart' + (tujuan ? ' — ' + tujuan : ''));
-    ss.getSheetByName('Pengiriman').appendRow([makeFMartId_('SHP'),orderId,metodePengiriman,tujuanPengiriman,'MENUNGGU','','',session.userId,now]);
-    selectedRows.sort(function(a,b){return b.rowNumber-a.rowNumber;}).forEach(function(entry){cartSheet.deleteRow(entry.rowNumber);});
-    writeAudit_(session.userId,session.role,'CREATE_ORDER','PESANAN',orderId,'',JSON.stringify({number:nomorPesanan,santriId:santriId,total:total,itemCount:items.length,shippingMethod:metodePengiriman}),'Checkout membuat pesanan dari item terpilih');
-    SpreadsheetApp.flush();
-    return {ok:true,orderId:orderId,nomorPesanan:nomorPesanan,total:total,status:'MENUNGGU_PEMBAYARAN',child:child,itemCount:items.length};
-  } finally { lock.releaseLock(); }
+
+/** Hash deterministik untuk fingerprint payload transaksi dan bukti file. */
+function sha256Hex_(value){const digest=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(value),Utilities.Charset.UTF_8);return digest.map(function(b){return ('0'+((b+256)%256).toString(16)).slice(-2);}).join('');}
+/** Memastikan MIME yang diklaim sesuai signature byte file. */
+function validateUploadedFileSignature_(bytes,mimeType){
+ const b=(bytes||[]).map(function(v){return v<0?v+256:v;}),mime=String(mimeType||'').toLowerCase();
+ const starts=function(sig){return sig.every(function(v,i){return b[i]===v;});};let ok=false;
+ if(mime==='image/jpeg')ok=b.length>=3&&starts([0xff,0xd8,0xff]);
+ else if(mime==='image/png')ok=b.length>=8&&starts([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]);
+ else if(mime==='image/webp')ok=b.length>=12&&starts([0x52,0x49,0x46,0x46])&&b[8]===0x57&&b[9]===0x45&&b[10]===0x42&&b[11]===0x50;
+ else if(mime==='application/pdf')ok=b.length>=5&&starts([0x25,0x50,0x44,0x46,0x2d]);
+ if(!ok)throw new Error('Isi file tidak sesuai dengan format yang dipilih. Pilih ulang bukti yang valid.');return true;
+}
+/** Memakai kembali file Drive dari eksekusi sebelumnya yang terhenti. */
+function getOrCreateTransactionProofFile_(folder,name,mime,bytes,marker){
+ const it=folder.getFilesByName(name);while(it.hasNext()){const f=it.next();if(String(f.getDescription()||'')===String(marker))return f;}
+ const file=folder.createFile(Utilities.newBlob(bytes,mime,name));file.setDescription(String(marker));return file;
+}
+/** Menyelesaikan detail, pengiriman, dan keranjang checkout; aman dipanggil ulang. */
+function completeCheckoutOrder_(ss,order,payload,actor,actorRole){
+ const id=String(order.values[0]),detailSheet=ss.getSheetByName('DetailPesanan'),details=readRows_(detailSheet),byId=Object.create(null);
+ details.forEach(function(r){byId[String(r[0]||'')]=r;});
+ payload.items.forEach(function(x){const old=byId[String(x.detailId)];if(old){if(String(old[1])!==id||String(old[2])!==String(x.productId)||String(old[3]||'')!==String(x.variationId||'')||Number(old[8])!==Number(x.qty)||Number(old[7])!==Number(x.unitPrice))throw new Error('Detail checkout tidak konsisten untuk pesanan '+id+'.');return;}detailSheet.appendRow([x.detailId,id,x.productId,x.variationId,x.sku,x.name,x.variationName,x.unitPrice,x.qty,x.unitPrice*x.qty]);});
+ const shipSheet=ss.getSheetByName('Pengiriman'),ships=readRows_(shipSheet),ship=ships.find(function(r){return String(r[0]||'')===String(payload.shipmentId);});
+ if(ship){if(String(ship[1])!==id||String(ship[2]).toUpperCase()!==String(payload.shippingMethod).toUpperCase())throw new Error('Identitas pengiriman checkout tidak konsisten.');}
+ else{const prior=ships.find(function(r){return String(r[1]||'')===id;});if(prior){if(String(prior[2]).toUpperCase()!==String(payload.shippingMethod).toUpperCase()||String(prior[3]||'')!==String(payload.shippingDestination||''))throw new Error('Pengiriman pesanan memiliki tujuan berbeda.');}else shipSheet.appendRow([payload.shipmentId,id,payload.shippingMethod,payload.shippingDestination,'MENUNGGU','','',String(actor||''),new Date(payload.createdAt)]);}
+ const cart=ss.getSheetByName('Keranjang'),rows=readRows_(cart),selected=Object.create(null),deletes=[];
+ (payload.selectedCartIds||[]).forEach(function(x){selected[String(x)]=true;});
+ rows.forEach(function(r,i){if(String(r[1])===String(payload.userId)&&selected[String(r[0])])deletes.push(i+2);});
+ deletes.sort(function(a,b){return b-a;}).forEach(function(n){cart.deleteRow(n);});
+ const audit=readRows_(ss.getSheetByName('AuditLog'));
+ if(!audit.some(function(r){return String(r[3]).toUpperCase()==='CREATE_ORDER'&&String(r[4]).toUpperCase()==='PESANAN'&&String(r[5])===id;}))
+  writeAudit_(actor||payload.userId,actorRole||'WALI_SANTRI','CREATE_ORDER','PESANAN',id,'',JSON.stringify({number:payload.orderNumber,santriId:payload.santriId,total:payload.total,itemCount:payload.items.length,shippingMethod:payload.shippingMethod}),'Checkout membuat pesanan dari item terpilih');
+ SpreadsheetApp.flush();return {ok:true,orderId:id,nomorPesanan:String(order.values[1]),total:Number(order.values[7])||0,status:String(order.values[8]),itemCount:payload.items.length};
+}
+/** Menyelesaikan penerimaan tanpa menambah stok atau mutasi dua kali. */
+function completeStockReceipt_(ss,receipt,payload,actor,actorRole){
+ const receiptId=String(receipt.values[0]),stock=ss.getSheetByName('Stok'),vars=ss.getSheetByName('VariasiProduk');
+ const detailSheet=ss.getSheetByName('DetailPenerimaanBarang'),mutationSheet=ss.getSheetByName('MutasiStok');
+ const detailRows=readRows_(detailSheet),mutationRows=readRows_(mutationSheet);
+ payload.items.forEach(function(x){
+  const key=String(x.productId)+'|'+String(x.variationId||''),matches=[];
+  readRows_(stock).forEach(function(r,i){if(String(r[1])===String(x.productId)&&String(r[2]||'')===String(x.variationId||''))matches.push({row:r,rowNumber:i+2});});
+  if(matches.length>1)throw new Error('Baris stok ganda; pemulihan penerimaan dihentikan untuk '+key+'.');
+  if(matches.length){
+   const live=Number(matches[0].row[3]);
+   if(live===Number(x.before)){stock.getRange(matches[0].rowNumber,4).setValue(x.after);stock.getRange(matches[0].rowNumber,6).setValue(new Date());}
+   else if(live!==Number(x.after))throw new Error('Saldo stok berubah dari nilai sebelum/sesudah penerimaan; pemulihan dihentikan untuk '+key+'.');
+  }else stock.appendRow([x.stockId,x.productId,x.variationId,x.after,x.productMin,new Date()]);
+  if(x.variationId){const v=findRowById_(vars,String(x.variationId),1);if(!v)throw new Error('Variasi tidak ditemukan saat pemulihan penerimaan.');const mirror=Number(v.values[5]);if(mirror===Number(x.before)||mirror!==Number(x.after))vars.getRange(v.rowNumber,6,1,3).setValues([[x.after,String(v.values[6]||'AKTIF'),new Date()]]);}
+  const d=detailRows.find(function(r){return String(r[0])===String(x.detailId);});
+  if(d){if(String(d[1])!==receiptId||String(d[2])!==String(x.productId)||String(d[3]||'')!==String(x.variationId||'')||Number(d[4])!==Number(x.qty))throw new Error('Detail penerimaan tidak cocok; pemulihan dihentikan.');}
+  else detailSheet.appendRow([x.detailId,receiptId,x.productId,x.variationId,x.qty,x.before,x.after,payload.note||'']);
+  const m=mutationRows.find(function(r){return String(r[0])===String(x.mutationId);});
+  if(m){if(String(m[7])!==receiptId||String(m[1])!==String(x.productId)||Number(m[4])!==Number(x.qty)||Number(m[5])!==Number(x.before)||Number(m[6])!==Number(x.after))throw new Error('Mutasi penerimaan tidak cocok; pemulihan dihentikan.');}
+  else mutationSheet.appendRow([x.mutationId,x.productId,x.variationId,'MASUK',x.qty,x.before,x.after,receiptId,'Penerimaan '+payload.receiptNumber+(payload.note?' · '+payload.note:''),String(actor||'SYSTEM'),new Date()]);
+ });
+ const audit=readRows_(ss.getSheetByName('AuditLog'));
+ if(!audit.some(function(r){return String(r[3]).toUpperCase()==='CREATE_STOCK_RECEIPT'&&String(r[4]).toUpperCase()==='PENERIMAAN_BARANG'&&String(r[5])===receiptId;}))
+  writeAudit_(actor||payload.createdBy,actorRole||'GUDANG','CREATE_STOCK_RECEIPT','PENERIMAAN_BARANG',receiptId,'',JSON.stringify({receiptNumber:payload.receiptNumber,supplier:payload.supplier,reference:payload.reference,items:payload.items}),'Mencatat penerimaan barang');
+ SpreadsheetApp.flush();return {ok:true,id:receiptId,number:payload.receiptNumber,totalLines:payload.items.length,totalQty:payload.items.reduce(function(n,x){return n+Number(x.qty);},0)};
 }
 
-/** Notifikasi pribadi Wali; hanya notifikasi milik sesi aktif yang dikembalikan. */
+/** Satu checkout menghasilkan satu pesanan untuk satu santri dan hanya item terpilih. */
+function checkoutCart(token,santriId,selectedCartIds,catatan,metodePengiriman,tujuan,requestKey){
+ const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
+ santriId=String(santriId||'').trim();selectedCartIds=Array.isArray(selectedCartIds)?Array.from(new Set(selectedCartIds.map(x=>String(x||'').trim()).filter(Boolean))):[];
+ catatan=String(catatan||'').trim().slice(0,500);metodePengiriman=String(metodePengiriman||'AMBIL_FMART').trim().toUpperCase();tujuan=String(tujuan||'').trim().slice(0,500);requestKey=String(requestKey||'').trim();
+ if(!/^[A-Za-z0-9_-]{12,80}$/.test(requestKey))throw new Error('Kunci checkout tidak valid. Muat ulang checkout dan coba kembali.');
+ if(!santriId)throw new Error('Santri tujuan belum dipilih.');if(!selectedCartIds.length)throw new Error('Pilih minimal satu barang untuk checkout.');
+ if(['AMBIL_FMART','ANTAR_PESANTREN'].indexOf(metodePengiriman)<0)throw new Error('Metode pengiriman tidak valid.');
+ if(metodePengiriman==='ANTAR_PESANTREN'&&!tujuan)throw new Error('Titik atau pihak penerima wajib diisi untuk pengantaran.');
+ const fingerprint=sha256Hex_(JSON.stringify({userId:session.userId,santriId:santriId,selectedCartIds:selectedCartIds.slice().sort(),note:catatan,shippingMethod:metodePengiriman,requestedDestination:tujuan}));
+ const lock=LockService.getScriptLock();lock.waitLock(15000);
+ try{
+  const ss=getSS_(),sheet=ss.getSheetByName('Pesanan'),rows=readRows_(sheet),prior=rows.map((r,i)=>({values:r,rowNumber:i+2})).find(x=>String(x.values[12]||'')===requestKey);
+  if(prior){
+   if(String(prior.values[2])!==String(session.userId))throw new Error('Kunci checkout sudah digunakan transaksi lain.');
+   if(String(prior.values[13]||'')!==fingerprint)throw new Error('Kunci checkout pernah dipakai untuk rincian berbeda. Muat ulang keranjang.');
+   let payload;try{payload=JSON.parse(String(prior.values[14]||'{}'));}catch(e){throw new Error('Payload pemulihan checkout tidak dapat dibaca. Hubungi Admin FMart.');}
+   const child=assertWaliChild_(ss,session.userId,santriId),result=completeCheckoutOrder_(ss,prior,payload,session.userId,session.role);result.child=child;result.recovered=true;return result;
+  }
+  expireStockReservations_(ss,new Date());const child=assertWaliChild_(ss,session.userId,santriId),cart=ss.getSheetByName('Keranjang'),cartRows=readRows_(cart),wanted=Object.create(null),selected=[];
+  selectedCartIds.forEach(x=>wanted[x]=true);cartRows.forEach((r,i)=>{if(String(r[1])===session.userId&&wanted[String(r[0])])selected.push(r);});
+  if(selected.length!==selectedCartIds.length)throw new Error('Sebagian barang keranjang tidak ditemukan. Muat ulang keranjang.');
+  const items=selected.map(r=>{const q=Math.max(0,Math.floor(Number(r[5])||0)),p=getProductSnapshot_(ss,r[3],r[4]);return {productId:String(r[3]),variationId:String(r[4]||''),qty:q,active:!!(p&&p.active),unitPrice:p?p.unitPrice:0,sku:p?p.sku:'',name:p?p.name:'Produk tidak tersedia',variationName:p?p.variationName:''};});
+  const invalid=items.find(x=>!x.active||x.qty<1);if(!items.length||invalid)throw new Error(invalid?'Produk "'+invalid.name+'" tidak tersedia. Silakan periksa keranjang.':'Barang yang dipilih tidak ditemukan di keranjang.');
+  const subtotal=items.reduce((n,x)=>n+x.unitPrice*x.qty,0),ongkir=0,diskon=0,total=subtotal+ongkir-diskon,now=new Date(),id=makeFMartId_('ORD');
+  const number='FM-'+Utilities.formatDate(now,FMART_DB.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Math.floor(1000+Math.random()*9000),destination=metodePengiriman==='ANTAR_PESANTREN'?tujuan:('Pengambilan langsung di FMart'+(tujuan?' — '+tujuan:''));
+  const payload={userId:session.userId,santriId:santriId,selectedCartIds:selectedCartIds,orderNumber:number,total:total,shippingMethod:metodePengiriman,shippingDestination:destination,requestedDestination:tujuan,createdAt:now.toISOString(),items:items.map(x=>({detailId:makeFMartId_('DTL'),productId:x.productId,variationId:x.variationId,qty:x.qty,unitPrice:x.unitPrice,sku:x.sku,name:x.name,variationName:x.variationName})),shipmentId:makeFMartId_('SHP')};
+  const row=[id,number,session.userId,santriId,subtotal,ongkir,diskon,total,'MENUNGGU_PEMBAYARAN',catatan,now,now,requestKey,fingerprint,JSON.stringify(payload)];
+  sheet.appendRow(row);const result=completeCheckoutOrder_(ss,{values:row,rowNumber:sheet.getLastRow()},payload,session.userId,session.role);result.child=child;return result;
+ }finally{lock.releaseLock();}
+}
+
 function getMyNotifications(token) {
   const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.PETUGAS_PENGANTAR]);
   const rows=readRows_(getSS_().getSheetByName('Notifikasi')).filter(function(r){return String(r[1]||'')===String(session.userId);}).sort(function(a,b){return new Date(b[7]||0).getTime()-new Date(a[7]||0).getTime();});
@@ -1083,45 +1119,30 @@ function getOperationsOrderDetail(token, orderId) {
   return {ok:true,order:{orderId:String(r[0]),number:String(r[1]),santriId:String(r[3]),childName:santriData?santriData.name:'Anak',className:santriData?santriData.className:'',subtotal:Number(r[4])||0,shipping:Number(r[5])||0,discount:Number(r[6])||0,total:Number(r[7])||0,status:String(r[8]||''),note:String(r[9]||''),createdAt:dateIso_(r[10]),updatedAt:dateIso_(r[11]),payment:payment,shipment:shipment,details:details}};
 }
 
-function submitPayment(token, orderId, method, nominal, fileName, mimeType, base64Data) {
-  const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
-  orderId = String(orderId || '').trim();
-  method = String(method || '').trim().toUpperCase();
-  nominal = Math.round(Number(nominal));
-  if (!orderId || method !== 'QRIS' || !Number.isFinite(nominal) || nominal < 1) throw new Error('FMart hanya menerima pembayaran QRIS.');
-  if (!base64Data) throw new Error('Bukti pembayaran QRIS wajib diunggah.');
-  if (!/^https:\/\//i.test(getSettingValue_('PAYMENT_QRIS_IMAGE_URL'))) throw new Error('QRIS FMart belum dikonfigurasi.');
-  const lock = LockService.getScriptLock(); lock.waitLock(15000);
-  try {
-    const ss = getSS_();expireStockReservations_(ss,new Date());
-    const orderRow = findRowById_(ss.getSheetByName('Pesanan'), orderId, 1);
-    if (!orderRow || String(orderRow.values[2]) !== String(session.userId)) throw new Error('Pesanan tidak ditemukan.');
-    const order = orderRow.values;
-    if (String(order[8] || '').toUpperCase() !== 'MENUNGGU_PEMBAYARAN') throw new Error('Pesanan tidak sedang menunggu pembayaran.');
-    const total = Math.round(Number(order[7]) || 0);
-    if (nominal !== total) throw new Error('Nominal pembayaran harus tepat Rp ' + total.toLocaleString('id-ID') + '.');
-    const paymentSheet = ss.getSheetByName('Pembayaran');
-    const queueLimit=Math.max(1,Number(getSettingValue_('PAYMENT_VERIFICATION_QUEUE_LIMIT'))||50),queueCount=readRows_(paymentSheet).filter(function(r){return String(r[5]||'').toUpperCase()==='MENUNGGU_VERIFIKASI';}).length;
-    if(queueCount>=queueLimit)throw new Error('Antrean verifikasi pembayaran sedang penuh ('+queueLimit+' pengajuan). Silakan coba kembali setelah petugas memproses antrean.');
-    const existing = readRows_(paymentSheet).filter(function(r){ return String(r[1]) === orderId; }).sort(function(a,b){ return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime(); })[0];
-    if (existing && ['MENUNGGU_VERIFIKASI','TERVERIFIKASI'].indexOf(String(existing[5]||'').toUpperCase()) !== -1) throw new Error('Pembayaran untuk pesanan ini sudah diajukan.');
-    const cleanName = sanitizeFileName_(fileName || 'bukti-qris');
-    const mime = String(mimeType || '').toLowerCase();
-    if (!['image/jpeg','image/png','image/webp','application/pdf'].includes(mime)) throw new Error('Format bukti pembayaran harus JPG, PNG, WEBP, atau PDF.');
-    const raw = String(base64Data).replace(/^data:[^;]+;base64,/, '');
-    const bytes = Utilities.base64Decode(raw);
-    if (bytes.length > 5 * 1024 * 1024) throw new Error('Ukuran bukti pembayaran maksimal 5 MB.');
-    const folder = getPaymentProofFolder_();
-    const file = folder.createFile(Utilities.newBlob(bytes, mime, orderId + '-' + cleanName));
-    const buktiUrl = file.getUrl();
-    const now = new Date();
-    const paymentId = makeFMartId_('PAY');
-    paymentSheet.appendRow([paymentId,orderId,'QRIS',nominal,buktiUrl,'MENUNGGU_VERIFIKASI','','',now,now,'APLIKASI',session.userId,'']);
-    writeAudit_(session.userId,session.role,'SUBMIT_PAYMENT','PEMBAYARAN',paymentId,'',JSON.stringify({orderId:orderId,method:'QRIS',nominal:nominal,hasProof:true,buktiSumber:'APLIKASI'}),'Pengajuan pembayaran QRIS dengan bukti');
-    SpreadsheetApp.flush();
-    return getOrderDetail(token, orderId);
-  } finally { lock.releaseLock(); }
+function submitPayment(token,orderId,method,nominal,fileName,mimeType,base64Data,requestKey){
+ const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);orderId=String(orderId||'').trim();method=String(method||'').trim().toUpperCase();nominal=Math.round(Number(nominal));requestKey=String(requestKey||'').trim();
+ if(!/^[A-Za-z0-9_-]{12,80}$/.test(requestKey))throw new Error('Kunci pengajuan pembayaran tidak valid. Silakan coba kembali.');
+ if(!orderId||method!=='QRIS'||!Number.isFinite(nominal)||nominal<1)throw new Error('FMart hanya menerima pembayaran QRIS.');if(!base64Data)throw new Error('Bukti pembayaran QRIS wajib diunggah.');
+ const cleanName=sanitizeFileName_(fileName||'bukti-qris'),mime=String(mimeType||'').toLowerCase();if(!['image/jpeg','image/png','image/webp','application/pdf'].includes(mime))throw new Error('Format bukti pembayaran harus JPG, PNG, WEBP, atau PDF.');
+ const raw=String(base64Data).replace(/^data:[^;]+;base64,/,'');let bytes;try{bytes=Utilities.base64Decode(raw);}catch(e){throw new Error('Data bukti pembayaran tidak valid.');}
+ if(!bytes.length||bytes.length>5*1024*1024)throw new Error('Ukuran bukti pembayaran maksimal 5 MB.');validateUploadedFileSignature_(bytes,mime);const proofHash=sha256Hex_(bytes.join(','));
+ const lock=LockService.getScriptLock();lock.waitLock(15000);
+ try{
+  const ss=getSS_(),order=findRowById_(ss.getSheetByName('Pesanan'),orderId,1);if(!order||String(order.values[2])!==String(session.userId))throw new Error('Pesanan tidak ditemukan.');
+  const ps=ss.getSheetByName('Pembayaran'),payments=readRows_(ps),same=payments.map((r,i)=>({values:r,rowNumber:i+2})).find(x=>String(x.values[13]||'')===requestKey);
+  if(same){const p=same.values;if(String(p[1])!==orderId||String(p[11])!==String(session.userId)||Number(p[3])!==nominal||String(p[2]).toUpperCase()!=='QRIS'||String(p[14]||'')!==proofHash)throw new Error('Kunci pengajuan pembayaran pernah digunakan untuk data berbeda.');if(['MENUNGGU_VERIFIKASI','TERVERIFIKASI'].indexOf(String(p[5]||'').toUpperCase())<0)throw new Error('Pengajuan dengan kunci ini sudah ditolak. Buat pengajuan baru.');return getOrderDetail(token,orderId);}
+  if(String(order.values[8]||'').toUpperCase()!=='MENUNGGU_PEMBAYARAN')throw new Error('Pesanan tidak sedang menunggu pembayaran.');
+  if(!/^https:\/\//i.test(getSettingValue_('PAYMENT_QRIS_IMAGE_URL')))throw new Error('QRIS FMart belum dikonfigurasi.');
+  const total=Math.round(Number(order.values[7])||0);if(nominal!==total)throw new Error('Nominal pembayaran harus tepat Rp '+total.toLocaleString('id-ID')+'.');
+  const limit=Math.max(1,Number(getSettingValue_('PAYMENT_VERIFICATION_QUEUE_LIMIT'))||50);if(payments.filter(r=>String(r[5]||'').toUpperCase()==='MENUNGGU_VERIFIKASI').length>=limit)throw new Error('Antrean verifikasi pembayaran sedang penuh ('+limit+' pengajuan). Silakan coba kembali.');
+  const prior=payments.filter(r=>String(r[1])===orderId).sort((a,b)=>new Date(b[8]||0)-new Date(a[8]||0))[0];if(prior&&['MENUNGGU_VERIFIKASI','TERVERIFIKASI'].indexOf(String(prior[5]||'').toUpperCase())>=0)throw new Error('Pembayaran untuk pesanan ini sudah diajukan.');
+  const folder=getPaymentProofFolder_(),driveName=orderId+'-'+requestKey+'-'+cleanName,marker='FMART_PAYMENT|'+orderId+'|'+requestKey+'|'+proofHash,file=getOrCreateTransactionProofFile_(folder,driveName,mime,bytes,marker),now=new Date(),paymentId=makeFMartId_('PAY');
+  ps.appendRow([paymentId,orderId,'QRIS',nominal,file.getUrl(),'MENUNGGU_VERIFIKASI','','',now,now,'APLIKASI',session.userId,'',requestKey,proofHash]);
+  writeAudit_(session.userId,session.role,'SUBMIT_PAYMENT','PEMBAYARAN',paymentId,'',JSON.stringify({orderId:orderId,method:'QRIS',nominal:nominal,hasProof:true,proofHash:proofHash}),'Pengajuan pembayaran QRIS dengan bukti');
+  SpreadsheetApp.flush();return getOrderDetail(token,orderId);
+ }finally{lock.releaseLock();}
 }
+
 function getPaymentSettings(token) {
   requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.SUPERADMIN]);
   return {ok:true,bankName:getSettingValue_('PAYMENT_BANK_NAME'),accountNumber:getSettingValue_('PAYMENT_ACCOUNT_NUMBER'),accountName:getSettingValue_('PAYMENT_ACCOUNT_NAME'),adminWhatsapp:getSettingValue_('PAYMENT_ADMIN_WHATSAPP'),qrisImageUrl:getSettingValue_('PAYMENT_QRIS_IMAGE_URL')};
@@ -1572,37 +1593,30 @@ function getStockCardReport(token, productId, variationId, startDate, endDate) {
 }
 
 /** Fase 6: laporan operasional terhitung dari data transaksi aktual. */
-function getFMartReports(token, startDate, endDate) {
-  const session = requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
-  const ss=getSS_();
-  const start=parseReportDate_(startDate,false), end=parseReportDate_(endDate,true);
-  if(end<start) throw new Error('Periode laporan tidak valid.');
-  const orders=readRows_(ss.getSheetByName('Pesanan')).filter(r=>inReportRange_(r[10],start,end));
-  const details=readRows_(ss.getSheetByName('DetailPesanan'));
-  const allPayments=readRows_(ss.getSheetByName('Pembayaran'));
-  const payments=allPayments.filter(r=>inReportRange_(r[8],start,end));
-  const santri=readSantriRows_(ss.getSheetByName('Santri')); const users=readRows_(ss.getSheetByName('Users')); const products=readRows_(ss.getSheetByName('Produk')); const cats=readRows_(ss.getSheetByName('Kategori')); const mutasi=readRows_(ss.getSheetByName('MutasiStok')).filter(r=>inReportRange_(r[10],start,end));
-  const santriMap=getSantriColumnMap_(ss.getSheetByName('Santri'));
-  const childMap={};santri.forEach(r=>{const child=santriRecord_(r,santriMap);if(child.id)childMap[child.id]=child.name;});
-  const userMap={};users.forEach(r=>userMap[String(r[0])]=String(r[4]||''));
-  const productMap={};products.forEach(r=>productMap[String(r[0])]=String(r[3]||''));
-  const catMap={};cats.forEach(r=>catMap[String(r[0])]=String(r[1]||''));
-  const paidOrderIds={};allPayments.forEach(r=>{if(String(r[5]||'').toUpperCase()==='TERVERIFIKASI')paidOrderIds[String(r[1])]=true;});
-  const statusCounts={}; orders.forEach(r=>{const st=String(r[8]||'').toUpperCase();statusCounts[st]=(statusCounts[st]||0)+1;});
-  const salesOrders=orders.filter(r=>String(r[8]||'').toUpperCase()!=='DIBATALKAN');
-  const gross=salesOrders.reduce((n,r)=>n+(Number(r[7])||0),0);
-  const paid=salesOrders.filter(r=>paidOrderIds[String(r[0])]).reduce((n,r)=>n+(Number(r[7])||0),0);
-  const categorySales={}; const productSales={};
-  details.forEach(d=>{const order=orders.find(o=>String(o[0])===String(d[1])); if(!order || String(order[8]||'').toUpperCase()==='DIBATALKAN') return; const qty=Math.max(0,Number(d[8])||0), sub=Math.max(0,Number(d[9])||0), pid=String(d[2]||''), p=products.find(x=>String(x[0])===pid); const cat=p?String(p[1]||''):''; const cn=catMap[cat]||'Tanpa Kategori'; categorySales[cn]=(categorySales[cn]||0)+sub; const pn=productMap[pid]||String(d[5]||'Produk'); if(!productSales[pn])productSales[pn]={name:pn,qty:0,amount:0}; productSales[pn].qty+=qty;productSales[pn].amount+=sub;});
-  const paymentMethods={}; payments.filter(r=>String(r[5]||'').toUpperCase()==='TERVERIFIKASI').forEach(r=>{const m=String(r[2]||'Lainnya');paymentMethods[m]=(paymentMethods[m]||0)+(Number(r[3])||0);});
-  const stockIn=mutasi.filter(r=>String(r[3]||'').toUpperCase()==='MASUK').reduce((n,r)=>n+(Number(r[4])||0),0);
-  const stockOut=mutasi.filter(r=>String(r[3]||'').toUpperCase()==='KELUAR').reduce((n,r)=>n+(Number(r[4])||0),0);
-  const daily={}; orders.forEach(r=>{if(String(r[8]||'').toUpperCase()==='DIBATALKAN')return;const key=formatReportDay_(r[10]);if(!daily[key])daily[key]={date:key,orders:0,amount:0};daily[key].orders++;daily[key].amount+=Number(r[7])||0;});
-  const topProducts=Object.keys(productSales).map(k=>productSales[k]).sort((a,b)=>b.amount-a.amount).slice(0,10);
-  return {ok:true,period:{start:start.toISOString(),end:end.toISOString()},summary:{orders:orders.length,activeOrders:orders.filter(r=>!['DITERIMA','DIBATALKAN'].includes(String(r[8]||'').toUpperCase())).length,gross:gross,paid:paid,unpaid:Math.max(0,gross-paid),averageOrder:salesOrders.length?Math.round(gross/salesOrders.length):0,stockIn:stockIn,stockOut:stockOut},statusCounts:statusCounts,categorySales:Object.keys(categorySales).map(k=>({name:k,amount:categorySales[k]})).sort((a,b)=>b.amount-a.amount),paymentMethods:Object.keys(paymentMethods).map(k=>({name:k,amount:paymentMethods[k]})).sort((a,b)=>b.amount-a.amount),daily:Object.keys(daily).sort().map(k=>daily[k]),topProducts:topProducts,generatedAt:new Date().toISOString(),generatedBy:{userId:session.userId,nama:session.nama}};
+function getFMartReports(token,startDate,endDate){
+ const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]),ss=getSS_(),start=parseReportDate_(startDate,false),end=parseReportDate_(endDate,true);if(end<start)throw new Error('Periode laporan tidak valid.');
+ const orders=readRows_(ss.getSheetByName('Pesanan')).filter(r=>inReportRange_(r[10],start,end)),details=readRows_(ss.getSheetByName('DetailPesanan')),allPayments=readRows_(ss.getSheetByName('Pembayaran')),payments=allPayments.filter(r=>inReportRange_(r[8],start,end));
+ const posSales=readRows_(ss.getSheetByName('PenjualanToko')).filter(r=>inReportRange_(r[15],start,end)&&String(r[12]||'').toUpperCase()!=='DIBATALKAN'),posDetails=readRows_(ss.getSheetByName('DetailPenjualanToko'));
+ const products=readRows_(ss.getSheetByName('Produk')),cats=readRows_(ss.getSheetByName('Kategori')),warehouse=readRows_(ss.getSheetByName('MutasiStok')).filter(r=>inReportRange_(r[10],start,end)),cashier=readRows_(ss.getSheetByName('MutasiStokKasir')).filter(r=>inReportRange_(r[10],start,end));
+ const pmap=Object.create(null),cmap=Object.create(null),pby=Object.create(null);products.forEach(r=>{pmap[String(r[0])]=String(r[3]||'');pby[String(r[0])]=r;});cats.forEach(r=>cmap[String(r[0])]=String(r[1]||''));
+ const paidIds=Object.create(null);allPayments.forEach(r=>{if(String(r[5]||'').toUpperCase()==='TERVERIFIKASI')paidIds[String(r[1])]=true;});
+ const status=Object.create(null);orders.forEach(r=>{const s=String(r[8]||'').toUpperCase();status[s]=(status[s]||0)+1;});
+ const validOrders=orders.filter(r=>String(r[8]||'').toUpperCase()!=='DIBATALKAN'),gross=validOrders.reduce((n,r)=>n+(Number(r[7])||0),0),paid=validOrders.filter(r=>paidIds[String(r[0])]).reduce((n,r)=>n+(Number(r[7])||0),0);
+ const posPaid=posSales.filter(r=>String(r[11]||'').toUpperCase()==='LUNAS'),posGross=posSales.reduce((n,r)=>n+(Number(r[7])||0),0),posPaidTotal=posPaid.reduce((n,r)=>n+(Number(r[7])||0),0);
+ const categories=Object.create(null),productSales=Object.create(null);
+ function addDetail(d,include){if(!include)return;const q=Math.max(0,Number(d[8])||0),amount=Math.max(0,Number(d[9])||0),pid=String(d[2]||''),p=pby[pid],cat=p?String(p[1]||''):'';const cn=cmap[cat]||'Tanpa Kategori';categories[cn]=(categories[cn]||0)+amount;const name=pmap[pid]||String(d[5]||'Produk');if(!productSales[name])productSales[name]={name:name,qty:0,amount:0};productSales[name].qty+=q;productSales[name].amount+=amount;}
+ const orderIds=Object.create(null);validOrders.forEach(r=>orderIds[String(r[0])]=true);details.forEach(d=>addDetail(d,!!orderIds[String(d[1])]));const posIds=Object.create(null);posPaid.forEach(r=>posIds[String(r[0])]=true);posDetails.forEach(d=>addDetail(d,!!posIds[String(d[1])]));
+ const methods=Object.create(null);payments.filter(r=>String(r[5]||'').toUpperCase()==='TERVERIFIKASI').forEach(r=>{const m=String(r[2]||'Lainnya');methods[m]=(methods[m]||0)+(Number(r[3])||0);});posPaid.forEach(r=>{const m=String(r[8]||'Lainnya');methods[m]=(methods[m]||0)+(Number(r[7])||0);});
+ const sum=(rows,type)=>rows.filter(r=>String(r[3]||'').toUpperCase()===type).reduce((n,r)=>n+(Number(r[4])||0),0);
+ const inWh=sum(warehouse,'MASUK'),outWh=sum(warehouse,'KELUAR'),inCash=sum(cashier,'MASUK'),outCash=sum(cashier,'KELUAR'),daily=Object.create(null);
+ function addDay(date,amount,isPos){const key=formatReportDay_(date);if(!daily[key])daily[key]={date:key,orders:0,posSales:0,amount:0};if(isPos)daily[key].posSales++;else daily[key].orders++;daily[key].amount+=Number(amount)||0;}
+ validOrders.forEach(r=>addDay(r[10],r[7],false));posPaid.forEach(r=>addDay(r[15],r[7],true));
+ return {ok:true,period:{start:start.toISOString(),end:end.toISOString(),timezone:'Asia/Jakarta',dateField:'CreatedAt'},
+ summary:{orders:orders.length,activeOrders:orders.filter(r=>!['DITERIMA','DIBATALKAN'].includes(String(r[8]||'').toUpperCase())).length,gross:gross,paid:paid,unpaid:Math.max(0,gross-paid),averageOrder:validOrders.length?Math.round(gross/validOrders.length):0,posSales:posSales.length,posGross:posGross,posPaid:posPaidTotal,stockIn:inWh+inCash,stockOut:outWh+outCash,stockInWarehouse:inWh,stockOutWarehouse:outWh,stockInCashier:inCash,stockOutCashier:outCash},
+ statusCounts:status,categorySales:Object.keys(categories).map(k=>({name:k,amount:categories[k]})).sort((a,b)=>b.amount-a.amount),paymentMethods:Object.keys(methods).map(k=>({name:k,amount:methods[k]})).sort((a,b)=>b.amount-a.amount),
+ daily:Object.keys(daily).sort().map(k=>daily[k]),topProducts:Object.keys(productSales).map(k=>productSales[k]).sort((a,b)=>b.amount-a.amount).slice(0,10),generatedAt:new Date().toISOString(),generatedBy:{userId:session.userId,nama:session.nama}};
 }
 
-/** Laporan audit untuk Admin/Superadmin. Hanya metadata aman yang dikirim ke UI; BeforeData/AfterData tidak diekspos. */
 function getFMartAuditLog(token, startDate, endDate, roleFilter, actionFilter, searchText, limit) {
   requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
   const start=parseReportDate_(startDate,false), end=parseReportDate_(endDate,true);
@@ -1633,15 +1647,14 @@ function getFMartAuditLog(token, startDate, endDate, roleFilter, actionFilter, s
 }
 
 function parseReportDate_(value,endOfDay){
-  const text=String(value||'').trim();
-  if(!/^\d{4}-\d{2}-\d{2}(?![\s\S])/.test(text)) throw new Error('Tanggal laporan tidak valid.');
-  const parts=text.split('-').map(Number); const d=new Date(parts[0],parts[1]-1,parts[2],endOfDay?23:0,endOfDay?59:0,endOfDay?59:0,endOfDay?999:0);
-  if(!Number.isFinite(d.getTime())||d.getFullYear()!==parts[0]||d.getMonth()!==parts[1]-1||d.getDate()!==parts[2]) throw new Error('Tanggal laporan tidak valid.'); return d;
+ const text=String(value||'').trim();if(!/^\d{4}-\d{2}-\d{2}$/.test(text))throw new Error('Tanggal laporan tidak valid.');
+ const p=text.split('-').map(Number),d=new Date(text+(endOfDay?'T23:59:59.999+07:00':'T00:00:00.000+07:00'));
+ if(!Number.isFinite(d.getTime())||d.getUTCFullYear()!==p[0]||d.getUTCMonth()!==p[1]-1||d.getUTCDate()!==p[2])throw new Error('Tanggal laporan tidak valid.');return d;
 }
-function inReportRange_(value,start,end){if(!value)return false;const t=new Date(value).getTime();return isFinite(t)&&t>=start.getTime()&&t<=end.getTime();}
-function formatReportDay_(value){const d=new Date(value);return Utilities.formatDate(d,Session.getScriptTimeZone()||'Asia/Jakarta','yyyy-MM-dd');}
 
-/** Fase 6: status koneksi integrasi Tabungan. Tidak menulis ke sistem eksternal. */
+function inReportRange_(value,start,end){if(!value)return false;const t=new Date(value).getTime();return isFinite(t)&&t>=start.getTime()&&t<=end.getTime();}
+function formatReportDay_(value){return Utilities.formatDate(new Date(value),FMART_DB.TIMEZONE||'Asia/Jakarta','yyyy-MM-dd');}
+
 function getFMartIntegrationStatus(token){
   const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
   const id=PropertiesService.getScriptProperties().getProperty('FMART_INTEGRATION_TABUNGAN_SPREADSHEET_ID')||getSettingValue_('INTEGRATION_TABUNGAN_SPREADSHEET_ID')||'';
@@ -1775,76 +1788,37 @@ function getStockReceivingData(token) {
   return {ok:true,products:products,receipts:receipts};
 }
 
-function createStockReceipt(token, payload) {
-  const session=requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
-  payload=payload&&typeof payload==='object'?payload:{};
-  const supplier=String(payload.supplier||'').trim().slice(0,120);
-  const reference=String(payload.reference||'').trim().slice(0,100);
-  const note=String(payload.note||'').trim().slice(0,500);
-  const receivedDate=String(payload.receivedDate||'').trim();
-  const rawItems=Array.isArray(payload.items)?payload.items:[];
-  if(!supplier)throw new Error('Nama pemasok atau asal barang wajib diisi.');
-  if(rawItems.length<1||rawItems.length>100)throw new Error('Tambahkan minimal satu item penerimaan dan maksimal 100 baris.');
-  let receivedAt=new Date();
-  if(receivedDate){
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(receivedDate))throw new Error('Tanggal penerimaan tidak valid.');
-    const parts=receivedDate.split('-').map(Number);receivedAt=new Date(parts[0],parts[1]-1,parts[2],12,0,0);
-    if(isNaN(receivedAt.getTime())||receivedAt.getFullYear()!==parts[0]||receivedAt.getMonth()!==parts[1]-1||receivedAt.getDate()!==parts[2])throw new Error('Tanggal penerimaan tidak valid.');
-  }
-  const grouped={};
-  rawItems.forEach(function(item){
-    const productId=String(item&&item.productId||'').trim(),variationId=String(item&&item.variationId||'').trim(),qty=Number(item&&item.qty);
-    if(!productId||!Number.isInteger(qty)||qty<1)throw new Error('Setiap item harus memiliki produk dan jumlah bilangan bulat minimal 1.');
-    const key=productId+'|'+variationId;
-    if(!grouped[key])grouped[key]={productId:productId,variationId:variationId,qty:0};
-    grouped[key].qty+=qty;
-    if(!Number.isSafeInteger(grouped[key].qty))throw new Error('Jumlah penerimaan terlalu besar.');
+function createStockReceipt(token,payload){
+ const session=requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);payload=payload&&typeof payload==='object'?payload:{};
+ const supplier=String(payload.supplier||'').trim().slice(0,120),reference=String(payload.reference||'').trim().slice(0,100),note=String(payload.note||'').trim().slice(0,500);
+ const receivedDate=String(payload.receivedDate||'').trim(),rawItems=Array.isArray(payload.items)?payload.items:[],requestKey=String(payload.requestKey||'').trim();
+ if(!/^[A-Za-z0-9_-]{12,80}$/.test(requestKey))throw new Error('Kunci penerimaan tidak valid. Muat ulang formulir dan coba kembali.');
+ if(!supplier)throw new Error('Nama pemasok atau asal barang wajib diisi.');
+ if(rawItems.length<1||rawItems.length>100)throw new Error('Tambahkan minimal satu item penerimaan dan maksimal 100 baris.');
+ let receivedAt=new Date();if(receivedDate){if(!/^\d{4}-\d{2}-\d{2}$/.test(receivedDate))throw new Error('Tanggal penerimaan tidak valid.');const p=receivedDate.split('-').map(Number);receivedAt=new Date(p[0],p[1]-1,p[2],12);if(isNaN(receivedAt.getTime())||receivedAt.getFullYear()!==p[0]||receivedAt.getMonth()!==p[1]-1||receivedAt.getDate()!==p[2])throw new Error('Tanggal penerimaan tidak valid.');}
+ const grouped=Object.create(null);rawItems.forEach(x=>{const pid=String(x&&x.productId||'').trim(),vid=String(x&&x.variationId||'').trim(),qty=Number(x&&x.qty);if(!pid||!Number.isInteger(qty)||qty<1)throw new Error('Setiap item harus memiliki produk dan jumlah bilangan bulat minimal 1.');const k=pid+'|'+vid;if(!grouped[k])grouped[k]={productId:pid,variationId:vid,qty:0};grouped[k].qty+=qty;if(!Number.isSafeInteger(grouped[k].qty))throw new Error('Jumlah penerimaan terlalu besar.');});
+ const input={supplier:supplier,reference:reference,note:note,receivedDate:receivedDate,items:Object.keys(grouped).sort().map(k=>grouped[k])},fingerprint=sha256Hex_(JSON.stringify(input));
+ const lock=LockService.getScriptLock();lock.waitLock(15000);
+ try{
+  const ss=getSS_();ensureReceivingSheets_(ss);const receiptSheet=ss.getSheetByName('PenerimaanBarang'),existing=readRows_(receiptSheet).map((r,i)=>({values:r,rowNumber:i+2})).find(x=>String(x.values[10]||'')===requestKey);
+  if(existing){if(String(existing.values[11]||'')!==fingerprint)throw new Error('Kunci penerimaan pernah dipakai untuk data berbeda. Buat permintaan baru.');let saved;try{saved=JSON.parse(String(existing.values[12]||'{}'));}catch(e){throw new Error('Payload pemulihan penerimaan tidak dapat dibaca. Hubungi Admin.');}const done=completeStockReceipt_(ss,existing,saved,session.userId,session.role);const queued=processPendingStockOrders_(ss,session.userId,'PENERIMAAN_BARANG',session.role);done.ordersReleased=queued.processed;done.recovered=true;return done;}
+  const products=readRows_(ss.getSheetByName('Produk')),variations=readRows_(ss.getSheetByName('VariasiProduk')),stocks=readRows_(ss.getSheetByName('Stok'));
+  const prepared=input.items.map(item=>{
+   const p=products.find(r=>String(r[0])===item.productId);if(!p||String(p[8]||'').toUpperCase()!=='AKTIF')throw new Error('Produk tidak ditemukan atau tidak aktif.');
+   const activeVars=variations.filter(v=>String(v[1])===item.productId&&String(v[6]||'').toUpperCase()==='AKTIF');if(activeVars.length&&!item.variationId)throw new Error('Pilih variasi untuk produk '+String(p[3]||'')+'.');
+   let v=null;if(item.variationId){v=variations.find(x=>String(x[0])===item.variationId&&String(x[1])===item.productId);if(!v||String(v[6]||'').toUpperCase()!=='AKTIF')throw new Error('Variasi tidak valid atau tidak aktif.');}
+   const matches=stocks.filter(r=>String(r[1])===item.productId&&String(r[2]||'')===item.variationId);if(matches.length>1)throw new Error('Ditemukan baris stok ganda. Penerimaan dihentikan.');
+   const before=matches.length?Number(matches[0][3]):(v?Number(v[5]):0);if(!Number.isSafeInteger(before)||before<0)throw new Error('Saldo stok awal tidak valid.');
+   const after=before+item.qty;if(!Number.isSafeInteger(after))throw new Error('Hasil stok terlalu besar.');
+   return {productId:item.productId,variationId:item.variationId,qty:item.qty,before:before,after:after,productMin:Math.max(0,Number(p[6])||0),detailId:makeFMartId_('DRC'),mutationId:makeFMartId_('MUT'),stockId:makeFMartId_('STK')};
   });
-  const items=Object.keys(grouped).map(function(k){return grouped[k];});
-  const lock=LockService.getScriptLock();lock.waitLock(10000);
-  try{
-    const ss=getSS_();ensureReceivingSheets_(ss);
-    const productSheet=ss.getSheetByName('Produk'),variationSheet=ss.getSheetByName('VariasiProduk'),stockSheet=ss.getSheetByName('Stok');
-    const productRows=readRows_(productSheet),variationRows=readRows_(variationSheet),stockRows=readRows_(stockSheet);
-    const prepared=items.map(function(item){
-      const product=productRows.find(function(r){return String(r[0])===item.productId;});
-      if(!product||String(product[8]||'').toUpperCase()!=='AKTIF')throw new Error('Produk tidak ditemukan atau tidak aktif.');
-      const activeVariations=variationRows.filter(function(v){return String(v[1])===item.productId&&String(v[6]||'').toUpperCase()==='AKTIF';});
-      if(activeVariations.length&&!item.variationId)throw new Error('Pilih variasi untuk produk '+String(product[3]||'')+'.');
-      let variation=null;
-      if(item.variationId){variation=variationRows.find(function(v){return String(v[0])===item.variationId&&String(v[1])===item.productId;});if(!variation||String(variation[6]||'').toUpperCase()!=='AKTIF')throw new Error('Variasi tidak valid atau tidak aktif untuk produk '+String(product[3]||'')+'.');}
-      const stockMatches=[];stockRows.forEach(function(r,index){if(String(r[1])===item.productId&&String(r[2]||'')===item.variationId)stockMatches.push(index);});
-      if(stockMatches.length>1)throw new Error('Ditemukan baris stok ganda untuk '+String(product[3]||'produk')+'. Penerimaan dihentikan sampai data Gudang diperiksa.');
-      const stockIndex=stockMatches.length?stockMatches[0]:-1;
-      const rawBefore=stockIndex>=0?Number(stockRows[stockIndex][3]):(variation?Number(variation[5]):0);
-      if(!Number.isSafeInteger(rawBefore)||rawBefore<0)throw new Error('Saldo stok awal tidak valid untuk '+String(product[3]||'produk')+'.');
-      const before=rawBefore,after=before+item.qty;
-      if(!Number.isSafeInteger(after))throw new Error('Hasil stok terlalu besar.');
-      return {productId:item.productId,variationId:item.variationId,qty:item.qty,product:product,variation:variation,stockIndex:stockIndex,before:before,after:after};
-    });
-    prepared.forEach(function(x){
-      if(x.stockIndex>=0){
-        const live=Number(stockSheet.getRange(x.stockIndex+2,4).getValue());
-        if(!Number.isSafeInteger(live)||live!==x.before)throw new Error('Saldo stok berubah saat penerimaan diproses. Muat ulang data Gudang.');
-      }
-    });
-    const now=new Date(),receiptId=makeFMartId_('RCV'),receiptNumber='PN-'+Utilities.formatDate(now,Session.getScriptTimeZone(),'yyyyMMdd-HHmmss')+'-'+Utilities.getUuid().slice(0,4).toUpperCase();
-    const totalQty=prepared.reduce(function(sum,x){return sum+x.qty;},0);if(!Number.isSafeInteger(totalQty))throw new Error('Total jumlah penerimaan terlalu besar.');
-    const receiptSheet=ss.getSheetByName('PenerimaanBarang'),detailSheet=ss.getSheetByName('DetailPenerimaanBarang'),mutationSheet=ss.getSheetByName('MutasiStok');
-    if(!receiptSheet||!detailSheet||!mutationSheet)throw new Error('Sheet penerimaan atau mutasi belum tersedia.');
-    receiptSheet.appendRow([receiptId,receiptNumber,supplier,reference,receivedAt,note,prepared.length,totalQty,session.userId,now]);
-    detailSheet.getRange(detailSheet.getLastRow()+1,1,prepared.length,8).setValues(prepared.map(function(x){return [makeFMartId_('DRC'),receiptId,x.productId,x.variationId,x.qty,x.before,x.after,''];}));
-    prepared.forEach(function(x){
-      if(x.stockIndex>=0){stockSheet.getRange(x.stockIndex+2,4).setValue(x.after);stockSheet.getRange(x.stockIndex+2,6).setValue(now);}
-      else stockSheet.appendRow([makeFMartId_('STK'),x.productId,x.variationId,x.after,Math.max(0,Number(x.product[6])||0),now]);
-      if(x.variation){const row=variationRows.find(function(v){return String(v[0])===x.variationId;});const rowNumber=variationRows.indexOf(row)+2;variationSheet.getRange(rowNumber,6,1,3).setValues([[x.after,'AKTIF',now]]);}
-      mutationSheet.appendRow([makeFMartId_('MUT'),x.productId,x.variationId,'MASUK',x.qty,x.before,x.after,receiptId,'Penerimaan '+receiptNumber+(note?' · '+note:''),session.userId,now]);
-    });
-    writeAudit_(session.userId,session.role,'CREATE_STOCK_RECEIPT','PENERIMAAN_BARANG',receiptId,'',JSON.stringify({receiptNumber:receiptNumber,supplier:supplier,reference:reference,items:prepared.map(function(x){return {productId:x.productId,variationId:x.variationId,qty:x.qty,before:x.before,after:x.after};})}),'Mencatat penerimaan barang');
-    SpreadsheetApp.flush();
-    const queueResult=processPendingStockOrders_(ss,session.userId,'PENERIMAAN_BARANG',session.role);
-     return {ok:true,id:receiptId,number:receiptNumber,totalLines:prepared.length,totalQty:totalQty,ordersReleased:queueResult.processed};
-  }finally{lock.releaseLock();}
+  stocks.forEach((r)=>{});const now=new Date(),receiptId=makeFMartId_('RCV'),receiptNumber='PN-'+Utilities.formatDate(now,FMART_DB.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Utilities.getUuid().slice(0,4).toUpperCase();
+  const saved={supplier:supplier,reference:reference,note:note,receivedAt:receivedAt.toISOString(),createdAt:now.toISOString(),createdBy:session.userId,receiptNumber:receiptNumber,items:prepared};
+  const totalQty=prepared.reduce((n,x)=>n+x.qty,0);if(!Number.isSafeInteger(totalQty))throw new Error('Total jumlah penerimaan terlalu besar.');
+  const row=[receiptId,receiptNumber,supplier,reference,receivedAt,note,prepared.length,totalQty,session.userId,now,requestKey,fingerprint,JSON.stringify(saved)];
+  receiptSheet.appendRow(row);const result=completeStockReceipt_(ss,{values:row,rowNumber:receiptSheet.getLastRow()},saved,session.userId,session.role);
+  const queued=processPendingStockOrders_(ss,session.userId,'PENERIMAAN_BARANG',session.role);result.ordersReleased=queued.processed;return result;
+ }finally{lock.releaseLock();}
 }
 
 function getStockCatalog(token) {
@@ -2499,51 +2473,34 @@ function updateDeliveryProgress(token, assignmentId, note) {
  * Tahap 7: unggah bukti foto pengantaran. File disimpan privat di Drive;
  * tenggat konfirmasi Wali dimulai dari waktu unggah yang tercatat server.
  */
-function submitDeliveryProof(token, assignmentId, fileName, mimeType, dataUrl, note) {
-  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);
-  assignmentId=String(assignmentId||'').trim();
-  fileName=sanitizeFileName_(fileName||'bukti-pengantaran');
-  mimeType=String(mimeType||'').toLowerCase().trim();
-  note=String(note||'').trim().slice(0,300);
-  if(!assignmentId||!dataUrl) throw new Error('Foto bukti pengantaran wajib dipilih.');
-  if(['image/jpeg','image/png','image/webp'].indexOf(mimeType)<0) throw new Error('Format foto harus JPG, PNG, atau WEBP.');
-  const raw=String(dataUrl).replace(/^data:[^;]+;base64,/,'');
-  if(!raw||raw.length>14*1024*1024) throw new Error('Data foto tidak valid atau terlalu besar.');
-  const bytes=Utilities.base64Decode(raw);
-  if(!bytes.length||bytes.length>10*1024*1024) throw new Error('Ukuran foto maksimal 10 MB.');
-  const lock=LockService.getScriptLock();lock.waitLock(20000);
-  let createdFile=null;
-  try {
-    const ss=getSS_(),assignmentSheet=ss.getSheetByName('Pengantaran');
-    const found=findRowById_(assignmentSheet,assignmentId,1);
-    if(!found) throw new Error('Penugasan tidak ditemukan.');
-    const row=found.values,orderId=String(row[1]||''),status=String(row[3]||'').toUpperCase();
-    if(String(row[2]||'')!==String(session.userId)) throw new Error('Anda tidak berhak mengunggah bukti untuk tugas ini.');
-    if(status!=='DALAM_PERJALANAN') throw new Error('Bukti hanya dapat diunggah saat pengantaran berlangsung.');
-    const order=findRowById_(ss.getSheetByName('Pesanan'),orderId,1);
-    if(!order||String(order.values[8]||'').toUpperCase()!=='DIANTAR') throw new Error('Pesanan tidak berada dalam status DIANTAR.');
-    const currentShipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);
-    if(!currentShipment||String(currentShipment.method||'').toUpperCase()!=='ANTAR_PESANTREN') throw new Error('Bukti foto hanya berlaku untuk pesanan Antar Pesantren.');
-    const proofSheet=ss.getSheetByName('BuktiPengantaran'),confirmSheet=ss.getSheetByName('KonfirmasiPengantaran');
-    if(!proofSheet||!confirmSheet) throw new Error('Database bukti pengantaran belum tersedia. Jalankan setupFMartDatabase_() terlebih dahulu.');
-    if(readRows_(proofSheet).some(r=>String(r[2]||'')===assignmentId)) throw new Error('Bukti untuk penugasan ini sudah pernah diunggah.');
-    const folder=getDeliveryProofFolder_();
-    const blob=Utilities.newBlob(bytes,mimeType,orderId+'-'+fileName);
-    createdFile=folder.createFile(blob);
-    const now=new Date(),deadline=new Date(now.getTime()+7*24*60*60*1000),proofId=makeFMartId_('BPD');
-    proofSheet.appendRow([proofId,orderId,assignmentId,createdFile.getId(),createdFile.getUrl(),fileName,mimeType,bytes.length,note,session.userId,now]);
-    confirmSheet.appendRow([makeFMartId_('KPG'),orderId,now,deadline,'MENUNGGU_KONFIRMASI','','','',false,now]);
-    const waliId=String(order.values[2]||'');
-    if(waliId) ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),waliId,orderId,'Bukti pengantaran tersedia','Petugas telah mengunggah foto bukti pengantaran untuk pesanan '+String(order.values[1]||orderId)+'. Bukti akan ditampilkan pada detail pesanan.','PENGANTARAN',false,now]);
-    recordDeliveryHistory_(ss,assignmentId,orderId,session,'UNGGAH_BUKTI','DALAM_PERJALANAN','MENUNGGU_KONFIRMASI',note||'Bukti foto pengantaran diunggah');
-    writeAudit_(session.userId,session.role,'UPLOAD_DELIVERY_PROOF','BUKTI_PENGANTARAN',proofId,'',JSON.stringify({orderId:orderId,assignmentId:assignmentId,mimeType:mimeType,sizeBytes:bytes.length,confirmationDeadline:deadline.toISOString()}),'Mengunggah bukti foto pengantaran');
-    SpreadsheetApp.flush();
-    return {ok:true,message:'Bukti pengantaran berhasil diunggah. Wali Santri telah diberi notifikasi.',uploadedAt:now.toISOString(),confirmationDeadline:deadline.toISOString()};
-  } catch(e) {
-    if(createdFile) { try { createdFile.setTrashed(true); } catch(ignore) {} }
-    throw e;
-  } finally {lock.releaseLock();}
+function submitDeliveryProof(token,assignmentId,fileName,mimeType,dataUrl,note){
+ const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);assignmentId=String(assignmentId||'').trim();fileName=sanitizeFileName_(fileName||'bukti-pengantaran');mimeType=String(mimeType||'').toLowerCase().trim();note=String(note||'').trim().slice(0,300);
+ if(!assignmentId||!dataUrl)throw new Error('Foto bukti pengantaran wajib dipilih.');if(['image/jpeg','image/png','image/webp'].indexOf(mimeType)<0)throw new Error('Format foto harus JPG, PNG, atau WEBP.');
+ const raw=String(dataUrl).replace(/^data:[^;]+;base64,/,'');if(!raw||raw.length>14*1024*1024)throw new Error('Data foto tidak valid atau terlalu besar.');
+ let bytes;try{bytes=Utilities.base64Decode(raw);}catch(e){throw new Error('Data foto tidak valid.');}if(!bytes.length||bytes.length>10*1024*1024)throw new Error('Ukuran foto maksimal 10 MB.');
+ validateUploadedFileSignature_(bytes,mimeType);const hash=sha256Hex_(bytes.join(',')),lock=LockService.getScriptLock();lock.waitLock(20000);
+ try{
+  const ss=getSS_(),found=findRowById_(ss.getSheetByName('Pengantaran'),assignmentId,1);if(!found)throw new Error('Penugasan tidak ditemukan.');
+  const row=found.values,orderId=String(row[1]||''),status=String(row[3]||'').toUpperCase();if(String(row[2]||'')!==String(session.userId))throw new Error('Anda tidak berhak mengunggah bukti untuk tugas ini.');
+  const proofSheet=ss.getSheetByName('BuktiPengantaran'),confSheet=ss.getSheetByName('KonfirmasiPengantaran');if(!proofSheet||!confSheet)throw new Error('Database bukti pengantaran belum tersedia. Jalankan setupFMartDatabase_().');
+  const old=readRows_(proofSheet).map((r,i)=>({values:r,rowNumber:i+2})).find(x=>String(x.values[2]||'')===assignmentId);
+  if(old&&(String(old.values[9]||'')!==String(session.userId)||String(old.values[11]||'')!==hash))throw new Error('Bukti untuk penugasan ini sudah ada dengan file berbeda. Hubungi Admin.');
+  if(status!=='DALAM_PERJALANAN'&&!old)throw new Error('Bukti hanya dapat diunggah saat pengantaran berlangsung.');
+  const order=findRowById_(ss.getSheetByName('Pesanan'),orderId,1),orderStatus=String(order&&order.values[8]||'').toUpperCase();
+  if(!order||(orderStatus!=='DIANTAR'&&!(old&&orderStatus==='DITERIMA')))throw new Error('Pesanan tidak berada dalam status pengantaran yang dapat dipulihkan.');
+  const shipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);if(!shipment||String(shipment.method||'').toUpperCase()!=='ANTAR_PESANTREN')throw new Error('Bukti foto hanya berlaku untuk pesanan Antar Pesantren.');
+  const folder=getDeliveryProofFolder_(),name=orderId+'-'+assignmentId+'-'+hash.slice(0,16),marker='FMART_DELIVERY|'+orderId+'|'+assignmentId+'|'+hash,file=getOrCreateTransactionProofFile_(folder,name,mimeType,bytes,marker),now=new Date(),deadlineDefault=new Date(now.getTime()+7*86400000);
+  let proofId;if(old){proofId=String(old.values[0]);proofSheet.getRange(old.rowNumber,4,1,2).setValues([[file.getId(),file.getUrl()]]);}else{proofId=makeFMartId_('BPD');proofSheet.appendRow([proofId,orderId,assignmentId,file.getId(),file.getUrl(),fileName,mimeType,bytes.length,note,session.userId,now,hash]);}
+  const confRows=readRows_(confSheet),conf=confRows.map((r,i)=>({values:r,rowNumber:i+2})).find(x=>String(x.values[1]||'')===orderId);
+  if(!conf)confSheet.appendRow([makeFMartId_('KPG'),orderId,now,deadlineDefault,'MENUNGGU_KONFIRMASI','','','',false,now]);
+  const deadline=conf?conf.values[3]:deadlineDefault,waliId=String(order.values[2]||''),notifications=ss.getSheetByName('Notifikasi');
+  if(waliId&&!readRows_(notifications).some(n=>String(n[1])===waliId&&String(n[2])===orderId&&String(n[3])==='Bukti pengantaran tersedia'))notifications.appendRow([makeFMartId_('NTF'),waliId,orderId,'Bukti pengantaran tersedia','Petugas telah mengunggah foto bukti pengantaran untuk pesanan '+String(order.values[1]||orderId)+'. Bukti akan ditampilkan pada detail pesanan.','PENGANTARAN',false,now]);
+  if(!readRows_(ss.getSheetByName('RiwayatPengantaran')).some(r=>String(r[1])===orderId&&String(r[2])===assignmentId&&String(r[5]).toUpperCase()==='UNGGAH_BUKTI'))recordDeliveryHistory_(ss,assignmentId,orderId,session,'UNGGAH_BUKTI','DALAM_PERJALANAN','MENUNGGU_KONFIRMASI',note||'Bukti foto pengantaran diunggah');
+  if(!readRows_(ss.getSheetByName('AuditLog')).some(a=>String(a[3]).toUpperCase()==='UPLOAD_DELIVERY_PROOF'&&String(a[5])===proofId))writeAudit_(session.userId,session.role,'UPLOAD_DELIVERY_PROOF','BUKTI_PENGANTARAN',proofId,'',JSON.stringify({orderId:orderId,assignmentId:assignmentId,mimeType:mimeType,sizeBytes:bytes.length,proofHash:hash,confirmationDeadline:new Date(deadline).toISOString()}),'Mengunggah bukti foto pengantaran');
+  SpreadsheetApp.flush();return {ok:true,message:old?'Bukti sebelumnya sudah tersimpan. Pemulihan pencatatan selesai.':'Bukti pengantaran berhasil diunggah.',uploadedAt:(old?new Date(old.values[10]):now).toISOString(),confirmationDeadline:new Date(deadline).toISOString(),recovered:!!old};
+ }finally{lock.releaseLock();}
 }
+
 function getDeliveryProofFolder_() {
   const props=PropertiesService.getScriptProperties(),key='FMART_DELIVERY_PROOF_FOLDER_ID';
   const id=props.getProperty(key);
@@ -3685,4 +3642,38 @@ function auditWarehouseReceivingIntegrity_() {
     issueCount:issues.length,issues:issues,truncated:issues.length>=maxIssues,
     policy:'NO_AUTOMATIC_REPAIR'
   };
+}
+
+
+/** Audit read-only transaksi yang mungkin terhenti di antara beberapa penulisan sheet. */
+function auditFMartTransactionRecovery_(){
+ const ss=getSS_(),issues=[],max=500;function add(code,id,detail,action){if(issues.length<max)issues.push({code:code,entityId:String(id||''),detail:detail,action:action,automaticRepair:false});}
+ const orders=readRows_(ss.getSheetByName('Pesanan')),details=readRows_(ss.getSheetByName('DetailPesanan')),ships=readRows_(ss.getSheetByName('Pengiriman')),dm=Object.create(null),sm=Object.create(null);
+ details.forEach(r=>dm[String(r[1]||'')]=(dm[String(r[1]||'')]||0)+1);ships.forEach(r=>sm[String(r[1]||'')]=(sm[String(r[1]||'')]||0)+1);
+ orders.forEach(r=>{const id=String(r[0]||''),raw=String(r[14]||'');if(!raw)return;let p;try{p=JSON.parse(raw)}catch(e){add('CHECKOUT_PAYLOAD_INVALID',id,'Payload checkout tidak dapat dibaca.','Periksa manual; jangan mengubah stok.');return;}const expected=(p.items||[]).length;if((dm[id]||0)!==expected)add('CHECKOUT_DETAIL_INCOMPLETE',id,'Detail '+(dm[id]||0)+' dari '+expected+'.','Jalankan recoverFMartTransactions_() sebagai Admin/Superadmin.');if((sm[id]||0)!==1)add('CHECKOUT_SHIPMENT_INCOMPLETE',id,'Jumlah pengiriman '+(sm[id]||0)+'.','Jalankan recoverFMartTransactions_() sebagai Admin/Superadmin.');});
+ const receipts=readRows_(ss.getSheetByName('PenerimaanBarang')),rd=readRows_(ss.getSheetByName('DetailPenerimaanBarang')),mut=readRows_(ss.getSheetByName('MutasiStok')),rdm=Object.create(null),rm=Object.create(null);
+ rd.forEach(r=>rdm[String(r[1]||'')]=(rdm[String(r[1]||'')]||0)+1);mut.forEach(r=>{if(String(r[3]||'').toUpperCase()==='MASUK')rm[String(r[7]||'')]=(rm[String(r[7]||'')]||0)+1;});
+ receipts.forEach(r=>{const id=String(r[0]||''),expected=Number(r[6])||0;if((rdm[id]||0)!==expected||(rm[id]||0)<expected)add('RECEIPT_INCOMPLETE',id,'Detail atau mutasi penerimaan belum lengkap.','Jalankan recoverFMartTransactions_() setelah pemeriksaan sumber stok.');});
+ return {checkedAt:new Date().toISOString(),mode:'READ_ONLY',issueCount:issues.length,issues:issues,truncated:issues.length>=max,policy:'NO_AUTOMATIC_STOCK_OR_PAYMENT_REPAIR'};
+}
+/** Pemulihan checkout dan penerimaan yang memiliki payload/fingerprint valid; tidak menyentuh pembayaran. */
+function recoverFMartTransactions_(token,limit){
+ const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]),max=Math.max(1,Math.min(100,Number(limit)||25)),lock=LockService.getScriptLock();lock.waitLock(20000);
+ try{
+  const ss=getSS_(),orders=readRows_(ss.getSheetByName('Pesanan')),details=readRows_(ss.getSheetByName('DetailPesanan')),ships=readRows_(ss.getSheetByName('Pengiriman')),dm=Object.create(null),sm=Object.create(null);
+  details.forEach(r=>dm[String(r[1]||'')]=(dm[String(r[1]||'')]||0)+1);ships.forEach(r=>sm[String(r[1]||'')]=(sm[String(r[1]||'')]||0)+1);
+  const results=[];orders.map((r,i)=>({values:r,rowNumber:i+2})).filter(o=>String(o.values[14]||'')).forEach(o=>{
+   if(results.length>=max)return;let p;try{p=JSON.parse(String(o.values[14]))}catch(e){results.push({id:String(o.values[0]),type:'CHECKOUT',ok:false,error:'Payload tidak valid.'});return;}
+   if((dm[String(o.values[0])]||0)===(p.items||[]).length&&(sm[String(o.values[0])]||0)===1)return;
+   try{const expected=sha256Hex_(JSON.stringify({userId:p.userId,santriId:p.santriId,selectedCartIds:(p.selectedCartIds||[]).slice().sort(),note:String(o.values[9]||''),shippingMethod:p.shippingMethod,requestedDestination:String(p.requestedDestination||'')}));if(expected!==String(o.values[13]||'')||String(p.userId)!==String(o.values[2]))throw new Error('Fingerprint/pemilik tidak cocok.');const done=completeCheckoutOrder_(ss,o,p,session.userId,session.role);results.push({id:String(o.values[0]),type:'CHECKOUT',ok:true,completed:done.itemCount});}catch(e){results.push({id:String(o.values[0]),type:'CHECKOUT',ok:false,error:String(e.message||e)});}
+  });
+  const receipts=readRows_(ss.getSheetByName('PenerimaanBarang')),rDetails=readRows_(ss.getSheetByName('DetailPenerimaanBarang')),mut=readRows_(ss.getSheetByName('MutasiStok')),rdm=Object.create(null),rm=Object.create(null);
+  rDetails.forEach(r=>rdm[String(r[1]||'')]=(rdm[String(r[1]||'')]||0)+1);mut.forEach(r=>{if(String(r[3]||'').toUpperCase()==='MASUK')rm[String(r[7]||'')]=(rm[String(r[7]||'')]||0)+1;});
+  receipts.map((r,i)=>({values:r,rowNumber:i+2})).filter(r=>String(r.values[12]||'')).forEach(r=>{
+   if(results.length>=max)return;let p;try{p=JSON.parse(String(r.values[12]))}catch(e){results.push({id:String(r.values[0]),type:'RECEIPT',ok:false,error:'Payload tidak valid.'});return;}
+   if((rdm[String(r.values[0])]||0)===(p.items||[]).length&&(rm[String(r.values[0])]||0)>=(p.items||[]).length)return;
+   try{if(sha256Hex_(JSON.stringify({supplier:p.supplier,reference:p.reference,note:p.note,receivedDate:String(r.values[4]||'') instanceof Date?'':String(r.values[4]||''),items:(p.items||[]).map(x=>({productId:x.productId,variationId:x.variationId,qty:x.qty})).sort((a,b)=>(a.productId+'|'+a.variationId).localeCompare(b.productId+'|'+b.variationId))}))==='')throw new Error('Fingerprint tidak valid.');const done=completeStockReceipt_(ss,r,p,session.userId,session.role);results.push({id:String(r.values[0]),type:'RECEIPT',ok:true,completed:done.totalLines});}catch(e){results.push({id:String(r.values[0]),type:'RECEIPT',ok:false,error:String(e.message||e)});}
+  });
+  return {ok:true,checked:results.length,recovered:results.filter(x=>x.ok).length,results:results,policy:'CHECKOUT_AND_RECEIPT_ONLY_NO_PAYMENT_REPAIR'};
+ }finally{lock.releaseLock();}
 }
