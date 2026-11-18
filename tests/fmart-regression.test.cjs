@@ -235,3 +235,24 @@ test('Cashier POS integrity audit reads the cashier stock ledger, not warehouse 
  assert.ok(audit.includes("getSheetByName('MutasiStokKasir')"));
  assert.ok(!audit.includes("getSheetByName('MutasiStok')"));
 });
+
+
+test('Santri-excluded readiness audit skips Santri data and dependent references without writing data',()=>{
+ const db=extractFunction(setup,'auditFMartDatabaseIntegrity_');
+ const ops=extractFunction(code,'auditFMartOperationalSync_');
+ const audit=extractFunction(code,'runFMartReadinessAuditSkipSantri');
+ assert.ok(db.includes('skipSantriData'));
+ assert.ok(db.includes("sheetName === 'Santri'"));
+ assert.ok(db.includes("targetName === 'Santri'"));
+ assert.ok(db.includes("checkUnique_('Santri'"));
+ assert.ok(ops.includes('skipSantriData'));
+ assert.ok(ops.includes('if(!skipSantriData)'));
+ assert.ok(ops.includes("readSantriRows_(santriSheet)"));
+ assert.ok(audit.includes("auditFMartDatabaseIntegrity_({skipSantriData:true})"));
+ assert.ok(audit.includes("auditFMartOperationalSync_({skipSantriData:true})"));
+ for(const name of ['auditFMartRuntime_','auditFMartStockReconciliation_','auditCashierPOSIntegrity_','auditWarehouseReceivingIntegrity_','auditFMartTransactionRecovery_']) assert.ok(audit.includes(name));
+ assert.ok(audit.includes("scope:'EXCLUDING_SANTRI_DATA'"));
+ assert.ok(audit.includes("mode:'READ_ONLY'"));
+ assert.ok(!audit.includes('setValue('));
+ assert.ok(!audit.includes('appendRow('));
+});
