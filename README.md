@@ -598,3 +598,27 @@ Pemeriksaan pada Tahap 2 bersifat statis terhadap repository. Tidak ada akses ru
 ### Audit runtime POS
 - `auditFMartRuntime_()` kini memeriksa keberadaan tiga sheet POS dan menampilkan agregat status transaksi serta status pembayaran penjualan toko.
 - Kunci idempotensi transaksi terikat pada akun kasir pembuatnya; kunci yang sama tidak dapat dipakai akun lain untuk membaca hasil transaksi.
+
+## Antarmuka POS Kasir — Tahap 3
+
+### Antarmuka dan alur penggunaan
+- Workspace Kasir kini memiliki menu **Kasir POS** tersendiri. Menu juga tersedia bagi Admin dan Superadmin sesuai izin endpoint POS; role lain tidak mendapat akses menu tersebut.
+- Katalog POS dimuat melalui `getCashierPOSData`, dengan pencarian nama produk, SKU, dan variasi. Harga dan stok yang ditampilkan berasal dari server.
+- Kasir dapat menambahkan produk/variasi ke keranjang, mengubah kuantitas, melihat subtotal/total, dan mengosongkan keranjang.
+- Identitas pembeli bersifat opsional: **Umum**, **Nama pembeli**, atau **Santri**. Pencarian santri menggunakan endpoint `searchCashierSantri`.
+- Kasir dapat memilih **Tunai** atau **QRIS**. Untuk tunai, kasir memasukkan nominal diterima dan UI menghitung estimasi kembalian; server tetap memvalidasi nominal dan menghitung kembalian final.
+- Tombol proses transaksi mengirim item dan identitas pembeli ke `createCashierSale`. Harga tidak dikirim sebagai sumber kebenaran; server mengambil ulang harga dan memeriksa stok.
+- Kunci idempotensi dibuat sekali per percobaan checkout dan dipertahankan jika permintaan gagal, agar retry tidak membuat transaksi ganda. Kunci baru dibuat setelah transaksi berhasil atau keranjang diubah.
+- Setelah transaksi tunai berhasil, UI mengosongkan keranjang dan memuat ulang katalog. Untuk QRIS, UI memberi tahu bahwa transaksi masih menunggu konfirmasi manual; UI tidak menampilkan QR dinamis atau menganggap screenshot pelanggan sebagai bukti dana masuk.
+- Antrean verifikasi pembayaran pesanan Wali dan daftar pesanan siap dipenuhi yang sebelumnya ada di Workspace Kasir tetap dipertahankan di bawah panel POS.
+
+### Responsivitas
+- Katalog dan keranjang menggunakan layout dua kolom pada layar lebar dan bertumpuk pada tablet/ponsel.
+- Daftar produk memiliki area gulir tersendiri; kontrol kuantitas, metode pembayaran, dan checkout disesuaikan untuk layar kecil.
+- Perubahan UI dibatasi pada portal Admin/Kasir dan tidak mengubah tampilan Portal Wali.
+
+### Pemeriksaan Tahap 3
+- Pemeriksaan sintaks JavaScript inline pada `Index.html` berhasil.
+- Pemeriksaan statis memastikan menu POS ditambahkan pada navigasi role Kasir/Admin/Superadmin, endpoint POS dipanggil sesuai kontrak, serta workspace antrean pembayaran Wali tetap ada.
+- Belum dilakukan pengujian browser, akun Kasir nyata, koneksi Google Apps Script, transaksi pada Spreadsheet aktif, atau pembayaran tunai/QRIS aktual. Uji perangkat dan runtime tetap wajib sebelum operasional.
+- QRIS tetap membutuhkan konfirmasi manual setelah petugas memeriksa dana masuk. Fitur antrean konfirmasi dan pembatalan QRIS khusus penjualan toko disempurnakan pada Tahap 4.
