@@ -836,7 +836,7 @@ function checkoutCart(token, santriId, selectedCartIds, catatan, metodePengirima
     items.forEach(function(i){
       detailSheet.appendRow([makeFMartId_('DTL'),orderId,i.productId,i.variationId,i.sku,i.name,i.variationName,i.unitPrice,i.qty,i.unitPrice*i.qty]);
     });
-    reserveOrderStock_(ss,orderId,items,30);
+    reserveOrderStock_(ss,orderId,items,Number(getSettingValue_('STOCK_RESERVATION_MINUTES'))||30);
     const tujuanPengiriman = metodePengiriman === 'ANTAR_PESANTREN' ? tujuan : ('Pengambilan langsung di FMart' + (tujuan ? ' — ' + tujuan : ''));
     ss.getSheetByName('Pengiriman').appendRow([makeFMartId_('SHP'),orderId,metodePengiriman,tujuanPengiriman,'MENUNGGU','','',session.userId,now]);
     selectedRows.sort(function(a,b){return b.rowNumber-a.rowNumber;}).forEach(function(entry){cartSheet.deleteRow(entry.rowNumber);});
@@ -1041,8 +1041,8 @@ function submitPayment(token, orderId, method, nominal, fileName, mimeType, base
     const existing = readRows_(paymentSheet).filter(function(r){ return String(r[1]) === orderId; }).sort(function(a,b){ return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime(); })[0];
     if (existing && ['MENUNGGU_VERIFIKASI','TERVERIFIKASI'].indexOf(String(existing[5]||'').toUpperCase()) !== -1) throw new Error('Pembayaran untuk pesanan ini sudah diajukan.');
     const reservations=readRows_(ensureStockReservationSheet_(ss)).filter(function(r){return String(r[1])===orderId&&String(r[5]||'').toUpperCase()==='AKTIF';});
-    if(reservations.length)setOrderReservationStatus_(ss,orderId,'AKTIF',new Date(Date.now()+120*60000));
-    else {const detailRows=readRows_(ss.getSheetByName('DetailPesanan')).filter(function(r){return String(r[1])===orderId;}).map(function(r){return {productId:String(r[2]),variationId:String(r[3]||''),qty:Number(r[8])||0};});reserveOrderStock_(ss,orderId,detailRows,120);}
+    if(reservations.length)setOrderReservationStatus_(ss,orderId,'AKTIF',new Date(Date.now()+(Number(getSettingValue_('PAYMENT_RESERVATION_MINUTES'))||120)*60000));
+    else {const detailRows=readRows_(ss.getSheetByName('DetailPesanan')).filter(function(r){return String(r[1])===orderId;}).map(function(r){return {productId:String(r[2]),variationId:String(r[3]||''),qty:Number(r[8])||0};});reserveOrderStock_(ss,orderId,detailRows,Number(getSettingValue_('PAYMENT_RESERVATION_MINUTES'))||120);}
     const cleanName = sanitizeFileName_(fileName || 'bukti-qris');
     const mime = String(mimeType || '').toLowerCase();
     if (!['image/jpeg','image/png','image/webp','application/pdf'].includes(mime)) throw new Error('Format bukti pembayaran harus JPG, PNG, WEBP, atau PDF.');
