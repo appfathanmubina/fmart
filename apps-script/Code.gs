@@ -1671,8 +1671,7 @@ function saveVariation(token, data) {
       mutationSheet.appendRow([makeFMartId_('MUT'),productId,variationId,'MASUK',stock,0,stock,variationId,'Stok awal saat variasi dibuat',session.userId,now]);
     }
     writeAudit_(session.userId,session.role,id?'UPDATE_VARIATION':'CREATE_VARIATION','VARIASI_PRODUK',variationId,beforeData,JSON.stringify({productId,name,value,addition,stock,status}),'Perubahan variasi; saldo Stok menjadi sumber utama dan stok awal variasi baru dicatat sebagai mutasi MASUK');
-    SpreadsheetApp.flush();
-    return getAdminCatalog(token);
+    const queueResult=(!existingVariation&&stock>0)?processPendingStockOrders_(ss,session.userId,'VARIASI_BARU',session.role):{processed:0};SpreadsheetApp.flush();const catalog=getAdminCatalog(token);catalog.stockQueueProcessed=queueResult.processed;return catalog;
   }finally{lock.releaseLock();}
 }
 
@@ -1774,7 +1773,7 @@ function createStockReceipt(token, payload) {
     });
     writeAudit_(session.userId,session.role,'CREATE_STOCK_RECEIPT','PENERIMAAN_BARANG',receiptId,'',JSON.stringify({receiptNumber:receiptNumber,supplier:supplier,reference:reference,items:prepared.map(function(x){return {productId:x.productId,variationId:x.variationId,qty:x.qty,before:x.before,after:x.after};})}),'Mencatat penerimaan barang');
     SpreadsheetApp.flush();
-    const queueResult=processPendingStockOrders_(ss,session.userId,'PENERIMAAN_BARANG');
+    const queueResult=processPendingStockOrders_(ss,session.userId,'PENERIMAAN_BARANG',session.role);
      return {ok:true,id:receiptId,number:receiptNumber,totalLines:prepared.length,totalQty:totalQty,ordersReleased:queueResult.processed};
   }finally{lock.releaseLock();}
 }
@@ -1864,7 +1863,7 @@ function adjustStock(token, productId, variationId, type, qty, note) {
       sheet.getRange(row+2,4).setValue(after);sheet.getRange(row+2,6).setValue(now);
     }else sheet.appendRow([makeFMartId_('STK'),productId,variationId,after,Number(product.values[6])||0,now]);
     if(variationId){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(vr)ss.getRange(vr.rowNumber,6,1,3).setValues([[after,String(vr.values[6]||'AKTIF'),now]]);}
-    ss.getSheetByName('MutasiStok').appendRow([makeFMartId_('MUT'),productId,variationId,type,qty,before,after,'',note,session.userId,now]);writeAudit_(session.userId,session.role,'ADJUST_STOCK','STOK',productId,JSON.stringify({variationId:variationId,stock:before}),JSON.stringify({variationId:variationId,stock:after,type:type,qty:qty}),'Mutasi stok manual',now);const queueResult=type==='MASUK'?processPendingStockOrders_(ss,session.userId,'PENYESUAIAN_STOK'):{processed:0};SpreadsheetApp.flush();const dashboard=getOperationsDashboard(token);dashboard.stockQueueProcessed=queueResult.processed;return dashboard;
+    ss.getSheetByName('MutasiStok').appendRow([makeFMartId_('MUT'),productId,variationId,type,qty,before,after,'',note,session.userId,now]);writeAudit_(session.userId,session.role,'ADJUST_STOCK','STOK',productId,JSON.stringify({variationId:variationId,stock:before}),JSON.stringify({variationId:variationId,stock:after,type:type,qty:qty}),'Mutasi stok manual',now);const queueResult=type==='MASUK'?processPendingStockOrders_(ss,session.userId,'PENYESUAIAN_STOK',session.role):{processed:0};SpreadsheetApp.flush();const dashboard=getOperationsDashboard(token);dashboard.stockQueueProcessed=queueResult.processed;return dashboard;
   }finally{lock.releaseLock();}
 }
 
@@ -1884,9 +1883,9 @@ function setOrderFulfillmentStatus_(ss,order,status,actor,note,now){
  ss.getSheetByName('Pesanan').getRange(order.rowNumber,9,1,3).setValues([[status,String(note||order.values[9]||''),now]]);
  const sh=ss.getSheetByName('Pengiriman'),row=latestShipmentRow_(sh,String(order.values[0]));if(row)sh.getRange(row,5,1,5).setValues([[status,'','',String(actor||'SYSTEM'),now]]);
 }
-function processPendingStockOrders_(ss,actor,source){
+function processPendingStockOrders_(ss,actor,source,actorRole){
  const sheet=ss.getSheetByName('Pesanan'),payments=readRows_(ss.getSheetByName('Pembayaran')),orders=readRows_(sheet).map((r,i)=>({values:r,rowNumber:i+2})).filter(o=>String(o.values[8]||'').toUpperCase()==='MENUNGGU_STOK').sort((a,b)=>new Date(a.values[10]||0)-new Date(b.values[10]||0)),blocked=Object.create(null),done=[];
- orders.forEach(order=>{const id=String(order.values[0]),pay=latestPaymentForOrder_(payments,id);if(!pay||String(pay.status).toUpperCase()!=='TERVERIFIKASI')return;const plan=buildOrderStockPlan_(ss,id);if(plan.missing.some(m=>blocked[m.key]))return;if(!plan.available){plan.missing.forEach(m=>blocked[m.key]=true);return;}const now=new Date();applyOrderStockPlan_(ss,id,plan.plan,actor||'SYSTEM',now);setOrderFulfillmentStatus_(ss,order,'DIBAYAR',actor||'SYSTEM','Stok lengkap. Pesanan siap diproses Gudang.',now);ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Stok pesanan sudah lengkap','Seluruh barang pesanan '+String(order.values[1]||id)+' kini tersedia. Pesanan siap diproses Gudang.','PESANAN',false,now]);writeAudit_(actor||'SYSTEM',actor==='SYSTEM'?'SYSTEM':'GUDANG','FULFILL_WAITING_STOCK_ORDER','PESANAN',id,JSON.stringify({status:'MENUNGGU_STOK'}),JSON.stringify({status:'DIBAYAR',source:String(source||'STOCK_IN')}),'Stok lengkap; pesanan masuk antrean pemenuhan',now);done.push(id);});
+ orders.forEach(order=>{const id=String(order.values[0]),pay=latestPaymentForOrder_(payments,id);if(!pay||String(pay.status).toUpperCase()!=='TERVERIFIKASI')return;const plan=buildOrderStockPlan_(ss,id);if(plan.missing.some(m=>blocked[m.key]))return;if(!plan.available){plan.missing.forEach(m=>blocked[m.key]=true);return;}const now=new Date();applyOrderStockPlan_(ss,id,plan.plan,actor||'SYSTEM',now);setOrderFulfillmentStatus_(ss,order,'DIBAYAR',actor||'SYSTEM','Stok lengkap. Pesanan siap diproses Gudang.',now);ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Stok pesanan sudah lengkap','Seluruh barang pesanan '+String(order.values[1]||id)+' kini tersedia. Pesanan siap diproses Gudang.','PESANAN',false,now]);writeAudit_(actor||'SYSTEM',actorRole|| (actor==='SYSTEM'?'SYSTEM':'GUDANG'),'FULFILL_WAITING_STOCK_ORDER','PESANAN',id,JSON.stringify({status:'MENUNGGU_STOK'}),JSON.stringify({status:'DIBAYAR',source:String(source||'STOCK_IN')}),'Stok lengkap; pesanan masuk antrean pemenuhan',now);done.push(id);});
  return {processed:done.length,orderIds:done};
 }
 function verifyPayment(token,paymentId,decision,note){
