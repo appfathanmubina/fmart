@@ -1723,7 +1723,7 @@ function verifyPayment(token, paymentId, decision, note) {
       stockPlan.push({d:item.d,idx:idx,before:before,after:before-qty,pid:item.pid,vid:item.vid,qty:qty});
     });
     for(const x of stockPlan){stockSheet.getRange(x.idx+2,4).setValue(x.after);stockSheet.getRange(x.idx+2,6).setValue(now);if(x.vid){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),x.vid,1);if(vr)ss.getSheetByName('VariasiProduk').getRange(vr.rowNumber,6,1,3).setValues([[x.after,String(vr.values[6]||'AKTIF'),now]]);}ss.getSheetByName('MutasiStok').appendRow([makeFMartId_('MUT'),x.pid,x.vid,'KELUAR',x.qty,x.before,x.after,String(order.values[0]),'Penjualan '+String(order.values[1]),session.userId,now]);}
-    paySheet.getRange(pay.rowNumber,6,1,3).setValues([['TERVERIFIKASI',session.userId,now]]);paySheet.getRange(pay.rowNumber,10).setValue(now);orderSheet.getRange(order.rowNumber,9,1,3).setValues([['DIBAYAR',order.values[9],now]]);ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),String(order.values[0]),'Pembayaran terverifikasi','Pembayaran pesanan '+String(order.values[1])+' telah diverifikasi.','PEMBAYARAN',false,now]);writeAudit_(session.userId,session.role,'VERIFY_PAYMENT','PEMBAYARAN',paymentId,JSON.stringify({status:'MENUNGGU_VERIFIKASI',orderId:String(order.values[0])}),JSON.stringify({status:'TERVERIFIKASI',orderStatus:'DIBAYAR'}),'Pembayaran diverifikasi dan stok dikurangi');SpreadsheetApp.flush();return getOperationsDashboard(token);
+    paySheet.getRange(pay.rowNumber,6,1,3).setValues([['TERVERIFIKASI',session.userId,now]]);paySheet.getRange(pay.rowNumber,10).setValue(now);orderSheet.getRange(order.rowNumber,9,1,3).setValues([['DIBAYAR',order.values[9],now]]);const paidShipRow=latestShipmentRow_(ss.getSheetByName('Pengiriman'),String(order.values[0]));if(paidShipRow)ss.getSheetByName('Pengiriman').getRange(paidShipRow,5,1,5).setValues([['DIBAYAR','','',session.userId,now]]);ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),String(order.values[0]),'Pembayaran terverifikasi','Pembayaran pesanan '+String(order.values[1])+' telah diverifikasi.','PEMBAYARAN',false,now]);writeAudit_(session.userId,session.role,'VERIFY_PAYMENT','PEMBAYARAN',paymentId,JSON.stringify({status:'MENUNGGU_VERIFIKASI',orderId:String(order.values[0])}),JSON.stringify({status:'TERVERIFIKASI',orderStatus:'DIBAYAR'}),'Pembayaran diverifikasi dan stok dikurangi');SpreadsheetApp.flush();return getOperationsDashboard(token);
   }finally{lock.releaseLock();}
 }
 
@@ -1756,7 +1756,7 @@ function updateOrderOperation(token, orderId, nextStatus, shipmentStatus, note) 
     const now=new Date();
     orderSheet.getRange(row.rowNumber,9,1,3).setValues([[nextStatus,note||row.values[9],now]]);
     const shipSheet=ss.getSheetByName('Pengiriman'),shipRow=latestShipmentRow_(shipSheet,orderId);
-    const shipStatus=nextStatus==='SIAP_DIAMBIL'?'SIAP_DIAMBIL':(nextStatus==='DIBATALKAN'?'DIBATALKAN':(nextStatus==='DISIAPKAN'?'DIPROSES':String(shipment&&shipment.status||'MENUNGGU')));
+    const shipStatus=nextStatus;
     if(shipRow)shipSheet.getRange(shipRow,5,1,5).setValues([[shipStatus,shipment&&shipment.dikirimAt||'',shipment&&shipment.diterimaAt||'',session.userId,now]]);
     else shipSheet.appendRow([makeFMartId_('SHP'),orderId,method,'',shipStatus,'','',session.userId,now]);
     ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(row.values[2]),orderId,nextStatus==='SIAP_DIAMBIL'?'Pesanan siap diambil':'Status pesanan diperbarui',nextStatus==='SIAP_DIAMBIL'?'Pesanan '+String(row.values[1])+' sudah siap diambil di FMart. Silakan datang ke lokasi pengambilan.':'Pesanan '+String(row.values[1])+' sekarang '+nextStatus+'.','PESANAN',false,now]);
@@ -2184,7 +2184,7 @@ function reportDeliveryFailure(token, assignmentId, reason) {
     orderSheet.getRange(order.rowNumber,9).setValue('DISIAPKAN');
     orderSheet.getRange(order.rowNumber,12).setValue(now);
     const shipSheet=ss.getSheetByName('Pengiriman'),shipRow=latestShipmentRow_(shipSheet,orderId);
-    if(shipRow)shipSheet.getRange(shipRow,5,1,5).setValues([['MENUNGGU','','',session.userId,now]]);
+    if(shipRow)shipSheet.getRange(shipRow,5,1,5).setValues([['DISIAPKAN','','',session.userId,now]]);
     const noticeSheet=ss.getSheetByName('Notifikasi'),waliId=String(order.values[2]||'');
     if(waliId)noticeSheet.appendRow([makeFMartId_('NTF'),waliId,orderId,'Pengantaran belum berhasil','Pengantaran pesanan '+String(order.values[1]||orderId)+' belum berhasil. Pesanan dikembalikan ke antrean untuk penugasan ulang.','PENGANTARAN',false,now]);
     readRows_(ss.getSheetByName('Users')).filter(u=>['ADMIN','GUDANG','SUPERADMIN'].indexOf(String(u[5]||'').toUpperCase())>=0&&String(u[6]||'').toUpperCase()==='AKTIF').forEach(u=>{
