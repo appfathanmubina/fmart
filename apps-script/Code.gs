@@ -1757,7 +1757,7 @@ function updateOrderOperation(token, orderId, nextStatus, shipmentStatus, note) 
     orderSheet.getRange(row.rowNumber,9,1,3).setValues([[nextStatus,note||row.values[9],now]]);
     const shipSheet=ss.getSheetByName('Pengiriman'),shipRow=latestShipmentRow_(shipSheet,orderId);
     const shipStatus=nextStatus;
-    if(shipRow)shipSheet.getRange(shipRow,5,1,5).setValues([[shipStatus,shipment&&shipment.dikirimAt||'',shipment&&shipment.diterimaAt||'',session.userId,now]]);
+    if(shipRow)shipSheet.getRange(shipRow,5,1,5).setValues([[shipStatus,nextStatus==='SIAP_DIAMBIL'?now:(shipment&&shipment.dikirimAt||''),shipment&&shipment.diterimaAt||'',session.userId,now]]);
     else shipSheet.appendRow([makeFMartId_('SHP'),orderId,method,'',shipStatus,'','',session.userId,now]);
     ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(row.values[2]),orderId,nextStatus==='SIAP_DIAMBIL'?'Pesanan siap diambil':'Status pesanan diperbarui',nextStatus==='SIAP_DIAMBIL'?'Pesanan '+String(row.values[1])+' sudah siap diambil di FMart. Silakan datang ke lokasi pengambilan.':'Pesanan '+String(row.values[1])+' sekarang '+nextStatus+'.','PESANAN',false,now]);
     writeAudit_(session.userId,session.role,'UPDATE_ORDER_STATUS','PESANAN',orderId,JSON.stringify({status:current,shipmentStatus:shipment&&shipment.status||''}),JSON.stringify({status:nextStatus,shipmentStatus:shipStatus,note:note}),'Perubahan status pesanan dan pemenuhan');
