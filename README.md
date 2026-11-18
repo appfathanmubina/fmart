@@ -653,3 +653,27 @@ Pemeriksaan pada Tahap 2 bersifat statis terhadap repository. Tidak ada akses ru
 - Tidak ada perubahan skema Spreadsheet pada Tahap 4. Sheet `PenjualanToko`, `DetailPenjualanToko`, dan `ReservasiStokToko` tetap memakai skema Tahap 1–2.
 - Belum dilakukan pengujian browser, akun petugas aktif, Spreadsheet/Drive aktif, transaksi QRIS merchant, simulasi waktu kedaluwarsa, atau deployment Apps Script. Pemeriksaan ini adalah audit statis repository, bukan bukti transaksi live sudah berhasil.
 - Setelah sinkronisasi, uji skenario: QRIS baru dibuat; antrean tampil; konfirmasi ditolak bila checkbox belum dicentang; konfirmasi berhasil saat dana sudah masuk dan reservasi masih berlaku; konfirmasi ditolak setelah 15 menit; pembatalan melepas stok; transaksi tunai tidak muncul di antrean QRIS; dan antrean verifikasi pembayaran pesanan Wali tetap berfungsi.
+
+## Struk dan Riwayat Penjualan Kasir — Tahap 5
+
+### Riwayat transaksi
+- Endpoint `getCashierSalesHistory(token, filters)` menyediakan daftar penjualan toko dan rincian barang dari `PenjualanToko` serta `DetailPenjualanToko`.
+- Pencarian server-side mendukung nomor transaksi, nama pembeli, nama kasir, metode/status pembayaran, nama produk, variasi, dan SKU.
+- Filter tanggal awal/akhir tersedia; hasil diurutkan terbaru lebih dahulu dan dibatasi maksimal 150 transaksi per permintaan.
+- Kasir hanya dapat melihat transaksi yang dibuat oleh akun Kasir tersebut. Admin dan Superadmin dapat melihat seluruh transaksi penjualan toko.
+- Detail transaksi menampilkan daftar produk/variasi, kuantitas, harga satuan, subtotal item, subtotal transaksi, diskon, total, metode pembayaran, uang diterima/kembalian untuk tunai, referensi QRIS bila tersedia, pembeli, kasir, dan waktu transaksi.
+- Riwayat memuat status pembayaran. Transaksi QRIS yang belum lunas tetap dapat dilihat, tetapi tidak dapat dicetak sebagai struk final.
+
+### Struk dan cetak
+- Tombol **Cetak Struk** hanya aktif untuk transaksi berstatus pembayaran `LUNAS`.
+- Struk memuat identitas FMart Fathan Mubina, nomor dan waktu transaksi, kasir, pembeli, rincian item, subtotal, diskon, total, metode pembayaran, serta uang diterima dan kembalian untuk tunai.
+- Untuk QRIS, struk menampilkan status LUNAS dan referensi pembayaran jika ada.
+- Struk dibuka pada jendela cetak browser agar dapat dicetak melalui printer biasa atau printer thermal yang didukung browser/perangkat. Ukuran cetak mengikuti pengaturan printer/browser; belum ada integrasi langsung ESC/POS atau pemilihan lebar kertas otomatis.
+- Jika browser memblokir jendela baru, kasir perlu mengizinkan pop-up untuk aplikasi FMart.
+
+### Pemeriksaan Tahap 5 dan batas pengujian
+- Pemeriksaan sintaks JavaScript inline `Index.html` dan `Code.gs` dilakukan setelah perubahan.
+- Pemeriksaan statis memastikan role guard, pembatasan data per Kasir, filter pencarian/tanggal, detail transaksi, dan pembatasan cetak hanya untuk pembayaran lunas.
+- Riwayat diperbarui setelah POS dibuka, transaksi berhasil dibuat, dan pembayaran QRIS dikonfirmasi. Tombol muat ulang dan filter juga tersedia.
+- Tidak ada perubahan skema Spreadsheet pada Tahap 5.
+- Belum dilakukan pengujian browser/printer, pengujian akun Kasir/Admin, atau pengujian data transaksi pada Spreadsheet aktif. Hasil ini adalah pemeriksaan statis kode, bukan bukti cetak struk atau riwayat live telah diuji.
