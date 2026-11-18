@@ -251,6 +251,21 @@ test('Readiness audit logs bounded diagnostic chunks without truncating the full
 });
 
 
+test('Warehouse stock ledger is authoritative and missing rows never fall back to variation mirrors',()=>{
+ const snapshot=extractFunction(code,'getProductSnapshot_'),catalog=extractFunction(code,'getCatalog'),detail=extractFunction(code,'getProductDetail'),admin=extractFunction(code,'getAdminCatalog'),stockCatalog=extractFunction(code,'getStockCatalog'),stockManagement=extractFunction(code,'getStockManagement'),minimum=extractFunction(code,'setStockMinimum'),dashboard=extractFunction(code,'getOperationsDashboard');
+ assert.ok(snapshot.includes("stock=sr?Number(sr[3]):0"));assert.ok(!snapshot.includes('vr.values[5]'));
+ assert.ok(catalog.includes('? stockByKey[key] : 0'));assert.ok(!catalog.includes('Number(r[5]) || 0'));
+ assert.ok(detail.includes('stock:0'));assert.ok(!detail.includes('Number(v[5])'));
+ assert.ok(admin.includes("getSheetByName('Stok')"));assert.ok(admin.includes('stockRecordMissing'));
+ assert.ok(stockCatalog.includes('stockRecordMissing'));assert.ok(!stockCatalog.includes('Number(v[5])'));
+ assert.ok(stockManagement.includes('stockRecordMissing'));assert.ok(!stockManagement.includes('Number(v[5])'));
+ assert.ok(stockManagement.includes('missingStockRows'));assert.ok(index.includes('Data stok belum lengkap'));assert.ok(index.includes('Saldo utama belum tercatat'));assert.ok(index.includes('Saldo Gudang belum tercatat'));
+ assert.ok(minimum.includes('stockSheet.appendRow([makeFMartId_(\'STK\'),productId,variationId,0,minStock,now])'));
+ assert.ok(minimum.includes('Jalankan audit dan rekonsiliasi stok'));
+ assert.ok(stockManagement.includes("stockRecordMissing:!sr"));
+ assert.ok(!dashboard.includes("stockMap[key]=Number(r[5])||0"));
+});
+
 test('Wali catalog uses authenticated server-side pagination and never sends stock fields',()=>{
  const initial=extractFunction(code,'getCatalog'),page=extractFunction(code,'getBuyerProductBatch');
  assert.ok(initial.includes('session.role === FMART.ROLES.WALI_SANTRI'));
@@ -294,4 +309,13 @@ test('Wali can link an active Santri immediately without Admin approval',()=>{
  assert.ok(index.includes('Hubungan langsung aktif tanpa persetujuan Admin.'));
  assert.ok(index.includes('Hubungkan Santri'));
  assert.ok(!index.includes('Pengajuan dari Wali harus disetujui Admin/Superadmin.'));
+});
+
+
+test('Buyer and staff inline application JavaScript parses after Apps Script template substitution',()=>{
+ const match=index.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+ assert.ok(match,'Inline application script must exist.');
+ const clientScript=match[1].replace(/<\?=\s*portalMode\s*\?>/g,'BUYER');
+ let parseError='';try{new vm.Script(clientScript,{filename:'apps-script/Index.html inline script'});}catch(error){parseError=String(error.stack||error);}
+ assert.equal(parseError,'',parseError);
 });
