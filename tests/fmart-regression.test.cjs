@@ -228,3 +228,10 @@ test('Apps Script editor exposes safe setup and read-only readiness entry points
  assert.ok(readiness.includes("mode:'READ_ONLY'"));
  assert.ok(!readiness.includes('installDeliveryAutomationTrigger_'));
 });
+
+
+test('Cashier POS integrity audit reads the cashier stock ledger, not warehouse mutations',()=>{
+ const audit=extractFunction(code,'auditCashierPOSIntegrity_');
+ assert.ok(audit.includes("getSheetByName('MutasiStokKasir')"));
+ assert.ok(!audit.includes("getSheetByName('MutasiStok')"));
+});
