@@ -1577,8 +1577,15 @@ function saveVariation(token, data) {
   const ss=getSS_(); const product=findRowById_(ss.getSheetByName('Produk'),productId,1); if(!product)throw new Error('Produk tidak ditemukan.');
   const sheet=ss.getSheetByName('VariasiProduk'); const now=new Date(); let variationId=id; let stock=requestedStock;
   const stockRowsBefore=readRows_(ss.getSheetByName('Stok'));
-  let beforeData='';const row=findRowById_(sheet,id,1);if(!row)throw new Error('Variasi tidak ditemukan.');if(String(row.values[1]||'')!==productId)throw new Error('Variasi tidak dapat dipindahkan ke produk lain. Buat variasi baru pada produk tujuan.');beforeData=JSON.stringify(row.values);variationId=id;stock=Math.max(0,Number(row.values[5])||0);sheet.getRange(row.rowNumber,2,1,7).setValues([[productId,name,value,addition,stock,status,now]]);}
-  else {variationId=makeFMartId_('VAR');}
+  let beforeData='';
+  if(id){
+    const row=findRowById_(sheet,id,1);
+    if(!row)throw new Error('Variasi tidak ditemukan.');
+    if(String(row.values[1]||'')!==productId)throw new Error('Variasi tidak dapat dipindahkan ke produk lain. Buat variasi baru pada produk tujuan.');
+    beforeData=JSON.stringify(row.values);variationId=id;stock=Math.max(0,Number(row.values[5])||0);
+  }else{
+    variationId=makeFMartId_('VAR');
+  }
   const matchingStockRows=stockRowsBefore.filter(function(r){return String(r[1])===productId&&String(r[2]||'')===variationId;});
   if(matchingStockRows.length>1)throw new Error('Ditemukan baris stok ganda untuk variasi ini. Perbaiki data Gudang sebelum menyimpan variasi.');
   if(!id)sheet.appendRow([variationId,productId,name,value,addition,stock,status,now,now]);
