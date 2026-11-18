@@ -2435,7 +2435,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         const r=await runServer('confirmCashierQrisPayment',state.token,saleId,reference);
         if(!r||!r.ok)throw new Error('Konfirmasi QRIS belum berhasil.');
         showToast('Pembayaran '+(r.number||'transaksi')+' berhasil dikonfirmasi. Stok telah dikurangi.','success');
-        await loadCashierQrisQueue_();await loadCashierPOSData_(state.cashierPOS.search);await loadCashierSalesHistory_();await loadCashierSalesHistory_();
+        await loadCashierQrisQueue_();await loadCashierPOSData_(state.cashierPOS.search);await loadCashierSalesHistory_();
       }catch(e){showToast(e.message||'Konfirmasi QRIS gagal.','error');btn.disabled=false}
       finally{loading(false)}
     }
@@ -2539,7 +2539,9 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         const r=await runServer('createCashierSale',state.token,payload);if(!r||!r.ok)throw new Error('Transaksi belum dapat disimpan.');
         pos.cart=[];pos.requestKey='';pos.amountReceived='';pos.note='';pos.buyerType='UMUM';pos.buyerName='';pos.santriId='';pos.santriLabel='';pos.students=[];
         renderCashierPOSPanel_();
-        showToast(selectedMethod==='QRIS'?'Transaksi '+r.number+' dibuat. Menunggu konfirmasi dana QRIS.':'Transaksi '+r.number+' berhasil. Kembalian Rp '+formatMoney(r.change||0), 'success');
+        const alreadyPaid=String(r.paymentStatus||'').toUpperCase()==='LUNAS';
+        const finalChange=Number.isFinite(Number(r.change))?Number(r.change):Math.max(0,received-total);
+        showToast(selectedMethod==='QRIS'?(alreadyPaid?'Transaksi '+r.number+' sudah berstatus LUNAS.':'Transaksi '+r.number+' dibuat. Menunggu konfirmasi dana QRIS.'):'Transaksi '+r.number+' berhasil. Kembalian Rp '+formatMoney(finalChange), 'success');
         if(selectedMethod==='QRIS')await loadCashierQrisQueue_();
         await loadCashierPOSData_(pos.search);
         await loadCashierSalesHistory_();
