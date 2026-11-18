@@ -329,9 +329,9 @@ test('Admin PWA resolves its own portal, token namespace, and distinct login lay
 });
 test('Staff portal opens its shell before dashboard data and does not load the buyer catalog',()=>{
  const load= index.slice(index.indexOf('async function loadInitial(){'),index.indexOf('    function render(){',index.indexOf('async function loadInitial(){')));
- assert.ok(load.indexOf("session.user.role!=='WALI_SANTRI'")<load.indexOf("showStaffApp()"));
- assert.ok(load.indexOf("showStaffApp()")<load.indexOf("await loadOps()"));
  const staffBranch=load.slice(load.indexOf("if(session.user.role!=='WALI_SANTRI')"),load.indexOf("const catalog=await runServer('getCatalog'"));
+ assert.ok(staffBranch.indexOf("showApp()")<staffBranch.indexOf("showStaffApp()"));
+ assert.ok(staffBranch.indexOf("showStaffApp()")<staffBranch.indexOf("await loadOps()"));
  assert.ok(staffBranch.includes('showApp()'));
  assert.ok(!staffBranch.includes("runServer('getCatalog'"));
  assert.ok(load.includes('retryOpsStartup'));
