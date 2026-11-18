@@ -1672,7 +1672,7 @@ function saveVariation(token, data) {
       mutationSheet.appendRow([makeFMartId_('MUT'),productId,variationId,'MASUK',stock,0,stock,variationId,'Stok awal saat variasi dibuat',session.userId,now]);
     }
     writeAudit_(session.userId,session.role,id?'UPDATE_VARIATION':'CREATE_VARIATION','VARIASI_PRODUK',variationId,beforeData,JSON.stringify({productId,name,value,addition,stock,status}),'Perubahan variasi; saldo Stok menjadi sumber utama dan stok awal variasi baru dicatat sebagai mutasi MASUK');
-    const queueResult=(!existingVariation&&stock>0)?processPendingStockOrders_(ss,session.userId,'VARIASI_BARU',session.role):{processed:0};SpreadsheetApp.flush();const catalog=getAdminCatalog(token);catalog.stockQueueProcessed=queueResult.processed;return catalog;
+    SpreadsheetApp.flush();const queueResult=(!existingVariation&&stock>0)?processPendingStockOrders_(ss,session.userId,'VARIASI_BARU',session.role):{processed:0};SpreadsheetApp.flush();const catalog=getAdminCatalog(token);catalog.stockQueueProcessed=queueResult.processed;return catalog;
   }finally{lock.releaseLock();}
 }
 
@@ -1864,7 +1864,7 @@ function adjustStock(token, productId, variationId, type, qty, note) {
       sheet.getRange(row+2,4).setValue(after);sheet.getRange(row+2,6).setValue(now);
     }else sheet.appendRow([makeFMartId_('STK'),productId,variationId,after,Number(product.values[6])||0,now]);
     if(variationId){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(vr)ss.getRange(vr.rowNumber,6,1,3).setValues([[after,String(vr.values[6]||'AKTIF'),now]]);}
-    ss.getSheetByName('MutasiStok').appendRow([makeFMartId_('MUT'),productId,variationId,type,qty,before,after,'',note,session.userId,now]);writeAudit_(session.userId,session.role,'ADJUST_STOCK','STOK',productId,JSON.stringify({variationId:variationId,stock:before}),JSON.stringify({variationId:variationId,stock:after,type:type,qty:qty}),'Mutasi stok manual',now);const queueResult=type==='MASUK'?processPendingStockOrders_(ss,session.userId,'PENYESUAIAN_STOK',session.role):{processed:0};SpreadsheetApp.flush();const dashboard=getOperationsDashboard(token);dashboard.stockQueueProcessed=queueResult.processed;return dashboard;
+    ss.getSheetByName('MutasiStok').appendRow([makeFMartId_('MUT'),productId,variationId,type,qty,before,after,'',note,session.userId,now]);writeAudit_(session.userId,session.role,'ADJUST_STOCK','STOK',productId,JSON.stringify({variationId:variationId,stock:before}),JSON.stringify({variationId:variationId,stock:after,type:type,qty:qty}),'Mutasi stok manual',now);SpreadsheetApp.flush();const queueResult=type==='MASUK'?processPendingStockOrders_(ss,session.userId,'PENYESUAIAN_STOK',session.role):{processed:0};SpreadsheetApp.flush();const dashboard=getOperationsDashboard(token);dashboard.stockQueueProcessed=queueResult.processed;return dashboard;
   }finally{lock.releaseLock();}
 }
 
@@ -1903,7 +1903,7 @@ function verifyPayment(token,paymentId,decision,note){
   }
   ps.getRange(pay.rowNumber,6,1,3).setValues([['TERVERIFIKASI',session.userId,now]]);ps.getRange(pay.rowNumber,10).setValue(now);
   setOrderReservationStatus_(ss,id,'MENUNGGU_STOK');
-  setOrderFulfillmentStatus_(ss,order,'MENUNGGU_STOK','SYSTEM','Pembayaran terverifikasi. Menunggu seluruh jumlah barang tersedia di Gudang.',now);
+  setOrderFulfillmentStatus_(ss,order,'MENUNGGU_STOK','SYSTEM','Pembayaran terverifikasi. Menunggu seluruh jumlah barang tersedia di Gudang.',now);SpreadsheetApp.flush();
    writeAudit_(session.userId,session.role,'UPDATE_ORDER_STATUS','PESANAN',id,JSON.stringify({status:'MENUNGGU_PEMBAYARAN'}),JSON.stringify({status:'MENUNGGU_STOK'}),'Pembayaran terverifikasi; menunggu stok Gudang lengkap',now);
   // Masukkan pesanan yang baru dibayar ke antrean yang sama agar prioritas stok mengikuti waktu pesanan.
   processPendingStockOrders_(ss,session.userId,'VERIFIKASI_PEMBAYARAN',session.role);
