@@ -3408,12 +3408,13 @@ function applyCashierSaleStock_(ss,saleId,items,session,now) {
  * Read-only: tidak memperbaiki atau mengubah data apa pun.
  * Jalankan dari Apps Script Editor: auditFMartOperationalSync_()
  */
-function auditFMartOperationalSync_() {
+function auditFMartOperationalSync_(options) {
+  const skipSantriData=!!(options&&options.skipSantriData===true);
   const ss=getSS_(),issues=[],maxIssues=500;
   function issue(code,sheet,row,detail){if(issues.length<maxIssues)issues.push({code:code,sheet:sheet,row:row||'',detail:detail||''});}
   function rows(name){const sh=ss.getSheetByName(name);return sh?readRows_(sh):[];}
-  const products=rows('Produk'),categories=rows('Kategori'),variations=rows('VariasiProduk'),stocks=rows('Stok'),mutations=rows('MutasiStok'),santriSheet=ss.getSheetByName('Santri');
-  const productById=Object.create(null),categoryById=Object.create(null),variationById=Object.create(null),stockByKey=Object.create(null),santriById=Object.create(null),santriMap=getSantriColumnMap_(santriSheet);
+  const products=rows('Produk'),categories=rows('Kategori'),variations=rows('VariasiProduk'),stocks=rows('Stok'),mutations=rows('MutasiStok'),santriSheet=skipSantriData?null:ss.getSheetByName('Santri');
+  const productById=Object.create(null),categoryById=Object.create(null),variationById=Object.create(null),stockByKey=Object.create(null),santriById=Object.create(null),santriMap=skipSantriData?null:getSantriColumnMap_(santriSheet);
   const productSku=Object.create(null),variationKeys=Object.create(null),stockKeys=Object.create(null),mutationIds=Object.create(null),nisKeys=Object.create(null);
   categories.forEach(function(r){categoryById[String(r[0]||'')]=r;});
   products.forEach(function(r,i){
@@ -3455,17 +3456,21 @@ function auditFMartOperationalSync_() {
     if(vid&&(!variationById[vid]||String(variationById[vid][1])!==pid))issue('MUTATION_VARIATION_MISMATCH','MutasiStok',i+2,'Variasi mutasi tidak cocok dengan produk.');
     if(['MASUK','KELUAR'].indexOf(type)<0||!Number.isSafeInteger(qty)||qty<1||!Number.isSafeInteger(before)||!Number.isSafeInteger(after)||after!==(type==='MASUK'?before+qty:before-qty)||after<0)issue('MUTATION_ARITHMETIC_INVALID','MutasiStok',i+2,'Jenis, qty, stok sebelum, dan stok sesudah tidak membentuk mutasi yang valid.');
   });
-  const santriRows=readSantriRows_(santriSheet);
-  santriRows.forEach(function(r,i){
-    const rec=santriRecord_(r,santriMap),nis=rec.nis.trim().toUpperCase();
-    if(!rec.id)issue('SANTRI_ID_EMPTY','Santri',i+2,'SantriId kosong.');
-    else if(santriById[rec.id])issue('SANTRI_ID_DUPLICATE','Santri',i+2,'SantriId duplikat.');
-    else santriById[rec.id]=rec;
-    if(nis){if(nisKeys[nis])issue('SANTRI_NIS_DUPLICATE','Santri',i+2,'NIS duplikat dengan baris '+nisKeys[nis]+'.');else nisKeys[nis]=i+2;}
-  });
-  rows('PenjualanToko').forEach(function(r,i){const sid=String(r[4]||'');if(sid&&!santriById[sid])issue('POS_SANTRI_REFERENCE_MISSING','PenjualanToko',i+2,'SantriId pembeli tidak ditemukan pada master Santri.');});
-  rows('Pesanan').forEach(function(r,i){const sid=String(r[3]||'');if(sid&&!santriById[sid])issue('ORDER_SANTRI_REFERENCE_MISSING','Pesanan',i+2,'SantriId pesanan tidak ditemukan pada master Santri.');});
-  return {checkedAt:new Date().toISOString(),mode:'READ_ONLY',counts:{products:products.length,variations:variations.length,stockRows:stocks.length,mutations:mutations.length,santri:santriRows.length},issues:issues,issueCount:issues.length,truncated:issues.length>=maxIssues,stockAuthority:'Stok'};
+  let santriCount=null;
+  if(!skipSantriData){
+    const santriRows=readSantriRows_(santriSheet);
+    santriCount=santriRows.length;
+    santriRows.forEach(function(r,i){
+      const rec=santriRecord_(r,santriMap),nis=rec.nis.trim().toUpperCase();
+      if(!rec.id)issue('SANTRI_ID_EMPTY','Santri',i+2,'SantriId kosong.');
+      else if(santriById[rec.id])issue('SANTRI_ID_DUPLICATE','Santri',i+2,'SantriId duplikat.');
+      else santriById[rec.id]=rec;
+      if(nis){if(nisKeys[nis])issue('SANTRI_NIS_DUPLICATE','Santri',i+2,'NIS duplikat dengan baris '+nisKeys[nis]+'.');else nisKeys[nis]=i+2;}
+    });
+    rows('PenjualanToko').forEach(function(r,i){const sid=String(r[4]||'');if(sid&&!santriById[sid])issue('POS_SANTRI_REFERENCE_MISSING','PenjualanToko',i+2,'SantriId pembeli tidak ditemukan pada master Santri.');});
+    rows('Pesanan').forEach(function(r,i){const sid=String(r[3]||'');if(sid&&!santriById[sid])issue('ORDER_SANTRI_REFERENCE_MISSING','Pesanan',i+2,'SantriId pesanan tidak ditemukan pada master Santri.');});
+  }
+  return {checkedAt:new Date().toISOString(),mode:'READ_ONLY',counts:{products:products.length,variations:variations.length,stockRows:stocks.length,mutations:mutations.length,santri:santriCount},issues:issues,issueCount:issues.length,truncated:issues.length>=maxIssues,stockAuthority:'Stok',skippedChecks:skipSantriData?['Santri IDs and NIS','POS/order references targeting Santri']:[]};
 }
 
 
@@ -3752,6 +3757,46 @@ function runFMartReadinessAudit() {
   const report={ok:summary.every(function(x){return x.ok;}),mode:'READ_ONLY',checkedAt:new Date().toISOString(),
     summary:summary,totalIssues:summary.reduce(function(n,x){return n+x.issueCount;},0),checks:checks,
     note:'Audit tidak mengubah data. Tinjau semua issue sebelum menjalankan transaksi atau mengaktifkan fitur keamanan tambahan.'};
+  Logger.log(JSON.stringify(report,null,2));
+  return report;
+}
+
+
+/**
+ * Audit kesiapan FMart tanpa memeriksa isi Sheet Santri.
+ * Tetap memeriksa keberadaan dan header Santri sebagai dependensi aplikasi.
+ * READ_ONLY: tidak menulis ke Spreadsheet, Drive, atau Script Properties.
+ */
+function runFMartReadinessAuditSkipSantri() {
+  const checks = {};
+  function run_(name, callback) {
+    try { checks[name] = callback(); }
+    catch (error) {
+      const message=String(error && error.message || error);
+      checks[name] = {ok:false,mode:'READ_ONLY',error:message,issues:[{code:'AUDIT_EXECUTION_FAILED',detail:message}]};
+    }
+  }
+  run_('database', function(){return auditFMartDatabaseIntegrity_({skipSantriData:true});});
+  run_('runtime', auditFMartRuntime_);
+  run_('operationalSync', function(){return auditFMartOperationalSync_({skipSantriData:true});});
+  run_('stockAndPOS', auditFMartStockReconciliation_);
+  run_('cashierPOS', auditCashierPOSIntegrity_);
+  run_('warehouseReceiving', auditWarehouseReceivingIntegrity_);
+  run_('transactionRecovery', auditFMartTransactionRecovery_);
+  const summary=Object.keys(checks).map(function(name){
+    const result=checks[name]||{},issues=Array.isArray(result.issues)?result.issues.length:Number(result.issueCount)||0;
+    return {name:name,ok:result.ok!==false&&issues===0,issueCount:issues};
+  });
+  const report={
+    ok:summary.every(function(item){return item.ok;}),
+    mode:'READ_ONLY',
+    scope:'EXCLUDING_SANTRI_DATA',
+    checkedAt:new Date().toISOString(),
+    summary:summary,
+    totalIssues:summary.reduce(function(total,item){return total+item.issueCount;},0),
+    checks:checks,
+    note:'Isi dan referensi data Santri dilewati. Keberadaan dan header sheet Santri tetap diperiksa. Tidak ada perbaikan otomatis.'
+  };
   Logger.log(JSON.stringify(report,null,2));
   return report;
 }
