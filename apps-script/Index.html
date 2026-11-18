@@ -3654,3 +3654,70 @@ body.buyer-portal #productModal input:focus-visible{
   body.buyer-portal #productModal .buyer-variation-option{transition:none}
 }
 </style>
+
+<style>
+/* Responsive refinement: desktop, tablet, and mobile */
+body.buyer-portal #productModal{box-sizing:border-box;width:100%;min-width:0;padding:clamp(14px,2.5vw,30px);place-items:center;overflow-y:auto;overscroll-behavior:contain}
+body.buyer-portal #productModal,body.buyer-portal #productModal *{box-sizing:border-box}
+body.buyer-portal #productModal .modal-card{width:min(1040px,calc(100vw - 48px));max-width:1040px;max-height:min(90vh,90dvh,900px);margin:auto;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+body.buyer-portal #productModal .buyer-detail-layout{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:clamp(18px,2.6vw,32px)}
+body.buyer-portal #productModal .buyer-detail-photo{width:100%;height:auto;min-height:0;aspect-ratio:.95/1;max-height:520px}
+body.buyer-portal #productModal .buyer-detail-photo img{object-fit:contain}
+body.buyer-portal #productModal .buyer-detail-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+body.buyer-portal #productModal .buyer-detail-actions button{min-width:0;white-space:normal;line-height:1.25}
+
+/* Tablet: single-column content avoids cramped two-column layout */
+@media(min-width:601px) and (max-width:1024px){
+ body.buyer-portal #productModal{padding:clamp(18px,3vw,30px);place-items:center}
+ body.buyer-portal #productModal .modal-card{width:min(820px,calc(100vw - 48px));max-width:820px;max-height:88vh;max-height:88dvh;padding:clamp(20px,3vw,28px);border-radius:24px}
+ body.buyer-portal #productModal .modal-head{top:calc(-1 * clamp(20px,3vw,28px));margin:0 0 18px;padding:2px 0 14px}
+ body.buyer-portal #productModal .buyer-detail-layout{grid-template-columns:minmax(0,1fr);gap:18px}
+ body.buyer-portal #productModal .buyer-detail-visual{width:min(100%,560px);margin-inline:auto}
+ body.buyer-portal #productModal .buyer-detail-photo{aspect-ratio:16/9;height:auto;max-height:340px;min-height:0}
+ body.buyer-portal #productModal .buyer-photo-caption{text-align:center}
+ body.buyer-portal #productModal .buyer-detail-info{width:100%}
+ body.buyer-portal #productModal .buyer-detail-name{font-size:25px}
+ body.buyer-portal #productModal .buyer-detail-price{font-size:27px}
+ body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.buyer-portal #productModal .buyer-detail-actions{position:sticky;bottom:-28px;margin:16px -2px -2px;padding:14px 2px 2px;background:linear-gradient(180deg,rgba(255,255,255,.9),#fff 25%)}
+}
+
+/* Mobile: bottom sheet with one scroll area and reachable action buttons */
+@media(max-width:600px){
+ body.buyer-portal #productModal{display:grid;align-items:end;justify-items:center;padding:0;padding-top:max(8px,env(safe-area-inset-top));padding-bottom:0}
+ body.buyer-portal #productModal .modal-card{width:100%;max-width:620px;max-height:calc(94vh - env(safe-area-inset-top));max-height:calc(94dvh - env(safe-area-inset-top));margin:0 auto;padding:16px 15px calc(12px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0;overflow-x:hidden;overflow-y:auto}
+ body.buyer-portal #productModal .modal-head{top:-16px;margin:0 0 14px;padding:0 0 12px}
+ body.buyer-portal #productModal .modal-head h2{font-size:18px}
+ body.buyer-portal #productModal .icon-btn{width:40px;height:40px;flex-basis:40px}
+ body.buyer-portal #productModal .buyer-detail-layout{grid-template-columns:minmax(0,1fr);gap:14px}
+ body.buyer-portal #productModal .buyer-detail-visual{width:100%}
+ body.buyer-portal #productModal .buyer-detail-photo{width:100%;aspect-ratio:16/10;height:auto;min-height:0;max-height:260px;border-radius:17px}
+ body.buyer-portal #productModal .buyer-detail-photo img{padding:12px}
+ body.buyer-portal #productModal .buyer-photo-caption{margin-top:5px;text-align:center}
+ body.buyer-portal #productModal .buyer-detail-name{margin-top:8px;font-size:20px;line-height:1.3}
+ body.buyer-portal #productModal .buyer-detail-price{margin:9px 0 12px;font-size:23px}
+ body.buyer-portal #productModal .buyer-detail-description{padding:11px 12px;border-radius:13px}
+ body.buyer-portal #productModal .buyer-detail-description p{font-size:12px}
+ body.buyer-portal #productModal .buyer-variation-section{margin-top:14px}
+ body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ body.buyer-portal #productModal .buyer-variation-option{min-width:0;min-height:50px;padding:10px}
+ body.buyer-portal #productModal .buyer-variation-price{white-space:normal;text-align:right}
+ body.buyer-portal #productModal .buyer-quantity-panel{margin-top:14px;padding:11px 12px}
+ body.buyer-portal #productModal .buyer-qty-control button{width:38px;height:38px}
+ body.buyer-portal #productModal .buyer-qty-control input{width:42px;height:38px}
+ body.buyer-portal #productModal .buyer-detail-actions{position:sticky;bottom:calc(-12px - env(safe-area-inset-bottom));grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:13px -15px calc(-12px - env(safe-area-inset-bottom));padding:11px 15px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #eee5f2;background:rgba(255,255,255,.97);backdrop-filter:blur(10px)}
+ body.buyer-portal #productModal .buyer-detail-actions button{min-height:46px;padding:10px 8px;font-size:12px}
+}
+@media(max-width:380px){
+ body.buyer-portal #productModal .modal-card{padding-inline:12px}
+ body.buyer-portal #productModal .buyer-detail-photo{max-height:220px}
+ body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:1fr}
+ body.buyer-portal #productModal .buyer-quantity-panel{align-items:center;gap:8px}
+ body.buyer-portal #productModal .buyer-quantity-panel small{max-width:170px}
+ body.buyer-portal #productModal .buyer-detail-actions{grid-template-columns:1fr;margin-inline:-12px;padding-inline:12px}
+}
+@media(max-height:560px) and (min-width:601px){
+ body.buyer-portal #productModal .modal-card{max-height:94vh;max-height:94dvh}
+ body.buyer-portal #productModal .buyer-detail-photo{aspect-ratio:16/9;max-height:230px}
+}
+</style>
