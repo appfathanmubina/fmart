@@ -9,7 +9,7 @@ const FMART = Object.freeze({
   LOGIN_RATE_LIMIT_SECONDS: 300,
   LOGIN_MAX_FAILURES: 8,
   PASSWORD_MIN_LENGTH: 10,
-  PASSWORD_HASH_MODE: 'LEGACY', // Aktifkan PBKDF2 hanya setelah benchmark runtime lulus.
+  PASSWORD_HASH_MODE_PROPERTY: 'FMART_PASSWORD_HASH_MODE', // Default LEGACY sampai benchmark runtime Apps Script lulus.
   PASSWORD_HASH_ITERATIONS: 600000,
   SPREADSHEET_PROPERTY: 'FMART_SPREADSHEET_ID',
   ROLES: Object.freeze({ WALI_SANTRI:'WALI_SANTRI', ADMIN:'ADMIN', KASIR:'KASIR', GUDANG:'GUDANG', PETUGAS_PENGANTAR:'PETUGAS_PENGANTAR', SUPERADMIN:'SUPERADMIN' })
@@ -120,11 +120,11 @@ function login(username, password, portalMode) {
     return {ok:false, message:'Akun ini tidak dapat digunakan pada jalur FMart tersebut.'};
   }
 
-  // OTP email Admin dinonaktifkan sementara. Email tetap menjadi username staf;
-  // password, status akun, pembatasan percobaan, dan role guard tetap berlaku.
+  // Login staf wajib menyelesaikan OTP email sebelum sesi dibuat.
+  // Password yang benar saja tidak pernah menghasilkan token sesi untuk portal petugas.
 
   // Migrasi hash lama hanya setelah password lama terbukti benar.
-  if (FMART.PASSWORD_HASH_MODE === 'PBKDF2' && isLegacyPasswordHash_(String(r[2] || ''))) {
+  if (passwordHashMode_() === 'PBKDF2' && isLegacyPasswordHash_(String(r[2] || ''))) {
     const migrationLock = LockService.getScriptLock();
     migrationLock.waitLock(15000);
     try {
@@ -149,6 +149,14 @@ function login(username, password, portalMode) {
     } finally { migrationLock.releaseLock(); }
   }
 
+  if (portalMode === 'ADMINFMART16720') {
+    const otpResult = issueAdminLoginOtp_(r, rate);
+    if (!otpResult.ok) return otpResult;
+    cache.remove(rate);
+    writeAudit_(String(r[0]), String(r[5] || '').toUpperCase(), 'LOGIN_OTP_ISSUED', 'USER', String(r[0]), '', JSON.stringify({email:maskEmail_(r[10])}), 'Password benar; OTP email dikirim sebelum sesi dibuat');
+    return otpResult;
+  }
+
   const token = Utilities.getUuid() + '.' + Utilities.getUuid();
   const role = String(r[5]).toUpperCase();
   let sessionUsername = String(r[1] || '');
@@ -170,19 +178,27 @@ function login(username, password, portalMode) {
 /** OTP login Admin: disimpan sebagai hash di cache selama 5 menit; sesi belum dibuat. */
 function issueAdminLoginOtp_(userRow, rateKey) {
   const email = normalizeEmail_(userRow[10]);
+  if (!isValidStaffEmail_(email)) return {ok:false,message:'Email akun staf belum valid. Minta Superadmin memperbarui email sebelum login.'};
   const cache = CacheService.getScriptCache();
   const userId = String(userRow[0] || '');
   const cooldownKey = adminOtpCooldownKey_(userId);
-  if (cache.get(cooldownKey)) return {ok:false,message:'Kode OTP baru saja dikirim. Periksa email atau tunggu sebelum meminta kode baru.'};
-  const code = String(100000 + (parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16) % 900000));
-  const challengeId = Utilities.getUuid() + Utilities.getUuid();
-  const challenge = {
-    userId:userId, role:String(userRow[5] || '').toUpperCase(), email:email,
-    authUpdatedAt:userRow[8] instanceof Date ? userRow[8].getTime() : (new Date(userRow[8] || 0).getTime() || 0),
-    otpHash:adminOtpHash_(challengeId,code), attempts:0, createdAt:Date.now()
-  };
-  cache.put(adminOtpChallengeKey_(challengeId),JSON.stringify(challenge),300);
-  cache.put(cooldownKey,'1',60);
+  const lock = LockService.getScriptLock();
+  let code, challengeId;
+  lock.waitLock(5000);
+  try {
+    if (cache.get(cooldownKey)) return {ok:false,message:'Kode OTP baru saja dikirim. Periksa email atau tunggu sebelum meminta kode baru.'};
+    code = String(100000 + (parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16) % 900000));
+    challengeId = Utilities.getUuid() + Utilities.getUuid();
+    const challenge = {
+      userId:userId, role:String(userRow[5] || '').toUpperCase(), email:email,
+      authUpdatedAt:userRow[8] instanceof Date ? userRow[8].getTime() : (new Date(userRow[8] || 0).getTime() || 0),
+      otpHash:adminOtpHash_(challengeId,code), attempts:0, createdAt:Date.now()
+    };
+    cache.put(adminOtpChallengeKey_(challengeId),JSON.stringify(challenge),300);
+    cache.put(cooldownKey,'1',60);
+  } finally {
+    lock.releaseLock();
+  }
   try {
     MailApp.sendEmail({
       to:email,
@@ -220,8 +236,7 @@ function verifyAdminLoginOtp(challengeId, code, portalMode) {
     const user=findRowById_(sheet,challenge.userId,1);
     if(!user || String(user.values[6]||'').toUpperCase()!=='AKTIF' ||
        String(user.values[5]||'').toUpperCase()!==challenge.role ||
-       normalizeEmail_(user.values[10])!==challenge.email ||
-       !(String(user.values[11]||'').toUpperCase()==='TRUE'||user.values[11]===true)){
+       normalizeEmail_(user.values[10])!==challenge.email || !isValidStaffEmail_(challenge.email)){
       return {ok:false,message:'Data akun berubah. Silakan mulai login kembali.'};
     }
     const updatedAt=user.values[8] instanceof Date?user.values[8].getTime():(new Date(user.values[8]||0).getTime()||0);
@@ -1399,13 +1414,16 @@ function getOperationsDashboard(token) {
   });
   const pendingRows=payments.filter(r=>String(r[5]||'').toUpperCase()==='MENUNGGU_VERIFIKASI').sort((a,b)=>new Date(a[8]||0).getTime()-new Date(b[8]||0).getTime());
   const queueLimit=Math.max(1,Number(getSettingValue_('PAYMENT_VERIFICATION_QUEUE_LIMIT'))||50),pendingVerification=pendingRows.length,orderById={};orders.forEach(function(r){orderById[String(r[0])]=r;});
-  const pendingPayments=pendingRows.slice(0,queueLimit).map(function(p){const o=orderById[String(p[1])]||[],wali=userMap[String(o[2]||'')],child=childMap[String(o[3]||'')];return {orderId:String(p[1]),number:String(o[1]||p[1]),waliName:wali?wali.name:'-',childName:child?child.name:'-',className:child?child.className:'-',total:Number(o[7])||0,createdAt:dateIso_(p[8]),orderCreatedAt:dateIso_(o[10]),status:String(o[8]||''),payment:{id:String(p[0]),method:String(p[2]||''),nominal:Number(p[3])||0,status:String(p[5]||''),buktiUrl:'',createdAt:dateIso_(p[8]),catatan:String(p[12]||'')}};});
+  const mapPendingPayment=function(p){const o=orderById[String(p[1])]||[],wali=userMap[String(o[2]||'')],child=childMap[String(o[3]||'')];return {orderId:String(p[1]),number:String(o[1]||p[1]),waliName:wali?wali.name:'-',childName:child?child.name:'-',className:child?child.className:'-',total:Number(o[7])||0,createdAt:dateIso_(p[8]),orderCreatedAt:dateIso_(o[10]),status:String(o[8]||''),payment:{id:String(p[0]),method:String(p[2]||''),nominal:Number(p[3])||0,status:String(p[5]||''),buktiUrl:'',createdAt:dateIso_(p[8]),catatan:String(p[12]||'')}};};
+  const pendingPayments=pendingRows.slice(0,queueLimit).map(mapPendingPayment);
   const countStatus=st=>orders.filter(r=>String(r[8]||'').toUpperCase()===st).length;
   if(session.role===FMART.ROLES.KASIR){
     const ownSales=readRows_(ss.getSheetByName('PenjualanToko')).filter(function(r){return String(r[13]||'')===String(session.userId);});
     const todayKey=Utilities.formatDate(new Date(),Session.getScriptTimeZone()||'Asia/Jakarta','yyyy-MM-dd');
     const todaySales=ownSales.filter(function(r){const d=r[15] instanceof Date?r[15]:new Date(r[15]||0);return !isNaN(d.getTime())&&Utilities.formatDate(d,Session.getScriptTimeZone()||'Asia/Jakarta','yyyy-MM-dd')===todayKey;});
-    return {ok:true,user:{userId:session.userId,nama:session.nama,role:session.role},stats:{cashierPendingQris:ownSales.filter(function(r){return String(r[8]||'').toUpperCase()==='QRIS'&&String(r[11]||'').toUpperCase()==='MENUNGGU_KONFIRMASI';}).length,cashierSalesToday:todaySales.length,cashierPaidToday:todaySales.filter(function(r){return String(r[11]||'').toUpperCase()==='LUNAS';}).length},orders:[],pendingPayments:[],products:[],categories:[]};
+    const waliQrisQueue=pendingRows.filter(function(p){return String(p[2]||'').toUpperCase()==='QRIS';}).slice(0,queueLimit).map(mapPendingPayment);
+    const waliQrisPending=pendingRows.filter(function(p){return String(p[2]||'').toUpperCase()==='QRIS';}).length;
+    return {ok:true,user:{userId:session.userId,nama:session.nama,role:session.role},stats:{cashierPendingQris:ownSales.filter(function(r){return String(r[8]||'').toUpperCase()==='QRIS'&&String(r[11]||'').toUpperCase()==='MENUNGGU_KONFIRMASI';}).length,cashierSalesToday:todaySales.length,cashierPaidToday:todaySales.filter(function(r){return String(r[11]||'').toUpperCase()==='LUNAS';}).length,pendingVerification:waliQrisPending,paymentQueueLimit:queueLimit,paymentQueueShown:waliQrisQueue.length,paymentQueueRemaining:Math.max(0,waliQrisPending-waliQrisQueue.length)},orders:[],pendingPayments:waliQrisQueue,products:[],categories:[]};
   }
   return {ok:true,user:{userId:session.userId,nama:session.nama,role:session.role},stats:{pendingVerification:pendingVerification,paymentQueueLimit:queueLimit,paymentQueueShown:pendingPayments.length,paymentQueueRemaining:Math.max(0,pendingVerification-pendingPayments.length),menungguPembayaran:countStatus('MENUNGGU_PEMBAYARAN'),menungguStok:countStatus('MENUNGGU_STOK'),dibayar:countStatus('DIBAYAR'),diproses:countStatus('DIPROSES'),disiapkan:countStatus('DISIAPKAN'),diantar:countStatus('DIANTAR'),diterima:countStatus('DITERIMA'),siapDiambil:countStatus('SIAP_DIAMBIL'),activeProducts:products.filter(r=>String(r[8]||'').toUpperCase()==='AKTIF').length,lowStock:lowStock,categories:cats.filter(r=>String(r[4]||'').toUpperCase()==='AKTIF').length},categories:cats.map(r=>({id:String(r[0]),name:String(r[1]||''),description:String(r[2]||''),order:Number(r[3])||0,status:String(r[4]||'')})),orders:resultOrders,pendingPayments:pendingPayments,products:productStock};
 }
@@ -1939,12 +1957,25 @@ function processPendingStockOrders_(ss,actor,source,actorRole){
  orders.forEach(order=>{const id=String(order.values[0]),pay=latestPaymentForOrder_(payments,id);if(!pay||String(pay.status).toUpperCase()!=='TERVERIFIKASI')return;const plan=buildOrderStockPlan_(ss,id);if(plan.missing.some(m=>blocked[m.key]))return;if(!plan.available){plan.missing.forEach(m=>blocked[m.key]=true);return;}const now=new Date();applyOrderStockPlan_(ss,id,plan.plan,actor||'SYSTEM',now);setOrderFulfillmentStatus_(ss,order,'DIBAYAR',actor||'SYSTEM','Stok lengkap. Pesanan siap diproses Gudang.',now);writeAudit_(actor||'SYSTEM',actorRole||(actor==='SYSTEM'?'SYSTEM':'GUDANG'),'UPDATE_ORDER_STATUS','PESANAN',id,JSON.stringify({status:'MENUNGGU_STOK'}),JSON.stringify({status:'DIBAYAR'}),'Stok pesanan lengkap; siap diproses',now);ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Pesanan sedang diproses','Pesanan Anda sedang diproses. Kami akan menginformasikan perkembangan selanjutnya melalui aplikasi.','PESANAN',false,now]);writeAudit_(actor||'SYSTEM',actorRole|| (actor==='SYSTEM'?'SYSTEM':'GUDANG'),'FULFILL_WAITING_STOCK_ORDER','PESANAN',id,JSON.stringify({status:'MENUNGGU_STOK'}),JSON.stringify({status:'DIBAYAR',source:String(source||'STOCK_IN')}),'Stok lengkap; pesanan masuk antrean pemenuhan',now);done.push(id);});
  return {processed:done.length,orderIds:done};
 }
+function validateQrisPaymentForApproval_(payment, order) {
+  if (!payment || !order) throw new Error('Data pembayaran atau pesanan tidak lengkap.');
+  if (String(payment[1] || '') !== String(order[0] || '')) throw new Error('Identitas pesanan pada pembayaran tidak cocok.');
+  if (String(payment[11] || '') !== String(order[2] || '')) throw new Error('Identitas Wali pengaju pembayaran tidak cocok dengan pemilik pesanan.');
+  if (String(payment[2] || '').trim().toUpperCase() !== 'QRIS') throw new Error('Persetujuan hanya dapat diberikan untuk pembayaran QRIS.');
+  const nominal = Number(payment[3]), total = Number(order[7]);
+  if (!Number.isSafeInteger(nominal) || nominal < 1 || !Number.isSafeInteger(total) || total < 1 || nominal !== total) throw new Error('Nominal pembayaran QRIS tidak sama dengan total pesanan. Periksa kembali sebelum menyetujui.');
+  return true;
+}
+
 function verifyPayment(token,paymentId,decision,note){
- const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);paymentId=String(paymentId||'').trim();decision=String(decision||'').toUpperCase();note=String(note||'').trim().slice(0,300);if(!paymentId||['TERIMA','TOLAK'].indexOf(decision)<0)throw new Error('Keputusan pembayaran tidak valid.');
+ const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN,FMART.ROLES.KASIR]);paymentId=String(paymentId||'').trim();decision=String(decision||'').toUpperCase();note=String(note||'').trim().slice(0,300);if(!paymentId||['TERIMA','TOLAK'].indexOf(decision)<0)throw new Error('Keputusan pembayaran tidak valid.');
  const lock=LockService.getScriptLock();lock.waitLock(15000);
  try{
   const ss=getSS_();expireStockReservations_(ss,new Date());const ps=ss.getSheetByName('Pembayaran'),pay=findRowById_(ps,paymentId,1);if(!pay)throw new Error('Pengajuan pembayaran tidak ditemukan.');if(String(pay.values[5]).toUpperCase()!=='MENUNGGU_VERIFIKASI')throw new Error('Pembayaran sudah diproses.');
   const os=ss.getSheetByName('Pesanan'),order=findRowById_(os,String(pay.values[1]),1);if(!order)throw new Error('Pesanan terkait tidak ditemukan.');if(String(order.values[8]).toUpperCase()!=='MENUNGGU_PEMBAYARAN')throw new Error('Status pesanan tidak sesuai.');
+  const paymentMethod=String(pay.values[2]||'').trim().toUpperCase();
+  if(session.role===FMART.ROLES.KASIR && paymentMethod!=='QRIS')throw new Error('Kasir hanya berwenang memproses pembayaran QRIS Wali Santri.');
+  if(decision==='TERIMA')validateQrisPaymentForApproval_(pay.values,order.values);
   const now=new Date(),id=String(order.values[0]);
   if(decision==='TOLAK'){
    setOrderReservationStatus_(ss,id,'DILEPAS');ps.getRange(pay.rowNumber,6,1,3).setValues([['DITOLAK','','']]);ps.getRange(pay.rowNumber,10).setValue(now);
@@ -2596,7 +2627,7 @@ function reserveOrderStock_(ss,orderId,items,minutes){
   Object.keys(totals).forEach(function(k){const p=k.split('|');sh.appendRow([makeFMartId_('RSV'),orderId,p[0],p[1],totals[k],'AKTIF',now,expires,now]);});return expires;
 }
 function expireStockReservations_(ss,now){now=now||new Date();const sh=ensureStockReservationSheet_(ss),rows=readRows_(sh),expired={};rows.forEach(function(r,i){if(String(r[5]||'').toUpperCase()!=='AKTIF'||!r[7]||new Date(r[7]).getTime()>now.getTime())return;expired[String(r[1]||'')]=true;sh.getRange(i+2,6).setValue('KEDALUWARSA');sh.getRange(i+2,9).setValue(now);});Object.keys(expired).forEach(function(id){const o=findRowById_(ss.getSheetByName('Pesanan'),id,1);if(!o||String(o.values[8]||'').toUpperCase()!=='MENUNGGU_PEMBAYARAN')return;const ps=ss.getSheetByName('Pembayaran'),pending=readRows_(ps).filter(function(p){return String(p[1])===id&&String(p[5]||'').toUpperCase()==='MENUNGGU_VERIFIKASI';});pending.forEach(function(p){const pr=findRowById_(ps,String(p[0]),1);if(pr)ps.getRange(pr.rowNumber,6,1,3).setValues([['DITOLAK','','']]);});ss.getSheetByName('Pesanan').getRange(o.rowNumber,9,1,3).setValues([['DIBATALKAN','Reservasi stok kedaluwarsa sebelum pembayaran selesai.',now]]);const sr=latestShipmentRow_(ss.getSheetByName('Pengiriman'),id);if(sr)ss.getSheetByName('Pengiriman').getRange(sr,5,1,5).setValues([['DIBATALKAN','','','SYSTEM',now]]);ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(o.values[2]),id,'Reservasi stok berakhir','Batas waktu reservasi stok pesanan telah berakhir. Silakan buat pesanan baru.','PESANAN',false,now]);writeAudit_('SYSTEM','SYSTEM','EXPIRE_STOCK_RESERVATION','PESANAN',id,JSON.stringify({status:'MENUNGGU_PEMBAYARAN'}),JSON.stringify({status:'DIBATALKAN'}),'Reservasi stok kedaluwarsa');});}
-function getPaymentProofData(token,paymentId){requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);paymentId=String(paymentId||'').trim();const pay=findRowById_(getSS_().getSheetByName('Pembayaran'),paymentId,1);if(!pay)throw new Error('Data pembayaran tidak ditemukan.');const m=String(pay.values[4]||'').match(/[-\w]{25,}/);if(!m)throw new Error('ID file bukti tidak valid.');const file=DriveApp.getFileById(m[0]),folder=getPaymentProofFolder_(),parents=file.getParents();let trusted=false;while(parents.hasNext()){if(parents.next().getId()===folder.getId()){trusted=true;break;}}if(!trusted)throw new Error('File bukti tidak berada pada folder FMart.');const blob=file.getBlob(),mime=String(blob.getContentType()||'').toLowerCase(),bytes=blob.getBytes();if(!['image/jpeg','image/png','image/webp','application/pdf'].includes(mime)||bytes.length>5*1024*1024)throw new Error('File bukti tidak memenuhi ketentuan.');return {ok:true,fileName:file.getName(),mimeType:mime,base64:Utilities.base64Encode(bytes)};}
+function getPaymentProofData(token,paymentId){const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN,FMART.ROLES.KASIR]);paymentId=String(paymentId||'').trim();const pay=findRowById_(getSS_().getSheetByName('Pembayaran'),paymentId,1);if(!pay)throw new Error('Data pembayaran tidak ditemukan.');if(session.role===FMART.ROLES.KASIR&&String(pay.values[2]||'').toUpperCase()!=='QRIS')throw new Error('Kasir hanya dapat melihat bukti pembayaran QRIS Wali Santri.');const m=String(pay.values[4]||'').match(/[-\w]{25,}/);if(!m)throw new Error('ID file bukti tidak valid.');const file=DriveApp.getFileById(m[0]),folder=getPaymentProofFolder_(),parents=file.getParents();let trusted=false;while(parents.hasNext()){if(parents.next().getId()===folder.getId()){trusted=true;break;}}if(!trusted)throw new Error('File bukti tidak berada pada folder FMart.');const blob=file.getBlob(),mime=String(blob.getContentType()||'').toLowerCase(),bytes=blob.getBytes();if(!['image/jpeg','image/png','image/webp','application/pdf'].includes(mime)||bytes.length>5*1024*1024)throw new Error('File bukti tidak memenuhi ketentuan.');return {ok:true,fileName:file.getName(),mimeType:mime,base64:Utilities.base64Encode(bytes)};}
 
 function getPaymentProofFolder_() {
   const props = PropertiesService.getScriptProperties();
@@ -2723,8 +2754,13 @@ function sessionKey_(token) {
   return 'FMART_SESSION_' + Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, token)).slice(0,80);
 }
 
+function passwordHashMode_() {
+  const configured = PropertiesService.getScriptProperties().getProperty(FMART.PASSWORD_HASH_MODE_PROPERTY);
+  return String(configured || 'LEGACY').toUpperCase() === 'PBKDF2' ? 'PBKDF2' : 'LEGACY';
+}
+
 function hashPassword_(password, salt) {
-  if (FMART.PASSWORD_HASH_MODE === 'PBKDF2') {
+  if (passwordHashMode_() === 'PBKDF2') {
     return 'pbkdf2-sha256:' + FMART.PASSWORD_HASH_ITERATIONS + ':' + pbkdf2HmacSha256_(password, salt, FMART.PASSWORD_HASH_ITERATIONS);
   }
   return legacyHashPassword_(password, salt);
@@ -2782,6 +2818,17 @@ function benchmarkPbkdf2_() {
   const elapsed = Date.now() - start;
   Logger.log('PBKDF2 10.000 iterasi: ' + elapsed + ' ms; estimasi kasar 600.000 iterasi: ' + (elapsed * 60) + ' ms.');
   return {iterations:10000,elapsedMs:elapsed,estimated600kMs:elapsed*60};
+}
+
+function activatePbkdf2PasswordHashing_() {
+  testPbkdf2Implementation_();
+  const start = Date.now();
+  pbkdf2HmacSha256_('FMart-runtime-benchmark', 'FMart-runtime-benchmark-salt', FMART.PASSWORD_HASH_ITERATIONS);
+  const elapsedMs = Date.now() - start;
+  const maxLoginHashMs = 1500;
+  if (elapsedMs > maxLoginHashMs) return {ok:false,enabled:false,iterations:FMART.PASSWORD_HASH_ITERATIONS,elapsedMs:elapsedMs,message:'PBKDF2 belum diaktifkan karena benchmark melebihi batas login '+maxLoginHashMs+' ms. Mode lama tetap berjalan.'};
+  PropertiesService.getScriptProperties().setProperty(FMART.PASSWORD_HASH_MODE_PROPERTY, 'PBKDF2');
+  return {ok:true,enabled:true,iterations:FMART.PASSWORD_HASH_ITERATIONS,elapsedMs:elapsedMs,message:'PBKDF2 aktif. Akun lama akan dimigrasikan setelah login berhasil.'};
 }
 
 function constantTimeEqual_(a,b) {
