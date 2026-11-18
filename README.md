@@ -566,3 +566,31 @@ Tahap 1 menyiapkan struktur data untuk penjualan langsung di toko FMart tanpa me
 4. Jangan membuat transaksi uji pada database aktif sebelum endpoint POS dan prosedur pembatalan/pemulihan selesai dibuat pada tahap berikutnya.
 
 Pemeriksaan pada tahap ini bersifat statis terhadap repository. Belum ada perubahan pada `Code.gs` atau `Index.html`, dan belum dilakukan pengujian runtime Apps Script/Spreadsheet aktif.
+
+## Mesin Transaksi POS Kasir — Tahap 2
+
+### Endpoint server
+- `getCashierPOSData(token, searchText)`: katalog produk/variasi untuk Kasir, harga dan stok dari server, stok tersedia setelah dikurangi reservasi pesanan Wali dan reservasi QRIS toko, serta 12 transaksi terakhir.
+- `searchCashierSantri(token, searchText)`: pencarian santri aktif berdasarkan nama/NIS untuk identitas pembeli opsional.
+- `createCashierSale(token, payload)`: validasi item, kuantitas, harga, stok, identitas pembeli, metode pembayaran, dan kunci idempotensi. Harga tidak pernah diterima dari browser.
+- `confirmCashierQrisPayment(token, saleId, reference)`: konfirmasi manual oleh Kasir/Admin setelah dana QRIS benar-benar terlihat masuk.
+- `cancelCashierQrisSale(token, saleId, reason)`: membatalkan transaksi QRIS yang belum dibayar dan melepas reservasi stok.
+
+### Aturan transaksi dan stok
+- Penjualan tunai dicatat LUNAS dan stok langsung dikurangi satu kali; kembalian dihitung di server.
+- Penjualan QRIS dicatat MENUNGGU_KONFIRMASI dan stok ditahan selama 15 menit. Stok baru dikurangi ketika Kasir mengonfirmasi dana masuk. Jika belum dibayar, Kasir dapat membatalkan transaksi.
+- Kunci `requestKey` wajib unik dari sisi klien untuk mencegah transaksi ganda akibat klik berulang atau pengulangan permintaan jaringan.
+- Harga, variasi, status produk, jumlah, dan ketersediaan stok diperiksa ulang di bawah ScriptLock. Identitas pembeli dapat UMUM, NAMA, atau SANTRI.
+- Setiap penjualan yang mengurangi stok menulis MutasiStok dengan referensi PenjualanId dan mencatat AuditLog.
+- Reservasi QRIS toko diperhitungkan dalam ketersediaan katalog/keranjang Wali, checkout Wali, dan mutasi keluar Gudang agar stok tidak dijanjikan dua kali.
+- Metode QRIS pada tahap ini masih menggunakan konfirmasi manual; belum ada integrasi payment gateway, webhook, atau pembuatan QR dinamis.
+- Tahap ini belum membuat antarmuka POS, cetak struk, laporan penjualan, refund, atau pembatalan transaksi tunai.
+
+### Sinkronisasi dan pemeriksaan
+1. Sinkronkan `apps-script/Code.gs` dan `apps-script/SetupDatabase.gs` dari branch `main` ke project Apps Script.
+2. Jalankan `setupFMartDatabase_()` satu kali. Fungsi ini menambahkan kolom `RequestKey` dan `ReferensiPembayaran` ke `PenjualanToko`, serta sheet `ReservasiStokToko` tanpa menghapus baris data lama.
+3. Jalankan `auditFMartDatabaseIntegrity_()`; pastikan header dan relasi POS tidak bermasalah.
+4. Belum dilakukan transaksi uji pada Spreadsheet aktif. Sebelum dipakai, lakukan uji terkontrol untuk tunai, uang kurang, QRIS menunggu/konfirmasi/batal/kedaluwarsa, duplikasi request, stok terbatas, variasi, dan persaingan dengan checkout Wali.
+5. QRIS hanya boleh dikonfirmasi setelah petugas memeriksa dana masuk di kanal merchant. Jangan menyamakan tampilan QR atau screenshot pelanggan dengan bukti dana diterima.
+
+Pemeriksaan pada Tahap 2 bersifat statis terhadap repository. Tidak ada akses runtime ke Spreadsheet aktif, sehingga transaksi nyata dan konsistensi hasil stok belum teruji.
