@@ -126,7 +126,8 @@ function seedSettings_(sheet) {
     ['PAYMENT_QRIS_IMAGE_URL','','URL HTTPS gambar kode QRIS FMart'],
     ['STOCK_RESERVATION_MINUTES','30','Masa reservasi stok sejak checkout sebelum bukti pembayaran diajukan (menit)'],
     ['PAYMENT_RESERVATION_MINUTES','120','Masa reservasi stok setelah bukti pembayaran diajukan (menit)'],
-    ['PAYMENT_VERIFICATION_QUEUE_LIMIT','50','Batas jumlah pengajuan pembayaran menunggu verifikasi']
+    ['PAYMENT_VERIFICATION_QUEUE_LIMIT','50','Batas jumlah pengajuan pembayaran menunggu verifikasi'],
+    ['STOCK_LOCATION_SPLIT_MODE','ENABLED','Pemisahan saldo Gudang dan Kasir; StokKasir dimulai dari nol dan diisi melalui transfer tercatat']
   ];
   defaults.forEach(function(row) {
     if (existing.indexOf(row[0]) === -1) sheet.appendRow(row.concat([new Date()]));
