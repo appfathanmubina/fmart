@@ -1578,8 +1578,15 @@ function saveVariation(token, data) {
   const sheet=ss.getSheetByName('VariasiProduk'); const now=new Date(); let variationId=id; let stock=requestedStock;
   let beforeData=''; if(id){const row=findRowById_(sheet,id,1);if(!row)throw new Error('Variasi tidak ditemukan.');if(String(row.values[1]||'')!==productId)throw new Error('Variasi tidak dapat dipindahkan ke produk lain. Buat variasi baru pada produk tujuan.');beforeData=JSON.stringify(row.values);variationId=id;stock=Math.max(0,Number(row.values[5])||0);sheet.getRange(row.rowNumber,2,1,7).setValues([[productId,name,value,addition,stock,status,now]]);}
   else {variationId=makeFMartId_('VAR');sheet.appendRow([variationId,productId,name,value,addition,stock,status,now,now]);}
+  const stockRowsBefore=readRows_(ss.getSheetByName('Stok')),matchingStockRows=stockRowsBefore.filter(function(r){return String(r[1])===productId&&String(r[2]||'')===variationId;});
+  if(matchingStockRows.length>1)throw new Error('Ditemukan baris stok ganda untuk variasi ini. Perbaiki data Gudang sebelum menyimpan variasi.');
   upsertStockRow_(ss,productId,variationId,stock,session.userId);
-  writeAudit_(session.userId,session.role,id?'UPDATE_VARIATION':'CREATE_VARIATION','VARIASI_PRODUK',variationId,beforeData,JSON.stringify({productId,name,value,addition,stock,status}),'Perubahan variasi; stok hanya ditetapkan saat membuat variasi');
+  if(!id&&stock>0){
+    const mutationSheet=ss.getSheetByName('MutasiStok');
+    if(!mutationSheet)throw new Error('Sheet MutasiStok tidak tersedia untuk mencatat stok awal variasi.');
+    mutationSheet.appendRow([makeFMartId_('MUT'),productId,variationId,'MASUK',stock,0,stock,variationId,'Stok awal saat variasi dibuat',session.userId,now]);
+  }
+  writeAudit_(session.userId,session.role,id?'UPDATE_VARIATION':'CREATE_VARIATION','VARIASI_PRODUK',variationId,beforeData,JSON.stringify({productId,name,value,addition,stock,status}),'Perubahan variasi; stok awal dicatat sebagai mutasi MASUK saat variasi baru dibuat');
   SpreadsheetApp.flush();
   return getAdminCatalog(token);
   } finally { lock.releaseLock(); }
@@ -3435,5 +3442,98 @@ function auditFMartStockReconciliation_() {
     issueCount:issues.length,issues:issues,truncated:issues.length>=maxIssues,
     recoveryCandidateCount:recoveryCandidates.length,recoveryCandidates:recoveryCandidates.slice(0,maxIssues),
     recoveryPolicy:'NO_AUTOMATIC_STOCK_ADJUSTMENT'
+  };
+}
+
+
+/**
+ * Tahap 13 — Audit penerimaan barang dan jejak mutasi Gudang.
+ * Read-only: tidak membuat sheet dan tidak mengubah data.
+ */
+function auditWarehouseReceivingIntegrity_() {
+  const ss=getSS_(),issues=[],maxIssues=1000;
+  function rows(name){const sh=ss.getSheetByName(name);return sh?readRows_(sh):null;}
+  function issue(code,sheet,row,detail){
+    if(issues.length<maxIssues)issues.push({code:code,sheet:sheet,row:row||'',detail:detail||''});
+  }
+  const receiptRows=rows('PenerimaanBarang'),detailRows=rows('DetailPenerimaanBarang'),mutationRows=rows('MutasiStok');
+  if(!receiptRows)issue('RECEIPT_SHEET_MISSING','PenerimaanBarang','','Sheet penerimaan belum tersedia.');
+  if(!detailRows)issue('RECEIPT_DETAIL_SHEET_MISSING','DetailPenerimaanBarang','','Sheet detail penerimaan belum tersedia.');
+  if(!mutationRows)issue('STOCK_MUTATION_SHEET_MISSING','MutasiStok','','Sheet mutasi stok belum tersedia.');
+  const receipts=receiptRows||[],details=detailRows||[],mutations=mutationRows||[];
+  const receiptById=Object.create(null),receiptNumbers=Object.create(null),detailsByReceipt=Object.create(null),mutationsByReceipt=Object.create(null),detailIds=Object.create(null),mutationIds=Object.create(null);
+  receipts.forEach(function(r,i){
+    const id=String(r[0]||''),number=String(r[1]||'');
+    if(!id)issue('RECEIPT_ID_EMPTY','PenerimaanBarang',i+2,'PenerimaanId kosong.');
+    else if(receiptById[id])issue('RECEIPT_ID_DUPLICATE','PenerimaanBarang',i+2,'PenerimaanId duplikat: '+id+'.');
+    else receiptById[id]={row:i+2,values:r};
+    if(!number)issue('RECEIPT_NUMBER_EMPTY','PenerimaanBarang',i+2,'Nomor penerimaan kosong.');
+    else if(receiptNumbers[number])issue('RECEIPT_NUMBER_DUPLICATE','PenerimaanBarang',i+2,'Nomor penerimaan duplikat.');
+    else receiptNumbers[number]=i+2;
+    if(!Number.isSafeInteger(Number(r[6]))||Number(r[6])<1||!Number.isSafeInteger(Number(r[7]))||Number(r[7])<1)issue('RECEIPT_TOTAL_INVALID','PenerimaanBarang',i+2,'Jumlah baris atau total kuantitas penerimaan tidak valid.');
+  });
+  details.forEach(function(d,i){
+    const id=String(d[0]||''),receiptId=String(d[1]||''),pid=String(d[2]||''),vid=String(d[3]||''),qty=Number(d[4]),before=Number(d[5]),after=Number(d[6]),key=pid+'|'+vid;
+    if(!id)issue('RECEIPT_DETAIL_ID_EMPTY','DetailPenerimaanBarang',i+2,'DetailPenerimaanId kosong.');
+    else if(detailIds[id])issue('RECEIPT_DETAIL_ID_DUPLICATE','DetailPenerimaanBarang',i+2,'DetailPenerimaanId duplikat.');
+    detailIds[id]=true;
+    if(!receiptById[receiptId])issue('RECEIPT_DETAIL_ORPHAN','DetailPenerimaanBarang',i+2,'Detail merujuk PenerimaanId yang tidak ditemukan: '+receiptId+'.');
+    if(!detailsByReceipt[receiptId])detailsByReceipt[receiptId]=[];
+    detailsByReceipt[receiptId].push({row:i+2,key:key,pid:pid,vid:vid,qty:qty,before:before,after:after});
+    if(!pid||!Number.isSafeInteger(qty)||qty<1||!Number.isSafeInteger(before)||before<0||!Number.isSafeInteger(after)||after!==before+qty)issue('RECEIPT_DETAIL_ARITHMETIC_INVALID','DetailPenerimaanBarang',i+2,'Produk, kuantitas, atau saldo sebelum/sesudah detail penerimaan tidak valid.');
+  });
+  mutations.forEach(function(m,i){
+    const id=String(m[0]||''),type=String(m[3]||'').toUpperCase(),ref=String(m[7]||'');
+    if(!id)issue('MUTATION_ID_EMPTY','MutasiStok',i+2,'MutasiId kosong.');
+    else if(mutationIds[id])issue('MUTATION_ID_DUPLICATE','MutasiStok',i+2,'MutasiId duplikat.');
+    mutationIds[id]=true;
+    if(type==='MASUK'&&ref){
+      if(receiptById[ref]){
+        if(!mutationsByReceipt[ref])mutationsByReceipt[ref]=[];
+        mutationsByReceipt[ref].push({row:i+2,values:m});
+      }else{
+        const variation=findRowById_(ss.getSheetByName('VariasiProduk'),ref,1);
+        if(!variation)issue('INBOUND_MUTATION_REFERENCE_UNKNOWN','MutasiStok',i+2,'Mutasi masuk memiliki referensi yang bukan PenerimaanId atau VariasiId stok awal: '+ref+'.');
+      }
+    }
+  });
+  Object.keys(receiptById).forEach(function(id){
+    const receipt=receiptById[id],r=receipt.values,receiptDetails=detailsByReceipt[id]||[],receiptMutations=mutationsByReceipt[id]||[];
+    const expectedLines=Number(r[6]),expectedTotal=Number(r[7]),detailTotal=receiptDetails.reduce(function(sum,d){return sum+(Number.isSafeInteger(d.qty)&&d.qty>0?d.qty:0);},0);
+    if(receiptDetails.length!==expectedLines)issue('RECEIPT_LINE_COUNT_MISMATCH','PenerimaanBarang',receipt.row,'Jumlah baris header '+expectedLines+' berbeda dari detail '+receiptDetails.length+'.');
+    if(detailTotal!==expectedTotal)issue('RECEIPT_TOTAL_QTY_MISMATCH','PenerimaanBarang',receipt.row,'Total header '+expectedTotal+' berbeda dari total detail '+detailTotal+'.');
+    const expected=Object.create(null),actual=Object.create(null);
+    receiptDetails.forEach(function(d){
+      if(!expected[d.key])expected[d.key]={qty:0,details:[]};
+      expected[d.key].qty+=Number.isSafeInteger(d.qty)&&d.qty>0?d.qty:0;
+      expected[d.key].details.push(d);
+    });
+    receiptMutations.forEach(function(x){
+      const m=x.values,key=String(m[1]||'')+'|'+String(m[2]||'');
+      if(!actual[key])actual[key]={qty:0,rows:[]};
+      actual[key].qty+=Number(m[4])||0;actual[key].rows.push(x);
+    });
+    const keys=Object.create(null);Object.keys(expected).concat(Object.keys(actual)).forEach(function(k){keys[k]=true;});
+    Object.keys(keys).forEach(function(key){
+      const e=expected[key],a=actual[key];
+      if(!e||!a||e.qty!==a.qty)issue('RECEIPT_MUTATION_QTY_MISMATCH','PenerimaanBarang',receipt.row,'Kuantitas mutasi MASUK untuk '+key+' tidak sama dengan detail penerimaan.');
+      if(e&&a&&e.details.length===1&&a.rows.length===1){
+        const d=e.details[0],m=a.rows[0].values;
+        if(Number(m[4])!==d.qty||Number(m[5])!==d.before||Number(m[6])!==d.after)issue('RECEIPT_MUTATION_DETAIL_MISMATCH','MutasiStok',a.rows[0].row,'Nilai mutasi tidak sama dengan detail penerimaan untuk '+key+'.');
+      }
+    });
+    const duplicateItemKeys=Object.create(null);
+    receiptDetails.forEach(function(d){if(duplicateItemKeys[d.key])issue('RECEIPT_DUPLICATE_ITEM_LINE','DetailPenerimaanBarang',d.row,'Produk/variasi muncul lebih dari sekali pada satu penerimaan.');duplicateItemKeys[d.key]=true;});
+    const auditExists=(rows('AuditLog')||[]).some(function(a){return String(a[3]||'').toUpperCase()==='CREATE_STOCK_RECEIPT'&&String(a[4]||'').toUpperCase()==='PENERIMAAN_BARANG'&&String(a[5]||'')===id;});
+    if(!auditExists)issue('RECEIPT_AUDITLOG_MISSING','PenerimaanBarang',receipt.row,'Catatan AuditLog CREATE_STOCK_RECEIPT tidak ditemukan.');
+  });
+  Object.keys(mutationsByReceipt).forEach(function(id){
+    if(!receiptById[id])issue('RECEIPT_MUTATION_ORPHAN','MutasiStok',mutationsByReceipt[id][0].row,'Mutasi MASUK merujuk penerimaan yang tidak ditemukan: '+id+'.');
+  });
+  return {
+    checkedAt:new Date().toISOString(),mode:'READ_ONLY',
+    counts:{receipts:receipts.length,receiptDetails:details.length,stockMutations:mutations.length},
+    issueCount:issues.length,issues:issues,truncated:issues.length>=maxIssues,
+    policy:'NO_AUTOMATIC_REPAIR'
   };
 }
