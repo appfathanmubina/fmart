@@ -125,3 +125,42 @@ test('Wali payment submission remains QRIS-only', () => {
   assert.ok(readme.includes('Wali hanya dapat mengajukan pembayaran melalui QRIS'));
   assert.ok(!readme.includes('Wali dapat memilih Transfer Bank atau QRIS'));
 });
+
+
+test('Checkout retry uses a request key and persisted recovery payload',()=>{
+ const f=extractFunction(code,'checkoutCart'),complete=extractFunction(code,'completeCheckoutOrder_');
+ for(const x of ['requestKey','values[12]','values[13]','values[14]','completeCheckoutOrder_'])assert.ok(f.includes(x));
+ assert.ok(complete.includes('selectedCartIds'));assert.ok(index.includes("localStorage.getItem('fmart.checkout.pending')"));
+});
+test('Stock receipt retry resumes missing rows without double-applying stock',()=>{
+ const f=extractFunction(code,'createStockReceipt'),complete=extractFunction(code,'completeStockReceipt_');
+ assert.ok(f.includes('values[10]'));assert.ok(f.includes('values[11]'));assert.ok(f.includes('values[12]'));assert.ok(f.includes('completeStockReceipt_'));
+ assert.ok(complete.includes('live===Number(x.before)'));assert.ok(complete.includes('live!==Number(x.after)'));
+ assert.ok(index.includes("localStorage.getItem('fmart.receipt.pending')"));
+});
+test('Payment retries are idempotent and file signatures are validated before Drive storage',()=>{
+ const f=extractFunction(code,'submitPayment');assert.ok(f.includes('values[13]'));assert.ok(f.includes('values[14]'));
+ assert.ok(f.includes('validateUploadedFileSignature_(bytes,mime)'));assert.ok(f.includes('getOrCreateTransactionProofFile_'));
+ assert.ok(index.includes('pending.key'));assert.ok(index.includes('localStorage.removeItem(storageKey)'));
+});
+test('Delivery proof replay repairs missing records and rejects MIME spoofing',()=>{
+ const f=extractFunction(code,'submitDeliveryProof');assert.ok(f.includes('validateUploadedFileSignature_(bytes,mimeType)'));
+ assert.ok(f.includes('existingConfirmation')||f.includes('const confRows'));assert.ok(f.includes('RiwayatPengantaran'));assert.ok(f.includes('old.values[11]'));
+});
+test('Recovery audit is read-only and explicit recovery is role-gated',()=>{
+ const a=extractFunction(code,'auditFMartTransactionRecovery_'),r=extractFunction(code,'recoverFMartTransactions_');
+ assert.ok(a.includes("mode:'READ_ONLY'"));assert.ok(a.includes('NO_AUTOMATIC_STOCK_OR_PAYMENT_REPAIR'));
+ assert.ok(r.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN'));assert.ok(r.includes('completeCheckoutOrder_'));assert.ok(r.includes('completeStockReceipt_'));
+});
+test('Reports use inclusive Asia/Jakarta days and include POS and cashier stock movements',()=>{
+ const f=extractFunction(code,'getFMartReports'),p=extractFunction(code,'parseReportDate_');
+ assert.ok(f.includes("'PenjualanToko'"));assert.ok(f.includes("'MutasiStokKasir'"));assert.ok(f.includes('posPaidTotal'));assert.ok(p.includes('+07:00'));
+});
+test('Uploaded file signature validator checks supported formats and rejects spoofing',()=>{
+ const f=extractFunction(code,'validateUploadedFileSignature_'),sandbox={};vm.runInNewContext(f+'\\nthis.validate=validateUploadedFileSignature_;',sandbox);
+ assert.equal(sandbox.validate([255,216,255],'image/jpeg'),true);
+ assert.equal(sandbox.validate([137,80,78,71,13,10,26,10],'image/png'),true);
+ assert.equal(sandbox.validate([82,73,70,70,0,0,0,0,87,69,66,80],'image/webp'),true);
+ assert.equal(sandbox.validate([37,80,68,70,45],'application/pdf'),true);
+ assert.throws(()=>sandbox.validate([0,0,0],'image/png'),/Isi file/);
+});
