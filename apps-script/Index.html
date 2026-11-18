@@ -1273,6 +1273,90 @@ body.buyer-portal #profileModal .modal-card{
     }
 
 </style>
+
+<style>
+/* Perbaikan ruang tepi dan kepadatan konten pop-up detail produk pada HP */
+@media(max-width:600px){
+  body.buyer-portal #productModal{
+    padding:12px 12px max(10px,env(safe-area-inset-bottom));
+    align-items:end;
+    justify-items:center;
+  }
+  body.buyer-portal #productModal .modal-card{
+    width:100%;
+    max-width:520px;
+    max-height:calc(92vh - env(safe-area-inset-top));
+    max-height:calc(92dvh - env(safe-area-inset-top));
+    margin:0 auto;
+    padding:18px clamp(16px,4.5vw,22px) calc(16px + env(safe-area-inset-bottom));
+    border:1px solid #eee4f3;
+    border-radius:22px;
+    box-shadow:0 16px 48px rgba(28,12,40,.22);
+  }
+  body.buyer-portal #productModal .modal-head{
+    top:-18px;
+    margin:0 0 16px;
+    padding:0 0 13px;
+  }
+  body.buyer-portal #productModal .buyer-detail-layout{gap:16px}
+  body.buyer-portal #productModal .buyer-detail-photo{
+    max-height:230px;
+    aspect-ratio:16/9;
+    border-radius:15px;
+  }
+  body.buyer-portal #productModal .buyer-detail-info{padding:0 1px}
+  body.buyer-portal #productModal .buyer-detail-category{font-size:10px}
+  body.buyer-portal #productModal .buyer-detail-name{
+    margin-top:9px;
+    font-size:19px;
+    line-height:1.35;
+  }
+  body.buyer-portal #productModal .buyer-detail-price{
+    margin:8px 0 11px;
+    font-size:22px;
+  }
+  body.buyer-portal #productModal .buyer-detail-description{
+    padding:11px 12px;
+    border-radius:12px;
+  }
+  body.buyer-portal #productModal .buyer-detail-description p{
+    font-size:12px;
+    line-height:1.55;
+  }
+  body.buyer-portal #productModal .buyer-variation-section{margin-top:13px}
+  body.buyer-portal #productModal .buyer-variation-list{gap:8px}
+  body.buyer-portal #productModal .buyer-variation-option{
+    min-height:46px;
+    padding:9px 10px;
+    border-radius:11px;
+  }
+  body.buyer-portal #productModal .buyer-quantity-panel{
+    margin-top:13px;
+    padding:10px 11px;
+    border-radius:12px;
+  }
+  body.buyer-portal #productModal .buyer-detail-actions{
+    bottom:calc(-16px - env(safe-area-inset-bottom));
+    margin:14px calc(-1 * clamp(16px,4.5vw,22px)) calc(-16px - env(safe-area-inset-bottom));
+    padding:12px clamp(16px,4.5vw,22px) calc(16px + env(safe-area-inset-bottom));
+    border-radius:0 0 20px 20px;
+  }
+}
+@media(max-width:380px){
+  body.buyer-portal #productModal{padding-inline:10px}
+  body.buyer-portal #productModal .modal-card{
+    max-height:90dvh;
+    padding-inline:15px;
+  }
+  body.buyer-portal #productModal .buyer-detail-photo{max-height:195px}
+  body.buyer-portal #productModal .buyer-detail-name{font-size:18px}
+  body.buyer-portal #productModal .buyer-detail-actions{
+    margin-inline:-15px;
+    padding-inline:15px;
+  }
+}
+</style>
+
 </head>
 <body>
   <div id="loginView" class="login-wrap">
