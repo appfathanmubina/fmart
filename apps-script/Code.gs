@@ -3317,7 +3317,7 @@ function auditCashierPOSIntegrity_() {
   const ss=getSS_(),sales=readRows_(ss.getSheetByName('PenjualanToko'));
   const details=readRows_(ss.getSheetByName('DetailPenjualanToko'));
   const reservations=readRows_(ss.getSheetByName('ReservasiStokToko'));
-  const mutations=readRows_(ss.getSheetByName('MutasiStok'));
+  const mutations=readRows_(ss.getSheetByName('MutasiStokKasir'));
   const issues=[],saleIds=Object.create(null),requestKeys=Object.create(null);
   const detailMap=Object.create(null),reservationMap=Object.create(null),mutationMap=Object.create(null);
   function issue(code,saleId,detail){if(issues.length<500)issues.push({code:code,saleId:saleId||'',detail:detail||''});}
