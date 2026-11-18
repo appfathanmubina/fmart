@@ -39,6 +39,7 @@ const FMART_DB = Object.freeze({
     RIWAYAT_PENGANTARAN: ['RiwayatId','PesananId','PengantaranId','ActorUserId','ActorRole','Action','StatusSebelum','StatusSesudah','Catatan','CreatedAt'],
     NOTIFIKASI: ['NotifikasiId','UserId','PesananId','Judul','Pesan','Jenis','IsRead','CreatedAt'],
     PENGATURAN: ['Key','Value','Description','UpdatedAt'],
+    RESERVASI_STOK: ['ReservasiId','PesananId','ProdukId','VariasiId','Qty','Status','CreatedAt','ExpiresAt','UpdatedAt'],
     AUDIT_LOG: ['AuditId','ActorUserId','ActorRole','Action','EntityType','EntityId','BeforeData','AfterData','Note','CreatedAt']
   }
 });
@@ -115,7 +116,10 @@ function seedSettings_(sheet) {
     ['PAYMENT_ACCOUNT_NUMBER','','Nomor rekening pembayaran FMart'],
     ['PAYMENT_ACCOUNT_NAME','','Nama pemilik rekening pembayaran FMart'],
     ['PAYMENT_ADMIN_WHATSAPP','','Nomor WhatsApp Admin/Kasir untuk konfirmasi pembayaran'],
-    ['PAYMENT_QRIS_IMAGE_URL','','URL HTTPS gambar kode QRIS FMart']
+    ['PAYMENT_QRIS_IMAGE_URL','','URL HTTPS gambar kode QRIS FMart'],
+    ['STOCK_RESERVATION_MINUTES','30','Masa reservasi stok sejak checkout sebelum bukti pembayaran diajukan (menit)'],
+    ['PAYMENT_RESERVATION_MINUTES','120','Masa reservasi stok setelah bukti pembayaran diajukan (menit)'],
+    ['PAYMENT_VERIFICATION_QUEUE_LIMIT','50','Batas jumlah pengajuan pembayaran menunggu verifikasi']
   ];
   defaults.forEach(function(row) {
     if (existing.indexOf(row[0]) === -1) sheet.appendRow(row.concat([new Date()]));
