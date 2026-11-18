@@ -1774,6 +1774,7 @@ function updateOrderOperation(token, orderId, nextStatus, shipmentStatus, note) 
     if(nextStatus==='SIAP_DIAMBIL'&&!isPickup)throw new Error('Status SIAP_DIAMBIL hanya berlaku untuk metode Ambil di FMart.');
     const now=new Date();
     orderSheet.getRange(row.rowNumber,9,1,3).setValues([[nextStatus,note||row.values[9],now]]);
+    if(nextStatus==='DIBATALKAN'){setOrderReservationStatus_(ss,orderId,'DILEPAS');const paymentSheet=ss.getSheetByName('Pembayaran');readRows_(paymentSheet).forEach(function(p){if(String(p[1])===orderId&&String(p[5]||'').toUpperCase()==='MENUNGGU_VERIFIKASI'){const pr=findRowById_(paymentSheet,String(p[0]),1);if(pr)paymentSheet.getRange(pr.rowNumber,6,1,3).setValues([['DITOLAK',session.userId,now]]);}});}
     const shipSheet=ss.getSheetByName('Pengiriman'),shipRow=latestShipmentRow_(shipSheet,orderId);
     const shipStatus=nextStatus;
     if(shipRow)shipSheet.getRange(shipRow,5,1,5).setValues([[shipStatus,nextStatus==='SIAP_DIAMBIL'?now:(shipment&&shipment.dikirimAt||''),shipment&&shipment.diterimaAt||'',session.userId,now]]);
