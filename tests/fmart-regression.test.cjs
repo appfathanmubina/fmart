@@ -188,10 +188,10 @@ test('POS sales retain request-key protection and cashier stock reconciliation',
 
 
 test('Global CSS is consolidated while print receipt styles remain isolated',()=>{
- const styleTags=index.match(/<style\\b/gi)||[];
+ const styleTags=index.match(/<style/gi)||[];
  assert.equal(styleTags.length,2);
  assert.ok(index.includes('id="fmart-global-styles"'));
- assert.ok(!/<\\/html>\\s*<style/i.test(index));
+ assert.ok(!index.slice(index.indexOf('</html>')).includes('<style'));
  assert.ok(index.includes('FMart Tahap 3 — shared component'));
  assert.ok(index.includes('const html='));
 });
