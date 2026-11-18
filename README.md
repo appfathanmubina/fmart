@@ -10,6 +10,24 @@ Repositori ini berisi shell PWA mobile dan salinan antarmuka/backend Google Apps
 4. Deploy sebagai **Web app**. Pilih identitas eksekusi dan akses pengguna sesuai kebijakan organisasi.
 5. Salin URL deployment yang berakhiran `/exec` ke `window.FMART_APP_URL` pada `config.js`.
 
+## Audit runtime dan finalisasi (Tahap G)
+
+Setelah file terbaru disinkronkan ke proyek Apps Script, jalankan dua pemeriksaan berikut secara manual dari Apps Script Editor:
+
+1. `auditFMartRuntime_()` — pemeriksaan read-only terhadap Spreadsheet yang ditunjuk oleh Script Property `FMART_SPREADSHEET_ID`, ketersediaan sheet utama, jumlah akun aktif per role, ringkasan status transaksi, akses dan status berbagi folder bukti pembayaran/pengantaran, serta keberadaan trigger `processDeliveryAutoConfirmation_`.
+2. `auditFMartDatabaseIntegrity_()` — pemeriksaan read-only terhadap header, ID utama, duplikasi, dan relasi antar-sheet.
+
+Kedua fungsi tidak membuat/menghapus folder, tidak memasang trigger, tidak mengubah akun, tidak mengedit transaksi, dan tidak mengirim notifikasi. Hasil audit runtime tidak menampilkan username, email, nomor HP, password, ID Spreadsheet, atau ID folder. Simpan hasilnya dan bagikan hanya setelah memastikan tidak ada informasi sensitif.
+
+Catatan batas audit:
+- Pemeriksaan folder Drive menguji akses akun eksekusi dan tingkat berbagi folder; pemeriksaan ini tidak memeriksa ACL setiap file satu per satu.
+- Keberadaan trigger tidak membuktikan trigger pernah berhasil berjalan. Periksa halaman **Executions** di Apps Script untuk riwayat sukses/gagal dan error aktual.
+- Jumlah akun aktif per role bukan pengganti uji login. Login setiap role harus diuji dengan pemilik akun masing-masing; jangan membagikan password atau token.
+- Ringkasan status transaksi bukan pengganti pencocokan transaksi dengan bukti transfer/bank, bukti Drive, stok fisik, dan penerimaan barang.
+- Jangan jalankan `setupFMartDatabase_()` atau `installDeliveryAutomationTrigger_()` hanya untuk audit. Keduanya dapat mengubah konfigurasi/struktur atau trigger; jalankan hanya bila hasil pemeriksaan menunjukkan kebutuhan dan sudah dipastikan targetnya benar.
+
+Status produksi hanya boleh dinyatakan setelah database aktif, izin Drive, trigger, seluruh role, transaksi end-to-end, dan hasil laporan dicocokkan pada runtime yang benar.
+
 ## Audit integritas database (Tahap 2)
 
 Setelah struktur database tersedia, jalankan `auditFMartDatabaseIntegrity_()` dari Apps Script Editor. Fungsi ini bersifat **read-only**: tidak membuat sheet, mengubah header, memperbaiki relasi, atau menghapus data. Hasilnya memuat jumlah baris per sheet dan daftar temuan seperti sheet/header yang tidak sesuai, ID utama kosong/duplikat, username/email duplikat, relasi data yang terputus, serta ketiadaan Superadmin aktif.
