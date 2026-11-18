@@ -314,5 +314,5 @@ test('Buyer and staff inline application JavaScript parses after Apps Script tem
  const match=index.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
  assert.ok(match,'Inline application script must exist.');
  const clientScript=match[1].replace(/<\?=\s*portalMode\s*\?>/g,'BUYER');
- assert.doesNotThrow(()=>new vm.Script(clientScript));
+ assert.doesNotThrow(()=>new vm.Script(clientScript,{filename:'apps-script/Index.html inline script'}));
 });
