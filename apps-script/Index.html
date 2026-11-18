@@ -1400,7 +1400,7 @@ body.buyer-portal #profileModal .modal-card{
     <div class="modal-card"><div class="modal-head"><div><div class="eyebrow">Pembayaran</div><h2 id="paymentTitle">Ajukan Pembayaran</h2></div><button class="icon-btn" id="closePayment" aria-label="Tutup">×</button></div><div id="paymentBody"></div></div>
   </div>
   <div id="opsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="opsModalTitle"><div class="modal-card"><div class="modal-head"><div><div class="eyebrow">FMart Operasional</div><h2 id="opsModalTitle">Form</h2></div><button class="icon-btn" id="closeOpsModal">×</button></div><div id="opsModalBody"></div></div></div>
-  <div id="toast" class="toast" aria-live="polite"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <div id="loading" class="loading hidden"><div class="loading-card"><div class="spinner"></div><strong id="loadingText">Memproses...</strong></div></div>
 
@@ -2054,7 +2054,7 @@ async function submitCheckout(){
 }
 function closeCheckout(){$('checkoutModal').classList.add('hidden')}
 function closeSuccess(){$('successModal').classList.add('hidden')}
-function showToast(text,type='info'){const t=$('toast');const kind=type==='error'?'toast-error':type==='success'?'toast-success':'';const icon=type==='error'?'⚠':type==='success'?'✓':'i';t.className='toast '+kind;t.innerHTML='<span class="toast-icon">'+icon+'</span><span class="toast-text">'+escapeHtml(text||'')+'</span>';t.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>t.classList.remove('show'),3200)}
+function showToast(text,type='info'){const t=$('toast');const kind=type==='error'?'toast-error':type==='success'?'toast-success':'';const icon=type==='error'?'⚠':type==='success'?'✓':'i';t.setAttribute('role',type==='error'?'alert':'status');t.setAttribute('aria-live',type==='error'?'assertive':'polite');t.className='toast '+kind;t.innerHTML='<span class="toast-icon" aria-hidden="true">'+icon+'</span><span class="toast-text">'+escapeHtml(text||'')+'</span>';t.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>t.classList.remove('show'),4200)}
 
 function statusLabel(s){const m={MENUNGGU_PEMBAYARAN:'Menunggu Pembayaran',DIBAYAR:'Dibayar',DIPROSES:'Diproses',DISIAPKAN:'Disiapkan',DIANTAR:'Diantar',DITERIMA:'Diterima',SIAP_DIAMBIL:'Siap Diambil',DIBATALKAN:'Dibatalkan'};return m[String(s||'').toUpperCase()]||String(s||'').replace(/_/g,' ')}
 function paymentStatusLabel(s){const m={MENUNGGU_VERIFIKASI:'Menunggu Verifikasi',TERVERIFIKASI:'Terverifikasi',DITOLAK:'Ditolak'};return m[String(s||'').toUpperCase()]||String(s||'').replace(/_/g,' ')}
@@ -2356,10 +2356,11 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
     function cashierPOSKey_(){return 'POS_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,12)}
     async function loadCashierPOSData_(query){
       if(!state.data||!['KASIR','ADMIN','SUPERADMIN'].includes(state.data.user.role))return;
-      const pos=state.cashierPOS;pos.loading=true;
+      const pos=state.cashierPOS,searchSeq=pos.searchSeq=(Number(pos.searchSeq)||0)+1;pos.loading=true;
       const panel=$('cashierPOSPanel');if(panel&&!pos.products.length)panel.innerHTML='<div class="empty-box">Memuat katalog kasir...</div>';
       try{
         const r=await runServer('getCashierPOSData',state.token,String(query||''));
+        if(searchSeq!==pos.searchSeq)return;
         if(!r||!r.ok)throw new Error('Katalog POS tidak dapat dimuat.');
         const keepSearchFocus=document.activeElement&&document.activeElement.id==='cashierPOSSearch';
         const searchCursor=keepSearchFocus?document.activeElement.selectionStart:null;
@@ -2370,8 +2371,8 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         if(!pos.salesHistoryLoaded)await loadCashierSalesHistory_();
         renderCashierPOSPanel_();
         if(keepSearchFocus){const input=$('cashierPOSSearch');if(input){input.focus();const cursor=Math.min(Number(searchCursor)||input.value.length,input.value.length);input.setSelectionRange(cursor,cursor)}}
-      }catch(e){if(panel)panel.innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Katalog POS gagal dimuat.')+'<button type="button" class="secondary" id="cashierPOSRetry" style="margin-top:10px">Coba lagi</button></div>';const retry=$('cashierPOSRetry');if(retry)retry.onclick=()=>loadCashierPOSData_(pos.search)}
-      finally{pos.loading=false}
+      }catch(e){if(searchSeq!==pos.searchSeq)return;if(panel)panel.innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Katalog POS gagal dimuat.')+'<button type="button" class="secondary" id="cashierPOSRetry" style="margin-top:10px">Coba lagi</button></div>';const retry=$('cashierPOSRetry');if(retry)retry.onclick=()=>loadCashierPOSData_(pos.search)}
+      finally{if(searchSeq===pos.searchSeq)pos.loading=false}
     }
 
     async function loadCashierQrisQueue_(render){
@@ -2486,7 +2487,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       box.innerHTML=
         '<div class="cashier-pos-head"><div><div class="eyebrow">PENJUALAN LANGSUNG TOKO</div><h2>Kasir POS</h2><p>Pilih produk, masukkan ke keranjang, lalu selesaikan pembayaran di kasir.</p></div><button class="secondary" type="button" id="cashierPOSRefresh">↻ Muat katalog</button></div>'+
         '<div class="cashier-pos-layout"><section class="cashier-pos-catalog"><div class="cashier-pos-search"><input id="cashierPOSSearch" type="search" value="'+escapeHtml(pos.search)+'" placeholder="Cari nama produk, SKU, atau variasi..." aria-label="Cari produk POS"><span>'+products.length+' item</span></div>'+
-        '<div class="cashier-pos-products">'+(products.length?products.map(p=>'<article class="cashier-pos-product"><div class="cashier-pos-product-info"><strong>'+escapeHtml(p.name)+'</strong>'+(p.variationName?'<span>'+escapeHtml(p.variationName)+'</span>':'')+'<small>SKU: '+escapeHtml(p.sku||'-')+'</small></div><div class="cashier-pos-product-foot"><strong>'+cashierPOSMoney_(p.unitPrice)+'</strong><span class="'+(Number(p.available)>0?'stock-ok':'stock-empty')+'">Stok '+formatMoney(p.available)+'</span></div><button type="button" class="primary cashier-pos-add" data-key="'+escapeHtml(p.productId+'|'+(p.variationId||''))+'" '+(Number(p.available)<1?'disabled':'')+'>＋ Tambah</button></article>').join(''):'<div class="empty-box">Produk tidak ditemukan atau belum tersedia.</div>')+'</div></section>'+
+        '<div class="cashier-pos-products">'+(products.length?products.map(p=>'<article class="cashier-pos-product"><div class="cashier-pos-product-info"><strong>'+escapeHtml(p.name)+'</strong>'+(p.variationName?'<span>'+escapeHtml(p.variationName)+'</span>':'')+'<small>SKU: '+escapeHtml(p.sku||'-')+'</small></div><div class="cashier-pos-product-foot"><strong>'+cashierPOSMoney_(p.unitPrice)+'</strong><span class="'+(Number(p.available)>0?'stock-ok':'stock-empty')+'">Tersedia '+formatMoney(p.available)+'</span></div><button type="button" class="primary cashier-pos-add" data-key="'+escapeHtml(p.productId+'|'+(p.variationId||''))+'" '+(Number(p.available)<1?'disabled':'')+'>＋ Tambah</button></article>').join(''):'<div class="empty-box">Produk tidak ditemukan atau belum tersedia.</div>')+'</div></section>'+
         '<aside class="cashier-pos-checkout"><div class="cashier-pos-cart-head"><div><h3>Keranjang</h3><span class="muted">'+cart.reduce((n,x)=>n+x.qty,0)+' item</span></div><button type="button" class="text-button" id="cashierPOSClear" '+(!cart.length?'disabled':'')+'>Kosongkan</button></div>'+
         '<div class="cashier-pos-cart-items">'+(cart.length?cart.map(x=>'<div class="cashier-pos-cart-row"><div class="cashier-pos-cart-copy"><strong>'+escapeHtml(x.name)+'</strong>'+(x.variationName?'<small>'+escapeHtml(x.variationName)+'</small>':'')+'<small>'+cashierPOSMoney_(x.unitPrice)+' / item</small></div><div class="cashier-pos-qty"><button type="button" data-qty="-1" data-key="'+escapeHtml(x.key)+'" aria-label="Kurangi">−</button><b>'+x.qty+'</b><button type="button" data-qty="1" data-key="'+escapeHtml(x.key)+'" aria-label="Tambah">＋</button></div><strong>'+cashierPOSMoney_(x.unitPrice*x.qty)+'</strong></div>').join(''):'<div class="cashier-pos-empty">Keranjang masih kosong. Tambahkan produk untuk memulai transaksi.</div>')+'</div>'+
         '<div class="cashier-pos-total"><span>Total Belanja</span><strong>'+cashierPOSMoney_(total)+'</strong></div>'+
@@ -3278,4 +3279,55 @@ body.admin-portal .cashier-sale-detail-foot{margin-top:9px;color:#786c80;font-si
 body.admin-portal .cashier-sales-empty{padding:22px;text-align:center;color:#796d82;font-size:12px;background:#faf8fb;border-radius:10px}
 @media(max-width:700px){body.admin-portal .cashier-sales-filters{grid-template-columns:1fr 1fr}body.admin-portal .cashier-sales-filters input[type=search]{grid-column:1/-1}body.admin-portal .cashier-sales-filters button{grid-column:1/-1;width:100%}}
 @media(max-width:480px){body.admin-portal .cashier-sales-history{padding:12px}body.admin-portal .cashier-sales-head{align-items:flex-start;flex-direction:column}body.admin-portal .cashier-sales-head button{width:100%}body.admin-portal .cashier-sale-actions button{flex:1}}
+</style>
+<style>
+/* Tahap 10 — responsivitas, aksesibilitas, dan kemudahan kasir */
+body.admin-portal .cashier-pos-layout{align-items:start}
+@media(min-width:901px){body.admin-portal .cashier-pos-checkout{position:sticky;top:14px}}
+body.admin-portal .cashier-pos-add,
+body.admin-portal .cashier-pos-submit,
+body.admin-portal .cashier-qris-actions button,
+body.admin-portal .cashier-sale-actions button{min-height:42px}
+body.admin-portal .cashier-pos-qty button{width:38px;height:38px;min-height:38px;font-size:18px}
+body.admin-portal .cashier-pos-buyer-types label{min-height:40px;padding:7px 10px;border:1px solid #e8ddec;border-radius:10px;background:#fcf9fd}
+body.admin-portal .cashier-pos-buyer-types input{accent-color:#76277e}
+body.admin-portal .cashier-pos-product{transition:border-color .16s ease,box-shadow .16s ease}
+body.admin-portal .cashier-pos-product:focus-within{border-color:#b58bc0;box-shadow:0 0 0 3px #76277e12}
+body.admin-portal .cashier-pos-panel button:focus-visible,
+body.admin-portal .cashier-pos-panel input:focus-visible,
+body.admin-portal .cashier-pos-panel select:focus-visible,
+body.admin-portal .cashier-qris-queue button:focus-visible,
+body.admin-portal .cashier-sales-history button:focus-visible,
+body.admin-portal .cashier-sales-history input:focus-visible{outline:3px solid #b58bc0;outline-offset:2px}
+body.admin-portal .cashier-pos-empty,
+body.admin-portal .cashier-qris-empty,
+body.admin-portal .cashier-sales-empty{line-height:1.55}
+@media(max-width:900px){body.admin-portal .cashier-pos-checkout{position:relative}}
+@media(max-width:560px){
+ body.admin-portal .cashier-pos-panel{padding:10px}
+ body.admin-portal .cashier-pos-layout{gap:10px}
+ body.admin-portal .cashier-pos-catalog,body.admin-portal .cashier-pos-checkout{padding:12px}
+ body.admin-portal .cashier-pos-products{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:420px}
+ body.admin-portal .cashier-pos-product{min-height:176px;padding:10px}
+ body.admin-portal .cashier-pos-product-info{min-height:76px}
+ body.admin-portal .cashier-pos-product-foot{align-items:flex-start;flex-direction:column;gap:4px}
+ body.admin-portal .cashier-pos-add{min-height:44px}
+ body.admin-portal .cashier-pos-cart-items{max-height:320px}
+ body.admin-portal .cashier-pos-total strong{font-size:21px}
+ body.admin-portal .cashier-pos-submit{min-height:52px;font-size:14px}
+ body.admin-portal .cashier-qris-summary{align-items:flex-start;flex-direction:column;gap:5px}
+ body.admin-portal .cashier-qris-card-head{flex-direction:column}
+ body.admin-portal .cashier-sales-filters{grid-template-columns:1fr 1fr}
+ body.admin-portal .cashier-sales-filters input[type=search],body.admin-portal .cashier-sales-filters button{grid-column:1/-1}
+ body.admin-portal .cashier-pos-search input,body.admin-portal .cashier-pos-buyer input,body.admin-portal .cashier-pos-payment input,body.admin-portal .cashier-pos-payment select,body.admin-portal .cashier-sales-filters input{font-size:16px}
+}
+@media(max-width:380px){
+ body.admin-portal .cashier-pos-products{grid-template-columns:1fr}
+ body.admin-portal .cashier-pos-product{min-height:0}
+ body.admin-portal .cashier-pos-product-info{min-height:0}
+ body.admin-portal .cashier-pos-product-foot{align-items:center;flex-direction:row}
+ body.admin-portal .cashier-sale-main{flex-direction:column}
+ body.admin-portal .cashier-sale-total{justify-items:start}
+}
+@media(prefers-reduced-motion:reduce){body.admin-portal .cashier-pos-product{transition:none}#toast{transition:none}}
 </style>
