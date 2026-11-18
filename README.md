@@ -594,3 +594,7 @@ Pemeriksaan pada tahap ini bersifat statis terhadap repository. Belum ada peruba
 5. QRIS hanya boleh dikonfirmasi setelah petugas memeriksa dana masuk di kanal merchant. Jangan menyamakan tampilan QR atau screenshot pelanggan dengan bukti dana diterima.
 
 Pemeriksaan pada Tahap 2 bersifat statis terhadap repository. Tidak ada akses runtime ke Spreadsheet aktif, sehingga transaksi nyata dan konsistensi hasil stok belum teruji.
+
+### Audit runtime POS
+- `auditFMartRuntime_()` kini memeriksa keberadaan tiga sheet POS dan menampilkan agregat status transaksi serta status pembayaran penjualan toko.
+- Kunci idempotensi transaksi terikat pada akun kasir pembuatnya; kunci yang sama tidak dapat dipakai akun lain untuk membaca hasil transaksi.
