@@ -172,6 +172,12 @@ function auditFMartDatabaseIntegrity_(options) {
   Object.keys(FMART_DB.SHEETS).forEach(function(key) {
     const sheetName = sheetNameForKey_(key);
     const expected = FMART_DB.SHEETS[key];
+    if (skipSantriData && sheetName === 'Santri') {
+      validSchema[sheetName] = false;
+      rowsBySheet[sheetName] = [];
+      counts[sheetName] = null;
+      return;
+    }
     const sheet = ss.getSheetByName(sheetName);
 
     if (!sheet) {
@@ -352,7 +358,7 @@ function auditFMartDatabaseIntegrity_(options) {
     sheetCounts: counts,
     issueCount: issues.length,
     truncated: issues.length >= maxIssues,
-    skippedChecks: skipSantriData ? ['Santri row primary IDs', 'Santri NIS uniqueness', 'references targeting Santri'] : [],
+    skippedChecks: skipSantriData ? ['Sheet Santri: existence, schema, row primary IDs, NIS uniqueness, and references'] : [],
     issues: issues
   };
   Logger.log(JSON.stringify(report, null, 2));
