@@ -108,7 +108,7 @@ function seedSettings_(sheet) {
     ['REPORTING_DEFAULT_DAYS','30','Periode laporan default dalam hari'],
     ['TIMEZONE','Asia/Jakarta','Zona waktu aplikasi'],
     ['CURRENCY','IDR','Mata uang'],
-    ['ORDER_STATUS_FLOW','MENUNGGU_PEMBAYARAN,DIBAYAR,DIPROSES,DISIAPKAN,DIANTAR,DITERIMA,DIBATALKAN','Urutan status pesanan'],
+    ['ORDER_STATUS_FLOW','MENUNGGU_PEMBAYARAN,DIBAYAR,DIPROSES,DISIAPKAN,SIAP_DIAMBIL,DIANTAR,DITERIMA,DIBATALKAN','Urutan status pesanan'],
     ['DELIVERY_CONFIRMATION_DAYS','7','Batas konfirmasi penerimaan setelah bukti pengantaran diunggah (hari kalender x 24 jam)'],
     ['DELIVERY_AUTO_CONFIRM_ENABLED','TRUE','Aktifkan auto konfirmasi setelah tenggat 7 hari dan tanpa komplain aktif'],
     ['PAYMENT_BANK_NAME','','Nama bank rekening pembayaran FMart'],
