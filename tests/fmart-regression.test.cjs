@@ -157,10 +157,31 @@ test('Reports use inclusive Asia/Jakarta days and include POS and cashier stock 
  assert.ok(f.includes("'PenjualanToko'"));assert.ok(f.includes("'MutasiStokKasir'"));assert.ok(f.includes('posPaidTotal'));assert.ok(p.includes('+07:00'));
 });
 test('Uploaded file signature validator checks supported formats and rejects spoofing',()=>{
- const f=extractFunction(code,'validateUploadedFileSignature_'),sandbox={};vm.runInNewContext(f+'\\nthis.validate=validateUploadedFileSignature_;',sandbox);
+ const f=extractFunction(code,'validateUploadedFileSignature_'),sandbox={};vm.runInNewContext(f+'\nthis.validate=validateUploadedFileSignature_;',sandbox);
  assert.equal(sandbox.validate([255,216,255],'image/jpeg'),true);
  assert.equal(sandbox.validate([137,80,78,71,13,10,26,10],'image/png'),true);
  assert.equal(sandbox.validate([82,73,70,70,0,0,0,0,87,69,66,80],'image/webp'),true);
  assert.equal(sandbox.validate([37,80,68,70,45],'application/pdf'),true);
  assert.throws(()=>sandbox.validate([0,0,0],'image/png'),/Isi file/);
+});
+
+
+test('FIFO order stock release records mutation before changing balance and safely resumes partial lines',()=>{
+ const build=extractFunction(code,'buildOrderStockPlan_'),apply=extractFunction(code,'applyOrderStockPlan_'),pending=extractFunction(code,'processPendingStockOrders_');
+ assert.ok(build.includes('existingMutation'));
+ assert.ok(apply.indexOf("mut.appendRow")<apply.indexOf("stock.getRange(x.index+2,4).setValue(x.after)"));
+ assert.ok(apply.includes('finalizeReservations!==false'));
+ assert.ok(pending.includes('const recovery=plan.plan.filter(x=>x.existingMutation)'));
+ assert.ok(pending.includes('applyOrderStockPlan_(ss,id,recovery'));
+});
+test('Stock reconciliation and receiving audits remain read-only',()=>{
+ const stock=extractFunction(code,'auditFMartStockReconciliation_'),receipt=extractFunction(code,'auditWarehouseReceivingIntegrity_');
+ assert.ok(stock.includes("mode:'READ_ONLY'"));assert.ok(stock.includes('NO_AUTOMATIC_STOCK_ADJUSTMENT'));
+ assert.ok(receipt.includes("mode:'READ_ONLY'"));assert.ok(receipt.includes('NO_AUTOMATIC_REPAIR'));
+});
+test('POS sales retain request-key protection and cashier stock reconciliation',()=>{
+ const sale=extractFunction(code,'createCashierSale'),audit=extractFunction(code,'auditFMartStockReconciliation_');
+ assert.ok(sale.includes("r[17]||'')===requestKey"));
+ assert.ok(sale.includes('sameItems')&&sale.includes('sameBuyer')&&sale.includes('samePayment'));
+ assert.ok(audit.includes('POS_SALE_MUTATION_INCOMPLETE'));
 });
