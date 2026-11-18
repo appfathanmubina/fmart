@@ -1893,7 +1893,7 @@ function getStockCatalog(token) {
   requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
   const ss=getSS_(),products=readRows_(ss.getSheetByName('Produk')).filter(function(r){return String(r[8]||'').toUpperCase()==='AKTIF';}),vars=readRows_(ss.getSheetByName('VariasiProduk')).filter(function(r){return String(r[6]||'').toUpperCase()==='AKTIF';}),stocks=readRows_(ss.getSheetByName('Stok'));
   const stockMap=Object.create(null);stocks.forEach(function(r){const key=String(r[1])+'|'+String(r[2]||'');if(!Object.prototype.hasOwnProperty.call(stockMap,key))stockMap[key]=Math.max(0,Number(r[3])||0);});
-  return {ok:true,products:products.map(function(p){const pid=String(p[0]),vs=vars.filter(function(v){return String(v[1])===pid;}).map(function(v){const key=pid+'|'+String(v[0]);return {id:String(v[0]),name:String(v[2]||''),value:String(v[3]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,key)?stockMap[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,key)};}),baseKey=pid+'|';return {id:pid,name:String(p[3]||''),sku:String(p[2]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,baseKey)?stockMap[baseKey]:0,variations:vs};})};
+  return {ok:true,products:products.map(function(p){const pid=String(p[0]),vs=vars.filter(function(v){return String(v[1])===pid;}).map(function(v){const key=pid+'|'+String(v[0]);return {id:String(v[0]),name:String(v[2]||''),value:String(v[3]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,key)?stockMap[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,key)};}),baseKey=pid+'|';return {id:pid,name:String(p[3]||''),sku:String(p[2]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,baseKey)?stockMap[baseKey]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,baseKey),variations:vs};})};
 }
 
 
@@ -1926,7 +1926,7 @@ function getStockManagement(token) {
       });
     }else{
       const sr=stockMap[pid+'|'];const qty=sr?Math.max(0,Number(sr[3])||0):0;const min=sr&&!(sr[4] instanceof Date)&&String(sr[4]||'').trim()!==''&&Number.isFinite(Number(sr[4]))?Math.max(0,Number(sr[4])||0):baseMin;
-      items.push({key:pid+'|',productId:pid,variationId:'',name:String(p[3]||''),sku:String(p[2]||''),categoryName:categoryMap[String(p[1])]||'-',variationName:'',stock:qty,minStock:min,productStatus:String(p[8]||''),variationStatus:''});
+      items.push({key:pid+'|',productId:pid,variationId:'',name:String(p[3]||''),sku:String(p[2]||''),categoryName:categoryMap[String(p[1])]||'-',variationName:'',stock:qty,stockRecordMissing:!sr,minStock:min,productStatus:String(p[8]||''),variationStatus:''});
     }
   });
   const history=mutationRows.map(function(m){
@@ -1952,7 +1952,7 @@ function setStockMinimum(token, productId, variationId, minStock) {
     const stockSheet=ss.getSheetByName('Stok'),stockRows=readRows_(stockSheet),index=stockRows.findIndex(r=>String(r[1])===productId&&String(r[2]||'')===variationId);
     const now=new Date(),before=index>=0?(Number(stockRows[index][4])||0):(Number(product.values[6])||0);
     if(index>=0)stockSheet.getRange(index+2,5,1,2).setValues([[minStock,now]]);
-    else stockSheet.appendRow([makeFMartId_('STK'),productId,variationId,0,minStock,now]);
+    else {if(variation&&Math.max(0,Number(variation.values[5])||0)>0)throw new Error('Baris saldo Gudang variasi belum tercatat. Jalankan audit dan rekonsiliasi stok sebelum mengatur batas minimum.');stockSheet.appendRow([makeFMartId_('STK'),productId,variationId,0,minStock,now]);}
     if(!variationId)ss.getSheetByName('Produk').getRange(product.rowNumber,7).setValue(minStock);
     writeAudit_(session.userId,session.role,'SET_STOCK_MINIMUM','STOK',productId,JSON.stringify({variationId:variationId,minStock:before}),JSON.stringify({variationId:variationId,minStock:minStock}),'Perubahan batas stok minimum');
     SpreadsheetApp.flush();return getStockManagement(token);
