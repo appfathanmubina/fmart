@@ -40,6 +40,8 @@ const FMART_DB = Object.freeze({
     NOTIFIKASI: ['NotifikasiId','UserId','PesananId','Judul','Pesan','Jenis','IsRead','CreatedAt'],
     PENGATURAN: ['Key','Value','Description','UpdatedAt'],
     RESERVASI_STOK: ['ReservasiId','PesananId','ProdukId','VariasiId','Qty','Status','CreatedAt','ExpiresAt','UpdatedAt'],
+    PENJUALAN_TOKO: ['PenjualanId','NomorTransaksi','JenisPembeli','NamaPembeli','SantriId','Subtotal','Diskon','Total','MetodePembayaran','NominalDiterima','Kembalian','StatusPembayaran','StatusTransaksi','KasirUserId','Catatan','CreatedAt','UpdatedAt'],
+    DETAIL_PENJUALAN_TOKO: ['DetailPenjualanId','PenjualanId','ProdukId','VariasiId','SKU','NamaProduk','NamaVariasi','Harga','Qty','Subtotal'],
     AUDIT_LOG: ['AuditId','ActorUserId','ActorRole','Action','EntityType','EntityId','BeforeData','AfterData','Note','CreatedAt']
   }
 });
@@ -94,7 +96,9 @@ function sheetNameForKey_(key) {
     KERANJANG:'Keranjang', PESANAN:'Pesanan', DETAIL_PESANAN:'DetailPesanan', PEMBAYARAN:'Pembayaran',
     PENGIRIMAN:'Pengiriman', PENGANTARAN:'Pengantaran', BUKTI_PENGANTARAN:'BuktiPengantaran',
     KONFIRMASI_PENGANTARAN:'KonfirmasiPengantaran', KOMPLAIN_PENGANTARAN:'KomplainPengantaran',
-    RIWAYAT_PENGANTARAN:'RiwayatPengantaran', RESERVASI_STOK:'ReservasiStok', NOTIFIKASI:'Notifikasi', PENGATURAN:'Pengaturan', AUDIT_LOG:'AuditLog'
+    RIWAYAT_PENGANTARAN:'RiwayatPengantaran', RESERVASI_STOK:'ReservasiStok',
+    PENJUALAN_TOKO:'PenjualanToko', DETAIL_PENJUALAN_TOKO:'DetailPenjualanToko',
+    NOTIFIKASI:'Notifikasi', PENGATURAN:'Pengaturan', AUDIT_LOG:'AuditLog'
   };
   return map[key] || key;
 }
