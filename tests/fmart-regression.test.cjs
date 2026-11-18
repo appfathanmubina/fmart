@@ -308,3 +308,11 @@ test('Wali can link an active Santri immediately without Admin approval',()=>{
  assert.ok(index.includes('Hubungkan Santri'));
  assert.ok(!index.includes('Pengajuan dari Wali harus disetujui Admin/Superadmin.'));
 });
+
+
+test('Buyer and staff inline application JavaScript parses after Apps Script template substitution',()=>{
+ const match=index.match(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/i);
+ assert.ok(match,'Inline application script must exist.');
+ const clientScript=match[1].replace(/<\\?=\\s*portalMode\\s*\\?>/g,'BUYER');
+ assert.doesNotThrow(()=>new vm.Script(clientScript));
+});
