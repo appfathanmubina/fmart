@@ -1597,7 +1597,11 @@ function saveVariation(token, data) {
     if(existingVariation)sheet.getRange(existingVariation.rowNumber,2,1,7).setValues([[productId,name,value,addition,stock,status,now]]);
     else sheet.appendRow([variationId,productId,name,value,addition,stock,status,now,now]);
     if(!existingVariation)stockSheet.appendRow([makeFMartId_('STK'),productId,variationId,stock,Math.max(0,Number(product.values[6])||0),now]);
-    else stockSheet.getRange(stockRows.findIndex(function(r){return String(r[1])===productId&&String(r[2]||'')===variationId;})+2,4,1,3).setValues([[stock,Number(product.values[6])||0,now]]);
+    else{
+      const stockRowNumber=stockRows.findIndex(function(r){return String(r[1])===productId&&String(r[2]||'')===variationId;})+2;
+      stockSheet.getRange(stockRowNumber,4).setValue(stock);
+      stockSheet.getRange(stockRowNumber,6).setValue(now);
+    }
     if(!existingVariation&&stock>0){
       const mutationSheet=ss.getSheetByName('MutasiStok');
       if(!mutationSheet)throw new Error('Sheet MutasiStok tidak tersedia untuk mencatat stok awal variasi.');
