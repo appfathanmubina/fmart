@@ -2654,3 +2654,140 @@ function readRows_(sheet) {
   if (!sheet || sheet.getLastRow()<2) return [];
   return sheet.getRange(2,1,sheet.getLastRow()-1,sheet.getLastColumn()).getValues();
 }
+
+
+
+/**
+ * Audit runtime FMart bersifat read-only.
+ * Memeriksa database aktif, jumlah akun per role, ringkasan status transaksi,
+ * izin folder bukti Drive, dan keberadaan trigger otomatis.
+ * Jalankan manual dari Apps Script Editor: auditFMartRuntime_()
+ * Tidak membuat folder/trigger, tidak mengubah data, dan tidak mengirim notifikasi.
+ */
+function auditFMartRuntime_() {
+  const result = {
+    checkedAt: new Date().toISOString(),
+    mode: 'READ_ONLY',
+    database: { ok: false },
+    sheets: {},
+    activeUsersByRole: {},
+    transactionSummary: {},
+    driveFolders: {},
+    triggers: [],
+    issues: []
+  };
+  const props = PropertiesService.getScriptProperties();
+  const spreadsheetId = props.getProperty(FMART.SPREADSHEET_PROPERTY);
+
+  if (!spreadsheetId) {
+    result.issues.push({ code: 'DATABASE_ID_MISSING', detail: 'Script Property FMART_SPREADSHEET_ID belum diisi.' });
+    return result;
+  }
+
+  let ss;
+  try {
+    ss = SpreadsheetApp.openById(spreadsheetId);
+    result.database = {
+      ok: true,
+      name: ss.getName(),
+      timeZone: ss.getSpreadsheetTimeZone(),
+      sheetCount: ss.getSheets().length
+    };
+  } catch (err) {
+    result.issues.push({ code: 'DATABASE_UNAVAILABLE', detail: String(err && err.message || err) });
+    return result;
+  }
+
+  const names = ['Users','WaliSantri','Santri','Produk','Stok','MutasiStok','Pesanan','DetailPesanan','Pembayaran','Pengiriman','Pengantaran','BuktiPengantaran','KonfirmasiPengantaran','KomplainPengantaran','ReservasiStok','Notifikasi','AuditLog'];
+  names.forEach(function(name) {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet) {
+      result.sheets[name] = { exists: false, rows: 0 };
+      result.issues.push({ code: 'MISSING_SHEET', detail: 'Sheet ' + name + ' tidak ditemukan.' });
+      return;
+    }
+    result.sheets[name] = { exists: true, rows: Math.max(0, sheet.getLastRow() - 1) };
+  });
+
+  const usersSheet = ss.getSheetByName('Users');
+  if (usersSheet && usersSheet.getLastRow() > 1) {
+    usersSheet.getRange(2, 1, usersSheet.getLastRow() - 1, 12).getValues().forEach(function(row) {
+      const role = String(row[5] || '').trim().toUpperCase();
+      const status = String(row[6] || '').trim().toUpperCase();
+      if (status === 'AKTIF' && role) result.activeUsersByRole[role] = (result.activeUsersByRole[role] || 0) + 1;
+    });
+    ['SUPERADMIN','ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','WALI_SANTRI'].forEach(function(role) {
+      if (!result.activeUsersByRole[role]) result.issues.push({ code: 'NO_ACTIVE_ROLE_ACCOUNT', detail: 'Tidak ditemukan akun aktif untuk role ' + role + '.' });
+    });
+  } else {
+    result.issues.push({ code: 'USERS_EMPTY', detail: 'Sheet Users belum memiliki akun.' });
+  }
+
+  function countStatuses_(sheetName, columnIndex) {
+    const sheet = ss.getSheetByName(sheetName), counts = {};
+    if (!sheet || sheet.getLastRow() < 2) return counts;
+    sheet.getRange(2, columnIndex + 1, sheet.getLastRow() - 1, 1).getDisplayValues().forEach(function(row) {
+      const status = String(row[0] || '').trim().toUpperCase();
+      if (status) counts[status] = (counts[status] || 0) + 1;
+    });
+    return counts;
+  }
+  result.transactionSummary = {
+    ordersByStatus: countStatuses_('Pesanan', 8),
+    paymentsByStatus: countStatuses_('Pembayaran', 5),
+    shipmentsByStatus: countStatuses_('Pengiriman', 4),
+    deliveryAssignmentsByStatus: countStatuses_('Pengantaran', 3),
+    complaintsByStatus: countStatuses_('KomplainPengantaran', 6)
+  };
+
+  [
+    { key: 'FMART_PAYMENT_PROOF_FOLDER_ID', label: 'paymentProof' },
+    { key: 'FMART_DELIVERY_PROOF_FOLDER_ID', label: 'deliveryProof' }
+  ].forEach(function(item) {
+    const folderId = props.getProperty(item.key);
+    if (!folderId) {
+      result.driveFolders[item.label] = { configured: false, accessible: false };
+      result.issues.push({ code: 'DRIVE_FOLDER_NOT_CONFIGURED', detail: 'Folder ' + item.label + ' belum dikonfigurasi.' });
+      return;
+    }
+    try {
+      const folder = DriveApp.getFolderById(folderId);
+      const access = String(folder.getSharingAccess());
+      const permission = String(folder.getSharingPermission());
+      result.driveFolders[item.label] = {
+        configured: true,
+        accessible: true,
+        name: folder.getName(),
+        sharingAccess: access,
+        sharingPermission: permission
+      };
+      if (access.indexOf('ANYONE') >= 0) {
+        result.issues.push({ code: 'DRIVE_FOLDER_PUBLIC', detail: 'Folder ' + item.label + ' memiliki akses berbagi publik: ' + access + '.' });
+      }
+    } catch (err) {
+      result.driveFolders[item.label] = { configured: true, accessible: false };
+      result.issues.push({ code: 'DRIVE_FOLDER_INACCESSIBLE', detail: 'Folder ' + item.label + ' tidak dapat diakses oleh akun eksekusi: ' + String(err && err.message || err) });
+    }
+  });
+
+  try {
+    result.triggers = ScriptApp.getProjectTriggers().map(function(trigger) {
+      return {
+        handler: trigger.getHandlerFunction(),
+        eventType: String(trigger.getEventType()),
+        triggerSource: String(trigger.getTriggerSource())
+      };
+    });
+    const hasDeliveryAutomation = result.triggers.some(function(trigger) {
+      return trigger.handler === 'processDeliveryAutoConfirmation_';
+    });
+    if (!hasDeliveryAutomation) {
+      result.issues.push({ code: 'DELIVERY_TRIGGER_MISSING', detail: 'Trigger processDeliveryAutoConfirmation_ belum terpasang.' });
+    }
+  } catch (err) {
+    result.issues.push({ code: 'TRIGGER_AUDIT_FAILED', detail: String(err && err.message || err) });
+  }
+
+  result.ok = result.issues.length === 0;
+  return result;
+}
