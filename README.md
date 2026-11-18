@@ -622,3 +622,34 @@ Pemeriksaan pada Tahap 2 bersifat statis terhadap repository. Tidak ada akses ru
 - Pemeriksaan statis memastikan menu POS ditambahkan pada navigasi role Kasir/Admin/Superadmin, endpoint POS dipanggil sesuai kontrak, serta workspace antrean pembayaran Wali tetap ada.
 - Belum dilakukan pengujian browser, akun Kasir nyata, koneksi Google Apps Script, transaksi pada Spreadsheet aktif, atau pembayaran tunai/QRIS aktual. Uji perangkat dan runtime tetap wajib sebelum operasional.
 - QRIS tetap membutuhkan konfirmasi manual setelah petugas memeriksa dana masuk. Fitur antrean konfirmasi dan pembatalan QRIS khusus penjualan toko disempurnakan pada Tahap 4.
+
+## Konfirmasi QRIS Penjualan Toko — Tahap 4
+
+### Antrean QRIS Kasir
+- Endpoint `getCashierQrisQueue(token)` menyediakan antrean khusus penjualan toko dengan metode QRIS dan status pembayaran `MENUNGGU_KONFIRMASI`. Endpoint hanya dapat diakses Kasir, Admin, dan Superadmin.
+- Data antrean meliputi nomor transaksi, pembeli, kasir pembuat, waktu transaksi, total, catatan, rincian barang, jumlah reservasi aktif, serta waktu kedaluwarsa reservasi.
+- Antrean diurutkan dari transaksi yang paling lama menunggu agar pemeriksaan dapat dilakukan secara FIFO.
+- UI POS menampilkan kartu antrean, rincian barang, nominal, referensi pembayaran opsional, dan sisa waktu reservasi yang diperbarui setiap detik.
+- Reservasi stok QRIS berlaku 15 menit sejak transaksi dibuat. Setelah waktu habis, UI menandai transaksi **Reservasi Habis** dan menonaktifkan tindakan konfirmasi. Petugas tetap dapat membatalkan transaksi untuk melepas baris reservasinya.
+- Antrean QRIS hanya dimuat saat workspace pertama kali dibuka, ketika kasir meminta pembaruan, atau setelah transaksi QRIS dikonfirmasi/dibatalkan/dibuat. Pencarian katalog tidak memanggil ulang antrean pada setiap ketikan.
+
+### Konfirmasi pembayaran
+- Sebelum tombol konfirmasi dapat digunakan, kasir wajib mencentang pernyataan bahwa dana sudah diperiksa dan benar-benar masuk pada kanal merchant.
+- UI menampilkan konfirmasi tindakan sekali lagi sebelum memanggil `confirmCashierQrisPayment(token, saleId, reference)`.
+- Server memeriksa ulang status transaksi, metode QRIS, keberadaan detail transaksi, masa berlaku dan cakupan reservasi untuk setiap item, status aktif produk/variasi, serta kecukupan stok fisik di bawah ScriptLock.
+- Jika valid, stok dikurangi, MutasiStok dicatat, reservasi ditandai `DIGUNAKAN`, status pembayaran menjadi `LUNAS`, status transaksi menjadi `SELESAI`, dan referensi pembayaran disimpan pada PenjualanToko. Kasir pembuat tetap tercatat; petugas yang mengonfirmasi dicatat pada AuditLog.
+- Referensi pembayaran bersifat opsional karena sebagian kanal merchant tidak menampilkan nomor referensi yang mudah disalin. Catatan tersebut bukan pengganti pemeriksaan dana masuk.
+
+### Pembatalan dan reservasi kedaluwarsa
+- Tombol **Batalkan & Lepas Stok** meminta persetujuan petugas sebelum memanggil `cancelCashierQrisSale`.
+- Server hanya menerima pembatalan transaksi ber-metode QRIS yang masih berstatus `MENUNGGU_KONFIRMASI`. Reservasi aktif ditandai `DILEPAS`, status pembayaran dan transaksi menjadi `DIBATALKAN`, serta alasan pembatalan dicatat.
+- Reservasi yang sudah melewati waktu 15 menit tidak lagi mengurangi stok tersedia karena pemetaan reservasi hanya menghitung reservasi aktif yang belum kedaluwarsa. Status penjualan tetap menunggu sampai petugas membatalkan; tidak ada pembatalan otomatis.
+- Transaksi dengan reservasi kedaluwarsa tidak dapat dikonfirmasi. Jika dana ternyata baru terlihat setelah reservasi habis, petugas harus mengikuti prosedur toko untuk penjualan baru dan tidak mengaktifkan kembali transaksi kedaluwarsa secara manual.
+- Pembatalan dibatasi pada transaksi QRIS; transaksi tunai yang sudah selesai tidak dapat dibatalkan melalui endpoint ini.
+
+### Pemeriksaan Tahap 4 dan batas pengujian
+- Pemeriksaan statis: sintaks JavaScript inline `Index.html` dan sintaks `Code.gs` berhasil diperiksa; role guard antrean, filter QRIS pending, pemeriksaan reservasi, konfirmasi manual, pembatalan khusus QRIS, indikator waktu, dan layout mobile diperiksa.
+- Antrean QRIS penjualan toko ditampilkan terpisah dari antrean verifikasi pembayaran pesanan Wali; komponen dan aksi verifikasi pesanan Wali tetap dipertahankan.
+- Tidak ada perubahan skema Spreadsheet pada Tahap 4. Sheet `PenjualanToko`, `DetailPenjualanToko`, dan `ReservasiStokToko` tetap memakai skema Tahap 1–2.
+- Belum dilakukan pengujian browser, akun petugas aktif, Spreadsheet/Drive aktif, transaksi QRIS merchant, simulasi waktu kedaluwarsa, atau deployment Apps Script. Pemeriksaan ini adalah audit statis repository, bukan bukti transaksi live sudah berhasil.
+- Setelah sinkronisasi, uji skenario: QRIS baru dibuat; antrean tampil; konfirmasi ditolak bila checkbox belum dicentang; konfirmasi berhasil saat dana sudah masuk dan reservasi masih berlaku; konfirmasi ditolak setelah 15 menit; pembatalan melepas stok; transaksi tunai tidak muncul di antrean QRIS; dan antrean verifikasi pembayaran pesanan Wali tetap berfungsi.
