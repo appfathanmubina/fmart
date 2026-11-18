@@ -235,3 +235,17 @@ test('Cashier POS integrity audit reads the cashier stock ledger, not warehouse 
  assert.ok(audit.includes("getSheetByName('MutasiStokKasir')"));
  assert.ok(!audit.includes("getSheetByName('MutasiStok')"));
 });
+
+
+test('Readiness audit logs bounded diagnostic chunks without truncating the full report',()=>{
+ const audit=extractFunction(code,'runFMartReadinessAudit');
+ const logger=extractFunction(code,'logFMartReadinessAudit_');
+ assert.ok(audit.includes('logFMartReadinessAudit_(report)'));
+ assert.ok(!audit.includes('Logger.log(JSON.stringify(report,null,2))'));
+ assert.ok(logger.includes("FMART_AUDIT_SUMMARY "));
+ assert.ok(logger.includes("FMART_AUDIT_CHECK "));
+ assert.ok(logger.includes("FMART_AUDIT_ISSUES "));
+ assert.ok(logger.includes('issues.slice(i, i + chunkSize)'));
+ assert.ok(logger.includes('totalParts: totalParts'));
+ assert.ok(logger.includes('FMART_AUDIT_COMPLETE '));
+});

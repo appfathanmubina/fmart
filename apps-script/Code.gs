@@ -3731,6 +3731,59 @@ function recoverFMartTransactions_(token,limit){
 }
 
 
+/**
+ * Menulis hasil readiness audit dalam beberapa log kecil agar Execution Log
+ * Apps Script tidak memotong JSON report besar. Report lengkap tetap
+ * dikembalikan sebagai nilai fungsi; helper ini hanya melakukan logging.
+ */
+function logFMartReadinessAudit_(report) {
+  const checks = report && report.checks ? report.checks : {};
+  const chunkSize = 5;
+  Logger.log('FMART_AUDIT_SUMMARY ' + JSON.stringify({
+    checkedAt: report.checkedAt,
+    ok: report.ok,
+    totalIssues: report.totalIssues,
+    summary: report.summary
+  }));
+  Object.keys(checks).forEach(function(name) {
+    const result = checks[name] || {};
+    const issues = Array.isArray(result.issues) ? result.issues : [];
+    const diagnostics = {
+      name: name,
+      ok: result.ok !== false && issues.length === 0 && !(Number(result.issueCount) > 0),
+      issueCount: issues.length || Number(result.issueCount) || 0,
+      counts: result.counts || null,
+      database: result.database || null,
+      activeUsersByRole: result.activeUsersByRole || null,
+      driveFolders: result.driveFolders || null,
+      triggers: result.triggers || null,
+      truncated: result.truncated === true,
+      error: result.error || null
+    };
+    Logger.log('FMART_AUDIT_CHECK ' + JSON.stringify(diagnostics));
+    if (!issues.length) {
+      Logger.log('FMART_AUDIT_ISSUES ' + JSON.stringify({
+        name: name, part: 1, totalParts: 1, issues: []
+      }));
+      return;
+    }
+    const totalParts = Math.ceil(issues.length / chunkSize);
+    for (let i = 0; i < issues.length; i += chunkSize) {
+      Logger.log('FMART_AUDIT_ISSUES ' + JSON.stringify({
+        name: name,
+        part: Math.floor(i / chunkSize) + 1,
+        totalParts: totalParts,
+        issues: issues.slice(i, i + chunkSize)
+      }));
+    }
+  });
+  Logger.log('FMART_AUDIT_COMPLETE ' + JSON.stringify({
+    checkedAt: report.checkedAt,
+    ok: report.ok,
+    totalIssues: report.totalIssues
+  }));
+}
+
 /** One-click, read-only readiness audit for Apps Script editor. */
 function runFMartReadinessAudit() {
   const checks = {};
@@ -3752,6 +3805,6 @@ function runFMartReadinessAudit() {
   const report={ok:summary.every(function(x){return x.ok;}),mode:'READ_ONLY',checkedAt:new Date().toISOString(),
     summary:summary,totalIssues:summary.reduce(function(n,x){return n+x.issueCount;},0),checks:checks,
     note:'Audit tidak mengubah data. Tinjau semua issue sebelum menjalankan transaksi atau mengaktifkan fitur keamanan tambahan.'};
-  Logger.log(JSON.stringify(report,null,2));
+  logFMartReadinessAudit_(report);
   return report;
 }
