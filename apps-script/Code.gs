@@ -663,6 +663,8 @@ function getCatalog(token) {
     const key = pid + '|' + vid;
     variationsByProduct[pid].push({
       id:vid,
+      name:String(r[2] || ''),
+      value:String(r[3] || ''),
       priceAddition:Number(r[4]) || 0,
       stock:Math.max(0,(Object.prototype.hasOwnProperty.call(stockByKey,key) ? stockByKey[key] : Math.max(0,Number(r[5]) || 0))-(reservedByKey[key]||0))
     });
@@ -924,7 +926,7 @@ function getWaliDashboard(token) {
       className:String(child.className || ''),
       total:Number(row[7]) || 0,
       status:status === 'MENUNGGU_STOK' ? 'DIPROSES' : status,
-      paymentStatus:payment ? payment.status : ''
+      paymentStatus:payment ? payment.status : '',
       createdAt:dateIso_(row[10])
     };
   });
@@ -942,7 +944,7 @@ function getWaliDashboard(token) {
     const payment = paymentMap[String(row[0])] || null;
     if (status === 'MENUNGGU_PEMBAYARAN' && (!payment || payment.status === 'DITOLAK')) summary.unpaidOrders++;
     if (['MENUNGGU_STOK','DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR'].indexOf(status) !== -1) summary.activeOrders++;
-    if (status === 'MENUNGGU_STOK') summary.waitingStockOrders++;
+    // Status antrean stok tidak diekspos pada dashboard Wali.
     if (status === 'DITERIMA') summary.completedOrders++;
     if (status === 'DIBATALKAN') summary.cancelledOrders++;
     if (payment && payment.status === 'MENUNGGU_VERIFIKASI') summary.awaitingPaymentVerification++;
