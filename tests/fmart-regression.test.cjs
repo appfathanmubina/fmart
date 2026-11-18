@@ -48,7 +48,8 @@ const waliPaymentStart = html.indexOf('async function openPayment(');
 const waliPaymentEnd = html.indexOf('function copyPaymentText(', waliPaymentStart);
 assert.ok(waliPaymentStart >= 0 && waliPaymentEnd > waliPaymentStart, 'Guardian payment flow must be present');
 assert.doesNotMatch(html.slice(waliPaymentStart, waliPaymentEnd), /QRIS/i, 'Guardian payment flow must not expose QRIS');
-assert.match(backend, /replace\\(\/\\\\s\+\/g, ''\\)/, 'Bank account input must normalize whitespace');
+assert.ok(backend.includes("replace(/\\s+/g,''"), 'Bank account input must normalize whitespace');
+assert.ok(html.includes("replace(/\\D/g,''"), 'WhatsApp link must normalize to digits');
 assert.match(backend, /function confirmCashierQrisPayment\(/, 'POS QRIS confirmation must remain available');
 assert.match(backend, /function getCashierQrisQueue\(/, 'POS QRIS queue must remain available');
 
