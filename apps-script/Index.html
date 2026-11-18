@@ -1351,7 +1351,7 @@ body.buyer-portal #profileModal .modal-card{
       <button class="nav-btn hidden" id="staffDeliveryComplaints"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 3 2.8 19h18.4L12 3Z"></path><path d="M12 9v4m0 3h.01"></path></svg></span><span>Komplain</span></button>
       <button class="nav-btn" id="staffUsers"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"></circle><path d="M3 20c.4-3.2 2.4-5 6-5s5.6 1.8 6 5"></path><path d="M17 8h4m-2-2v4"></path></svg></span><span>Pengguna</span></button>
       <button class="nav-btn" id="staffReports"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h17"></path><path d="m7 15 4-4 3 2 6-7"></path></svg></span><span>Laporan</span></button>
-      <button class="nav-btn" id="staffPaymentSettings"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 10h18M7 15h4"></path></svg></span><span>Pengaturan QRIS</span></button>
+      <button class="nav-btn" id="staffPaymentSettings"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 10h18M7 15h4"></path></svg></span><span>Rekening Transfer</span></button>
     </nav>
   </div>
 
@@ -2101,7 +2101,7 @@ function renderOrderDetail(o){
   if($('detailReceiveBtn'))$('detailReceiveBtn').onclick=()=>receiveOrder(o.orderId);
 }
 async function openPayment(orderId){
-  loading(true,'Menyiapkan pembayaran QRIS...');
+  loading(true,'Menyiapkan pembayaran transfer...');
   try{
     const r=await runServer('getOrderDetail',state.token,orderId);
     const cfg=await runServer('getPaymentSettings',state.token);
@@ -2319,7 +2319,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       const verified=rows.filter(o=>o.payment.status==='TERVERIFIKASI').length;
       const rejected=rows.filter(o=>o.payment.status==='DITOLAK').length;
       $('opsMainTitle').textContent='Pembayaran & Verifikasi';
-      $('opsMainBody').innerHTML=opsWelcomeMarkup('Pemeriksaan pembayaran','Cocokkan nominal, nomor pesanan, dan bukti dengan mutasi rekening/QRIS yang benar-benar masuk.','✓')+
+      $('opsMainBody').innerHTML=opsWelcomeMarkup('Pemeriksaan pembayaran','Cocokkan nominal, nomor pesanan, dan bukti dengan mutasi rekening bank yang benar-benar masuk.','✓')+
         '<div class="payment-overview-grid">'+[['Menunggu Verifikasi',pending],['Terverifikasi',verified],['Ditolak',rejected]].map(x=>'<div class="payment-overview-card"><span>'+x[0]+'</span><strong>'+formatMoney(x[1])+'</strong></div>').join('')+'</div>'+
         '<div class="section payment-workspace"><div class="section-title"><div><h2>Riwayat pengajuan pembayaran</h2><span class="muted">Data pembayaran pada pesanan terbaru yang dimuat</span></div><button class="secondary" id="refreshPayments" type="button">↻ Muat ulang</button></div>'+
         '<div class="payment-filter-grid"><div class="field"><label for="paymentSearch">Cari pembayaran</label><input id="paymentSearch" type="search" placeholder="Nomor pesanan, Wali, atau Santri"></div><div class="field"><label for="paymentStatusFilter">Status</label><select id="paymentStatusFilter"><option value="">Semua status</option><option value="MENUNGGU_VERIFIKASI">Menunggu Verifikasi</option><option value="TERVERIFIKASI">Terverifikasi</option><option value="DITOLAK">Ditolak</option></select></div></div>'+
