@@ -144,7 +144,8 @@ function seedSettings_(sheet) {
  * Fungsi ini tidak mengubah sheet, header, maupun isi data.
  * Jalankan dari Apps Script Editor: auditFMartDatabaseIntegrity_()
  */
-function auditFMartDatabaseIntegrity_() {
+function auditFMartDatabaseIntegrity_(options) {
+  const skipSantriData = !!(options && options.skipSantriData === true);
   const ss = getSetupSpreadsheet_();
   const issues = [];
   const rowsBySheet = {};
@@ -215,16 +216,17 @@ function auditFMartDatabaseIntegrity_() {
     }
 
     validSchema[sheetName] = mismatches.length === 0;
-    const dataRows = sheet.getLastRow() > 1
+    const skipRows = skipSantriData && sheetName === 'Santri';
+    const dataRows = !skipRows && sheet.getLastRow() > 1
       ? sheet.getRange(2, 1, sheet.getLastRow() - 1, expected.length).getValues()
       : [];
     rowsBySheet[sheetName] = dataRows;
-    counts[sheetName] = dataRows.filter(hasData_).length;
+    counts[sheetName] = skipRows ? null : dataRows.filter(hasData_).length;
   });
 
   Object.keys(FMART_DB.SHEETS).forEach(function(key) {
     const sheetName = sheetNameForKey_(key);
-    if (!validSchema[sheetName]) return;
+    if (!validSchema[sheetName] || (skipSantriData && sheetName === 'Santri')) return;
     const rows = rowsBySheet[sheetName];
     const seen = Object.create(null);
     rows.forEach(function(row, index) {
@@ -243,7 +245,7 @@ function auditFMartDatabaseIntegrity_() {
   });
 
   function checkUnique_(sheetName, columnIndex, label, normalize) {
-    if (!validSchema[sheetName]) return;
+    if (!validSchema[sheetName] || (skipSantriData && sheetName === 'Santri')) return;
     const seen = {};
     rowsBySheet[sheetName].forEach(function(row, index) {
       if (!hasData_(row)) return;
@@ -285,7 +287,7 @@ function auditFMartDatabaseIntegrity_() {
   }
 
   function checkReference_(sourceName, sourceColumn, targetName, label, optional) {
-    if (!validSchema[sourceName] || !validSchema[targetName]) return;
+    if (!validSchema[sourceName] || !validSchema[targetName] || (skipSantriData && targetName === 'Santri')) return;
     const targets = idSet_(targetName);
     rowsBySheet[sourceName].forEach(function(row, index) {
       if (!hasData_(row)) return;
@@ -350,6 +352,7 @@ function auditFMartDatabaseIntegrity_() {
     sheetCounts: counts,
     issueCount: issues.length,
     truncated: issues.length >= maxIssues,
+    skippedChecks: skipSantriData ? ['Santri row primary IDs', 'Santri NIS uniqueness', 'references targeting Santri'] : [],
     issues: issues
   };
   Logger.log(JSON.stringify(report, null, 2));
