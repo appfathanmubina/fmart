@@ -3729,3 +3729,29 @@ function recoverFMartTransactions_(token,limit){
   return {ok:true,checked:results.length,recovered:results.filter(x=>x.ok).length,results:results,policy:'CHECKOUT_AND_RECEIPT_ONLY_NO_PAYMENT_REPAIR'};
  }finally{lock.releaseLock();}
 }
+
+
+/** One-click, read-only readiness audit for Apps Script editor. */
+function runFMartReadinessAudit() {
+  const checks = {};
+  function run_(name, callback) {
+    try { checks[name] = callback(); }
+    catch (error) { checks[name] = { ok:false, mode:'READ_ONLY', error:String(error && error.message || error), issues:[{code:'AUDIT_EXECUTION_FAILED',detail:String(error && error.message || error)}] }; }
+  }
+  run_('database', auditFMartDatabaseIntegrity_);
+  run_('runtime', auditFMartRuntime_);
+  run_('operationalSync', auditFMartOperationalSync_);
+  run_('stockAndPOS', auditFMartStockReconciliation_);
+  run_('cashierPOS', auditCashierPOSIntegrity_);
+  run_('warehouseReceiving', auditWarehouseReceivingIntegrity_);
+  run_('transactionRecovery', auditFMartTransactionRecovery_);
+  const summary = Object.keys(checks).map(function(name) {
+    const result=checks[name]||{},issues=Array.isArray(result.issues)?result.issues.length:Number(result.issueCount)||0;
+    return {name:name,ok:result.ok!==false&&issues===0,issueCount:issues};
+  });
+  const report={ok:summary.every(function(x){return x.ok;}),mode:'READ_ONLY',checkedAt:new Date().toISOString(),
+    summary:summary,totalIssues:summary.reduce(function(n,x){return n+x.issueCount;},0),checks:checks,
+    note:'Audit tidak mengubah data. Tinjau semua issue sebelum menjalankan transaksi atau mengaktifkan fitur keamanan tambahan.'};
+  Logger.log(JSON.stringify(report,null,2));
+  return report;
+}
