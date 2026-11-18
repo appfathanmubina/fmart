@@ -3368,3 +3368,289 @@ body.admin-portal .cashier-sales-empty{line-height:1.55}
 }
 @media(prefers-reduced-motion:reduce){body.admin-portal .cashier-pos-product{transition:none}#toast{transition:none}}
 </style>
+
+<style>
+/* FMart — penyempurnaan pop-up detail produk Wali */
+body.buyer-portal #productModal{
+  padding:24px;
+  place-items:center;
+  background:rgba(29,16,39,.62);
+  backdrop-filter:blur(7px);
+}
+body.buyer-portal #productModal .modal-card{
+  width:min(960px,100%);
+  max-width:960px;
+  max-height:min(90dvh,860px);
+  overflow:auto;
+  padding:24px;
+  border:1px solid #eee4f3;
+  border-radius:26px;
+  background:#fff;
+  box-shadow:0 28px 90px rgba(28,12,40,.28);
+  scrollbar-width:thin;
+  scrollbar-color:#d9c7e2 transparent;
+}
+body.buyer-portal #productModal .modal-head{
+  position:sticky;
+  top:-24px;
+  z-index:3;
+  align-items:center;
+  margin:-2px 0 22px;
+  padding:2px 0 15px;
+  border-bottom:1px solid #f0e8f3;
+  background:#fff;
+}
+body.buyer-portal #productModal .modal-head h2{
+  color:#351b40;
+  font-size:21px;
+  letter-spacing:-.025em;
+}
+body.buyer-portal #productModal .modal-head .eyebrow{
+  color:#8a4b98;
+  letter-spacing:.13em;
+}
+body.buyer-portal #productModal .icon-btn{
+  flex:0 0 42px;
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  background:#faf7fc;
+  color:#5b145f;
+  font-size:25px;
+}
+body.buyer-portal #productModal .buyer-detail-layout{
+  display:grid;
+  grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);
+  gap:30px;
+  align-items:start;
+}
+body.buyer-portal #productModal .buyer-detail-visual,
+body.buyer-portal #productModal .buyer-detail-info{min-width:0}
+body.buyer-portal #productModal .buyer-detail-photo{
+  height:clamp(300px,38vw,430px);
+  min-height:300px;
+  margin:0;
+  border:1px solid #eee5f4;
+  border-radius:22px;
+  background:linear-gradient(145deg,#fcfaff 0%,#f2eaf8 100%);
+  box-shadow:inset 0 1px 0 #fff;
+}
+body.buyer-portal #productModal .buyer-detail-photo img{
+  width:100%;
+  height:100%;
+  padding:20px;
+  object-fit:contain;
+}
+body.buyer-portal #productModal .detail-photo-placeholder{
+  display:grid;
+  justify-items:center;
+  gap:10px;
+  color:#9b8aa5;
+  font-size:14px;
+}
+body.buyer-portal #productModal .detail-photo-placeholder span{font-size:48px}
+body.buyer-portal #productModal .buyer-photo-caption{
+  margin-top:10px;
+  color:#94879b;
+  font-size:11px;
+}
+body.buyer-portal #productModal .buyer-detail-category{
+  padding:6px 11px;
+  border:1px solid #eadcf0;
+  background:#faf4fc;
+  color:#70277e;
+  font-size:10px;
+  letter-spacing:.04em;
+}
+body.buyer-portal #productModal .buyer-detail-name{
+  margin:12px 0 0;
+  color:#2d1d35;
+  font-size:clamp(22px,2.4vw,29px);
+  line-height:1.28;
+  letter-spacing:-.035em;
+  overflow-wrap:anywhere;
+}
+body.buyer-portal #productModal .buyer-detail-price{
+  margin:13px 0 16px;
+  color:#701c7b;
+  font-size:28px;
+  line-height:1.2;
+  letter-spacing:-.035em;
+}
+body.buyer-portal #productModal .buyer-detail-stock{display:none!important}
+body.buyer-portal #productModal .buyer-detail-description{
+  margin:0;
+  padding:14px 15px;
+  border:1px solid #eee7f2;
+  border-radius:15px;
+  background:#fcfafd;
+}
+body.buyer-portal #productModal .buyer-detail-description strong{
+  color:#4c3655;
+  font-size:12px;
+}
+body.buyer-portal #productModal .buyer-detail-description p{
+  margin:6px 0 0;
+  color:#756b7e;
+  font-size:13px;
+  line-height:1.65;
+  overflow-wrap:anywhere;
+}
+body.buyer-portal #productModal .buyer-variation-section{margin-top:18px}
+body.buyer-portal #productModal .buyer-variation-heading{margin-bottom:10px}
+body.buyer-portal #productModal .buyer-variation-heading strong{
+  color:#3e2948;
+  font-size:13px;
+}
+body.buyer-portal #productModal .buyer-variation-heading span{
+  padding:4px 8px;
+  border-radius:20px;
+  background:#f7f0fa;
+  color:#81558b;
+  font-size:10px;
+  font-weight:700;
+}
+body.buyer-portal #productModal .buyer-variation-list{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+}
+body.buyer-portal #productModal .buyer-variation-option{
+  min-height:54px;
+  padding:11px 12px;
+  border:1px solid #e8deec;
+  border-radius:13px;
+  box-shadow:0 2px 7px rgba(50,25,60,.025);
+  transition:border-color .16s ease,background .16s ease,box-shadow .16s ease;
+}
+body.buyer-portal #productModal .buyer-variation-option:hover{
+  border-color:#c9a9d1;
+  background:#fdf9ff;
+}
+body.buyer-portal #productModal .buyer-variation-option.selected{
+  padding:10px 11px;
+  border:2px solid #81258b;
+  background:#fbf5fd;
+  box-shadow:0 0 0 3px rgba(128,0,128,.08);
+}
+body.buyer-portal #productModal .buyer-variation-main strong{
+  color:#403047;
+  font-size:12px;
+  line-height:1.4;
+}
+body.buyer-portal #productModal .buyer-variation-price{
+  color:#76277e;
+  font-size:10px;
+}
+body.buyer-portal #productModal .buyer-quantity-panel{
+  margin-top:18px;
+  padding:13px 14px;
+  border:1px solid #eee5f1;
+  border-radius:15px;
+  background:#faf7fc;
+}
+body.buyer-portal #productModal .buyer-quantity-panel strong{
+  color:#45304d;
+  font-size:13px;
+}
+body.buyer-portal #productModal .buyer-quantity-panel small{
+  color:#85778d;
+  font-size:10px;
+  line-height:1.4;
+}
+body.buyer-portal #productModal .buyer-qty-control{
+  flex:0 0 auto;
+  border-color:#e5d9ea;
+  border-radius:12px;
+}
+body.buyer-portal #productModal .buyer-qty-control button{
+  width:40px;
+  height:40px;
+  background:#f5edf8;
+  color:#641d70;
+  font-size:19px;
+}
+body.buyer-portal #productModal .buyer-qty-control input{
+  width:48px;
+  height:40px;
+  color:#382342;
+  font-size:14px;
+}
+body.buyer-portal #productModal .buyer-detail-actions{
+  position:sticky;
+  bottom:-24px;
+  z-index:2;
+  margin:14px -2px -2px;
+  padding:13px 2px 2px;
+  background:linear-gradient(180deg,rgba(255,255,255,.88),#fff 24%);
+  gap:10px;
+}
+body.buyer-portal #productModal .buyer-detail-actions button{
+  min-height:48px;
+  border-radius:13px;
+  font-size:13px;
+}
+body.buyer-portal #productModal .buyer-detail-actions .secondary{
+  border-color:#d9c5e1;
+  background:#fff;
+}
+body.buyer-portal #productModal .buyer-detail-actions .primary{
+  box-shadow:0 8px 18px rgba(128,0,128,.18);
+}
+body.buyer-portal #productModal button:focus-visible,
+body.buyer-portal #productModal input:focus-visible{
+  outline:3px solid #c8a4d2;
+  outline-offset:2px;
+}
+@media(max-width:760px){
+  body.buyer-portal #productModal{
+    padding:8px 8px max(8px,env(safe-area-inset-bottom));
+    align-items:end;
+  }
+  body.buyer-portal #productModal .modal-card{
+    width:100%;
+    max-width:620px;
+    max-height:calc(94dvh - env(safe-area-inset-bottom));
+    padding:17px 15px calc(15px + env(safe-area-inset-bottom));
+    border-radius:23px 23px 17px 17px;
+  }
+  body.buyer-portal #productModal .modal-head{
+    top:-17px;
+    margin:-1px 0 16px;
+    padding:1px 0 12px;
+  }
+  body.buyer-portal #productModal .modal-head h2{font-size:19px}
+  body.buyer-portal #productModal .buyer-detail-layout{
+    grid-template-columns:minmax(0,1fr);
+    gap:17px;
+  }
+  body.buyer-portal #productModal .buyer-detail-photo{
+    height:clamp(190px,54vw,270px);
+    min-height:190px;
+    border-radius:18px;
+  }
+  body.buyer-portal #productModal .buyer-detail-photo img{padding:14px}
+  body.buyer-portal #productModal .buyer-photo-caption{margin-top:6px}
+  body.buyer-portal #productModal .buyer-detail-name{font-size:21px}
+  body.buyer-portal #productModal .buyer-detail-price{font-size:24px;margin:10px 0 13px}
+  body.buyer-portal #productModal .buyer-detail-description{padding:12px 13px}
+  body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.buyer-portal #productModal .buyer-detail-actions{
+    bottom:calc(-15px - env(safe-area-inset-bottom));
+    margin:12px -15px calc(-15px - env(safe-area-inset-bottom));
+    padding:12px 15px calc(15px + env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.97);
+    border-top:1px solid #f0e8f3;
+  }
+  body.buyer-portal #productModal .buyer-detail-actions button{min-height:47px}
+}
+@media(max-width:390px){
+  body.buyer-portal #productModal .modal-card{padding-left:13px;padding-right:13px}
+  body.buyer-portal #productModal .buyer-variation-list{grid-template-columns:1fr}
+  body.buyer-portal #productModal .buyer-quantity-panel{align-items:flex-start}
+  body.buyer-portal #productModal .buyer-detail-actions{grid-template-columns:1fr}
+  body.buyer-portal #productModal .buyer-detail-actions button{width:100%}
+}
+@media(prefers-reduced-motion:reduce){
+  body.buyer-portal #productModal .buyer-variation-option{transition:none}
+}
+</style>
