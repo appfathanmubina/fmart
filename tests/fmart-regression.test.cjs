@@ -185,3 +185,36 @@ test('POS sales retain request-key protection and cashier stock reconciliation',
  assert.ok(sale.includes('sameItems')&&sale.includes('sameBuyer')&&sale.includes('samePayment'));
  assert.ok(audit.includes('POS_SALE_MUTATION_INCOMPLETE'));
 });
+
+
+test('Global CSS is consolidated while print receipt styles remain isolated',()=>{
+ const styleTags=index.match(/<style\\b/gi)||[];
+ assert.equal(styleTags.length,2);
+ assert.ok(index.includes('id="fmart-global-styles"'));
+ assert.ok(!/<\\/html>\\s*<style/i.test(index));
+ assert.ok(index.includes('FMart Tahap 3 — shared component'));
+ assert.ok(index.includes('const html='));
+});
+test('Shared UI baseline enforces touch targets, visible focus, reduced motion and scroll containment',()=>{
+ assert.ok(index.includes('--fm-touch-target:44px'));
+ assert.ok(index.includes('min-height:var(--fm-touch-target)'));
+ assert.ok(index.includes(':focus-visible'));
+ assert.ok(index.includes('prefers-reduced-motion:reduce'));
+ assert.ok(index.includes('overscroll-behavior:contain'));
+ assert.ok(index.includes('.skip-link'));
+ assert.ok(index.includes('Lewati ke konten utama'));
+});
+test('Responsive and role navigation coverage remains explicit',()=>{
+ const nav=extractFunction(index,'configureStaffNavigation');
+ for(const role of ['SUPERADMIN','ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'])assert.ok(nav.includes(role));
+ assert.ok(nav.includes('aria-hidden'));assert.ok(nav.includes('tabIndex=visible?0:-1'));
+ assert.ok(index.includes('@media(max-width:760px)'));
+ assert.ok(index.includes('@media (min-width:761px) and (max-width:900px)'));
+ assert.ok(index.includes('@media(max-width:380px)'));
+});
+test('Role-sensitive reports and QRIS settings remain server-gated',()=>{
+ const reports=extractFunction(code,'getFMartReports'),settings=extractFunction(code,'getPaymentSettings'),ops=extractFunction(code,'getOperationsDashboard');
+ assert.ok(reports.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN'));
+ assert.ok(settings.includes('FMART.ROLES.SUPERADMIN'));
+ assert.ok(ops.includes('pendingPayments:waliQrisQueue,products:[],categories:[]'));
+});
