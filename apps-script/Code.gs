@@ -1118,7 +1118,7 @@ function getPaymentSettings(token) {
 function savePaymentSettings(token, bankName, accountNumber, accountName, adminWhatsapp) {
   const session = requireRole_(token,[FMART.ROLES.SUPERADMIN]);
   bankName=String(bankName||'').trim().slice(0,100);
-  accountNumber=String(accountNumber||'').replace(/\\s+/g,'').slice(0,40);
+  accountNumber=String(accountNumber||'').replace(/\s+/g,'').slice(0,40);
   accountName=String(accountName||'').trim().slice(0,120);
   adminWhatsapp=normalizePhone_(adminWhatsapp);
   if(!bankName) throw new Error('Nama bank wajib diisi.');
