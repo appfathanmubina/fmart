@@ -2894,6 +2894,57 @@ body.admin-portal .warehouse-home-actions button:focus-visible,body.admin-portal
 
 
 <style>
+
+/* Tahap F — tablet portrait: navigasi petugas tidak mengambil lebar konten. */
+@media (min-width:761px) and (max-width:900px){
+  body.admin-portal #staffNav.bottom-nav{
+    position:fixed;z-index:40;top:auto;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));
+    width:auto;height:72px;display:flex;flex-direction:row;align-items:stretch;justify-content:flex-start;
+    gap:6px;padding:7px 8px;border:1px solid #eaddec;border-radius:18px;
+    overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;background:rgba(255,255,255,.97);box-shadow:0 12px 32px #35113d20;
+  }
+  body.admin-portal #staffNav.bottom-nav::-webkit-scrollbar{display:none}
+  body.admin-portal #staffNav .nav-btn{
+    flex:0 0 82px;width:82px;min-width:82px;min-height:56px;height:56px;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;
+    padding:5px 4px;border-radius:12px;font-size:10px;line-height:1.15;text-align:center;
+  }
+  body.admin-portal #staffNav .nav-btn .nav-icon{width:27px;height:27px;flex:0 0 27px}
+  body.admin-portal #operationsView{
+    width:100%!important;max-width:none!important;min-width:0;margin:0!important;
+    padding:22px 20px calc(112px + env(safe-area-inset-bottom))!important;
+  }
+  body.admin-portal #opsStats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+  body.admin-portal #opsMainSection,
+  body.admin-portal #opsMainBody,
+  body.admin-portal #opsMainBody>*{min-width:0;max-width:100%}
+  body.admin-portal #opsMainBody .table-wrap,
+  body.admin-portal #opsMainBody .table-responsive{
+    display:block;width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  body.admin-portal #opsMainBody .table-wrap table,
+  body.admin-portal #opsMainBody .table-responsive table{max-width:none}
+  body.admin-portal #opsMainBody .section-title{flex-wrap:wrap;gap:10px}
+  body.admin-portal #opsMainBody .section-title button{max-width:100%}
+}
+/* Semua panel petugas: cegah elemen panjang memperlebar viewport. */
+body.admin-portal #operationsView,
+body.admin-portal #opsMainSection,
+body.admin-portal #opsMainBody{min-width:0;box-sizing:border-box}
+body.admin-portal #opsMainBody .table-wrap,
+body.admin-portal #opsMainBody .table-responsive{
+  max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+}
+body.admin-portal #opsMainBody input,
+body.admin-portal #opsMainBody select,
+body.admin-portal #opsMainBody textarea{max-width:100%}
+@media(max-width:760px){
+  body.admin-portal #opsMainBody .table-wrap,
+  body.admin-portal #opsMainBody .table-responsive{width:100%}
+}
+
 /* FMart Tahap 6 — operasional Petugas Pengantar */
 body.admin-portal .delivery-task-card{background:#fff;min-width:0}
 body.admin-portal .delivery-task-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
