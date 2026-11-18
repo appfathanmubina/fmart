@@ -972,3 +972,25 @@ Audit tidak membuat ulang dokumen penerimaan, detail, mutasi, atau saldo stok. J
 
 ### Status
 Perubahan kode dan pemeriksaan sintaks/static dapat dilakukan di repository. Uji penerimaan barang, mutasi manual, saldo fisik, dan pemeriksaan Spreadsheet aktif tetap harus dijalankan sebagai UAT sebelum operasional.
+
+
+## Tahap 14 — Audit Laporan Stok, Kartu Persediaan, dan Nilai Persediaan
+
+### Kartu persediaan
+- Ditambahkan endpoint read-only `getStockCardReport(token, productId, variationId, startDate, endDate)` untuk menelusuri satu produk atau variasi.
+- Kartu menampilkan saldo awal periode (bila dapat direkonstruksi dari mutasi sebelumnya atau saldo sebelum mutasi pertama pada periode), jumlah barang masuk/keluar, saldo akhir berdasarkan mutasi, stok fisik saat ini, dan rincian setiap mutasi.
+- Setiap baris mutasi diberi pemeriksaan aritmetika saldo serta kesinambungan dengan saldo sebelumnya. Baris stok ganda, baris stok yang hilang, atau riwayat yang tidak cukup untuk merekonstruksi saldo ditandai sebagai temuan.
+- Tab **Kartu Persediaan** ditambahkan pada Riwayat & Laporan Gudang. Pengguna dapat memilih produk/variasi dan periode laporan. Riwayat mutasi lama, penerimaan, konsistensi stok, serta menu Gudang lainnya tetap dipertahankan.
+
+### Nilai persediaan
+- Audit skema `Produk`, `VariasiProduk`, `Stok`, `MutasiStok`, dan `PenerimaanBarang` menemukan belum ada kolom harga pokok/biaya perolehan per produk atau variasi, maupun biaya satuan pada detail penerimaan.
+- Karena dasar biaya belum tersedia, tab **Nilai Persediaan** menampilkan status belum dapat dihitung. Sistem tidak menggunakan harga jual sebagai pengganti harga pokok dan tidak menampilkan angka valuasi yang menyesatkan.
+- Pengaktifan valuasi memerlukan keputusan kebijakan terlebih dahulu: apakah harga pokok disimpan pada produk/variasi atau pada setiap baris penerimaan, serta metode penilaian persediaan yang akan digunakan. Perubahan skema dan migrasi biaya tidak dilakukan diam-diam dalam Tahap 14.
+
+### Pemeriksaan dan batasan
+- Endpoint kartu persediaan hanya membaca database dan tidak mengubah stok, mutasi, harga, penerimaan, maupun audit log.
+- Saldo awal historis ditandai tidak diketahui jika tidak ada mutasi terdahulu maupun mutasi dalam periode yang dapat menjadi titik awal. Stok fisik saat ini ditampilkan terpisah dan tidak dianggap sebagai saldo historis.
+- Lanjutkan validasi dengan `auditFMartStockReconciliation_()`, `auditWarehouseReceivingIntegrity_()`, dan `auditFMartOperationalSync_()`. Cocokkan hasil dengan dokumen penerimaan, penjualan, penyesuaian, dan stock opname.
+- Pemeriksaan sintaks/static pada repository bukan bukti bahwa data Spreadsheet aktif atau hasil kartu sudah benar di runtime. UAT Apps Script dan rekonsiliasi fisik tetap diperlukan.
+
+**Status:** fitur kartu persediaan dan tampilan status valuasi selesai pada repository. Nilai persediaan belum diaktifkan karena skema belum memiliki dasar harga pokok yang dapat dipertanggungjawabkan. Uji runtime dan verifikasi saldo historis masih menunggu UAT.
