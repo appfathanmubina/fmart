@@ -4,7 +4,7 @@
   "short_name": "FMart Admin",
   "description": "Panel petugas dan operasional FMart.",
   "lang": "id",
-  "start_url": "./?app=fmart-admin",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
