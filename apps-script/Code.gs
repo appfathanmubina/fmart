@@ -3084,6 +3084,58 @@ function cancelCashierQrisSale(token,saleId,reason) {
   }finally{lock.releaseLock();}
 }
 
+/**
+ * Audit integritas POS toko. Read-only; tidak mengubah transaksi, stok, atau reservasi.
+ * Jalankan manual dari Apps Script Editor: auditCashierPOSIntegrity_()
+ */
+function auditCashierPOSIntegrity_() {
+  const ss=getSS_(),sales=readRows_(ss.getSheetByName('PenjualanToko'));
+  const details=readRows_(ss.getSheetByName('DetailPenjualanToko'));
+  const reservations=readRows_(ss.getSheetByName('ReservasiStokToko'));
+  const mutations=readRows_(ss.getSheetByName('MutasiStok'));
+  const issues=[],saleIds=Object.create(null),requestKeys=Object.create(null);
+  const detailMap=Object.create(null),reservationMap=Object.create(null),mutationMap=Object.create(null);
+  function issue(code,saleId,detail){if(issues.length<500)issues.push({code:code,saleId:saleId||'',detail:detail||''});}
+  details.forEach(function(r){const id=String(r[1]||'');if(!detailMap[id])detailMap[id]=[];detailMap[id].push(r);});
+  reservations.forEach(function(r){const id=String(r[1]||'');if(!reservationMap[id])reservationMap[id]=[];reservationMap[id].push(r);});
+  mutations.forEach(function(r){const id=String(r[7]||'');if(!id)return;if(!mutationMap[id])mutationMap[id]=[];mutationMap[id].push(r);});
+  const now=Date.now();
+  sales.forEach(function(s){
+    const id=String(s[0]||''),requestKey=String(s[17]||''),method=String(s[8]||'').toUpperCase();
+    const payment=String(s[11]||'').toUpperCase(),status=String(s[12]||'').toUpperCase();
+    if(!id){issue('SALE_ID_EMPTY','', 'ID penjualan kosong.');return;}
+    if(saleIds[id])issue('DUPLICATE_SALE_ID',id,'ID penjualan muncul lebih dari satu kali.');
+    saleIds[id]=true;
+    if(requestKey){if(requestKeys[requestKey])issue('DUPLICATE_REQUEST_KEY',id,'RequestKey juga digunakan oleh transaksi '+requestKeys[requestKey]+'.');else requestKeys[requestKey]=id;}
+    const lines=detailMap[id]||[];
+    if(!lines.length)issue('SALE_DETAIL_MISSING',id,'Transaksi tidak memiliki rincian barang.');
+    const itemTotal=lines.reduce(function(sum,r){return sum+(Number(r[9])||0);},0);
+    if(lines.length&&itemTotal!==Number(s[5]||0))issue('SALE_SUBTOTAL_MISMATCH',id,'Jumlah subtotal detail berbeda dari subtotal transaksi.');
+    if(Number(s[5]||0)-Number(s[6]||0)!==Number(s[7]||0))issue('SALE_TOTAL_MISMATCH',id,'Subtotal dikurangi diskon tidak sama dengan total.');
+    if(method==='TUNAI'&&(payment!=='LUNAS'||status!=='SELESAI'))issue('CASH_STATUS_INVALID',id,'Transaksi tunai seharusnya LUNAS dan SELESAI.');
+    if(method==='QRIS'&&payment==='MENUNGGU_KONFIRMASI'&&status!=='MENUNGGU_PEMBAYARAN')issue('QRIS_PENDING_STATUS_INVALID',id,'Status transaksi QRIS menunggu tidak konsisten.');
+    if(payment==='LUNAS'&&status!=='SELESAI')issue('PAID_STATUS_INVALID',id,'Pembayaran LUNAS tidak berstatus SELESAI.');
+    if(payment==='DIBATALKAN'&&status!=='DIBATALKAN')issue('CANCEL_STATUS_INVALID',id,'Status pembayaran dan transaksi batal tidak konsisten.');
+    const saleReservations=reservationMap[id]||[];
+    const active=saleReservations.filter(function(r){return String(r[5]||'').toUpperCase()==='AKTIF';});
+    if(payment==='MENUNGGU_KONFIRMASI'){
+      const valid=active.filter(function(r){const t=new Date(r[7]||0).getTime();return Number.isFinite(t)&&t>now;});
+      const reserved=Object.create(null);
+      valid.forEach(function(r){const key=String(r[2]||'')+'|'+String(r[3]||'');reserved[key]=(reserved[key]||0)+(Number(r[4])||0);});
+      lines.forEach(function(r){const key=String(r[2]||'')+'|'+String(r[3]||'');if((reserved[key]||0)<Number(r[8]||0))issue('QRIS_RESERVATION_SHORT',id,'Reservasi aktif/kedaluwarsa tidak mencakup '+String(r[5]||'produk')+'.');});
+      if(!valid.length)issue('QRIS_RESERVATION_EXPIRED',id,'Transaksi masih menunggu konfirmasi tetapi tidak memiliki reservasi yang berlaku.');
+    }else if(active.length){
+      issue('UNEXPECTED_ACTIVE_RESERVATION',id,'Transaksi bukan QRIS pending tetapi masih memiliki reservasi berstatus AKTIF.');
+    }
+    if(payment==='LUNAS'){
+      const saleMutations=mutationMap[id]||[],seen=Object.create(null);
+      saleMutations.forEach(function(m){const key=String(m[1]||'')+'|'+String(m[2]||'');seen[key]=(seen[key]||0)+1;});
+      lines.forEach(function(r){const key=String(r[2]||'')+'|'+String(r[3]||'');if(!seen[key])issue('SALE_STOCK_MUTATION_MISSING',id,'Mutasi stok keluar tidak ditemukan untuk '+String(r[5]||'produk')+'.');else if(seen[key]>1)issue('SALE_STOCK_MUTATION_DUPLICATE',id,'Mutasi stok ganda untuk '+String(r[5]||'produk')+'.');});
+    }
+  });
+  return {checkedAt:new Date().toISOString(),mode:'READ_ONLY',salesChecked:sales.length,detailsChecked:details.length,reservationsChecked:reservations.length,issues:issues,issueCount:issues.length,truncated:issues.length>=500};
+}
+
 function getStoreSaleReservationMap_(ss) {
   const sheet=ss.getSheetByName('ReservasiStokToko');
   if(!sheet)return {};
