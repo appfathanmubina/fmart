@@ -1483,8 +1483,8 @@ function getStockCardReport(token, productId, variationId, startDate, endDate) {
     if(!Number.isFinite(time))return;
     targetMutations.push({row:index+2,id:String(m[0]||''),type:String(m[3]||'').toUpperCase(),qty:Number(m[4]),before:Number(m[5]),after:Number(m[6]),referenceId:String(m[7]||''),note:String(m[8]||''),actor:userMap[String(m[9]||'')]||'-',createdAt:dateIso_(m[10]),time:time});
   });
-  const prior=targetMutations.filter(function(m){return m.time<start.getTime();}).sort(function(a,b){return a.time-b.time||a.row-b.row;});
-  const period=targetMutations.filter(function(m){return m.time>=start.getTime()&&m.time<=end.getTime();}).sort(function(a,b){return a.time-b.time||a.row-b.row;});
+  const prior=targetMutations.filter(function(m){return m.time<start.getTime();});
+  const period=targetMutations.filter(function(m){return m.time>=start.getTime()&&m.time<=end.getTime();});
   let openingBalance=null;
   if(prior.length) openingBalance=prior[prior.length-1].after;
   else if(period.length) openingBalance=period[0].before;
@@ -1503,6 +1503,8 @@ function getStockCardReport(token, productId, variationId, startDate, endDate) {
   const selectedItem=items.find(function(x){return x.key===key;});
   if(selectedItem&&selectedItem.duplicateStockRows>1)issues.push('Ditemukan '+selectedItem.duplicateStockRows+' baris stok untuk item yang sama.');
   if(selectedItem&&selectedItem.stock===null)issues.push('Baris stok fisik belum tersedia.');
+  if(selectedItem&&selectedItem.stock!==null&&(!Number.isSafeInteger(selectedItem.stock)||selectedItem.stock<0))issues.push('Saldo stok fisik bukan bilangan bulat nol atau lebih.');
+  if(selectedItem&&targetMutations.length&&selectedItem.stock!==targetMutations[targetMutations.length-1].after)issues.push('Stok fisik saat ini berbeda dari saldo mutasi terakhir; periksa rekonsiliasi stok.');
   const inbound=movements.filter(function(m){return m.type==='MASUK';}).reduce(function(n,m){return n+(Number(m.qty)||0);},0);
   const outbound=movements.filter(function(m){return m.type==='KELUAR';}).reduce(function(n,m){return n+(Number(m.qty)||0);},0);
   return {
