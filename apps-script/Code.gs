@@ -554,7 +554,7 @@ function findWaliByUserId_(ss, userId) {
 }
 
 function getInitialData(token) {
-  const session = requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
+  const session = requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
   const ss = getSS_();
   const result = {user:{userId:session.userId,username:session.username,nama:session.nama,role:session.role},categories:[],products:[],children:[]};
 
@@ -580,7 +580,7 @@ function getChildrenForWali_(ss, userId) {
 
 /** Fase 2: katalog produk aktif. Harga/stok selalu dibaca dari server. */
 function getProductDetail(token, productId) {
-  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
+  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
   productId = String(productId || '').trim();
   if (!productId) throw new Error('Produk tidak valid.');
   const ss = getSS_();
