@@ -663,6 +663,8 @@ function getCatalog(token) {
     const key = pid + '|' + vid;
     variationsByProduct[pid].push({
       id:vid,
+      name:String(r[2] || ''),
+      value:String(r[3] || ''),
       priceAddition:Number(r[4]) || 0,
       stock:Math.max(0,(Object.prototype.hasOwnProperty.call(stockByKey,key) ? stockByKey[key] : Math.max(0,Number(r[5]) || 0))-(reservedByKey[key]||0))
     });
@@ -677,6 +679,15 @@ function getCatalog(token) {
     }
   });
 
+  // Wali hanya menerima katalog publik; jumlah stok dan ambang stok hanya untuk petugas.
+  if (session.role === FMART.ROLES.WALI_SANTRI) {
+    products.forEach(function(p){
+      delete p.stock; delete p.minStock;
+      p.variations = (variationsByProduct[p.id] || []).map(function(v){return {id:v.id,priceAddition:v.priceAddition};});
+    });
+  } else {
+    products.forEach(function(p){p.variations=variationsByProduct[p.id]||[];});
+  }
   // Daftar anak hanya untuk Wali Santri; akses tetap ditentukan server dari session.
   const children = session.role === FMART.ROLES.WALI_SANTRI ? getChildrenForWali_(ss, session.userId) : [];
   return {
@@ -710,9 +721,8 @@ function getCart(token) {
       name:snap ? snap.name : 'Produk tidak tersedia',
       variationName:snap ? snap.variationName : '', sku:snap ? snap.sku : '',
       photoUrl:snap ? snap.photoUrl : '', unitPrice:snap ? snap.unitPrice : 0,
-      qty:qty, stock:available, subtotal:lineSubtotal,
-      available:snap ? snap.active : false,
-      exceedsStock:qty > available
+      qty:qty, subtotal:lineSubtotal,
+      available:snap ? snap.active : false
     });
   });
   return {ok:true,items:items,subtotal:subtotal,total:subtotal,
@@ -774,6 +784,7 @@ function updateCartItem(token, cartId, qty) {
     } else {
       const snap = getProductSnapshot_(ss, row.values[3], row.values[4]);
       if (!snap || !snap.active) throw new Error('Produk sudah tidak tersedia.');
+      if (qty > 10000) throw new Error('Jumlah pesanan maksimal 10.000 unit per produk.');
       
       sheet.getRange(row.rowNumber, 3).clearContent();
       sheet.getRange(row.rowNumber, 6, 1, 2).setValues([[qty,new Date()]]);
@@ -838,8 +849,7 @@ function checkoutCart(token, santriId, selectedCartIds, catatan, metodePengirima
     selectedRows.sort(function(a,b){return b.rowNumber-a.rowNumber;}).forEach(function(entry){cartSheet.deleteRow(entry.rowNumber);});
     writeAudit_(session.userId,session.role,'CREATE_ORDER','PESANAN',orderId,'',JSON.stringify({number:nomorPesanan,santriId:santriId,total:total,itemCount:items.length,shippingMethod:metodePengiriman}),'Checkout membuat pesanan dari item terpilih');
     SpreadsheetApp.flush();
-    const stockShortages=items.filter(function(i){return i.qty>i.stock;}).map(function(i){return {productId:i.productId,variationId:i.variationId,name:i.name,requested:i.qty,available:i.stock};});
-     return {ok:true,orderId:orderId,nomorPesanan:nomorPesanan,total:total,status:'MENUNGGU_PEMBAYARAN',stockStatus:stockShortages.length?'MENUNGGU_STOK_POTENSIAL':'TERSEDIA',stockShortages:stockShortages,child:child,itemCount:items.length};
+    return {ok:true,orderId:orderId,nomorPesanan:nomorPesanan,total:total,status:'MENUNGGU_PEMBAYARAN',child:child,itemCount:items.length};
   } finally { lock.releaseLock(); }
 }
 
@@ -847,7 +857,13 @@ function checkoutCart(token, santriId, selectedCartIds, catatan, metodePengirima
 function getMyNotifications(token) {
   const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.PETUGAS_PENGANTAR]);
   const rows=readRows_(getSS_().getSheetByName('Notifikasi')).filter(function(r){return String(r[1]||'')===String(session.userId);}).sort(function(a,b){return new Date(b[7]||0).getTime()-new Date(a[7]||0).getTime();});
-  const notifications=rows.slice(0,100).map(function(r){return{id:String(r[0]||''),orderId:String(r[2]||''),title:String(r[3]||''),message:String(r[4]||''),type:String(r[5]||''),isRead:r[6]===true||String(r[6]).toUpperCase()==='TRUE',createdAt:dateIso_(r[7])};});
+  const notifications=rows.slice(0,100).map(function(r){
+    let title=String(r[3]||''),message=String(r[4]||'');
+    if(session.role===FMART.ROLES.WALI_SANTRI && /stok|restok|persediaan|barang tersedia/i.test(title+' '+message)){
+      title='Pesanan sedang diproses'; message='Pesanan Anda sedang diproses. Informasi perkembangan berikutnya akan kami sampaikan melalui aplikasi.';
+    }
+    return{id:String(r[0]||''),orderId:String(r[2]||''),title:title,message:message,type:String(r[5]||''),isRead:r[6]===true||String(r[6]).toUpperCase()==='TRUE',createdAt:dateIso_(r[7])};
+  });
   return {ok:true,notifications:notifications,unreadCount:notifications.filter(function(n){return !n.isRead;}).length};
 }
 function markMyNotificationRead(token, notificationId) {
@@ -909,7 +925,7 @@ function getWaliDashboard(token) {
       childName:String(child.name || ''),
       className:String(child.className || ''),
       total:Number(row[7]) || 0,
-      status:status,
+      status:status === 'MENUNGGU_STOK' ? 'DIPROSES' : status,
       paymentStatus:payment ? payment.status : '',
       createdAt:dateIso_(row[10])
     };
@@ -917,7 +933,7 @@ function getWaliDashboard(token) {
 
   // Hitung ringkasan seluruh pesanan, bukan hanya lima pesanan terbaru.
   summary.activeOrders = 0;
-  summary.waitingStockOrders = 0;
+  delete summary.waitingStockOrders;
   summary.unpaidOrders = 0;
   summary.awaitingPaymentVerification = 0;
   summary.rejectedPayments = 0;
@@ -928,7 +944,7 @@ function getWaliDashboard(token) {
     const payment = paymentMap[String(row[0])] || null;
     if (status === 'MENUNGGU_PEMBAYARAN' && (!payment || payment.status === 'DITOLAK')) summary.unpaidOrders++;
     if (['MENUNGGU_STOK','DIBAYAR','DIPROSES','DISIAPKAN','DIANTAR'].indexOf(status) !== -1) summary.activeOrders++;
-    if (status === 'MENUNGGU_STOK') summary.waitingStockOrders++;
+    // Status antrean stok tidak diekspos pada dashboard Wali.
     if (status === 'DITERIMA') summary.completedOrders++;
     if (status === 'DIBATALKAN') summary.cancelledOrders++;
     if (payment && payment.status === 'MENUNGGU_VERIFIKASI') summary.awaitingPaymentVerification++;
@@ -961,9 +977,9 @@ function getMyOrders(token) {
     return {
       orderId:String(r[0]), number:String(r[1]), santriId:String(r[3]), childName:String(child.name || ''), className:String(child.className || ''),
       subtotal:Number(r[4])||0, shipping:Number(r[5])||0, discount:Number(r[6])||0, total:Number(r[7])||0,
-      status:String(r[8]||''), note:String(r[9]||''), createdAt:dateIso_(r[10]), updatedAt:dateIso_(r[11]),
+      status:String(r[8]||'') === 'MENUNGGU_STOK' ? 'DIPROSES' : String(r[8]||''), note:String(r[9]||''), createdAt:dateIso_(r[10]), updatedAt:dateIso_(r[11]),
       payment:payment ? {id:payment.id,method:payment.method,nominal:payment.nominal,status:payment.status,buktiUrl:payment.buktiUrl,buktiSumber:payment.buktiSumber,submittedBy:payment.submittedBy,catatan:payment.catatan,createdAt:dateIso_(payment.createdAt)} : null,
-      shipment:shipment ? {id:shipment.id,method:shipment.method,destination:shipment.destination,status:shipment.status,updatedAt:dateIso_(shipment.updatedAt)} : null
+      shipment:shipment ? {id:shipment.id,method:shipment.method,destination:shipment.destination,status:shipment.status === 'MENUNGGU_STOK' ? 'DIPROSES' : shipment.status,updatedAt:dateIso_(shipment.updatedAt)} : null
     };
   });
   return {ok:true,orders:result};
@@ -991,7 +1007,7 @@ function getOrderDetail(token, orderId) {
   const proof=proofRows.length?proofRows[0]:null;
   const complaintRows=readRows_(ss.getSheetByName('KomplainPengantaran')).filter(function(x){return String(x[1]||'')===orderId;}).sort(function(a,b){return new Date(b[7]||0).getTime()-new Date(a[7]||0).getTime();});
   const latestComplaint=complaintRows.length?complaintRows[0]:null;
-  return {ok:true,order:{orderId:String(r[0]),number:String(r[1]),santriId:String(r[3]),childName:String(child.name||''),className:String(child.className||''),subtotal:Number(r[4])||0,shipping:Number(r[5])||0,discount:Number(r[6])||0,total:Number(r[7])||0,status:String(r[8]||''),note:String(r[9]||''),createdAt:dateIso_(r[10]),updatedAt:dateIso_(r[11]),deliveryProof:proof?{proofId:String(proof[0]),uploadedAt:dateIso_(proof[10]),fileName:String(proof[5]||''),mimeType:String(proof[6]||''),note:String(proof[8]||'')}:null,deliveryConfirmation:confirmation?{id:String(confirmation[0]),uploadedAt:dateIso_(confirmation[2]),deadline:dateIso_(confirmation[3]),status:String(confirmation[4]||''),complaintActive:confirmation[8]===true||String(confirmation[8]).toUpperCase()==='TRUE'}:null,deliveryComplaint:latestComplaint?{type:String(latestComplaint[4]||''),description:String(latestComplaint[5]||''),status:String(latestComplaint[6]||''),reportedAt:dateIso_(latestComplaint[7])}:null,details:details,payment:payment?{id:payment.id,method:payment.method,nominal:payment.nominal,status:payment.status,buktiUrl:payment.buktiUrl,buktiSumber:payment.buktiSumber,submittedBy:payment.submittedBy,catatan:payment.catatan,createdAt:dateIso_(payment.createdAt),verifiedAt:dateIso_(payment.verifiedAt)}:null,shipment:shipment?{id:shipment.id,method:shipment.method,destination:shipment.destination,status:shipment.status,dikirimAt:dateIso_(shipment.dikirimAt),diterimaAt:dateIso_(shipment.diterimaAt),updatedAt:dateIso_(shipment.updatedAt)}:null}};
+  return {ok:true,order:{orderId:String(r[0]),number:String(r[1]),santriId:String(r[3]),childName:String(child.name||''),className:String(child.className||''),subtotal:Number(r[4])||0,shipping:Number(r[5])||0,discount:Number(r[6])||0,total:Number(r[7])||0,status:String(r[8]||'') === 'MENUNGGU_STOK' ? 'DIPROSES' : String(r[8]||''),note:String(r[9]||''),createdAt:dateIso_(r[10]),updatedAt:dateIso_(r[11]),deliveryProof:proof?{proofId:String(proof[0]),uploadedAt:dateIso_(proof[10]),fileName:String(proof[5]||''),mimeType:String(proof[6]||''),note:String(proof[8]||'')}:null,deliveryConfirmation:confirmation?{id:String(confirmation[0]),uploadedAt:dateIso_(confirmation[2]),deadline:dateIso_(confirmation[3]),status:String(confirmation[4]||''),complaintActive:confirmation[8]===true||String(confirmation[8]).toUpperCase()==='TRUE'}:null,deliveryComplaint:latestComplaint?{type:String(latestComplaint[4]||''),description:String(latestComplaint[5]||''),status:String(latestComplaint[6]||''),reportedAt:dateIso_(latestComplaint[7])}:null,details:details,payment:payment?{id:payment.id,method:payment.method,nominal:payment.nominal,status:payment.status,buktiUrl:payment.buktiUrl,buktiSumber:payment.buktiSumber,submittedBy:payment.submittedBy,catatan:payment.catatan,createdAt:dateIso_(payment.createdAt),verifiedAt:dateIso_(payment.verifiedAt)}:null,shipment:shipment?{id:shipment.id,method:shipment.method,destination:shipment.destination,status:shipment.status === 'MENUNGGU_STOK' ? 'DIPROSES' : shipment.status,dikirimAt:dateIso_(shipment.dikirimAt),diterimaAt:dateIso_(shipment.diterimaAt),updatedAt:dateIso_(shipment.updatedAt)}:null}};
 }
 
 
@@ -1671,8 +1687,7 @@ function saveVariation(token, data) {
       mutationSheet.appendRow([makeFMartId_('MUT'),productId,variationId,'MASUK',stock,0,stock,variationId,'Stok awal saat variasi dibuat',session.userId,now]);
     }
     writeAudit_(session.userId,session.role,id?'UPDATE_VARIATION':'CREATE_VARIATION','VARIASI_PRODUK',variationId,beforeData,JSON.stringify({productId,name,value,addition,stock,status}),'Perubahan variasi; saldo Stok menjadi sumber utama dan stok awal variasi baru dicatat sebagai mutasi MASUK');
-    SpreadsheetApp.flush();
-    return getAdminCatalog(token);
+    SpreadsheetApp.flush();const queueResult=(!existingVariation&&stock>0)?processPendingStockOrders_(ss,session.userId,'VARIASI_BARU',session.role):{processed:0};SpreadsheetApp.flush();const catalog=getAdminCatalog(token);catalog.stockQueueProcessed=queueResult.processed;return catalog;
   }finally{lock.releaseLock();}
 }
 
@@ -1774,7 +1789,7 @@ function createStockReceipt(token, payload) {
     });
     writeAudit_(session.userId,session.role,'CREATE_STOCK_RECEIPT','PENERIMAAN_BARANG',receiptId,'',JSON.stringify({receiptNumber:receiptNumber,supplier:supplier,reference:reference,items:prepared.map(function(x){return {productId:x.productId,variationId:x.variationId,qty:x.qty,before:x.before,after:x.after};})}),'Mencatat penerimaan barang');
     SpreadsheetApp.flush();
-    const queueResult=processPendingStockOrders_(ss,session.userId,'PENERIMAAN_BARANG');
+    const queueResult=processPendingStockOrders_(ss,session.userId,'PENERIMAAN_BARANG',session.role);
      return {ok:true,id:receiptId,number:receiptNumber,totalLines:prepared.length,totalQty:totalQty,ordersReleased:queueResult.processed};
   }finally{lock.releaseLock();}
 }
@@ -1864,7 +1879,7 @@ function adjustStock(token, productId, variationId, type, qty, note) {
       sheet.getRange(row+2,4).setValue(after);sheet.getRange(row+2,6).setValue(now);
     }else sheet.appendRow([makeFMartId_('STK'),productId,variationId,after,Number(product.values[6])||0,now]);
     if(variationId){const vr=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(vr)ss.getRange(vr.rowNumber,6,1,3).setValues([[after,String(vr.values[6]||'AKTIF'),now]]);}
-    ss.getSheetByName('MutasiStok').appendRow([makeFMartId_('MUT'),productId,variationId,type,qty,before,after,'',note,session.userId,now]);writeAudit_(session.userId,session.role,'ADJUST_STOCK','STOK',productId,JSON.stringify({variationId:variationId,stock:before}),JSON.stringify({variationId:variationId,stock:after,type:type,qty:qty}),'Mutasi stok manual',now);const queueResult=type==='MASUK'?processPendingStockOrders_(ss,session.userId,'PENYESUAIAN_STOK'):{processed:0};SpreadsheetApp.flush();const dashboard=getOperationsDashboard(token);dashboard.stockQueueProcessed=queueResult.processed;return dashboard;
+    ss.getSheetByName('MutasiStok').appendRow([makeFMartId_('MUT'),productId,variationId,type,qty,before,after,'',note,session.userId,now]);writeAudit_(session.userId,session.role,'ADJUST_STOCK','STOK',productId,JSON.stringify({variationId:variationId,stock:before}),JSON.stringify({variationId:variationId,stock:after,type:type,qty:qty}),'Mutasi stok manual',now);SpreadsheetApp.flush();const queueResult=type==='MASUK'?processPendingStockOrders_(ss,session.userId,'PENYESUAIAN_STOK',session.role):{processed:0};SpreadsheetApp.flush();const dashboard=getOperationsDashboard(token);dashboard.stockQueueProcessed=queueResult.processed;return dashboard;
   }finally{lock.releaseLock();}
 }
 
@@ -1884,21 +1899,34 @@ function setOrderFulfillmentStatus_(ss,order,status,actor,note,now){
  ss.getSheetByName('Pesanan').getRange(order.rowNumber,9,1,3).setValues([[status,String(note||order.values[9]||''),now]]);
  const sh=ss.getSheetByName('Pengiriman'),row=latestShipmentRow_(sh,String(order.values[0]));if(row)sh.getRange(row,5,1,5).setValues([[status,'','',String(actor||'SYSTEM'),now]]);
 }
-function processPendingStockOrders_(ss,actor,source){
+function processPendingStockOrders_(ss,actor,source,actorRole){
  const sheet=ss.getSheetByName('Pesanan'),payments=readRows_(ss.getSheetByName('Pembayaran')),orders=readRows_(sheet).map((r,i)=>({values:r,rowNumber:i+2})).filter(o=>String(o.values[8]||'').toUpperCase()==='MENUNGGU_STOK').sort((a,b)=>new Date(a.values[10]||0)-new Date(b.values[10]||0)),blocked=Object.create(null),done=[];
- orders.forEach(order=>{const id=String(order.values[0]),pay=latestPaymentForOrder_(payments,id);if(!pay||String(pay.status).toUpperCase()!=='TERVERIFIKASI')return;const plan=buildOrderStockPlan_(ss,id);if(plan.missing.some(m=>blocked[m.key]))return;if(!plan.available){plan.missing.forEach(m=>blocked[m.key]=true);return;}const now=new Date();applyOrderStockPlan_(ss,id,plan.plan,actor||'SYSTEM',now);setOrderFulfillmentStatus_(ss,order,'DIBAYAR',actor||'SYSTEM','Stok lengkap. Pesanan siap diproses Gudang.',now);ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Stok pesanan sudah lengkap','Seluruh barang pesanan '+String(order.values[1]||id)+' kini tersedia. Pesanan siap diproses Gudang.','PESANAN',false,now]);writeAudit_(actor||'SYSTEM',actor==='SYSTEM'?'SYSTEM':'GUDANG','FULFILL_WAITING_STOCK_ORDER','PESANAN',id,JSON.stringify({status:'MENUNGGU_STOK'}),JSON.stringify({status:'DIBAYAR',source:String(source||'STOCK_IN')}),'Stok lengkap; pesanan masuk antrean pemenuhan',now);done.push(id);});
+ orders.forEach(order=>{const id=String(order.values[0]),pay=latestPaymentForOrder_(payments,id);if(!pay||String(pay.status).toUpperCase()!=='TERVERIFIKASI')return;const plan=buildOrderStockPlan_(ss,id);if(plan.missing.some(m=>blocked[m.key]))return;if(!plan.available){plan.missing.forEach(m=>blocked[m.key]=true);return;}const now=new Date();applyOrderStockPlan_(ss,id,plan.plan,actor||'SYSTEM',now);setOrderFulfillmentStatus_(ss,order,'DIBAYAR',actor||'SYSTEM','Stok lengkap. Pesanan siap diproses Gudang.',now);writeAudit_(actor||'SYSTEM',actorRole||(actor==='SYSTEM'?'SYSTEM':'GUDANG'),'UPDATE_ORDER_STATUS','PESANAN',id,JSON.stringify({status:'MENUNGGU_STOK'}),JSON.stringify({status:'DIBAYAR'}),'Stok pesanan lengkap; siap diproses',now);ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Pesanan sedang diproses','Pesanan Anda sedang diproses. Kami akan menginformasikan perkembangan selanjutnya melalui aplikasi.','PESANAN',false,now]);writeAudit_(actor||'SYSTEM',actorRole|| (actor==='SYSTEM'?'SYSTEM':'GUDANG'),'FULFILL_WAITING_STOCK_ORDER','PESANAN',id,JSON.stringify({status:'MENUNGGU_STOK'}),JSON.stringify({status:'DIBAYAR',source:String(source||'STOCK_IN')}),'Stok lengkap; pesanan masuk antrean pemenuhan',now);done.push(id);});
  return {processed:done.length,orderIds:done};
 }
 function verifyPayment(token,paymentId,decision,note){
  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);paymentId=String(paymentId||'').trim();decision=String(decision||'').toUpperCase();note=String(note||'').trim().slice(0,300);if(!paymentId||['TERIMA','TOLAK'].indexOf(decision)<0)throw new Error('Keputusan pembayaran tidak valid.');
  const lock=LockService.getScriptLock();lock.waitLock(15000);
- try{const ss=getSS_();expireStockReservations_(ss,new Date());const ps=ss.getSheetByName('Pembayaran'),pay=findRowById_(ps,paymentId,1);if(!pay)throw new Error('Pengajuan pembayaran tidak ditemukan.');if(String(pay.values[5]).toUpperCase()!=='MENUNGGU_VERIFIKASI')throw new Error('Pembayaran sudah diproses.');const os=ss.getSheetByName('Pesanan'),order=findRowById_(os,String(pay.values[1]),1);if(!order)throw new Error('Pesanan terkait tidak ditemukan.');if(String(order.values[8]).toUpperCase()!=='MENUNGGU_PEMBAYARAN')throw new Error('Status pesanan tidak sesuai.');const now=new Date(),id=String(order.values[0]);
- if(decision==='TOLAK'){setOrderReservationStatus_(ss,id,'DILEPAS');ps.getRange(pay.rowNumber,6,1,3).setValues([['DITOLAK','','']]);ps.getRange(pay.rowNumber,10).setValue(now);if(note)ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Pembayaran ditolak',note,'PEMBAYARAN',false,now]);writeAudit_(session.userId,session.role,'REJECT_PAYMENT','PEMBAYARAN',paymentId,JSON.stringify({status:'MENUNGGU_VERIFIKASI'}),JSON.stringify({status:'DITOLAK',note:note}),'Pembayaran ditolak');SpreadsheetApp.flush();return getOperationsDashboard(token);}
- const plan=buildOrderStockPlan_(ss,id);ps.getRange(pay.rowNumber,6,1,3).setValues([['TERVERIFIKASI',session.userId,now]]);ps.getRange(pay.rowNumber,10).setValue(now);
- if(plan.available){applyOrderStockPlan_(ss,id,plan.plan,session.userId,now);setOrderFulfillmentStatus_(ss,order,'DIBAYAR',session.userId,'Pembayaran terverifikasi dan stok lengkap.',now);}
- else{setOrderReservationStatus_(ss,id,'MENUNGGU_STOK');setOrderFulfillmentStatus_(ss,order,'MENUNGGU_STOK','SYSTEM','Pembayaran terverifikasi. Menunggu seluruh jumlah barang tersedia di Gudang.',now);}
- const next=plan.available?'DIBAYAR':'MENUNGGU_STOK',title=plan.available?'Pembayaran terverifikasi':'Pembayaran terverifikasi · menunggu stok',msg=plan.available?'Pembayaran pesanan '+String(order.values[1])+' telah diverifikasi dan stok sudah dialokasikan.':'Pembayaran telah diverifikasi. Pesanan menunggu sampai seluruh jumlah barang tersedia di Gudang; barang tidak dikirim sebagian.';
- ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,title,msg,'PEMBAYARAN',false,now]);writeAudit_(session.userId,session.role,'VERIFY_PAYMENT','PEMBAYARAN',paymentId,JSON.stringify({status:'MENUNGGU_VERIFIKASI',orderId:id}),JSON.stringify({status:'TERVERIFIKASI',orderStatus:next,stockAllocated:plan.available,missing:plan.missing}),'Pembayaran diverifikasi; stok dialokasikan hanya jika seluruh item tersedia');SpreadsheetApp.flush();return getOperationsDashboard(token);
+ try{
+  const ss=getSS_();expireStockReservations_(ss,new Date());const ps=ss.getSheetByName('Pembayaran'),pay=findRowById_(ps,paymentId,1);if(!pay)throw new Error('Pengajuan pembayaran tidak ditemukan.');if(String(pay.values[5]).toUpperCase()!=='MENUNGGU_VERIFIKASI')throw new Error('Pembayaran sudah diproses.');
+  const os=ss.getSheetByName('Pesanan'),order=findRowById_(os,String(pay.values[1]),1);if(!order)throw new Error('Pesanan terkait tidak ditemukan.');if(String(order.values[8]).toUpperCase()!=='MENUNGGU_PEMBAYARAN')throw new Error('Status pesanan tidak sesuai.');
+  const now=new Date(),id=String(order.values[0]);
+  if(decision==='TOLAK'){
+   setOrderReservationStatus_(ss,id,'DILEPAS');ps.getRange(pay.rowNumber,6,1,3).setValues([['DITOLAK','','']]);ps.getRange(pay.rowNumber,10).setValue(now);
+   if(note)ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Pembayaran ditolak',note,'PEMBAYARAN',false,now]);
+   writeAudit_(session.userId,session.role,'REJECT_PAYMENT','PEMBAYARAN',paymentId,JSON.stringify({status:'MENUNGGU_VERIFIKASI'}),JSON.stringify({status:'DITOLAK',note:note}),'Pembayaran ditolak');SpreadsheetApp.flush();return getOperationsDashboard(token);
+  }
+  ps.getRange(pay.rowNumber,6,1,3).setValues([['TERVERIFIKASI',session.userId,now]]);ps.getRange(pay.rowNumber,10).setValue(now);
+  setOrderReservationStatus_(ss,id,'MENUNGGU_STOK');
+  setOrderFulfillmentStatus_(ss,order,'MENUNGGU_STOK','SYSTEM','Pembayaran terverifikasi. Menunggu seluruh jumlah barang tersedia di Gudang.',now);SpreadsheetApp.flush();
+   writeAudit_(session.userId,session.role,'UPDATE_ORDER_STATUS','PESANAN',id,JSON.stringify({status:'MENUNGGU_PEMBAYARAN'}),JSON.stringify({status:'MENUNGGU_STOK'}),'Pembayaran terverifikasi; menunggu stok Gudang lengkap',now);
+  // Masukkan pesanan yang baru dibayar ke antrean yang sama agar prioritas stok mengikuti waktu pesanan.
+  processPendingStockOrders_(ss,session.userId,'VERIFIKASI_PEMBAYARAN',session.role);
+  const refreshed=findRowById_(os,id,1),nextStatus=refreshed?String(refreshed.values[8]||'MENUNGGU_STOK'):'MENUNGGU_STOK';
+  const message='Pembayaran pesanan '+String(order.values[1])+' telah diverifikasi. Pesanan sedang diproses dan perkembangan berikutnya akan diinformasikan melalui aplikasi.';
+  ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Pembayaran terverifikasi',message,'PEMBAYARAN',false,now]);
+  writeAudit_(session.userId,session.role,'VERIFY_PAYMENT','PEMBAYARAN',paymentId,JSON.stringify({status:'MENUNGGU_VERIFIKASI',orderId:id}),JSON.stringify({status:'TERVERIFIKASI',orderStatus:nextStatus}),'Pembayaran diverifikasi; alokasi mengikuti antrean stok FIFO');
+  SpreadsheetApp.flush();return getOperationsDashboard(token);
  }finally{lock.releaseLock();}
 }
 
