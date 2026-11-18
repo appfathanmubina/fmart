@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const { createHmac } = require('node:crypto');
 
 const code = fs.readFileSync('apps-script/Code.gs', 'utf8');
+const setup = fs.readFileSync('apps-script/SetupDatabase.gs', 'utf8');
 const index = fs.readFileSync('apps-script/Index.html', 'utf8');
 const serviceWorker = fs.readFileSync('service-worker.js', 'utf8');
 const readme = fs.readFileSync('README.md', 'utf8');
@@ -217,4 +218,13 @@ test('Role-sensitive reports and QRIS settings remain server-gated',()=>{
  assert.ok(reports.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN'));
  assert.ok(settings.includes('FMART.ROLES.SUPERADMIN'));
  assert.ok(ops.includes('pendingPayments:waliQrisQueue,products:[],categories:[]'));
+});
+
+
+test('Apps Script editor exposes safe setup and read-only readiness entry points',()=>{
+ const setupEntry=extractFunction(setup,'setupFMartDatabase'),readiness=extractFunction(code,'runFMartReadinessAudit');
+ assert.ok(setupEntry.includes('setupFMartDatabase_'));
+ for(const name of ['auditFMartDatabaseIntegrity_','auditFMartRuntime_','auditFMartOperationalSync_','auditFMartStockReconciliation_','auditCashierPOSIntegrity_','auditWarehouseReceivingIntegrity_','auditFMartTransactionRecovery_'])assert.ok(readiness.includes(name));
+ assert.ok(readiness.includes("mode:'READ_ONLY'"));
+ assert.ok(!readiness.includes('installDeliveryAutomationTrigger_'));
 });
