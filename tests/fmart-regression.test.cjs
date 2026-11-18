@@ -278,3 +278,20 @@ test('Wali Santri relationships are presented and used as saved delivery address
  assert.ok(index.includes('name="checkoutSantriId"'));
  assert.ok(index.includes('Catatan titik penerimaan (opsional)'));
 });
+
+test('Removed Wali dashboard summary has no stale frontend refresh or renderer',()=>{
+ assert.ok(!index.includes('refreshWaliDashboard'));
+ assert.ok(!index.includes('renderWaliDashboard'));
+ assert.ok(!index.includes('getWaliDashboard'));
+ assert.ok(!index.includes('waliDashboard:null'));
+ const render=extractFunction(index,'render');
+ assert.ok(render.includes('renderBuyerProductFeed()'));
+ assert.ok(render.includes('renderChildren(d.children||[])'));
+ assert.ok(index.includes("runServer('getBuyerProductBatch'"));
+ assert.ok(index.includes('IntersectionObserver'));
+ assert.ok(index.includes('productLoadSentinel'));
+ const cancel=index.slice(index.indexOf('async function cancelWaliProfileRequest'),index.indexOf('async function openWaliLinkModal'));
+ const link=index.slice(index.indexOf('function openWaliRequestForm'),index.indexOf('function closeProfile'));
+ assert.ok(cancel.includes("runServer('getMyChildren'"));
+ assert.ok(link.includes("runServer('getMyChildren'"));
+});
