@@ -1024,3 +1024,15 @@ Checklist lengkap role, transaksi, concurrency, audit database/Drive/stok/POS/pe
 Untuk memudahkan sinkronisasi Apps Script, `setupFMartDatabase()` menjadi entry point publik untuk migrasi header yang additive. Setelah setup pada Spreadsheet yang benar, jalankan `runFMartReadinessAudit()` untuk audit gabungan read-only. Fungsi audit tidak mengubah data dan tidak memasang trigger.
 
 Status: CI Tahap 2 (18/18) dan Tahap 3 (22/22) lulus. Runtime UAT belum dijalankan karena project Apps Script/Spreadsheet tidak tersedia melalui koneksi repository ini. Jangan menguji transaksi duplikat/gagal/bersamaan pada data produksi; gunakan salinan Spreadsheet dan project uji dengan data dummy. Hasil UAT harus diisi PASS/FAIL/BLOCKED dengan Execution ID dan bukti yang sudah disamarkan.
+
+
+## Membaca Execution Log Readiness Audit
+
+```runFMartReadinessAudit()``` tetap menjalankan seluruh pemeriksaan read-only dan mengembalikan objek report lengkap. Untuk mencegah Execution Log terpotong ketika banyak temuan ditemukan, hasil log sekarang dipisah menjadi beberapa entri:
+
+- `FMART_AUDIT_SUMMARY`: waktu pemeriksaan, status keseluruhan, jumlah temuan, dan ringkasan per modul.
+- `FMART_AUDIT_CHECK`: metadata dan hitungan per modul, termasuk konfigurasi runtime yang aman ditampilkan.
+- `FMART_AUDIT_ISSUES`: daftar temuan per modul dalam potongan maksimal lima temuan per entri; gabungkan semua bagian dengan memperhatikan `part` dan `totalParts`.
+- `FMART_AUDIT_COMPLETE`: penanda bahwa seluruh logging selesai.
+
+Perubahan ini hanya mengubah cara hasil audit dicatat ke Execution Log. Nilai report yang dikembalikan, cakupan pemeriksaan, aturan bisnis, dan sifat read-only audit tidak berubah. Tidak ada akun, folder Drive, transaksi, atau data Spreadsheet yang dibuat atau diperbaiki otomatis.
