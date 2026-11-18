@@ -88,15 +88,15 @@ Pembatasan menu di sidebar hanya untuk pengalaman pengguna; setiap endpoint back
 
 ## Migrasi hash password (bertahap)
 
-Backend menyiapkan format versi `pbkdf2-sha256:600000:...` berbasis PBKDF2-HMAC-SHA256, dengan kompatibilitas verifikasi hash SHA-256 lama dan migrasi otomatis setelah login berhasil. Mode tetap `LEGACY` secara default agar waktu login tidak berubah sebelum benchmark pada runtime Apps Script sebenarnya. Jalankan `testPbkdf2Implementation_()` dan `benchmarkPbkdf2_()` dari editor Apps Script; aktifkan `PASSWORD_HASH_MODE: 'PBKDF2'` hanya setelah vektor uji RFC 8018 lolos dan estimasi 600.000 iterasi memenuhi target waktu login (disarankan kurang dari 1 detik). Setelah mode diaktifkan dan deployment diperbarui, akun lama dimigrasikan saat login sukses; akun baru, reset password, dan perubahan password langsung memakai PBKDF2. Jangan menghapus kompatibilitas SHA-256 sebelum seluruh akun lama selesai bermigrasi atau sudah diwajibkan reset password.
+Backend menyiapkan format versi `pbkdf2-sha256:600000:...` berbasis PBKDF2-HMAC-SHA256, kompatibel dengan hash SHA-256 lama dan memigrasikan akun lama setelah login berhasil. Mode awal tetap `LEGACY` agar login tidak melambat sebelum benchmark pada runtime Apps Script sebenarnya. Setelah deployment Tahap 1, jalankan `testPbkdf2Implementation_()` lalu `activatePbkdf2PasswordHashing_()` dari editor Apps Script. Fungsi aktivasi mengukur 600.000 iterasi penuh dan hanya mengubah Script Property `FMART_PASSWORD_HASH_MODE=PBKDF2` bila proses hash selesai maksimal 1.500 ms. Jika benchmark gagal, mode lama tetap aktif dan tidak ada akun yang terkunci. Akun lama dimigrasikan bertahap setelah password benar; akun baru dan perubahan password menggunakan PBKDF2 setelah mode aktif. Jangan menghapus kompatibilitas hash lama sampai migrasi selesai atau reset password diwajibkan.
 
 
-## Login Admin tanpa OTP email (sementara)
+## Login Admin dengan OTP email
 
-- Jalur Admin menggunakan alamat email staf sebagai username untuk role `ADMIN`, `SUPERADMIN`, `KASIR`, dan `GUDANG`. Jalur Pembeli tetap menggunakan nomor HP Wali Santri.
-- Untuk sementara, login Admin hanya memerlukan email dan password. Pengiriman dan verifikasi OTP email tidak dipanggil pada alur login.
-- Pemeriksaan password, status akun, pembatasan percobaan login, sesi, dan pembatasan role tetap aktif. Penonaktifan OTP mengurangi satu lapis keamanan dan hanya merupakan konfigurasi sementara.
-- Fungsi backend OTP dan verifikasi alamat email tetap disimpan untuk kemungkinan pengaktifan kembali setelah alur dan UI siap.
+- Jalur Admin menggunakan alamat email staf sebagai username untuk role `ADMIN`, `SUPERADMIN`, `KASIR`, `GUDANG`, dan `PETUGAS_PENGANTAR`. Jalur Pembeli tetap menggunakan nomor HP Wali Santri.
+- Login staf memerlukan password yang benar dan OTP enam digit yang dikirim ke email akun. Sesi/token hanya dibuat setelah OTP berhasil diverifikasi.
+- OTP berlaku lima menit, hanya dapat digunakan satu kali, memiliki batas lima percobaan, dan pengiriman ulang dibatasi cooldown. Kode OTP disimpan sebagai HMAC hash di cache, bukan plaintext.
+- OTP pertama yang berhasil juga membuktikan kepemilikan email dan menandai kolom `EmailVerified` sebagai TRUE. Jika email tidak valid atau tidak dapat diakses, Superadmin harus memperbarui email akun terlebih dahulu.
 - Kolom tambahan pada sheet `Users`: `Email` dan `EmailVerified`. Jalankan `setupFMartDatabase_()` untuk melengkapi header yang belum ada; fungsi setup tidak menghapus data lama.
 - Bootstrap Superadmin pertama meminta alamat email. Untuk Superadmin lama, buka **Project Settings → Script Properties**, tambahkan `FMART_INITIAL_SUPERADMIN_EMAIL` berisi email aktif Superadmin, lalu jalankan fungsi publik `prepareExistingSuperadminEmailFromEditor_()` dari Apps Script Editor. Fungsi ini tidak menggunakan dialog Spreadsheet, memeriksa keunikan email, memperbarui username + kolom `Email`, mengatur `EmailVerified` menjadi FALSE, memverifikasi hasil simpan, lalu menghapus Script Property tersebut setelah berhasil. Email staf lain dapat diisi pada kolom `Email` dengan alamat unik yang dapat diakses staf. Pada login OTP pertama yang berhasil, sistem menandai `EmailVerified` sebagai TRUE. Jangan mengaktifkan akun Admin tanpa email yang benar.
 - Fungsi backend `setStaffEmail(token,userId,email)` dan `verifyStaffEmail(token,challengeId,code)` tersedia untuk alur pengelolaan/verifikasi email oleh Superadmin. Integrasi form pengelolaan staf akan diselesaikan pada tahap manajemen pengguna.
@@ -372,16 +372,13 @@ Review statis repository branch `main` dilakukan pada 16 November 2026. Tahap in
 
 ## Pengembangan Portal Wali Santri — Tahap 8
 
-### Pembayaran, QRIS, Transfer, dan Unggah Bukti
+### Pembayaran Wali Santri — QRIS saja
 
-- Halaman pembayaran menampilkan nomor pesanan, santri penerima, dan nominal tagihan yang dikunci mengikuti total pesanan.
-- Wali dapat memilih Transfer Bank atau QRIS. Transfer menampilkan bank, nomor rekening, dan nama pemilik rekening; QRIS menampilkan gambar QRIS dari URL HTTPS yang dikonfigurasi Superadmin.
-- Pengaturan pembayaran Superadmin kini memiliki URL gambar QRIS. Nilai disimpan sebagai key `PAYMENT_QRIS_IMAGE_URL` pada sheet Pengaturan; tidak menambah atau mengubah header Spreadsheet.
-- Kedua metode tetap berupa pembayaran manual. Tidak ada integrasi payment gateway, callback bank, atau konfirmasi otomatis; Admin/Kasir harus memeriksa transaksi aktual sebelum verifikasi.
-- Bukti wajib diunggah dalam JPG, PNG, WEBP, atau PDF dengan batas maksimal 5 MB. Frontend memberi informasi nama dan ukuran file; backend memvalidasi MIME, ukuran, nominal harus sama persis dengan total, kepemilikan pesanan, dan status pesanan sebelum menyimpan file ke folder bukti pembayaran.
-- Backend hanya menerima metode `TRANSFER` atau `QRIS`, menyimpan metode yang dipilih pada sheet Pembayaran, dan tetap membatasi pengajuan satu pembayaran aktif per pesanan. Hak verifikasi Admin/Kasir yang sudah ada tidak diubah.
-- Detail pesanan Wali menampilkan metode, nominal, status, dan informasi bahwa bukti sudah tersimpan. File bukti tetap tidak dibuka untuk role lain selain alur operasional yang berwenang.
-- Tidak ada perubahan struktur kolom sheet Pembayaran atau sheet lain. Pengaturan QRIS menggunakan mekanisme key-value yang sudah tersedia.
+- Wali hanya dapat mengajukan pembayaran melalui QRIS. Transfer bank yang tersisa pada data lama diperlakukan sebagai riwayat dan tidak dapat disetujui sebagai pembayaran baru.
+- Nominal tagihan dikunci mengikuti total pesanan. Backend memvalidasi metode QRIS, bukti JPG/PNG/WEBP/PDF maksimal 5 MB, kepemilikan pesanan, status pesanan, dan nominal sebelum menyimpan pengajuan.
+- Saat persetujuan, backend mengulang validasi metode QRIS, nominal yang harus sama persis dengan total pesanan, ID pesanan, dan identitas Wali pengaju. Pemeriksaan ini dilakukan kembali di bawah lock transaksi.
+- Kasir mendapat akses terbatas untuk melihat bukti melalui viewer internal dan memproses antrean QRIS Wali. Kasir tidak mendapat akses ke pengaturan QRIS atau menu Admin lainnya. Verifikasi tetap harus mencocokkan bukti dengan dana yang benar-benar masuk pada kanal merchant QRIS.
+- Pengaturan URL gambar QRIS tetap khusus Superadmin dan disimpan pada key `PAYMENT_QRIS_IMAGE_URL` di sheet Pengaturan. Struktur sheet pembayaran tidak diubah.
 
 ### Pemeriksaan Tahap 8
 
