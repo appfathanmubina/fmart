@@ -903,3 +903,39 @@ Kedua fungsi audit tersebut bersifat read-only; hasilnya tidak memperbaiki atau 
 14. Admin/Superadmin tetap dapat menjalankan kewenangan sesuai matriks hak akses.
 
 **Status:** perbaikan repository selesai dan pemeriksaan sintaks/static berhasil. UAT multi-akun, simulasi konkurensi nyata, dan audit terhadap Spreadsheet aktif belum dijalankan. Jangan menganggap hasil live terverifikasi sebelum UAT.
+
+
+## Tahap 12 — Audit Rekonsiliasi Stok dan Pemulihan Transaksi
+
+Tahap ini menambahkan fungsi `auditFMartStockReconciliation_()` di `apps-script/Code.gs`.
+
+### Cakupan pemeriksaan
+- Membandingkan rantai saldo pada `MutasiStok` berdasarkan urutan baris pencatatan: saldo sesudah mutasi sebelumnya harus sama dengan saldo sebelum mutasi berikutnya.
+- Membandingkan saldo stok saat ini pada sheet `Stok` dengan saldo sesudah mutasi terakhir.
+- Mendeteksi baris stok yang hilang/duplikat, saldo stok tidak valid, ID mutasi duplikat, dan aritmetika mutasi yang tidak benar.
+- Menghitung reservasi aktif pesanan Wali dan QRIS POS terhadap stok fisik.
+- Memeriksa apakah transaksi POS berstatus `LUNAS` memiliki mutasi keluar yang kuantitasnya sama dengan detail penjualan.
+- Memeriksa apakah pesanan yang sudah dibayar/diproses/disiapkan/diantar/diterima memiliki mutasi keluar yang sesuai dengan detail pesanan.
+- Menghasilkan `recoveryCandidates` yang berisi kode masalah dan saran pemeriksaan/pemulihan.
+
+### Menjalankan audit
+Setelah Code.gs terbaru disinkronkan ke Apps Script Editor, jalankan:
+
+```javascript
+auditFMartStockReconciliation_()
+```
+
+Fungsi mengembalikan `mode: 'READ_ONLY'`, jumlah data yang diperiksa, `issues`, dan `recoveryCandidates`. Maksimal 1.000 temuan ditampilkan agar hasil tidak terlalu besar.
+
+### Kebijakan pemulihan
+- Fungsi audit tidak mengubah saldo Stok, VariasiProduk, MutasiStok, PenjualanToko, Pesanan, reservasi, maupun AuditLog.
+- Tidak ada penambahan mutasi atau pengurangan/penambahan saldo otomatis. Status transaksi saja tidak cukup untuk membuktikan apakah pengurangan stok sudah terjadi.
+- Jika mutasi penjualan hilang, periksa saldo fisik, histori mutasi setelah transaksi, bukti penjualan/pembayaran, dan dokumen penerimaan sebelum melakukan koreksi.
+- Koreksi saldo dilakukan melalui prosedur penyesuaian stok resmi oleh petugas berwenang, dengan bukti stock opname dan catatan alasan. Jangan mengedit histori mutasi lama secara langsung.
+- Jika rantai mutasi putus, urutan baris sheet digunakan sebagai urutan pencatatan. Audit tidak menyimpulkan tanggal/waktu sebagai urutan mutlak ketika timestamp sama atau data lama tidak lengkap.
+
+### Batasan dan status
+- Audit bersifat read-only dan hanya membaca database yang ditunjuk oleh konfigurasi Apps Script saat fungsi dijalankan.
+- Audit tidak membuktikan stok fisik di rak; tetap diperlukan stock opname.
+- Google Sheets tidak menyediakan transaksi multi-sheet atomik. Audit ini membantu mendeteksi sebagian kondisi penulisan terhenti, tetapi tidak menyediakan rollback otomatis.
+- Perubahan repository telah diperiksa secara statis. Uji terhadap Spreadsheet aktif dan pemulihan operasional nyata masih harus dilakukan sebelum FMart dinyatakan lolos rekonsiliasi.
