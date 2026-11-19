@@ -270,7 +270,7 @@ function setStaffEmail(token,userId,email) {
     const challengeKey=staffEmailVerifyKey_(challengeId);
     CacheService.getScriptCache().put(challengeKey,JSON.stringify({userId:String(userId),email:email,hash:adminOtpHash_(challengeId,code),createdAt:Date.now(),attempts:0}),600);
     try {
-      MailApp.sendEmail({to:email,subject:'Verifikasi Email Akun FMart',body:'Kode verifikasi email FMart Anda: '+code+'\\n\\nKode berlaku selama 10 menit.' ,name:'FMart'});
+      MailApp.sendEmail({to:email,subject:'Verifikasi Email Akun FMart',body:'Kode verifikasi email FMart Anda: '+code+'\n\nKode berlaku selama 10 menit.' ,name:'FMart'});
     } catch(sendError) {
       CacheService.getScriptCache().remove(challengeKey);
       console.error('Pengiriman verifikasi email staf gagal:',sendError);
