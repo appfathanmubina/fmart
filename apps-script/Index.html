@@ -2658,7 +2658,7 @@ async function openProduct(productId){
       '</div>';
     $('productModal').classList.remove('hidden');
     bindProductDetailControls();
-  }catch(e){alert(e.message||'Gagal memuat detail produk.')}
+  }catch(e){showToast(e.message||'Gagal memuat detail produk.','error')}
   finally{loading(false)}
 }
 function getCurrentDetailVariation(){
