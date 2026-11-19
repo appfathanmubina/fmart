@@ -741,3 +741,36 @@ test('FMart brand header returns each portal to its own home dashboard',()=>{
  assert.ok(handlers.includes("addEventListener('click',navigateHomeFromBrand_)"));
  assert.ok(handlers.includes("navigateHomeFromBrand_()"),'Keyboard activation must use the same role-aware navigation.');
 });
+
+
+test('Admin login restores the two-column showcase on desktop and tablet',()=>{
+ const adminCssStart=index.indexOf('/* Login Admin — dua kolom pada Desktop/Tablet, ringkas pada HP. */');
+ const adminCssEnd=index.indexOf('/* FMart Admin — Tahap 2',adminCssStart);
+ assert.ok(adminCssStart>=0&&adminCssEnd>adminCssStart,'Dedicated Admin login layout rules must exist.');
+ const css=index.slice(adminCssStart,adminCssEnd);
+ assert.ok(css.includes('@media(min-width:761px)'));
+ assert.ok(css.includes('body.admin-portal .login-wrap{grid-template-columns:minmax(0,6fr) minmax(340px,4fr)'));
+ assert.ok(css.includes('body.admin-portal .login-showcase{display:flex'),'The Admin showcase must be visible on desktop/tablet.');
+ assert.ok(css.includes('body.admin-portal .login-panel{width:auto;min-width:0;min-height:100svh'));
+ assert.ok(css.includes('@media(min-width:1051px)'));
+ assert.ok(css.includes('grid-template-columns:minmax(0,7fr) minmax(380px,3fr)'));
+ assert.ok(css.includes('@media(max-width:760px)'));
+ assert.ok(css.includes('body.admin-portal .login-showcase{display:none}'),'The compact single-column mobile layout must be preserved.');
+});
+
+test('Admin login showcase copy describes staff operations instead of Wali shopping',()=>{
+ assert.ok(index.includes('id="showcaseTitle"'));
+ assert.ok(index.includes('id="showcaseDescription"'));
+ assert.ok(index.includes('id="showcaseFeatureOneTitle"'));
+ assert.ok(index.includes('id="showcaseFeatureTwoTitle"'));
+ assert.ok(index.includes('id="showcaseFeatureThreeTitle"'));
+ const scriptStart=index.indexOf("if(FMART_PORTAL_MODE==='ADMINFMART16720'){");
+ const scriptEnd=index.indexOf("if ($('registerBtn'))",scriptStart);
+ assert.ok(scriptStart>=0&&scriptEnd>scriptStart);
+ const adminInit=index.slice(scriptStart,scriptEnd);
+ assert.ok(adminInit.includes("Satu portal untuk operasional pesantren"));
+ assert.ok(adminInit.includes("Operasional terpusat"));
+ assert.ok(adminInit.includes("Data lebih terpantau"));
+ assert.ok(adminInit.includes("Akses berbasis peran"));
+ assert.ok(adminInit.includes("Email Staf"),'Admin must retain email-based login.');
+});
