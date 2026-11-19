@@ -246,14 +246,24 @@
     body.admin-portal .error{font-weight:650}
     @media(max-width:760px){body.admin-portal .login-wrap{padding:22px 16px}body.admin-portal .login-card{padding:29px 22px 24px;border-radius:25px}body.admin-portal .login-brand .brand-mark{width:64px;height:64px}}
 
-    /* Login Admin dibuat sebagai portal petugas tersendiri, bukan layout login Wali. */
-    body.admin-portal .login-wrap{grid-template-columns:minmax(0,1fr);place-items:center;padding:28px;min-height:100svh;background:radial-gradient(circle at 18% 12%,#ead5f2 0,transparent 34%),radial-gradient(circle at 86% 88%,#e8d8f1 0,transparent 32%),linear-gradient(145deg,#faf7fc 0%,#f1eaf5 100%)}
+    /* Login Admin — dua kolom pada Desktop/Tablet, ringkas pada HP. */
+    body.admin-portal .login-wrap{grid-template-columns:minmax(0,1fr);place-items:center;padding:20px 14px;min-height:100svh;background:radial-gradient(circle at 18% 12%,#ead5f2 0,transparent 34%),radial-gradient(circle at 86% 88%,#e8d8f1 0,transparent 32%),linear-gradient(145deg,#faf7fc 0%,#f1eaf5 100%)}
     body.admin-portal .login-showcase{display:none}
-    body.admin-portal .login-panel{width:100%;min-height:0;padding:0;background:transparent}
+    body.admin-portal .login-panel{width:100%;min-height:calc(100svh - 40px);padding:0;background:transparent}
     body.admin-portal .login-stack{width:min(100%,480px);max-width:480px}
     body.admin-portal .login-card{width:100%;max-width:480px}
     body.admin-portal .login-stack .install-app-btn{margin-top:14px}
-    @media(max-width:760px){body.admin-portal .login-wrap{padding:20px 14px}body.admin-portal .login-panel{min-height:calc(100svh - 40px)}body.admin-portal .login-card{padding:27px 21px 23px}}
+    @media(min-width:761px){
+      body.admin-portal .login-wrap{grid-template-columns:minmax(0,6fr) minmax(340px,4fr);place-items:stretch;padding:0;min-height:100svh}
+      body.admin-portal .login-showcase{display:flex;min-width:0;min-height:100svh;padding:clamp(30px,5vw,76px)}
+      body.admin-portal .login-panel{width:auto;min-width:0;min-height:100svh;padding:clamp(22px,3vw,48px)}
+      body.admin-portal .login-stack{width:min(100%,480px);max-width:480px}
+    }
+    @media(min-width:1051px){
+      body.admin-portal .login-wrap{grid-template-columns:minmax(0,7fr) minmax(380px,3fr)}
+      body.admin-portal .login-showcase{padding:clamp(42px,6vw,100px)}
+    }
+    @media(max-width:760px){body.admin-portal .login-wrap{padding:20px 14px}body.admin-portal .login-showcase{display:none}body.admin-portal .login-panel{min-height:calc(100svh - 40px);padding:0}body.admin-portal .login-card{padding:27px 21px 23px}}
 
     /* FMart Admin — Tahap 2: kerangka navigasi dan ruang kerja */
     @media(min-width:761px){
@@ -2105,12 +2115,12 @@ button:disabled,[role="button"][aria-disabled="true"]{cursor:not-allowed}
       <div class="showcase-content">
         <div class="showcase-brand"><div class="brand-mark" role="img" aria-label="Logo FMart"></div></div>
         <div class="showcase-copy">
-          <h1>Belanja kebutuhan pesantren, lebih mudah dan nyaman.</h1>
-          <p>Platform belanja digital untuk mendukung kebutuhan santri dan wali santri Pesantren Fathan Mubina. Praktis, tertata, dan dapat diakses kapan saja.</p>
+          <h1 id="showcaseTitle">Belanja kebutuhan pesantren, lebih mudah dan nyaman.</h1>
+          <p id="showcaseDescription">Platform belanja digital untuk mendukung kebutuhan santri dan wali santri Pesantren Fathan Mubina. Praktis, tertata, dan dapat diakses kapan saja.</p>
           <div class="showcase-features">
-            <div><span class="showcase-feature-icon">▣</span><span><strong>Belanja praktis</strong><small>Pilih kebutuhan santri dalam satu platform.</small></span></div>
-            <div><span class="showcase-feature-icon">✓</span><span><strong>Transaksi terpantau</strong><small>Pantau status pesanan dan pembayaran.</small></span></div>
-            <div><span class="showcase-feature-icon">⌂</span><span><strong>Terintegrasi</strong><small>Layanan digital dalam ekosistem pesantren.</small></span></div>
+            <div><span class="showcase-feature-icon">▣</span><span><strong id="showcaseFeatureOneTitle">Belanja praktis</strong><small id="showcaseFeatureOneText">Pilih kebutuhan santri dalam satu platform.</small></span></div>
+            <div><span class="showcase-feature-icon">✓</span><span><strong id="showcaseFeatureTwoTitle">Transaksi terpantau</strong><small id="showcaseFeatureTwoText">Pantau status pesanan dan pembayaran.</small></span></div>
+            <div><span class="showcase-feature-icon">⌂</span><span><strong id="showcaseFeatureThreeTitle">Terintegrasi</strong><small id="showcaseFeatureThreeText">Layanan digital dalam ekosistem pesantren.</small></span></div>
           </div>
         </div>
         <div class="showcase-footer">FMart · Pesantren Fathan Mubina</div>
@@ -2241,7 +2251,28 @@ button:disabled,[role="button"][aria-disabled="true"]{cursor:not-allowed}
     const state={token:sessionStorage.getItem(FMART_SESSION_TOKEN_KEY)||'',pendingLoginOtpChallengeId:'',data:null,profile:null,waliDashboard:null,selectedChildId:sessionStorage.getItem('fmartSelectedChildId')||'',checkoutSantriId:'',productFeed:{offset:0,total:0,hasMore:false,loading:false,query:'',categoryId:'',sort:'featured',requestId:0,observer:null,initialized:false},cart:null,currentProduct:null,currentVariationId:'',currentProductQty:1,currentOrderId:'',currentPaymentOrderId:'',catalogSort:'featured',cashierPOS:{products:[],cart:[],qrisQueue:[],qrisQueueError:'',qrisQueueLoaded:false,salesHistory:[],salesHistoryError:'',salesHistoryLoaded:false,salesQuery:'',salesFrom:'',salesTo:'',buyerType:'UMUM',buyerName:'',santriId:'',santriLabel:'',students:[],paymentMethod:'TUNAI',amountReceived:'',note:'',requestKey:'',loading:false,search:''}};
     const $=id=>document.getElementById(id);
     document.title = FMART_PORTAL_MODE === 'ADMINFMART16720' ? 'FMart Admin' : 'FMart';
-    if(FMART_PORTAL_MODE==='ADMINFMART16720'){ document.querySelector('.login-brand .brand-name').textContent='FMart Admin'; document.querySelector('.login-brand .login-subtitle').textContent='Akses operasional pesantren dalam satu portal terintegrasi.'; $('loginTitle').textContent='Masuk Portal Petugas'; $('loginIntro').textContent='Gunakan email dan password akun staf FMart untuk melanjutkan.'; $('usernameLabel').textContent='Email Staf'; $('username').inputMode='email'; $('username').placeholder='nama@fathanmubina.com'; $('usernameHint').textContent='Gunakan alamat email akun staf FMart.'; $('registerBtn').classList.add('hidden'); $('installAppBtn').innerHTML='<span aria-hidden="true">↓</span> Install FMart Admin'; $('installAppHint').textContent='Pasang portal petugas agar akses operasional lebih cepat.'; }
+    if(FMART_PORTAL_MODE==='ADMINFMART16720'){
+      document.querySelector('.login-brand .brand-name').textContent='FMart Admin';
+      document.querySelector('.login-brand .login-subtitle').textContent='Akses operasional pesantren dalam satu portal terintegrasi.';
+      $('loginTitle').textContent='Masuk Portal Petugas';
+      $('loginIntro').textContent='Gunakan email dan password akun staf FMart untuk melanjutkan.';
+      $('usernameLabel').textContent='Email Staf';
+      $('username').inputMode='email';
+      $('username').placeholder='nama@fathanmubina.com';
+      $('usernameHint').textContent='Gunakan alamat email akun staf FMart.';
+      $('registerBtn').classList.add('hidden');
+      $('installAppBtn').innerHTML='<span aria-hidden="true">↓</span> Install FMart Admin';
+      $('installAppHint').textContent='Pasang portal petugas agar akses operasional lebih cepat.';
+      $('.login-showcase').setAttribute('aria-label','Informasi Portal Operasional FMart');
+      $('showcaseTitle').textContent='Satu portal untuk operasional pesantren yang lebih tertata.';
+      $('showcaseDescription').textContent='Kelola layanan FMart melalui ruang kerja terpadu dengan akses yang disesuaikan berdasarkan tanggung jawab setiap petugas.';
+      $('showcaseFeatureOneTitle').textContent='Operasional terpusat';
+      $('showcaseFeatureOneText').textContent='Kelola aktivitas sesuai tugas dan kewenangan Anda.';
+      $('showcaseFeatureTwoTitle').textContent='Data lebih terpantau';
+      $('showcaseFeatureTwoText').textContent='Pantau proses kerja melalui informasi yang tercatat.';
+      $('showcaseFeatureThreeTitle').textContent='Akses berbasis peran';
+      $('showcaseFeatureThreeText').textContent='Setiap petugas menggunakan akses sesuai tanggung jawab.';
+    }
     if ($('registerBtn')) $('registerBtn').classList.toggle('hidden', FMART_PORTAL_MODE === 'ADMINFMART16720');
     if(FMART_PORTAL_MODE!=='ADMINFMART16720'){
       document.querySelector('.login-card h1').textContent='Selamat datang, Wali Santri';
