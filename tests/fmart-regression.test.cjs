@@ -398,6 +398,7 @@ test('Gudang delivery workspace is available in the staff UI without changing it
 });
 
 
+
 test('Wali-facing catalog, product detail, cart, and order endpoints do not expose stock quantities or shortage metadata',()=>{
  const catalog=extractFunction(code,'getCatalog'),page=extractFunction(code,'getBuyerProductBatch'),detail=extractFunction(code,'getProductDetail'),cart=extractFunction(code,'getCart'),add=extractFunction(code,'addToCart'),update=extractFunction(code,'updateCartItem'),orders=extractFunction(code,'getMyOrders'),orderDetail=extractFunction(code,'getOrderDetail'),dashboard=extractFunction(code,'getWaliDashboard');
  assert.ok(catalog.includes('products:[]'),'Wali initial catalog must not include the staff stock catalog payload.');
@@ -405,6 +406,31 @@ test('Wali-facing catalog, product detail, cart, and order endpoints do not expo
  assert.ok(!page.includes('stock:'));
  assert.ok(detail.includes('delete productResult.stock')&&detail.includes('delete productResult.minStock'));
  assert.ok(detail.includes('priceAddition:v.priceAddition')&&!detail.includes('stock:v.stock'));
+ assert.ok(cart.includes('available:snap ? snap.active : false'),'Cart availability must indicate product activity only, not stock quantity.');
+ assert.ok(!cart.includes('stock:snap')&&!cart.includes('minStock:'));
+ assert.ok(add.includes('return getCart(token)')&&update.includes('return getCart(token)'));
+ for(const fn of [orders,orderDetail,dashboard])assert.ok(!/\b(?:stock|minStock|available|shortage|missingStock)\s*:/.test(fn),'Wali order response must not include inventory metadata.');
+});
+
+test('Wali stock-related notes and notifications are consistently redacted, including internal notification type',()=>{
+ const stockText=vm.runInNewContext('(function(){'+extractFunction(code,'isWaliStockRelatedText_')+';return isWaliStockRelatedText_;})()');
+ const sanitize=vm.runInNewContext('(function(){'+extractFunction(code,'sanitizeWaliStockNote_')+';return sanitizeWaliStockNote_;})()');
+ const generic='Pesanan sedang diproses. Informasi perkembangan akan disampaikan melalui aplikasi.';
+ for(const phrase of ['Stok belum mencukupi','Persediaan Gudang belum terpenuhi','Reservasi barang berakhir','Barang belum lengkap dari Gudang','Backorder masih diproses','Inventory warehouse shortage']){
+  assert.equal(stockText(phrase),true,'Expected stock-related phrase to be detected: '+phrase);
+  assert.equal(sanitize(phrase,'DIPROSES'),generic,'Expected stock-related note to be redacted: '+phrase);
+ }
+ assert.equal(sanitize('Mohon letakkan pesanan di meja penerimaan.','DIPROSES'),'Mohon letakkan pesanan di meja penerimaan.');
+ const notifications=extractFunction(code,'getMyNotifications');
+ assert.ok(notifications.includes("isWaliStockRelatedText_(title+' '+message)"));
+ assert.ok(notifications.includes("type:redactStockDetails?'PESANAN':String(r[5]||'')"),'Raw internal notification type must not accompany a redacted Wali notification.');
+ assert.ok(notifications.includes('waitingStockOrderIds[orderId]'),'Active internal stock-queue orders must always receive generic Wali notification copy.');
+});
+
+test('Buyer product detail UI never displays physical stock or shortage information',()=>{
+ const detail=extractFunction(index,'openProduct'),sync=extractFunction(index,'syncDetailStockUI'),cart=extractFunction(index,'renderCart');
+ assert.ok(sync.includes("badge.textContent='Produk dapat dipesan'"));
+ assert.ok(!sync.includes('stock')&&!sync.includes('available'));
  assert.ok(/!i\.available\?'<div class="danger-text">Produk tidak tersedia<\/div>/.test(cart),'Cart may only report inactive products, never stock shortages.');
  assert.ok(!detail.includes('p.stock')&&!detail.includes('p.minStock'));
 });
