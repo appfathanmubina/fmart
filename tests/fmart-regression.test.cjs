@@ -889,6 +889,6 @@ test('Admin payment, account, and warehouse forms associate labels with controls
  assert.ok(receipt.includes('for="receiptQty\'+i+\'"')&&receipt.includes('id="receiptQty\'+i+\'"'));
  for(const [source,id] of [[payment,'payQrisImageUrl'],[receipt,'receiptSupplier'],[receipt,'receiptDate'],[minimum,'stockMinimumValue'],[transfer,'transferProduct'],[transfer,'transferQty'],[mutation,'stockProduct'],[mutation,'stockType'],[mutation,'stockQty'],[editUser,'editUserName'],[editUser,'editUserRole'],[editWali,'editWaliName'],[editWali,'editWaliPhone'],[variation,'varName'],[variation,'varValue'],[staff,'staffName'],[staff,'staffEmail'],[staff,'staffPassword']]){
   const control=source.match(new RegExp('<(?:input|select)[^>]*id="'+id+'"[^>]*>'));
-  assert.ok(control&&/\\brequired\\b/.test(control[0]),id+' must expose its required state.');
+  assert.ok(control&&/\brequired\b/.test(control[0]),id+' must expose its required state.');
  }
 });
