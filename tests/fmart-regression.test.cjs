@@ -686,3 +686,14 @@ test('Runtime audit detects payment and delivery proof folder ID reuse',()=>{
  assert.ok(fn.includes("code: 'DRIVE_PROOF_FOLDERS_REUSED'"));
  assert.ok(fn.includes('proofFolderIds.paymentProof === proofFolderIds.deliveryProof'));
 });
+
+test('Superadmin create-user form offers the supported delivery staff role',()=>{
+ const formStart=index.indexOf('function openStaffUserForm()');
+ const formEnd=index.indexOf('async function openPaymentProof',formStart);
+ assert.ok(formStart>=0&&formEnd>formStart,'Staff user form must exist.');
+ const form=index.slice(formStart,formEnd);
+ assert.ok(form.includes('<option>PETUGAS_PENGANTAR</option>'),'Delivery staff must be selectable when creating a user.');
+ assert.ok(form.includes("runServer('createStaffUser'"),'The form must continue to use the protected staff-user endpoint.');
+ const endpoint=extractFunction(code,'createStaffUser');
+ assert.ok(endpoint.includes("'PETUGAS_PENGANTAR'"),'Backend must accept the delivery staff role.');
+});
