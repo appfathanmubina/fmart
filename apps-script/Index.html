@@ -2111,7 +2111,7 @@ button:disabled,[role="button"][aria-disabled="true"]{cursor:not-allowed}
 </head>
 <body>
   <div id="loginView" class="login-wrap">
-    <section class="login-showcase" aria-label="Informasi FMart">
+    <section class="login-showcase" id="loginShowcase" aria-label="Informasi FMart">
       <div class="showcase-content">
         <div class="showcase-brand"><div class="brand-mark" role="img" aria-label="Logo FMart"></div></div>
         <div class="showcase-copy">
@@ -2263,7 +2263,7 @@ button:disabled,[role="button"][aria-disabled="true"]{cursor:not-allowed}
       $('registerBtn').classList.add('hidden');
       $('installAppBtn').innerHTML='<span aria-hidden="true">↓</span> Install FMart Admin';
       $('installAppHint').textContent='Pasang portal petugas agar akses operasional lebih cepat.';
-      $('.login-showcase').setAttribute('aria-label','Informasi Portal Operasional FMart');
+      $('loginShowcase').setAttribute('aria-label','Informasi Portal Operasional FMart');
       $('showcaseTitle').textContent='Satu portal untuk operasional pesantren yang lebih tertata.';
       $('showcaseDescription').textContent='Kelola layanan FMart melalui ruang kerja terpadu dengan akses yang disesuaikan berdasarkan tanggung jawab setiap petugas.';
       $('showcaseFeatureOneTitle').textContent='Operasional terpusat';
