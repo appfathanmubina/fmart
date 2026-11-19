@@ -1066,3 +1066,16 @@ test('Escape closes only the topmost visible modal and preserves the underlying 
  for(const id of ['paymentModal','orderDetailModal','profileModal','childPickerModal','opsModal'])assert.ok(handler.includes(id+':close'));
  assert.ok(!handler.includes('closeRegister();closeProfile();'),'Escape must not close every modal at once.');
 });
+
+
+test('Delivery dashboard search and status filters collapse to one column on narrow screens',()=>{
+ const start=index.indexOf('function drawDeliveryDashboard(){');
+ const end=index.indexOf('async function uploadDeliveryProofFromDevice',start);
+ assert.ok(start>=0&&end>start);
+ const renderer=index.slice(start,end);
+ assert.ok(renderer.includes('<div class="delivery-filters">'));
+ assert.ok(!renderer.includes('grid-template-columns:1fr 1fr'),'The filter layout must not be hard-coded inline to two columns.');
+ assert.ok(index.includes('body.admin-portal .delivery-filters{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(170px,1fr)'));
+ assert.ok(index.includes('@media(max-width:620px){body.admin-portal .delivery-filters{grid-template-columns:minmax(0,1fr);gap:8px}}'));
+ assert.ok(renderer.includes('aria-label="Cari tugas pengantaran"')&&renderer.includes('aria-label="Filter status tugas"'));
+});
