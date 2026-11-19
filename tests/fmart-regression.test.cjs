@@ -727,3 +727,17 @@ test('Tablet portrait keeps the staff navigation as a horizontally scrollable bo
  assert.ok(tablet.includes('overflow-x:auto'));
  assert.ok(tablet.includes('overscroll-behavior-x:contain'));
 });
+
+
+test('FMart brand header returns each portal to its own home dashboard',()=>{
+ const fn=extractFunction(index,'navigateHomeFromBrand_');
+ assert.ok(fn.includes("user.role!=='WALI_SANTRI'"),'Staff roles must use the staff navigation path.');
+ assert.ok(fn.includes("$('staffDashboard')")&&fn.includes('dashboard.click()'),'Staff must return to their authorized operational dashboard.');
+ assert.ok(fn.includes("$('navHome')")&&fn.includes('buyerHome.click()'),'Wali must retain the buyer home navigation path.');
+ const start=index.indexOf("const brandHome=$('brandHome')");
+ const end=index.indexOf("$('closeWaliLink')",start);
+ assert.ok(start>=0&&end>start,'Brand navigation handlers must exist.');
+ const handlers=index.slice(start,end);
+ assert.ok(handlers.includes("addEventListener('click',navigateHomeFromBrand_)"));
+ assert.ok(handlers.includes("navigateHomeFromBrand_()"),'Keyboard activation must use the same role-aware navigation.');
+});
