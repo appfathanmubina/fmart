@@ -774,3 +774,13 @@ test('Admin login showcase copy describes staff operations instead of Wali shopp
  assert.ok(adminInit.includes("Akses berbasis peran"));
  assert.ok(adminInit.includes("Email Staf"),'Admin must retain email-based login.');
 });
+
+
+test('Admin login showcase initialization uses the ID-based DOM helper safely',()=>{
+ assert.ok(index.includes('<section class="login-showcase" id="loginShowcase"'));
+ const start=index.indexOf("if(FMART_PORTAL_MODE==='ADMINFMART16720'){");
+ const end=index.indexOf("if ($('registerBtn'))",start);
+ const adminInit=index.slice(start,end);
+ assert.ok(adminInit.includes("$('loginShowcase').setAttribute("));
+ assert.ok(!adminInit.includes("$('.login-showcase')"),'The ID-only helper must not receive a class selector.');
+});
