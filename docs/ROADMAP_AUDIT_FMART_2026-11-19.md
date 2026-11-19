@@ -317,9 +317,46 @@ PR #57 telah di-merge ke `main`:
 
 **Status Tahap 38.1:** perbaikan navigasi header ini sudah masuk `main`; audit login, dashboard, dan elemen header lainnya masih berlanjut.
 
+### Tahap 38.3 — Pemulihan dua kolom Login Admin Desktop/Tablet
+
+PR #59 telah di-merge ke `main`:
+- PR: https://github.com/appfathanmubina/fmart/pull/59
+- Merge commit: `30830b8905db5156bcdf73397cad390e2fdecef2`
+- Memulihkan panel informasi kiri dan form kanan pada login Admin untuk Desktop/Tablet (mulai 761 px).
+- Proporsi 6:4 untuk tablet/layar menengah dan 7:3 untuk desktop lebar.
+- Layout satu kolom pada HP (maksimal 760 px) tetap dipertahankan.
+- Copy panel kiri disesuaikan untuk petugas: operasional terpusat, data terpantau, dan akses berbasis peran.
+- Tidak mengubah email/password, OTP, sesi, autentikasi, backend, izin role, atau data.
+- Regression tests saat PR: 70 lulus, 0 gagal.
+
+**Hotfix selector login:** PR #61 telah di-merge:
+- https://github.com/appfathanmubina/fmart/pull/61
+- Merge commit: `58fff58daab3a1aca349cf057660bb95643dc803`
+- Menggunakan ID `loginShowcase` sesuai helper DOM berbasis ID; mencegah kegagalan inisialisasi JavaScript Admin.
+- Regression tests: 71 lulus, 0 gagal.
+
+### Tahap 38.4 — Pemulihan error Dashboard Operasional
+
+PR #62 telah di-merge ke `main`:
+- PR: https://github.com/appfathanmubina/fmart/pull/62
+- Merge commit: `de28336f64aa6e2f09f5e8aa3df730037bdc45d2`
+- Saat pemuatan awal ringkasan operasional gagal, Admin/Kasir/Gudang mendapatkan pesan yang jelas dan tombol coba muat ulang.
+- Panel statistik kosong disembunyikan selama belum ada data.
+- Jika refresh gagal setelah dashboard berhasil tampil, data sebelumnya dipertahankan dan error diberitahukan.
+- Setelah request berhasil, panel statistik ditampilkan kembali.
+- Tidak mengubah backend, perhitungan statistik, hak akses role, transaksi, atau data.
+- Regression tests: 72 lulus, 0 gagal.
+
+### Catatan keputusan Dashboard Wali
+
+- Halaman awal Wali tetap menggunakan pola katalog produk (catalog-first).
+- Ringkasan statistik Wali yang pernah ada sudah dinonaktifkan pada riwayat pengembangan sebelumnya karena tidak lagi sesuai alur; tidak dihidupkan kembali dalam Tahap 38.
+- Pemeriksaan Tahap 38 untuk Wali difokuskan pada katalog, pencarian, kategori, kartu/detail produk, keranjang, checkout, dan navigasi.
+- Tidak ada informasi stok atau antrean pemenuhan yang ditambahkan ke tampilan Wali.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
-1. Audit login, dashboard, header, dan navigasi untuk Wali serta Admin.
+1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal login Admin, brand navigation, sidebar, dan retry Dashboard Operasional sudah masuk `main`.
 2. Audit katalog Wali: kartu produk, detail, keranjang, dan checkout.
 3. Audit formulir, tabel, filter, laporan, dan modal Admin.
 4. Audit tampilan role Gudang, Kasir, dan Petugas Pengantar.
