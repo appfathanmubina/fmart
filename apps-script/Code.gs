@@ -2081,27 +2081,64 @@ function verifyPayment(token,paymentId,decision,note){
  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN,FMART.ROLES.KASIR]);paymentId=String(paymentId||'').trim();decision=String(decision||'').toUpperCase();note=String(note||'').trim().slice(0,300);if(!paymentId||['TERIMA','TOLAK'].indexOf(decision)<0)throw new Error('Keputusan pembayaran tidak valid.');
  const lock=LockService.getScriptLock();lock.waitLock(15000);
  try{
-  const ss=getSS_();expireStockReservations_(ss,new Date());const ps=ss.getSheetByName('Pembayaran'),pay=findRowById_(ps,paymentId,1);if(!pay)throw new Error('Pengajuan pembayaran tidak ditemukan.');if(String(pay.values[5]).toUpperCase()!=='MENUNGGU_VERIFIKASI')throw new Error('Pembayaran sudah diproses.');
-  const os=ss.getSheetByName('Pesanan'),order=findRowById_(os,String(pay.values[1]),1);if(!order)throw new Error('Pesanan terkait tidak ditemukan.');if(String(order.values[8]).toUpperCase()!=='MENUNGGU_PEMBAYARAN')throw new Error('Status pesanan tidak sesuai.');
-  const paymentMethod=String(pay.values[2]||'').trim().toUpperCase();
+  const ss=getSS_();expireStockReservations_(ss,new Date());
+  const ps=ss.getSheetByName('Pembayaran'),pay=findRowById_(ps,paymentId,1);if(!pay)throw new Error('Pengajuan pembayaran tidak ditemukan.');
+  const os=ss.getSheetByName('Pesanan'),order=findRowById_(os,String(pay.values[1]),1);if(!order)throw new Error('Pesanan terkait tidak ditemukan.');
+  const paymentStatus=String(pay.values[5]||'').toUpperCase(),orderStatus=String(order.values[8]||'').toUpperCase(),paymentMethod=String(pay.values[2]||'').trim().toUpperCase(),id=String(order.values[0]);
   if(session.role===FMART.ROLES.KASIR && paymentMethod!=='QRIS')throw new Error('Kasir hanya berwenang memproses pembayaran QRIS Wali Santri.');
-  if(decision==='TERIMA')validateQrisPaymentForApproval_(pay.values,order.values);
-  const now=new Date(),id=String(order.values[0]);
+
+  // Jika proses sebelumnya terputus setelah pembayaran ditandai terverifikasi,
+  // izinkan Admin melanjutkan tahap pemenuhan tanpa memverifikasi/mengurangi stok dua kali.
+  if(paymentStatus==='TERVERIFIKASI'){
+   if(decision!=='TERIMA')throw new Error('Pembayaran sudah terverifikasi dan tidak dapat ditolak.');
+   validateQrisPaymentForApproval_(pay.values,order.values);
+   const paidStatuses=['DIBAYAR','DIPROSES','DISIAPKAN','SIAP_DIAMBIL','DIANTAR','DITERIMA'];
+   if(orderStatus==='MENUNGGU_PEMBAYARAN'){
+    const now=new Date();
+    setOrderReservationStatus_(ss,id,'MENUNGGU_STOK');
+    setOrderFulfillmentStatus_(ss,order,'MENUNGGU_STOK','SYSTEM','Pembayaran terverifikasi. Menunggu seluruh jumlah barang tersedia di Gudang.',now);
+    SpreadsheetApp.flush();
+    const auditRows=readRows_(ss.getSheetByName('AuditLog'));
+    if(!auditRows.some(function(r){return String(r[3]||'').toUpperCase()==='UPDATE_ORDER_STATUS'&&String(r[4]||'').toUpperCase()==='PESANAN'&&String(r[5]||'')===id&&String(r[7]||'').indexOf('MENUNGGU_STOK')>=0;}))
+     writeAudit_(session.userId,session.role,'UPDATE_ORDER_STATUS','PESANAN',id,JSON.stringify({status:'MENUNGGU_PEMBAYARAN'}),JSON.stringify({status:'MENUNGGU_STOK'}),'Pemulihan: pembayaran terverifikasi; menunggu stok Gudang',now);
+   }else if(orderStatus!=='MENUNGGU_STOK'&&paidStatuses.indexOf(orderStatus)<0){
+    throw new Error('Status pesanan tidak dapat melanjutkan pemulihan pembayaran terverifikasi.');
+   }
+   if(orderStatus==='MENUNGGU_PEMBAYARAN'||orderStatus==='MENUNGGU_STOK')processPendingStockOrders_(ss,session.userId,'PEMULIHAN_VERIFIKASI_PEMBAYARAN',session.role);
+   const notifications=readRows_(ss.getSheetByName('Notifikasi'));
+   if(!notifications.some(function(r){return String(r[2]||'')===id&&String(r[3]||'')==='Pembayaran terverifikasi';})){
+    const message='Pembayaran pesanan '+String(order.values[1])+' telah diverifikasi. Pesanan sedang diproses dan perkembangan berikutnya akan diinformasikan melalui aplikasi.';
+    ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Pembayaran terverifikasi',message,'PEMBAYARAN',false,new Date()]);
+   }
+   const auditRows=readRows_(ss.getSheetByName('AuditLog'));
+   if(!auditRows.some(function(r){return String(r[3]||'').toUpperCase()==='VERIFY_PAYMENT'&&String(r[5]||'')===paymentId;}))
+    writeAudit_(session.userId,session.role,'VERIFY_PAYMENT','PEMBAYARAN',paymentId,JSON.stringify({status:'MENUNGGU_VERIFIKASI',orderId:id}),JSON.stringify({status:'TERVERIFIKASI',orderStatus:orderStatus}),'Pemulihan efek samping verifikasi pembayaran');
+   SpreadsheetApp.flush();return getOperationsDashboard(token);
+  }
+
+  if(paymentStatus!=='MENUNGGU_VERIFIKASI')throw new Error('Pembayaran sudah diproses.');
+  if(orderStatus!=='MENUNGGU_PEMBAYARAN')throw new Error('Status pesanan tidak sesuai.');
+  const now=new Date();
   if(decision==='TOLAK'){
    setOrderReservationStatus_(ss,id,'DILEPAS');ps.getRange(pay.rowNumber,6,1,3).setValues([['DITOLAK','','']]);ps.getRange(pay.rowNumber,10).setValue(now);
    if(note)ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Pembayaran ditolak',note,'PEMBAYARAN',false,now]);
    writeAudit_(session.userId,session.role,'REJECT_PAYMENT','PEMBAYARAN',paymentId,JSON.stringify({status:'MENUNGGU_VERIFIKASI'}),JSON.stringify({status:'DITOLAK',note:note}),'Pembayaran ditolak');SpreadsheetApp.flush();return getOperationsDashboard(token);
   }
+  validateQrisPaymentForApproval_(pay.values,order.values);
   ps.getRange(pay.rowNumber,6,1,3).setValues([['TERVERIFIKASI',session.userId,now]]);ps.getRange(pay.rowNumber,10).setValue(now);
   setOrderReservationStatus_(ss,id,'MENUNGGU_STOK');
   setOrderFulfillmentStatus_(ss,order,'MENUNGGU_STOK','SYSTEM','Pembayaran terverifikasi. Menunggu seluruh jumlah barang tersedia di Gudang.',now);SpreadsheetApp.flush();
-   writeAudit_(session.userId,session.role,'UPDATE_ORDER_STATUS','PESANAN',id,JSON.stringify({status:'MENUNGGU_PEMBAYARAN'}),JSON.stringify({status:'MENUNGGU_STOK'}),'Pembayaran terverifikasi; menunggu stok Gudang lengkap',now);
-  // Masukkan pesanan yang baru dibayar ke antrean yang sama agar prioritas stok mengikuti waktu pesanan.
+  writeAudit_(session.userId,session.role,'UPDATE_ORDER_STATUS','PESANAN',id,JSON.stringify({status:'MENUNGGU_PEMBAYARAN'}),JSON.stringify({status:'MENUNGGU_STOK'}),'Pembayaran terverifikasi; menunggu stok Gudang lengkap',now);
   processPendingStockOrders_(ss,session.userId,'VERIFIKASI_PEMBAYARAN',session.role);
   const refreshed=findRowById_(os,id,1),nextStatus=refreshed?String(refreshed.values[8]||'MENUNGGU_STOK'):'MENUNGGU_STOK';
-  const message='Pembayaran pesanan '+String(order.values[1])+' telah diverifikasi. Pesanan sedang diproses dan perkembangan berikutnya akan diinformasikan melalui aplikasi.';
-  ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Pembayaran terverifikasi',message,'PEMBAYARAN',false,now]);
-  writeAudit_(session.userId,session.role,'VERIFY_PAYMENT','PEMBAYARAN',paymentId,JSON.stringify({status:'MENUNGGU_VERIFIKASI',orderId:id}),JSON.stringify({status:'TERVERIFIKASI',orderStatus:nextStatus}),'Pembayaran diverifikasi; alokasi mengikuti antrean stok FIFO');
+  const notifications=readRows_(ss.getSheetByName('Notifikasi'));
+  if(!notifications.some(function(r){return String(r[2]||'')===id&&String(r[3]||'')==='Pembayaran terverifikasi';})){
+   const message='Pembayaran pesanan '+String(order.values[1])+' telah diverifikasi. Pesanan sedang diproses dan perkembangan berikutnya akan diinformasikan melalui aplikasi.';
+   ss.getSheetByName('Notifikasi').appendRow([makeFMartId_('NTF'),String(order.values[2]),id,'Pembayaran terverifikasi',message,'PEMBAYARAN',false,now]);
+  }
+  const auditRows=readRows_(ss.getSheetByName('AuditLog'));
+  if(!auditRows.some(function(r){return String(r[3]||'').toUpperCase()==='VERIFY_PAYMENT'&&String(r[5]||'')===paymentId;}))
+   writeAudit_(session.userId,session.role,'VERIFY_PAYMENT','PEMBAYARAN',paymentId,JSON.stringify({status:'MENUNGGU_VERIFIKASI',orderId:id}),JSON.stringify({status:'TERVERIFIKASI',orderStatus:nextStatus}),'Pembayaran diverifikasi; alokasi mengikuti antrean stok FIFO');
   SpreadsheetApp.flush();return getOperationsDashboard(token);
  }finally{lock.releaseLock();}
 }

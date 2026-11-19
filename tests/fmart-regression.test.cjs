@@ -501,3 +501,14 @@ test('Database integrity audit supports decoupled cart and order recipient recor
  assert.ok(databaseAudit.includes("checkReference_('Keranjang', 1, 'Users', 'UserId keranjang', false)"),'Required owner references remain enforced.');
  assert.ok(databaseAudit.includes("checkReference_('Pesanan', 2, 'Users', 'UserId pesanan', false)"),'Required order owner references remain enforced.');
 });
+
+test('Verified payment can resume an interrupted order transition without duplicate payment notification',()=>{
+ const verify=extractFunction(code,'verifyPayment');
+ assert.ok(verify.includes("if(paymentStatus==='TERVERIFIKASI')"),'A previously verified payment must enter a recovery path.');
+ assert.ok(verify.includes("if(orderStatus==='MENUNGGU_PEMBAYARAN')"),'Recovery must complete the interrupted transition to MENUNGGU_STOK.');
+ assert.ok(verify.includes("orderStatus!=='MENUNGGU_STOK'&&paidStatuses.indexOf(orderStatus)<0"),'Recovery must reject unrelated or cancelled order states.');
+ assert.ok(verify.includes("if(orderStatus==='MENUNGGU_PEMBAYARAN'||orderStatus==='MENUNGGU_STOK')processPendingStockOrders_"),'Recovery must resume stock fulfillment only while the order remains in the pending-stock stage.');
+ assert.ok(verify.includes("String(r[3]||'')==='Pembayaran terverifikasi'"),'Payment notification must be deduplicated during retry.');
+ assert.ok(verify.includes("String(r[3]||'').toUpperCase()==='VERIFY_PAYMENT'&&String(r[5]||'')===paymentId"),'Verification audit must be deduplicated during retry.');
+ assert.ok(verify.indexOf("if(paymentStatus==='TERVERIFIKASI')")<verify.indexOf("if(paymentStatus!=='MENUNGGU_VERIFIKASI')"),'Recovery must be checked before rejecting an already-verified payment.');
+});
