@@ -1250,3 +1250,10 @@ test('Wali self-link modal copy matches the direct active relationship flow',()=
  assert.ok(submit.includes('Hubungan langsung aktif tanpa persetujuan Admin.'));
  assert.ok(submit.includes("runServer('requestWaliSantriLink'"));
 });
+
+test('Payment rejection note is semantically required only for rejection',()=>{
+ const fn=extractFunction(index,'openVerifyPayment');
+ assert.ok(fn.includes("maxlength=\"300\"'+(accepting?'':' required')+' placeholder=\"'+(accepting?'Catatan pemeriksaan (opsional)':'Jelaskan alasan penolakan')+'\""));
+ assert.ok(fn.includes("if(!accepting&&!note)"),'Existing rejection validation must remain.');
+ assert.ok(fn.includes("accepting?'Catatan pemeriksaan (opsional)':'Jelaskan alasan penolakan'"));
+});
