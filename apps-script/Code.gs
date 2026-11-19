@@ -2447,8 +2447,8 @@ function getDeliveryDashboard(token) {
       orderStatus:String(order[8] || '').toUpperCase(),
       childName:String(child.name || 'Santri'),
       className:String(child.className || ''),
-      recipientName:String(wali.name || 'Wali Santri'),
-      recipientContact:String(wali.phone || wali.username || ''),
+      recipientName:String(child.name || 'Santri'),
+      recipientContact:String(child.phone || ''),
       destination:String(shipment[3] || ''),
       shipmentStatus:String(shipment[4] || '')
     };
