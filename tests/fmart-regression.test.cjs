@@ -430,7 +430,7 @@ test('Critical write endpoints retain role guards, locks, ownership and state-tr
  for(const name of ['respondDeliveryAssignment','startDeliveryTrip','updateDeliveryProgress','reportDeliveryFailure','submitDeliveryProof']){
   const fn=extractFunction(code,name);
   assert.ok(fn.includes('session.userId'),'Delivery writes must bind the task to the active staff account.');
-  assert.ok(fn.includes("!==session.userId")||fn.includes("!== session.userId"),name+' must reject another user assignment.');
+  assert.ok(fn.includes("!==session.userId")||fn.includes("!== session.userId")||fn.includes("!==String(session.userId)"),name+' must reject another user assignment.');
  }
 });
 
