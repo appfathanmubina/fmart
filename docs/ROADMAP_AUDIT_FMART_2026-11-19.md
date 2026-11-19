@@ -579,7 +579,7 @@ PR #101 telah di-merge:
 
 ### Tahap 38.24 — Semantik field wajib checkout, pembayaran, dan keamanan akun
 
-**Status: perbaikan repository disiapkan; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #107 telah di-merge ke `main` melalui commit `e3d414ca9669f1a40d0e913be24999e7009d6d52`; regression CI PR lulus. CI pasca-merge `main` telah meluluskan build dan regresi; workflow deployment GitHub Pages masih berjalan saat catatan ini diperbarui.**
 
 Audit statis menemukan beberapa field yang sudah ditandai wajib secara visual dan divalidasi oleh handler, tetapi belum memiliki atribut semantik `required`:
 - Nama penerima pada checkout.
@@ -590,3 +590,12 @@ Audit statis menemukan beberapa field yang sudah ditandai wajib secara visual da
 Perbaikan mempertahankan validasi server dan handler yang sudah ada. Field alamat tetap mengikuti metode pemenuhan: atribut wajib dilepas saat Wali memilih ambil di FMart dan dipasang kembali saat memilih antar pesantren. Password baru dan konfirmasi diberi batas minimum 10 karakter sesuai petunjuk form yang sudah ada.
 
 Regression test mengunci atribut wajib dan perilaku dinamis alamat. Tidak ada perubahan endpoint, payload, aturan transaksi, role, data, atau tampilan.
+
+
+### Tahap 38.25 — Konsistensi petunjuk penghubung Santri aktif
+
+**Status: perbaikan repository disiapkan; menunggu CI dan merge.**
+
+Audit lintas alur Wali menemukan teks lama pada dialog Tambah Anak yang menyebut pengajuan relasi harus diverifikasi Admin/Superadmin. Teks tersebut tidak lagi sesuai dengan alur saat ini: Wali dapat menghubungkan Santri berstatus aktif secara langsung, tanpa persetujuan Admin; batas jumlah relasi dan validasi akun tetap dijaga backend.
+
+Perbaikan hanya menyelaraskan petunjuk dialog dengan alur aktual. Regression test memastikan teks lama tidak muncul kembali dan aksi tetap menggunakan endpoint `requestWaliSantriLink`. Tidak mengubah aturan relasi, pencarian Santri, hak akses, atau data.

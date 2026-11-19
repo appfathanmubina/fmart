@@ -1235,3 +1235,18 @@ test('Required checkout, payment-proof, and password fields expose native requir
  assert.ok(password.includes('id="newPassword" type="password" autocomplete="new-password" minlength="10" required'));
  assert.ok(password.includes('id="confirmPassword" type="password" autocomplete="new-password" minlength="10" required'));
 });
+
+test('Wali self-link modal copy matches the direct active relationship flow',()=>{
+ const start=index.indexOf('<div id="waliLinkModal"');
+ const end=index.indexOf('<div id="changePasswordModal"',start);
+ assert.ok(start>=0&&end>start,'Wali link modal must exist.');
+ const modal=index.slice(start,end);
+ assert.ok(modal.includes('Santri aktif dapat dihubungkan langsung oleh Wali tanpa persetujuan Admin.'));
+ assert.ok(!modal.includes('Pengajuan akan diverifikasi Admin/Superadmin'));
+ const submitStart=index.indexOf('function openWaliRequestForm(');
+ const submitEnd=index.indexOf('function closeProfile(',submitStart);
+ assert.ok(submitStart>=0&&submitEnd>submitStart,'Wali self-link action must exist.');
+ const submit=index.slice(submitStart,submitEnd);
+ assert.ok(submit.includes('Hubungan langsung aktif tanpa persetujuan Admin.'));
+ assert.ok(submit.includes("runServer('requestWaliSantriLink'"));
+});
