@@ -521,7 +521,7 @@ test('Manual stock adjustments are idempotent and recover journal-first partial 
  assert.ok(fn.includes("if(live===savedBefore)"),'Retry must finish an interrupted balance update.');
  assert.ok(fn.includes("if(live!==savedAfter)throw new Error"),'Unexpected balance must stop recovery.');
  assert.ok(fn.includes("String(m[9]||'')!==session.userId"),'A different actor must not replay another user request key.');
- assert.ok(html.includes("fmart.stock.adjust.pending")&&html.includes("pending.key"),'UI must retain request key while retrying the same adjustment.');
+ assert.ok(index.includes("fmart.stock.adjust.pending")&&index.includes("pending.key"),'UI must retain request key while retrying the same adjustment.');
 });
 
 test('Warehouse-to-cashier transfers recover both ledgers and balances exactly once',()=>{
@@ -533,7 +533,7 @@ test('Warehouse-to-cashier transfers recover both ledgers and balances exactly o
  assert.ok(fn.includes("if(live===before)"),'Retry must apply a balance that was not yet changed.');
  assert.ok(fn.includes("else if(live!==after)throw new Error"),'Unexpected balance must stop transfer recovery.');
  assert.ok(fn.includes("String(r[9]||'')===session.userId"),'A different actor must not replay another user transfer.');
- assert.ok(html.includes("fmart.stock.transfer.pending")&&html.includes("pending.key"));
+ assert.ok(index.includes("fmart.stock.transfer.pending")&&index.includes("pending.key"));
 });
 
 test('Stock transfer and adjustment preserve warehouse reservation floor and variation mirror',()=>{
