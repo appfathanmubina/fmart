@@ -242,3 +242,22 @@ Source `createStockReceipt()` dan `completeStockReceipt_()` telah diperiksa:
 **Status Tahap 36:** kebijakan sumber saldo awal telah dikonfirmasi dan source penerimaan mendukung pembuatan baris stok kanonis. Rekonsiliasi aktual belum selesai sampai Gudang menginput saldo berdasarkan bukti dan audit ulang membuktikan konsistensinya.
 
 **Catatan folder Drive:** source sudah memiliki pengaman ID folder pembayaran/pengantaran yang sama. Karena folder baru telah dibuat dan property diperbarui, audit runtime berikutnya harus memastikan kedua folder terdeteksi berbeda, accessible, dan private. Jangan membagikan ID folder ke chat.
+
+
+## Pembaruan audit mutasi masuk manual — 19 November 2026
+
+PR #52 telah memperbaiki audit penerimaan agar mengenali mutasi stok masuk manual dari `adjustStock()` yang memakai `requestKey` sebagai referensi. Audit kini memvalidasi AuditLog berdasarkan referensi (dengan kompatibilitas format legacy), ProdukId, VariasiId, tipe MASUK, qty, saldo sebelum/sesudah, dan timestamp yang sama. Referensi yang tidak dikenal tanpa AuditLog yang cocok tetap menjadi temuan; validasi penerimaan resmi dan stok awal variasi tetap terpisah.
+
+- PR: https://github.com/appfathanmubina/fmart/pull/52
+- CI: lulus; 63 pengujian regresi lulus.
+- Merge commit: `4f0832571cc5f48720fc5c231366c27adb8e0972`
+- Tidak ada data produksi yang diubah.
+
+### Panduan pencatatan saldo awal oleh Gudang
+
+- Barang yang benar-benar baru diterima dari pemasok dicatat melalui **Penerimaan Barang** dengan dokumen sumber.
+- Saldo fisik barang yang sudah ada saat stock opname dapat dicatat melalui **Penyesuaian Stok** sebagai mutasi MASUK, dengan catatan yang menyebutkan hasil stock opname/tanggal dan bukti acuannya.
+- Jangan menggunakan Penerimaan Barang untuk merekayasa penerimaan yang tidak terjadi; jangan pula memasukkan angka nol/perkiraan untuk melengkapi baris stok.
+- Setelah pencatatan, jalankan audit read-only kembali untuk memastikan baris stok, mutasi, dan AuditLog saling cocok.
+
+Temuan MutasiStok baris 2 dari audit sebelumnya masih menunggu penelusuran data sumber. Perbaikan source tidak membuat AuditLog pengganti dan tidak menghapus/mengubah mutasi lama.
