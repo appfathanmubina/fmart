@@ -1803,9 +1803,9 @@ function saveCategory(token, id, name, description, order, status) {
 }
 
 function saveProduct(token, data) {
-  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);const ss=getSS_();ensureFMartCostingSchema_(ss);
+  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);const ss=getSS_();
   const lock=LockService.getScriptLock(); lock.waitLock(10000);
-  try {
+  try {ensureFMartCostingSchema_(ss);
   if(!data || typeof data!=='object') throw new Error('Data produk tidak valid.');
   const id=String(data.id||'').trim(), categoryId=String(data.categoryId||'').trim(), sku=String(data.sku||'').trim().slice(0,60), name=String(data.name||'').trim().slice(0,150), description=String(data.description||'').trim().slice(0,1000), price=Math.round(Number(data.price)), minStock=Math.max(0,Math.floor(Number(data.minStock)||0)), photoUrl=String(data.photoUrl||'').trim().slice(0,500), status=String(data.status||'AKTIF').toUpperCase(),hpp=data.hpp===undefined?null:(data.hpp===''?0:Math.round(Number(data.hpp)));
   if(!categoryId||!name||!sku||!Number.isFinite(price)||price<0||(hpp!==null&&(!Number.isSafeInteger(hpp)||hpp<0)))throw new Error('Data produk atau HPP belum valid.');
