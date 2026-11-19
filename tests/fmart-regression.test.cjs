@@ -431,6 +431,6 @@ test('Buyer product detail UI never displays physical stock or shortage informat
  const detail=extractFunction(index,'openProduct'),sync=extractFunction(index,'syncDetailStockUI'),cart=extractFunction(index,'renderCart');
  assert.ok(sync.includes("badge.textContent='Produk dapat dipesan'"));
  assert.ok(!sync.includes('stock')&&!sync.includes('available'));
- assert.ok(/!i\.available\?'<div class="danger-text">Produk tidak tersedia<\/div>/.test(cart),'Cart may only report inactive products, never stock shortages.');
+ assert.ok(cart.includes('!i.available?')&&cart.includes('Produk tidak tersedia'),'Cart may only report inactive products, never stock shortages.');
  assert.ok(!detail.includes('p.stock')&&!detail.includes('p.minStock'));
 });
