@@ -95,9 +95,9 @@ Audit source dan CI selesai, tetapi validasi runtime, perangkat, akun nyata, rek
 Audit source menemukan ketidaksesuaian penting: dokumentasi meminta operator menjalankan `runFMartReadinessAudit()`, tetapi implementasi yang tersedia hanya bernama internal `runFMartReadinessAudit_()`. Fungsi dengan akhiran underscore tidak ditampilkan sebagai entry point publik di Apps Script Editor. Kondisi ini berisiko membuat operator tidak menemukan fungsi audit yang harus dijalankan.
 
 Perbaikan Tahap 32:
-- Menambahkan wrapper publik `runFMartReadinessAudit()` yang hanya meneruskan ke audit gabungan read-only `runFMartReadinessAudit_()`.
-- Memperbaiki `docs/UAT-TAHAP-4-FMART.md` agar nama fungsi yang dijalankan sesuai dengan entry point publik.
+- Memastikan audit gabungan tetap menggunakan fungsi privat `runFMartReadinessAudit_()`, yang dapat dijalankan manual dari Apps Script Editor tetapi tidak diekspos sebagai endpoint `google.script.run`.
+- Memperbaiki `docs/UAT-TAHAP-4-FMART.md` agar operator menjalankan fungsi privat `runFMartReadinessAudit_()` dari daftar fungsi editor. Wrapper publik tanpa underscore sengaja tidak dibuat demi mencegah eksposur sebagai endpoint browser.
 - Menghapus instruksi menjalankan setup database sebagai prasyarat audit read-only. Setup/migrasi hanya boleh dilakukan sebagai pekerjaan terpisah setelah hasil audit membuktikan perlu, target database dipastikan, dan backup tersedia.
 - Audit gabungan tetap memanggil pemeriksaan database, runtime, sinkronisasi operasional, stok/POS, penerimaan, dan pemulihan transaksi. Hasil dicatat ke Execution log.
 
-**Batasan:** perubahan ini menyiapkan jalur audit; tidak menjalankan Apps Script, tidak membaca database produksi, tidak mengubah Spreadsheet/Drive, dan tidak menguji akun/perangkat. Operator tetap perlu menjalankan `runFMartReadinessAudit` di Apps Script Editor dan mengirimkan hasil yang telah disamarkan. Jangan mengirim password, OTP, token, Spreadsheet ID, folder ID, atau data pribadi.
+**Batasan:** perubahan ini menyiapkan jalur audit; tidak menjalankan Apps Script, tidak membaca database produksi, tidak mengubah Spreadsheet/Drive, dan tidak menguji akun/perangkat. Operator tetap perlu menjalankan `runFMartReadinessAudit_` di Apps Script Editor dan mengirimkan hasil yang telah disamarkan. Jangan mengirim password, OTP, token, Spreadsheet ID, folder ID, atau data pribadi.
