@@ -4002,9 +4002,9 @@ async function renderSupervisorCatalog(){
         const total=rows.reduce((sum,x)=>sum+Number(x.qty),0);
         if(!window.confirm('Konfirmasi penerimaan '+rows.length+' baris item dengan total '+formatMoney(total)+' unit? Stok akan langsung bertambah.'))return;
         btn.disabled=true;loading(true,'Menyimpan penerimaan dan memperbarui stok...');
-        try{const receiptSignature=JSON.stringify(payload);
+        try{const receiptSignature=JSON.stringify(payload),legacyReceiptSignature=JSON.stringify({...payload,items:payload.items.map(({unitCost,...item})=>item)});
         let receiptPending=null;try{receiptPending=JSON.parse(localStorage.getItem('fmart.receipt.pending')||'null')}catch(e){}
-        if(!receiptPending||receiptPending.signature!==receiptSignature){receiptPending={signature:receiptSignature,key:'rc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,12)};try{localStorage.setItem('fmart.receipt.pending',JSON.stringify(receiptPending))}catch(e){}}
+        if(!receiptPending||(receiptPending.signature!==receiptSignature&&receiptPending.signature!==legacyReceiptSignature)){receiptPending={signature:receiptSignature,key:'rc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,12)};try{localStorage.setItem('fmart.receipt.pending',JSON.stringify(receiptPending))}catch(e){}}
         payload.requestKey=receiptPending.key;
         const result=await runServer('createStockReceipt',state.token,payload);try{localStorage.removeItem('fmart.receipt.pending')}catch(e){}
         closeOpsModal();showToast('Penerimaan '+result.number+' berhasil dicatat.','success');await renderOpsReceiving()}

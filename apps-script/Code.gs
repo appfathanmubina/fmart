@@ -1896,6 +1896,21 @@ function getStockReceivingData(token) {
   return {ok:true,products:products,receipts:receipts};
 }
 
+
+function recoverLegacyStockReceiptIfPending_(session,supplier,reference,note,receivedDate,rawItems,requestKey){
+ const lock=LockService.getScriptLock();lock.waitLock(15000);
+ try{
+  const ss=getSS_();ensureFMartCostingSchema_(ss);ensureReceivingSheets_(ss);const sheet=ss.getSheetByName('PenerimaanBarang'),existing=readRows_(sheet).map((r,i)=>({values:r,rowNumber:i+2})).find(x=>String(x.values[10]||'')===requestKey);
+  if(!existing)return null;
+  let saved;try{saved=JSON.parse(String(existing.values[12]||'{}'));}catch(e){throw new Error('Payload pemulihan penerimaan tidak dapat dibaca. Hubungi Admin.');}
+  if(!Array.isArray(saved.items)||saved.items.every(x=>Number(x.unitCost)>0))return null;
+  const grouped=Object.create(null);rawItems.forEach(function(x){const pid=String(x&&x.productId||'').trim(),vid=String(x&&x.variationId||'').trim(),qty=Number(x&&x.qty);if(!pid||!Number.isInteger(qty)||qty<1)throw new Error('Data pemulihan penerimaan lama tidak valid.');const k=pid+'|'+vid;if(!grouped[k])grouped[k]={productId:pid,variationId:vid,qty:0};grouped[k].qty+=qty;});
+  const legacyInput={supplier:supplier,reference:reference,note:note,receivedDate:receivedDate,items:Object.keys(grouped).sort().map(k=>grouped[k])},legacyFingerprint=sha256Hex_(JSON.stringify(legacyInput));
+  if(String(existing.values[11]||'')!==legacyFingerprint)throw new Error('Kunci penerimaan lama sudah terikat pada item berbeda. Jangan ulangi dengan data yang diubah.');
+  const done=completeStockReceipt_(ss,existing,saved,session.userId,session.role),queued=processPendingStockOrders_(ss,session.userId,'PENERIMAAN_BARANG',session.role);done.ordersReleased=queued.processed;done.recovered=true;done.legacyCostNotRecorded=true;return done;
+ }finally{lock.releaseLock();}
+}
+
 function createStockReceipt(token,payload){
  const session=requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);payload=payload&&typeof payload==='object'?payload:{};
  const supplier=String(payload.supplier||'').trim().slice(0,120),reference=String(payload.reference||'').trim().slice(0,100),note=String(payload.note||'').trim().slice(0,500);
@@ -1904,6 +1919,7 @@ function createStockReceipt(token,payload){
  if(!supplier)throw new Error('Nama pemasok atau asal barang wajib diisi.');
  if(rawItems.length<1||rawItems.length>100)throw new Error('Tambahkan minimal satu item penerimaan dan maksimal 100 baris.');
  let receivedAt=new Date();if(receivedDate){if(!/^\d{4}-\d{2}-\d{2}$/.test(receivedDate))throw new Error('Tanggal penerimaan tidak valid.');const p=receivedDate.split('-').map(Number);receivedAt=new Date(p[0],p[1]-1,p[2],12);if(isNaN(receivedAt.getTime())||receivedAt.getFullYear()!==p[0]||receivedAt.getMonth()!==p[1]-1||receivedAt.getDate()!==p[2])throw new Error('Tanggal penerimaan tidak valid.');}
+ const legacyRecovery=recoverLegacyStockReceiptIfPending_(session,supplier,reference,note,receivedDate,rawItems,requestKey);if(legacyRecovery)return legacyRecovery;
  const grouped=Object.create(null);rawItems.forEach(x=>{const pid=String(x&&x.productId||'').trim(),vid=String(x&&x.variationId||'').trim(),qty=Number(x&&x.qty),unitCost=Number(x&&x.unitCost);if(!pid||!Number.isInteger(qty)||qty<1||!Number.isSafeInteger(unitCost)||unitCost<1)throw new Error('Setiap item harus memiliki produk, jumlah, dan biaya perolehan per unit yang valid.');const k=pid+'|'+vid;if(!grouped[k])grouped[k]={productId:pid,variationId:vid,qty:0,totalCost:0};grouped[k].qty+=qty;grouped[k].totalCost+=qty*unitCost;if(!Number.isSafeInteger(grouped[k].qty)||!Number.isSafeInteger(grouped[k].totalCost))throw new Error('Jumlah atau nilai biaya penerimaan terlalu besar.');});
  const input={supplier:supplier,reference:reference,note:note,receivedDate:receivedDate,items:Object.keys(grouped).sort().map(k=>({productId:grouped[k].productId,variationId:grouped[k].variationId,qty:grouped[k].qty,totalCost:grouped[k].totalCost,unitCost:Math.round(grouped[k].totalCost/grouped[k].qty)}))},fingerprint=sha256Hex_(JSON.stringify(input));
  const lock=LockService.getScriptLock();lock.waitLock(15000);

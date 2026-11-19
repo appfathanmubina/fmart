@@ -1653,3 +1653,12 @@ test('HPP entry is available on product, variation, receipt and stock-in forms',
  assert.ok(receipt.includes('receipt-cost')&&receipt.includes('unitCost'));
  assert.ok(adjustment.includes('stockUnitCost')&&adjustment.includes('unitCost'));
 });
+
+
+test('Legacy pending stock receipts can recover without inventing historical acquisition cost',()=>{
+ const recovery=extractFunction(code,'recoverLegacyStockReceiptIfPending_');
+ const receipt=extractFunction(code,'createStockReceipt');
+ assert.ok(receipt.includes('recoverLegacyStockReceiptIfPending_'));
+ assert.ok(recovery.includes('legacyFingerprint')&&recovery.includes('legacyCostNotRecorded:true'));
+ assert.ok(index.includes('legacyReceiptSignature'));
+});
