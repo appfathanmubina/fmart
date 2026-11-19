@@ -263,13 +263,30 @@ function setStaffEmail(token,userId,email) {
     if(['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'].indexOf(role)<0) throw new Error('Email hanya dapat diatur untuk akun staf.');
     const rows=sheet.getLastRow()>1?sheet.getRange(2,1,sheet.getLastRow()-1,12).getValues():[];
     if(rows.some(function(r){return String(r[0]||'')!==String(userId)&&normalizeEmail_(r[10])===email;})) throw new Error('Email sudah digunakan akun lain.');
-    sheet.getRange(target.rowNumber,11,1,2).setValues([[email,false]]);
-    sheet.getRange(target.rowNumber,9).setValue(new Date());
+
+    // Kirim dan siapkan tantangan verifikasi sebelum mengubah email akun.
+    // Jika layanan email gagal, email lama, status verifikasi, dan sesi tetap utuh.
     const code=String(100000+(parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16)%900000)),challengeId=Utilities.getUuid()+Utilities.getUuid();
-    CacheService.getScriptCache().put(staffEmailVerifyKey_(challengeId),JSON.stringify({userId:String(userId),email:email,hash:adminOtpHash_(challengeId,code),createdAt:Date.now(),attempts:0}),600);
-    MailApp.sendEmail({to:email,subject:'Verifikasi Email Akun FMart',body:'Kode verifikasi email FMart Anda: '+code+'\n\nKode berlaku selama 10 menit.' ,name:'FMart'});
+    const challengeKey=staffEmailVerifyKey_(challengeId);
+    CacheService.getScriptCache().put(challengeKey,JSON.stringify({userId:String(userId),email:email,hash:adminOtpHash_(challengeId,code),createdAt:Date.now(),attempts:0}),600);
+    try {
+      MailApp.sendEmail({to:email,subject:'Verifikasi Email Akun FMart',body:'Kode verifikasi email FMart Anda: '+code+'\\n\\nKode berlaku selama 10 menit.' ,name:'FMart'});
+    } catch(sendError) {
+      CacheService.getScriptCache().remove(challengeKey);
+      console.error('Pengiriman verifikasi email staf gagal:',sendError);
+      throw new Error('Email verifikasi belum dapat dikirim. Data email akun tidak diubah.');
+    }
+
+    try {
+      sheet.getRange(target.rowNumber,11,1,2).setValues([[email,false]]);
+      sheet.getRange(target.rowNumber,9).setValue(new Date());
+      SpreadsheetApp.flush();
+    } catch(updateError) {
+      CacheService.getScriptCache().remove(challengeKey);
+      console.error('Pembaruan email staf gagal:',updateError);
+      throw new Error('Email verifikasi telah dikirim, tetapi data akun belum berhasil diperbarui. Silakan ulangi proses.');
+    }
     writeAudit_(session.userId,session.role,'SET_STAFF_EMAIL','USER',String(userId),'',JSON.stringify({email:maskEmail_(email)}),'Email staf diatur; menunggu verifikasi');
-    SpreadsheetApp.flush();
     return {ok:true,challengeId:challengeId,maskedEmail:maskEmail_(email),message:'Kode verifikasi telah dikirim.'};
   } finally {lock.releaseLock();}
 }
