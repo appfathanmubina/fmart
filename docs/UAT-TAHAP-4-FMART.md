@@ -19,10 +19,9 @@ Pada CI Tahap 2 dan 3, pemeriksaan sintaks `Code.gs`, sintaks service worker, re
 1. Buat backup Spreadsheet sebelum migrasi header.
 2. Pastikan project Apps Script terikat pada Spreadsheet FMart yang benar. Jangan menjalankan setup dari spreadsheet lain.
 3. Sinkronkan file dari branch `main`: `SetupDatabase.gs`, `Code.gs`, dan `Index.html`.
-4. Di Apps Script Editor, jalankan fungsi publik **`setupFMartDatabase()`** satu kali. Fungsi ini memanggil setup database dan menambahkan header baru di ujung sheet; tidak memindahkan kolom lama.
-5. Periksa halaman Executions dan pastikan setup selesai tanpa error.
-6. Jalankan **`runFMartReadinessAudit()`**. Fungsi ini read-only dan menggabungkan audit database, runtime/Drive/trigger, konsistensi operasional, stok/POS, penerimaan, dan transaksi terhenti.
-7. Simpan hasil lengkap dari Execution log. Jangan lanjut ke uji transaksi jika ada header mismatch, sheet wajib hilang, referensi rusak, stok negatif, atau saldo/mutasi tidak cocok.
+4. **Jangan jalankan setup/migrasi database sebagai bagian dari audit read-only.** `setupFMartDatabase_()` mengubah struktur/default database dan bukan fungsi audit. Jalankan setup hanya jika hasil audit membuktikan diperlukan, setelah target Spreadsheet dipastikan dan backup tersedia, melalui prosedur perubahan database yang disetujui.
+5. Di Apps Script Editor, pilih fungsi publik **`runFMartReadinessAudit`** lalu klik **Run**. Fungsi ini read-only dan menggabungkan audit database, runtime/Drive/trigger, konsistensi operasional, stok/POS, penerimaan, dan transaksi terhenti. Fungsi publik ini meneruskan ke implementasi internal `runFMartReadinessAudit_()`.
+6. Simpan hasil lengkap dari Execution log. Jangan lanjut ke uji transaksi jika ada header mismatch, sheet wajib hilang, referensi rusak, stok negatif, atau saldo/mutasi tidak cocok.
 
 Jangan menjalankan `installDeliveryAutomationTrigger_()` secara manual sebelum hasil audit trigger diperiksa. Fungsi instalasi trigger dapat membuat perubahan; pastikan tidak ada trigger duplikat.
 
@@ -105,7 +104,7 @@ Jalankan hanya pada data uji yang terisolasi.
 
 ## 6. Audit data, Drive, dan trigger
 
-Jalankan `runFMartReadinessAudit()` dan simpan seluruh hasil. Periksa juga fungsi audit individual bila perlu:
+Jalankan fungsi publik `runFMartReadinessAudit` (tanpa akhiran underscore) dan simpan seluruh hasil. Fungsi audit individual berakhiran underscore dipanggil otomatis oleh audit gabungan. Periksa juga fungsi audit individual bila perlu:
 
 - `auditFMartDatabaseIntegrity_()` — header, primary ID, referensi, dan konsistensi database.
 - `auditFMartRuntime_()` — Spreadsheet terhubung, sheet wajib, akun role, folder Drive, dan trigger.
