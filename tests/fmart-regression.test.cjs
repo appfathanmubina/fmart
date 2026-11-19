@@ -177,7 +177,7 @@ test('FIFO order stock release records mutation before changing balance and safe
 });
 test('Manual inbound stock audit accepts requestKey only with an exact matching AuditLog',()=>{
  const helper=extractFunction(code,'hasMatchingManualInboundAudit_'),audit=extractFunction(code,'auditWarehouseReceivingIntegrity_'),sandbox={};
- vm.runInNewContext(helper+'\\nthis.match=hasMatchingManualInboundAudit_;',sandbox);
+ vm.runInNewContext(helper+'\nthis.match=hasMatchingManualInboundAudit_;',sandbox);
  const timestamp=new Date('2026-11-19T03:00:00.000Z');
  const mutation=['MUT-1','PROD-1','','MASUK',7,0,7,'request-key-123456','Saldo awal','USER-1',timestamp];
  const payload={productId:'PROD-1',variationId:'',type:'MASUK',qty:7,stockBefore:0,stockAfter:7};
@@ -251,13 +251,13 @@ test('Apps Script editor exposes safe setup and read-only readiness entry points
 });
 
 
-test('Warehouse receiving audit matches manual inbound audit by request key and full mutation payload',()=>{
- const audit=extractFunction(code,'auditWarehouseReceivingIntegrity_');
- assert.ok(audit.includes("entityId===requestKey||entityId===pid"));
- assert.ok(audit.includes("after.productId||'')===pid"));
- assert.ok(audit.includes('Number(after.stockBefore)===Number(m[5])'));
- assert.ok(audit.includes('Number(after.stockAfter)===Number(m[6])'));
- assert.ok(!audit.includes("String(a[5]||'')!==pid"));
+test('Warehouse receiving audit delegates manual inbound validation to the exact-match helper',()=>{
+ const audit=extractFunction(code,'auditWarehouseReceivingIntegrity_'),helper=extractFunction(code,'hasMatchingManualInboundAudit_');
+ assert.ok(audit.includes('hasMatchingManualInboundAudit_(auditRows,m)'));
+ assert.ok(helper.includes('entityId===requestKey||entityId===pid'));
+ assert.ok(helper.includes("after.productId||'')===pid"));
+ assert.ok(helper.includes('Number(after.stockBefore)===Number(mutation[5])'));
+ assert.ok(helper.includes('Number(after.stockAfter)===Number(mutation[6])'));
 });
 
 test('Operational sync audit flags active non-variant products without canonical warehouse stock rows',()=>{
