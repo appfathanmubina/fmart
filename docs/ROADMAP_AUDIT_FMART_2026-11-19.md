@@ -660,6 +660,13 @@ Setelah siklus fokus diperbaiki, audit statis akan mencocokkan seluruh elemen `.
 
 ### Tahap 38.32 — Audit navigasi keyboard pada menu dan dropdown operasional
 
-**Status: antrean berikutnya; belum dimulai.**
+**Status: audit source selesai; tidak ditemukan inline click handler pada elemen non-interaktif. Satu kontrol kustom (`brandHome`) sudah memakai `role="button"`, `tabindex="0"`, serta aktivasi Enter/Space. Dropdown menggunakan elemen `select` native. Regression test mengunci temuan ini.**
 
 Audit statis akan meninjau menu navigasi, dropdown khusus, tombol ikon, dan kontrol yang dibuat secara dinamis. Fokusnya adalah penggunaan elemen semantik, aktivasi Enter/Space, urutan Tab yang logis, nama aksesibel, dan tidak adanya kontrol interaktif berbasis elemen non-interaktif tanpa keyboard handler. Perbaikan tidak boleh mengubah hak akses menu atau rute role.
+
+
+### Tahap 38.33 — Audit navigasi menu berdasarkan peran dan konsistensi status aktif
+
+**Status: antrean berikutnya; belum dimulai.**
+
+Audit statis akan memeriksa deklarasi menu per role, kesesuaian tombol navigasi dengan section yang dirender, penanda menu aktif, dan perlindungan agar menu role lain tidak ikut tampil. Perubahan harus mempertahankan hak akses Superadmin, Admin, Gudang, Kasir, Petugas Pengantar, Supervisor, dan Wali. Regression test harus membuktikan setiap role tetap hanya memperoleh menu yang diizinkan.
