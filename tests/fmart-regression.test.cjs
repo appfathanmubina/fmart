@@ -729,6 +729,36 @@ test('Tablet portrait keeps the staff navigation as a horizontally scrollable bo
 });
 
 
+test('Wali and staff navigation landmarks have accessible labels',()=>{
+ assert.ok(index.includes('<nav class="bottom-nav" id="customerNav" aria-label="Navigasi Wali Santri">'));
+ assert.ok(index.includes('<nav class="bottom-nav hidden" id="staffNav" aria-label="Navigasi petugas">'));
+});
+
+test('Admin desktop and tablet-landscape sidebar contains scrolling and supports short viewports',()=>{
+ const desktopStart=index.indexOf('body.admin-portal #staffNav.bottom-nav{');
+ assert.ok(desktopStart>=0,'Desktop sidebar rule must exist.');
+ const desktopEnd=index.indexOf('}',desktopStart);
+ const desktopRule=index.slice(desktopStart,desktopEnd);
+ assert.ok(desktopRule.includes('transform:none'));
+ assert.ok(desktopRule.includes('overflow-y:auto'),'Long role menus must remain vertically scrollable.');
+ const stage38=index.slice(index.lastIndexOf('/* Tahap 38.2'),index.lastIndexOf('</style>'));
+ assert.ok(stage38.includes('overscroll-behavior-y:contain'),'Sidebar scroll must not chain into the page.');
+ assert.ok(stage38.includes('scrollbar-width:thin'));
+ assert.ok(stage38.includes('@media (min-width:901px) and (max-height:640px)'),'Short desktop/tablet landscape viewports need compact sidebar spacing.');
+ assert.ok(stage38.includes('min-height:44px'));
+});
+
+test('Tablet portrait keeps the staff navigation as a horizontally scrollable bottom bar',()=>{
+ const start=index.indexOf('/* Tahap F — tablet portrait');
+ const end=index.indexOf('/* Semua panel petugas',start);
+ assert.ok(start>=0&&end>start,'Tablet portrait navigation override must exist.');
+ const tablet=index.slice(start,end);
+ assert.ok(tablet.includes('@media (min-width:761px) and (max-width:900px)'));
+ assert.ok(tablet.includes('overflow-x:auto'));
+ assert.ok(tablet.includes('overscroll-behavior-x:contain'));
+});
+
+
 test('FMart brand header returns each portal to its own home dashboard',()=>{
  const fn=extractFunction(index,'navigateHomeFromBrand_');
  assert.ok(fn.includes("user.role!=='WALI_SANTRI'"),'Staff roles must use the staff navigation path.');
