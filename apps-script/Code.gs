@@ -993,12 +993,13 @@ function getMyNotifications(token) {
   const notifications=rows.slice(0,100).map(function(r){
     const orderId=String(r[2]||'');
     let title=String(r[3]||''),message=String(r[4]||'');
-    const stockRelated=/stok|restok|persediaan|barang tersedia|ketersediaan|belum terpenuhi|belum lengkap|kekurangan|antrean gudang/i.test(title+' '+message);
-    if(session.role===FMART.ROLES.WALI_SANTRI && (waitingStockOrderIds[orderId]||stockRelated)){
+    const stockRelated=isWaliStockRelatedText_(title+' '+message);
+    const redactStockDetails=session.role===FMART.ROLES.WALI_SANTRI && (waitingStockOrderIds[orderId]||stockRelated);
+    if(redactStockDetails){
       title='Pesanan sedang diproses';
       message='Pesanan Anda sedang diproses. Informasi perkembangan berikutnya akan kami sampaikan melalui aplikasi.';
     }
-    return{id:String(r[0]||''),orderId:orderId,title:title,message:message,type:String(r[5]||''),isRead:r[6]===true||String(r[6]).toUpperCase()==='TRUE',createdAt:dateIso_(r[7])};
+    return{id:String(r[0]||''),orderId:orderId,title:title,message:message,type:redactStockDetails?'PESANAN':String(r[5]||''),isRead:r[6]===true||String(r[6]).toUpperCase()==='TRUE',createdAt:dateIso_(r[7])};
   });
   return {ok:true,notifications:notifications,unreadCount:notifications.filter(function(n){return !n.isRead;}).length};
 }
@@ -1102,11 +1103,15 @@ function getWaliDashboard(token) {
   };
 }
 
+function isWaliStockRelatedText_(value) {
+  return /stok|stock|restok|re[\s-]?stock|persediaan|inventory|ketersediaan|barang\s+(?:belum\s+)?(?:tersedia|lengkap|terpenuhi|habis)|kekurangan|kurang\s+stok|stok\s+kurang|antrean\s+gudang|gudang|warehouse|fulfillment|pemenuhan|belum\s+terpenuhi|belum\s+lengkap|menunggu\s+seluruh|reservasi|backorder|supply|tidak\s+mencukupi|tidak\s+cukup|sisa\s+stok|unit\s+tersedia/i.test(String(value||''));
+}
+
 function sanitizeWaliStockNote_(note, orderStatus) {
   const value=String(note||'').trim();
   const status=String(orderStatus||'').toUpperCase();
   // Status antrean dan catatan internal persediaan tidak boleh menjadi petunjuk stok bagi Wali.
-  if(status==='MENUNGGU_STOK' || /stok|restok|persediaan|ketersediaan|barang tersedia|jumlah barang tersedia|kekurangan|antrean gudang|menunggu seluruh jumlah/i.test(value)) {
+  if(status==='MENUNGGU_STOK' || isWaliStockRelatedText_(value)) {
     return 'Pesanan sedang diproses. Informasi perkembangan akan disampaikan melalui aplikasi.';
   }
   return value;
