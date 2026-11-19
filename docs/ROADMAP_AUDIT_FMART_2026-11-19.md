@@ -670,3 +670,12 @@ Audit statis akan meninjau menu navigasi, dropdown khusus, tombol ikon, dan kont
 **Status: antrean berikutnya; belum dimulai.**
 
 Audit statis akan memeriksa deklarasi menu per role, kesesuaian tombol navigasi dengan section yang dirender, penanda menu aktif, dan perlindungan agar menu role lain tidak ikut tampil. Perubahan harus mempertahankan hak akses Superadmin, Admin, Gudang, Kasir, Petugas Pengantar, Supervisor, dan Wali. Regression test harus membuktikan setiap role tetap hanya memperoleh menu yang diizinkan.
+
+
+### Tahap 38.34 — Penataan visual sidebar Desktop (prioritas sela atas permintaan pengguna)
+
+**Status: perbaikan source dan regression test disiapkan; menunggu CI dan merge.**
+
+Sidebar Desktop dirapikan untuk menu aktif maupun tidak aktif: lebar responsif, jarak dan padding, ukuran ikon/teks, warna dasar, hover, indikator aktif, fokus keyboard, dan scrollbar. Lebar workspace dan header diselaraskan dengan lebar sidebar agar proporsional pada monitor lebar maupun rentang desktop yang lebih sempit. Mode navigasi tablet portrait/HP tidak diubah; tinggi layar pendek tetap mendapat kepadatan khusus.
+
+Perubahan dibatasi pada CSS dan regression test. Tidak mengubah daftar menu per role, hak akses, handler navigasi, endpoint, atau data. Tahap 38.33 (audit navigasi per role) tetap menjadi tahap audit berikutnya setelah perbaikan sela ini selesai.
