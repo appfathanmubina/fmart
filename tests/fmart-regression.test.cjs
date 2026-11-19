@@ -859,3 +859,34 @@ test('Admin category, product, and staff forms associate labels with controls',(
   assert.ok(source.includes('id="'+id+'" required'),id+' must expose its required state to browsers and assistive technology.');
  }
 });
+
+
+test('Admin payment, account, and warehouse forms associate labels with controls',()=>{
+ const section=(start,end)=>{const a=index.indexOf(start),b=index.indexOf(end,a);assert.ok(a>=0&&b>a,start+' section must exist.');return index.slice(a,b)};
+ const payment=section('function openPaymentSettings(){','async function openReportsFromProfile');
+ const editWali=section('function openEditWaliForm(userId,waliId){','async function handleUserAction');
+ const editUser=section('function openEditUserForm(id){','function openOpsModal');
+ const receipt=section('function openStockReceiptForm(products){','function openStockMinimumForm');
+ const minimum=section('function openStockMinimumForm(productId,variationId,currentMinimum,itemName){','async function openOpsOrderDetail');
+ const variation=section('function openVariationForm(item){','async function openStockTransferForm');
+ const transfer=section('async function openStockTransferForm(productId,variationId){','function openStockForm');
+ const mutation=section('function openStockForm(productId,variationId){','function closeOpsModal');
+ for(const [source,id] of [
+  [payment,'payQrisImageUrl'],[payment,'payAdminWhatsapp'],
+  [editWali,'editWaliName'],[editWali,'editWaliPhone'],[editWali,'editWaliEmail'],[editWali,'editWaliAddress'],
+  [editUser,'editUserName'],[editUser,'editUserRole'],
+  [receipt,'receiptSupplier'],[receipt,'receiptReference'],[receipt,'receiptDate'],[receipt,'receiptNote'],
+  [minimum,'stockMinimumValue'],
+  [variation,'varName'],[variation,'varValue'],[variation,'varPrice'],[variation,'varStock'],[variation,'varStatus'],
+  [transfer,'transferProduct'],[transfer,'transferVariation'],[transfer,'transferQty'],[transfer,'transferNote'],
+  [mutation,'stockProduct'],[mutation,'stockVariation'],[mutation,'stockType'],[mutation,'stockQty'],[mutation,'stockNote']
+ ]){
+  assert.ok(source.includes('for="'+id+'"'),id+' label must be associated with its control.');
+ }
+ assert.ok(receipt.includes('for="receiptProduct\'+i+\'"')&&receipt.includes('id="receiptProduct\'+i+\'"'));
+ assert.ok(receipt.includes('for="receiptVariation\'+i+\'"')&&receipt.includes('id="receiptVariation\'+i+\'"'));
+ assert.ok(receipt.includes('for="receiptQty\'+i+\'"')&&receipt.includes('id="receiptQty\'+i+\'"'));
+ for(const [source,id] of [[payment,'payQrisImageUrl'],[receipt,'receiptSupplier'],[receipt,'receiptDate'],[minimum,'stockMinimumValue'],[transfer,'transferProduct'],[transfer,'transferQty'],[mutation,'stockProduct'],[mutation,'stockType'],[mutation,'stockQty'],[editUser,'editUserName'],[editUser,'editUserRole']]){
+  assert.ok(source.includes('id="'+id+'" required'),id+' must expose its required state.');
+ }
+});
