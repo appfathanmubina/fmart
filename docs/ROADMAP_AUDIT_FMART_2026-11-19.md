@@ -798,7 +798,7 @@ SOP membedakan prosedur yang sudah tercermin pada source dengan prasyarat yang b
 
 ## Tahap 40.2 — Sinkronisasi checklist UAT dengan pengamanan terbaru
 
-**Status: selesai pada repository. PR #127 telah di-merge ke `main` melalui commit `ea976ce35ed92edf6fe6bb718d909ddacf748659`. Regression CI pasca-merge lulus; build Jekyll lulus dan tahap deployment GitHub Pages masih berjalan saat pembaruan ini dibuat.**
+**Status: selesai pada repository. PR #127 telah di-merge ke `main` melalui commit `ea976ce35ed92edf6fe6bb718d909ddacf748659`. Regression CI pasca-merge lulus; build Jekyll dan deployment GitHub Pages pasca-merge juga lulus.**
 
 Checklist UAT diperbarui untuk mencakup pencocokan nomor Wali dengan `no_wa_wali`, status pending saat mismatch/kosong, batas dua relasi aktif/pending, folder bukti pengantaran yang terpisah, batas 10 MB, dan penolakan file dari folder yang salah. Baseline regression/Pages build terbaru dicatat tanpa menganggapnya sebagai kelulusan runtime. Role Supervisor juga ditandai belum aktif karena tidak ada di backend.
 
@@ -807,8 +807,24 @@ Tahap ini hanya dokumentasi. UAT runtime tetap belum dilakukan dan harus memakai
 
 ## Tahap 40.3 — Paket serah-terima audit repository
 
-**Status: draft disiapkan; menunggu review pemilik proses.**
+**Status: paket serah-terima selesai pada repository. PR #128 telah di-merge ke `main` melalui commit `95a5c04529d4d62101185ca3d9ed28d34ce81c5a`. Review/persetujuan pemilik proses dan gerbang runtime tetap tertunda.**
 
-Ditambahkan `docs/HANDOVER_AUDIT_FMART_2026-11-19.md` yang merangkum PR #117–#127, hasil CI, temuan yang sudah diperbaiki, risiko yang masih terbuka, dan urutan gerbang runtime. README ditautkan ke paket serah-terima.
+Ditambahkan `docs/HANDOVER_AUDIT_FMART_2026-11-19.md` yang merangkum PR #117–#127, hasil CI, temuan yang sudah diperbaiki, risiko yang masih terbuka, dan urutan gerbang runtime. README ditautkan ke paket serah-terima. PR #128 menambahkan dokumen tersebut ke `main`.
 
 Kesimpulan source: audit repository statis lulus untuk lingkup yang telah dikerjakan. Runtime UAT belum dilakukan dan produksi belum disetujui. Akun staf, stok awal, konfigurasi Drive/trigger, rekonsiliasi relasi Wali lama, file bukti existing, backup/restore, serta validasi perangkat tetap menjadi prasyarat.
+
+
+## Tahap 40.4 — Perbaikan tombol masuk yang terblokir validasi OTP tersembunyi
+
+**Status: perbaikan source dan regression test disiapkan; menunggu CI, review PR, dan merge.**
+
+Laporan operator menyatakan tombol Masuk pada halaman login tidak menjalankan proses ketika ditekan. Audit source menemukan input loginOtpCode berada di dalam panel OTP yang disembunyikan, tetapi sejak awal memiliki atribut required. Karena input tersembunyi tersebut tetap menjadi bagian dari form, validasi native browser dapat menolak submit sebelum event submit JavaScript berjalan. Akibatnya, pengguna tidak memperoleh pesan login maupun proses permintaan server.
+
+Perbaikan:
+- Menghapus atribut required dari markup awal sehingga form login Wali/staf dapat disubmit ketika panel OTP belum diminta.
+- Mengaktifkan properti required hanya setelah server mengembalikan requiresOtp dan panel verifikasi ditampilkan.
+- Menghapus status required ketika panel OTP ditutup atau login OTP berhasil.
+- Mempertahankan validasi enam digit di finishStaffLoginWithOtp_(), endpoint OTP, rate limit, pemeriksaan password, dan pengikatan portal/session.
+- Menambah regression test untuk memastikan input OTP tersembunyi tidak memblokir submit awal dan status wajib hanya aktif pada fase OTP.
+
+Perubahan dibatasi pada markup/handler login, regression test, dan roadmap. Tidak mengubah autentikasi backend, struktur database, akun, atau data produksi. Pengujian CI mengunci penyebab pada level source; konfirmasi klik aktual tetap memerlukan uji browser/runtime setelah PR siap dan sesuai gerbang UAT.
