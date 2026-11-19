@@ -944,9 +944,12 @@ test('Gudang dashboard exposes the internal waiting-stock queue as a filterable 
 test('Operations modal has an accessible close name and supports Escape dismissal',()=>{
  assert.ok(index.includes('id="closeOpsModal" aria-label="Tutup dialog"'));
  assert.ok(index.includes("$('closeOpsModal').addEventListener('click',closeOpsModal)"));
- const escapeHandler=index.match(/document\.addEventListener\('keydown',e=>\{if\(e\.key==='Escape'\)\{([^}]+)\}\}\);/);
- assert.ok(escapeHandler,'Global Escape handler must exist.');
- assert.ok(escapeHandler[1].includes('closeOpsModal()'),'Escape must close the staff operations modal.');
+ const escapeStart=index.indexOf("document.addEventListener('keydown',e=>{\n      if(e.key!=='Escape')return;");
+ const escapeEnd=index.indexOf("window.addEventListener('load',boot)",escapeStart);
+ const escapeHandler=index.slice(escapeStart,escapeEnd);
+ assert.ok(escapeStart>=0&&escapeEnd>escapeStart,'Global Escape handler must exist.');
+ assert.ok(escapeHandler.includes('opsModal:closeOpsModal'),'Escape must still close the staff operations modal when it is on top.');
+ assert.ok(escapeHandler.includes('const close=closeById[top.id]'),'Escape must dispatch to the topmost visible modal.');
 });
 
 
@@ -1048,4 +1051,18 @@ test('Delivery complaints refresh preserves the last successful workspace and lo
  assert.ok(fn.includes('Komplain gagal diperbarui. Data terakhir tetap ditampilkan.'));
  assert.ok(fn.includes('id="retryDeliveryComplaints"'),'Initial failure must keep a retry action.');
  assert.ok(index.includes("$('opsMainBody').innerHTML='';updateCartBadge(0)"),'Logout must clear internal operational DOM to avoid stale content across accounts.');
+});
+
+
+test('Escape closes only the topmost visible modal and preserves the underlying modal',()=>{
+ const start=index.indexOf("document.addEventListener('keydown',e=>{\n      if(e.key!=='Escape')return;");
+ const end=index.indexOf("window.addEventListener('load',boot)",start);
+ assert.ok(start>=0&&end>start,'Global Escape handler must exist.');
+ const handler=index.slice(start,end);
+ assert.ok(handler.includes("document.querySelectorAll('.modal:not(.hidden)')"));
+ assert.ok(handler.includes('const top=visible[visible.length-1]'));
+ assert.ok(handler.includes('const close=closeById[top.id]'));
+ assert.ok(handler.includes('if(close){e.preventDefault();close()}'));
+ for(const id of ['paymentModal','orderDetailModal','profileModal','childPickerModal','opsModal'])assert.ok(handler.includes(id+':close'));
+ assert.ok(!handler.includes('closeRegister();closeProfile();'),'Escape must not close every modal at once.');
 });
