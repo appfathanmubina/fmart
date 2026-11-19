@@ -812,3 +812,19 @@ Tahap ini hanya dokumentasi. UAT runtime tetap belum dilakukan dan harus memakai
 Ditambahkan `docs/HANDOVER_AUDIT_FMART_2026-11-19.md` yang merangkum PR #117–#127, hasil CI, temuan yang sudah diperbaiki, risiko yang masih terbuka, dan urutan gerbang runtime. README ditautkan ke paket serah-terima. PR #128 menambahkan dokumen tersebut ke `main`.
 
 Kesimpulan source: audit repository statis lulus untuk lingkup yang telah dikerjakan. Runtime UAT belum dilakukan dan produksi belum disetujui. Akun staf, stok awal, konfigurasi Drive/trigger, rekonsiliasi relasi Wali lama, file bukti existing, backup/restore, serta validasi perangkat tetap menjadi prasyarat.
+
+
+## Tahap 40.4 — Perbaikan tombol masuk yang terblokir validasi OTP tersembunyi
+
+**Status: perbaikan source dan regression test disiapkan; menunggu CI, review PR, dan merge.**
+
+Laporan operator menyatakan tombol Masuk pada halaman login tidak menjalankan proses ketika ditekan. Audit source menemukan input loginOtpCode berada di dalam panel OTP yang disembunyikan, tetapi sejak awal memiliki atribut required. Karena input tersembunyi tersebut tetap menjadi bagian dari form, validasi native browser dapat menolak submit sebelum event submit JavaScript berjalan. Akibatnya, pengguna tidak memperoleh pesan login maupun proses permintaan server.
+
+Perbaikan:
+- Menghapus atribut required dari markup awal sehingga form login Wali/staf dapat disubmit ketika panel OTP belum diminta.
+- Mengaktifkan properti required hanya setelah server mengembalikan requiresOtp dan panel verifikasi ditampilkan.
+- Menghapus status required ketika panel OTP ditutup atau login OTP berhasil.
+- Mempertahankan validasi enam digit di finishStaffLoginWithOtp_(), endpoint OTP, rate limit, pemeriksaan password, dan pengikatan portal/session.
+- Menambah regression test untuk memastikan input OTP tersembunyi tidak memblokir submit awal dan status wajib hanya aktif pada fase OTP.
+
+Perubahan dibatasi pada markup/handler login, regression test, dan roadmap. Tidak mengubah autentikasi backend, struktur database, akun, atau data produksi. Pengujian CI mengunci penyebab pada level source; konfirmasi klik aktual tetap memerlukan uji browser/runtime setelah PR siap dan sesuai gerbang UAT.
