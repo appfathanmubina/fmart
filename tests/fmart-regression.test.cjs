@@ -1117,3 +1117,14 @@ test('Admin header uses the existing compact spacing throughout the tablet break
  assert.ok(tablet.includes('padding-right:20px!important;'));
  assert.ok(!index.includes('Navigasi tablet portrait berada di bawah, jadi header tidak boleh menyisakan ruang sidebar.'));
 });
+
+
+test('Logout closes every modal and clears the operational modal content',()=>{
+ const start=index.indexOf("profileLogoutBtn");
+ const end=index.indexOf("showLogin('Anda telah keluar dari FMart.')",start);
+ assert.ok(start>=0&&end>start,'Profile logout handler must exist.');
+ const logout=index.slice(start,end);
+ assert.ok(logout.includes("document.querySelectorAll('.modal').forEach(modal=>modal.classList.add('hidden'))"));
+ assert.ok(logout.includes("$('opsModalBody').innerHTML=''"),'Operational form content must not remain visible or cached after logout.');
+ assert.ok(logout.includes("$('opsMainBody').innerHTML=''"),'Operational workspace content must be cleared.');
+});
