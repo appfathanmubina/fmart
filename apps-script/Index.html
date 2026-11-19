@@ -3142,7 +3142,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
       const now=new Date(),end=localDateInput_(now),start=localDateInput_(new Date(now.getFullYear(),now.getMonth(),now.getDate()-29));
       $('opsMainTitle').textContent='Laporan & Aktivitas Audit';
       $('opsMainBody').innerHTML=opsWelcomeMarkup('Laporan dan aktivitas audit','Pantau kinerja penjualan serta jejak aktivitas petugas berdasarkan data Spreadsheet.','▤')+
-        '<div class="report-tabs"><button class="report-tab active" id="reportTabSales" type="button">Laporan Penjualan</button><button class="report-tab" id="reportTabAudit" type="button">Aktivitas Audit</button></div>'+
+        '<div class="report-tabs" role="group" aria-label="Jenis laporan"><button class="report-tab active" id="reportTabSales" type="button" aria-pressed="true">Laporan Penjualan</button><button class="report-tab" id="reportTabAudit" type="button" aria-pressed="false">Aktivitas Audit</button></div>'+
         '<div id="reportWorkspace"></div>';
       $('reportTabSales').onclick=()=>{setReportTab_('sales');renderReportWorkspace()};
       $('reportTabAudit').onclick=()=>{setReportTab_('audit');renderAuditWorkspace()};
@@ -3151,8 +3151,8 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
     let currentReportTab='sales';
     function setReportTab_(tab){
       currentReportTab=tab;
-      if($('reportTabSales'))$('reportTabSales').classList.toggle('active',tab==='sales');
-      if($('reportTabAudit'))$('reportTabAudit').classList.toggle('active',tab==='audit');
+      if($('reportTabSales')){$('reportTabSales').classList.toggle('active',tab==='sales');$('reportTabSales').setAttribute('aria-pressed',String(tab==='sales'));}
+      if($('reportTabAudit')){$('reportTabAudit').classList.toggle('active',tab==='audit');$('reportTabAudit').setAttribute('aria-pressed',String(tab==='audit'));}
     }
     function localDateInput_(date){
       const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');
@@ -3160,7 +3160,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
     }
     function reportDateControls_(prefix){
       const now=new Date(),end=localDateInput_(now),start=localDateInput_(new Date(now.getFullYear(),now.getMonth(),now.getDate()-29));
-      return '<div class="report-filter-grid"><div class="field"><label>Dari tanggal</label><input id="'+prefix+'Start" type="date" value="'+start+'"></div><div class="field"><label>Sampai tanggal</label><input id="'+prefix+'End" type="date" value="'+end+'"></div><button class="primary" id="'+prefix+'Run" type="button">Tampilkan</button></div>';
+      return '<div class="report-filter-grid"><div class="field"><label for="'+prefix+'Start">Dari tanggal</label><input id="'+prefix+'Start" type="date" value="'+start+'"></div><div class="field"><label for="'+prefix+'End">Sampai tanggal</label><input id="'+prefix+'End" type="date" value="'+end+'"></div><button class="primary" id="'+prefix+'Run" type="button">Tampilkan</button></div>';
     }
     function renderReportWorkspace(){
       $('reportWorkspace').innerHTML=reportDateControls_('report')+
@@ -3188,12 +3188,13 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
           '<section class="section"><div class="section-title"><h2>Tren transaksi harian</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Tanggal</th><th>Pesanan</th><th>Nilai</th></tr></thead><tbody>'+(daily||'<tr><td colspan="3">Belum ada data.</td></tr>')+'</tbody></table></div></section>'+
           '<section class="section"><div class="section-title"><h2>Status pesanan</h2></div><div class="report-status-grid">'+(statuses||'<span class="muted">Belum ada data.</span>')+'</div></section>'+
           '<div class="report-footnote">Dihitung dari data Spreadsheet pada saat laporan diminta. Rentang tanggal: '+escapeHtml(start)+' s.d. '+escapeHtml(end)+'. Dibuat '+escapeHtml(formatDate(r.generatedAt))+'.</div>';
-      }catch(e){$('reportBody').innerHTML='<div class="empty-box">Laporan belum dapat dimuat. '+escapeHtml(e.message||'Silakan coba kembali.')+'</div>';}
+        $('reportBody').dataset.loaded='true';
+      }catch(e){const body=$('reportBody'),message=e&&e.message?e.message:'Silakan coba kembali.';if(body&&body.dataset.loaded==='true'){showToast('Pembaruan laporan gagal; hasil sebelumnya tetap ditampilkan. '+message,'error')}else if(body){body.innerHTML='<div class="empty-box" role="alert">Laporan belum dapat dimuat. '+escapeHtml(message)+'<button type="button" class="secondary" id="retryReport" style="margin-top:10px;width:100%">Coba muat ulang</button></div>';if($('retryReport'))$('retryReport').onclick=loadReport;}}
       finally{loading(false);}
     }
     function renderAuditWorkspace(){
       $('reportWorkspace').innerHTML=reportDateControls_('audit')+
-        '<div class="report-audit-filters"><div class="field"><label>Peran</label><select id="auditRole"><option value="">Semua peran</option><option>ADMIN</option><option>SUPERADMIN</option><option>KASIR</option><option>GUDANG</option><option>SYSTEM</option></select></div><div class="field"><label>Jenis aktivitas</label><input id="auditAction" placeholder="Contoh: VERIFY_PAYMENT"></div><div class="field"><label>Pencarian</label><input id="auditSearch" placeholder="Petugas, entitas, catatan..."></div></div>'+
+        '<div class="report-audit-filters"><div class="field"><label for="auditRole">Peran</label><select id="auditRole"><option value="">Semua peran</option><option>ADMIN</option><option>SUPERADMIN</option><option>KASIR</option><option>GUDANG</option><option>SYSTEM</option></select></div><div class="field"><label for="auditAction">Jenis aktivitas</label><input id="auditAction" placeholder="Contoh: VERIFY_PAYMENT"></div><div class="field"><label for="auditSearch">Pencarian</label><input id="auditSearch" placeholder="Petugas, entitas, catatan..."></div></div>'+
         '<div class="section"><div class="section-title"><div><h2>Riwayat aktivitas</h2><span class="muted" id="auditMeta">Maksimal 200 catatan terbaru sesuai filter</span></div><button class="secondary" id="auditRefresh" type="button">Muat ulang</button></div><div id="auditRows"><div class="empty-box">Memuat aktivitas...</div></div></div>'+
         '<div class="report-footnote">Riwayat ini bersifat baca saja. Data sebelum/sesudah perubahan tidak ditampilkan pada antarmuka.</div>';
       $('auditRun').onclick=loadAuditLog;$('auditRefresh').onclick=loadAuditLog;loadAuditLog();
@@ -3206,10 +3207,11 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         const r=await runServer('getFMartAuditLog',state.token,start,end,$('auditRole').value,$('auditAction').value,$('auditSearch').value,200);
         $('auditMeta').textContent='Menampilkan '+r.count+' catatan · maksimal 200 hasil terbaru';
         $('auditRows').innerHTML=r.rows.length?'<div class="table-wrap"><table class="data-table audit-table"><thead><tr><th>Waktu</th><th>Petugas</th><th>Peran</th><th>Aktivitas</th><th>Objek</th><th>Catatan</th></tr></thead><tbody>'+r.rows.map(x=>'<tr><td>'+escapeHtml(formatDate(x.createdAt))+'</td><td><strong>'+escapeHtml(x.actorName)+'</strong></td><td><span class="status-badge">'+escapeHtml(x.role||'-')+'</span></td><td>'+escapeHtml(x.action)+'</td><td>'+escapeHtml(x.entityType)+'<small class="audit-entity-id">'+escapeHtml(x.entityId)+'</small></td><td>'+escapeHtml(x.note||'-')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty-box">Tidak ada aktivitas pada periode/filter ini.</div>';
-      }catch(e){$('auditRows').innerHTML='<div class="empty-box">Aktivitas audit gagal dimuat. '+escapeHtml(e.message||'Silakan coba kembali.')+'</div>';}
+        $('auditRows').dataset.loaded='true';
+      }catch(e){const body=$('auditRows'),message=e&&e.message?e.message:'Silakan coba kembali.';if(body&&body.dataset.loaded==='true'){showToast('Pembaruan aktivitas gagal; hasil sebelumnya tetap ditampilkan. '+message,'error')}else if(body){body.innerHTML='<div class="empty-box" role="alert">Aktivitas audit gagal dimuat. '+escapeHtml(message)+'<button type="button" class="secondary" id="retryAuditLog" style="margin-top:10px;width:100%">Coba muat ulang</button></div>';if($('retryAuditLog'))$('retryAuditLog').onclick=loadAuditLog;}}
       finally{loading(false);}
     }
-    async function loadIntegrationStatus(){try{const r=await runServer('getFMartIntegrationStatus',state.token);$('integrationBody').innerHTML='<strong>'+(r.connected?'Terhubung':'Belum terhubung')+'</strong><div class="muted" style="margin-top:5px">Mode: baca saja · '+(r.spreadsheetName?escapeHtml(r.spreadsheetName):'Belum dikonfigurasi')+'</div><div class="field" style="margin-top:12px"><label>ID Spreadsheet Tabungan (opsional)</label><input id="tabunganId" placeholder="Masukkan ID Spreadsheet" value=""></div><button class="secondary" id="saveIntegration">Simpan Konfigurasi</button>';$('saveIntegration').onclick=async()=>{loading(true,'Menyimpan konfigurasi...');try{const x=await runServer('setFMartIntegrationTabunganId',state.token,$('tabunganId').value.trim());$('integrationBody').innerHTML='<strong>'+(x.connected?'Terhubung':'Belum terhubung')+'</strong><div class="muted" style="margin-top:5px">Mode: baca saja · '+(x.spreadsheetName?escapeHtml(x.spreadsheetName):'Belum dikonfigurasi')+'</div>';showToast('Konfigurasi integrasi tersimpan.')}catch(e){showToast(e.message||'Konfigurasi gagal.')}finally{loading(false)}}}catch(e){$('integrationBody').textContent='Status integrasi tidak dapat dimuat.'}}
+    async function loadIntegrationStatus(){try{const r=await runServer('getFMartIntegrationStatus',state.token);$('integrationBody').innerHTML='<strong>'+(r.connected?'Terhubung':'Belum terhubung')+'</strong><div class="muted" style="margin-top:5px">Mode: baca saja · '+(r.spreadsheetName?escapeHtml(r.spreadsheetName):'Belum dikonfigurasi')+'</div><div class="field" style="margin-top:12px"><label for="tabunganId">ID Spreadsheet Tabungan (opsional)</label><input id="tabunganId" placeholder="Masukkan ID Spreadsheet" value=""></div><button class="secondary" id="saveIntegration">Simpan Konfigurasi</button>';$('saveIntegration').onclick=async()=>{loading(true,'Menyimpan konfigurasi...');try{const x=await runServer('setFMartIntegrationTabunganId',state.token,$('tabunganId').value.trim());$('integrationBody').innerHTML='<strong>'+(x.connected?'Terhubung':'Belum terhubung')+'</strong><div class="muted" style="margin-top:5px">Mode: baca saja · '+(x.spreadsheetName?escapeHtml(x.spreadsheetName):'Belum dikonfigurasi')+'</div>';showToast('Konfigurasi integrasi tersimpan.')}catch(e){showToast(e.message||'Konfigurasi gagal.')}finally{loading(false)}}}catch(e){$('integrationBody').innerHTML='<div class="empty-box" role="alert">Status integrasi tidak dapat dimuat. '+escapeHtml(e&&e.message?e.message:'Silakan coba kembali.')+'<button type="button" class="secondary" id="retryIntegrationStatus" style="margin-top:10px;width:100%">Coba muat ulang</button></div>';if($('retryIntegrationStatus'))$('retryIntegrationStatus').onclick=loadIntegrationStatus;}}
 
         function opsWelcomeMarkup(title,description,mark){
       return '<div class="ops-welcome"><div><strong>'+escapeHtml(title)+'</strong><span>'+escapeHtml(description)+'</span></div><div class="ops-welcome-mark" aria-hidden="true">'+mark+'</div></div>';
