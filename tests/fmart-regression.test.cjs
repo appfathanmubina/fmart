@@ -488,3 +488,16 @@ test('Database integrity audit accepts manual order recipient snapshots without 
  assert.ok(operationalAudit.includes("if(!sid&&!hasManualRecipient)issue('ORDER_RECIPIENT_MISSING'"),'Orders without SantriId must still have a valid recipient snapshot.');
  assert.ok(operationalAudit.includes("if(sid&&!santriById[sid])issue('ORDER_SANTRI_REFERENCE_MISSING'"),'Legacy Santri-linked orders must continue validating their Santri reference.');
 });
+
+test('Database integrity audit supports decoupled cart and order recipient records',()=>{
+ const databaseAudit=extractFunction(setup,'auditFMartDatabaseIntegrity_');
+ const add=extractFunction(code,'addToCart');
+ const update=extractFunction(code,'updateCartItem');
+ const checkout=extractFunction(code,'checkoutCart');
+ assert.ok(databaseAudit.includes("checkReference_('Keranjang', 2, 'Santri', 'SantriId keranjang', true)"),'Cart SantriId is optional because recipient data is entered at checkout.');
+ assert.ok(databaseAudit.includes("checkReference_('Pesanan', 3, 'Santri', 'SantriId pesanan', true)"),'Order SantriId is optional when a manual recipient snapshot is present.');
+ assert.ok(add.includes("session.userId,'',productId")&&update.includes("getRange(row.rowNumber, 3).clearContent()"),'Cart writes intentionally leave SantriId empty.');
+ assert.ok(checkout.includes('recipientSnapshot'),'Checkout must persist the recipient snapshot.');
+ assert.ok(databaseAudit.includes("checkReference_('Keranjang', 1, 'Users', 'UserId keranjang', false)"),'Required owner references remain enforced.');
+ assert.ok(databaseAudit.includes("checkReference_('Pesanan', 2, 'Users', 'UserId pesanan', false)"),'Required order owner references remain enforced.');
+});
