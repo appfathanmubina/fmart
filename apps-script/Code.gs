@@ -1473,7 +1473,6 @@ function getOperationsDashboard(token) {
   const proofByAssignment = {};
   proofRows.forEach(function(p){ const key=String(p[2]||''); if(key) proofByAssignment[key]=p; });
   const shipments = readRows_(ss.getSheetByName('Pengiriman'));
-  const users = readRows_(ss.getSheetByName('Users'));
   const santri = readSantriRows_(ss.getSheetByName('Santri'));
   const products = readRows_(ss.getSheetByName('Produk'));
   const stockRows = readRows_(ss.getSheetByName('Stok'));
@@ -2384,7 +2383,6 @@ function getDeliveryDashboard(token) {
   if (!assignmentSheet) throw new Error('Struktur Pengantaran belum tersedia. Jalankan setupFMartDatabase_() terlebih dahulu.');
   const assignments = readRows_(assignmentSheet);
   const orders = readRows_(ss.getSheetByName('Pesanan'));
-  const users = readRows_(ss.getSheetByName('Users'));
   const santriSheet = ss.getSheetByName('Santri');
   const santriMap = getSantriColumnMap_(santriSheet);
   const santriRows = readSantriRows_(santriSheet);
@@ -2393,12 +2391,6 @@ function getDeliveryDashboard(token) {
     const child = santriRecord_(row, santriMap);
     if (child.id) santriById[child.id] = child;
   });
-  const userById = {};
-  users.forEach(function(row) {
-    const id = String(row[0] || '');
-    if (id) userById[id] = {name:String(row[4] || ''), username:String(row[1] || '')};
-  });
-  const waliByUserId={};readRows_(ss.getSheetByName('WaliSantri')).forEach(function(row){const id=String(row[1]||'');if(id)waliByUserId[id]={name:String(row[2]||''),phone:String(row[3]||'')};});
   const orderById = {};
   orders.forEach(function(row) {
     const id = String(row[0] || '');
@@ -2427,7 +2419,6 @@ function getDeliveryDashboard(token) {
     const order = orderById[orderId];
     if (!order) return null;
     const child = getOrderRecipientSnapshot_(ss,order);
-    const wali = waliByUserId[String(order[2] || '')] || userById[String(order[2] || '')] || {};
     const shipment = shipmentByOrder[orderId] || [];
     const proof = proofByAssignment[String(row[0]||'')] || [];
     return {
@@ -2447,8 +2438,8 @@ function getDeliveryDashboard(token) {
       orderStatus:String(order[8] || '').toUpperCase(),
       childName:String(child.name || 'Santri'),
       className:String(child.className || ''),
-      recipientName:String(wali.name || 'Wali Santri'),
-      recipientContact:String(wali.phone || wali.username || ''),
+      recipientName:String(child.name || 'Santri'),
+      recipientContact:String(child.phone || ''),
       destination:String(shipment[3] || ''),
       shipmentStatus:String(shipment[4] || '')
     };
