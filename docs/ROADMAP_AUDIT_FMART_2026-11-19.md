@@ -674,8 +674,37 @@ Audit statis akan memeriksa deklarasi menu per role, kesesuaian tombol navigasi 
 
 ### Tahap 38.34 — Penataan visual sidebar Desktop (prioritas sela atas permintaan pengguna)
 
-**Status: perbaikan source dan regression test disiapkan; menunggu CI dan merge.**
+**Status repository: selesai. PR #117 telah di-merge ke `main` melalui commit `196677efd7bbc59ee02911e861bac53af813e483`. Regression CI dan build/deployment GitHub Pages pasca-merge lulus. Validasi visual browser/perangkat tetap menunggu runtime Tahap 38.**
 
-Sidebar Desktop dirapikan untuk menu aktif maupun tidak aktif: lebar responsif, jarak dan padding, ukuran ikon/teks, warna dasar, hover, indikator aktif, fokus keyboard, dan scrollbar. Lebar workspace dan header diselaraskan dengan lebar sidebar agar proporsional pada monitor lebar maupun rentang desktop yang lebih sempit. Mode navigasi tablet portrait/HP tidak diubah; tinggi layar pendek tetap mendapat kepadatan khusus.
+Sidebar Desktop dirapikan untuk menu aktif maupun tidak aktif: lebar responsif, jarak dan padding, ukuran ikon/teks, warna dasar, hover, indikator aktif, fokus keyboard, dan scrollbar. Lebar workspace dan header diselaraskan dengan lebar sidebar. Pada tinggi layar Desktop pendek, jarak dibuat lebih padat. Perubahan visual dibatasi pada breakpoint mulai 901 px; tablet portrait/HP tidak diubah. Rentang 901–1100 px memakai aturan Desktop terbaru sehingga perlu diperiksa khusus saat validasi perangkat karena sebelumnya termasuk rentang aturan tablet lebar.
 
-Perubahan dibatasi pada CSS dan regression test. Tidak mengubah daftar menu per role, hak akses, handler navigasi, endpoint, atau data. Tahap 38.33 (audit navigasi per role) tetap menjadi tahap audit berikutnya setelah perbaikan sela ini selesai.
+Perubahan hanya menyentuh CSS, regression test, dan roadmap. Tidak mengubah daftar menu per role, hak akses, handler navigasi, endpoint, atau data. PR #117 menambahkan pengujian statis untuk ukuran sidebar, active/inactive/hover/focus, scroll, alignment, viewport pendek, dan perlindungan navigasi tablet portrait. Pengujian statis tidak membuktikan hasil visual pada browser nyata.
+
+Tahap audit berikutnya tetap **Tahap 38.33 — navigasi menu berdasarkan peran dan konsistensi status aktif**.
+
+
+## Review ulang repository dan sinkronisasi roadmap — 19 November 2026
+
+Pemeriksaan dilakukan terhadap `main` pada commit `196677efd7bbc59ee02911e861bac53af813e483`, perubahan PR #107–#117, source utama `apps-script/Index.html` dan `apps-script/Code.gs`, serta regression suite.
+
+### Perubahan yang sudah masuk dan konsistensi source
+
+- **Tahap 38.24–38.29 (PR #107–#112):** semantik field wajib, petunjuk self-link Wali, kewajiban alasan penolakan pembayaran, OTP, dan asosiasi label skeleton profil. Perubahan yang diperiksa menjaga handler/validasi yang ada dan tidak mengubah endpoint atau aturan bisnis.
+- **Tahap 38.30 (PR #114 dan #115):** siklus fokus modal, termasuk fokus awal, pemulihan fokus setelah modal bertumpuk, dan fallback ketika pemicu tidak lagi dapat digunakan. Regression test mengunci interaksi dengan Escape dan focus trap yang sudah ada.
+- **Tahap 38.31:** semantik dan nama aksesibel dialog statis serta judul dialog operasional dinamis telah diaudit dan dikunci melalui regression test.
+- **Tahap 38.32 (PR #116):** kontrol kustom diperiksa; tidak ditemukan inline click handler pada elemen non-interaktif. `brandHome` menggunakan semantik tombol dan aktivasi Enter/Space; dropdown operasional tetap memakai `select` native.
+- **Tahap 38.34 (PR #117):** penataan sidebar Desktop telah masuk `main`; tidak mengubah konfigurasi role maupun aksi navigasi.
+
+### Hasil pemeriksaan otomatis pada main
+
+Pada commit `196677e`, workflow **FMart Regression** dan **pages build and deployment** berstatus sukses. Regression suite saat ini memuat 110 test. Ini membuktikan pemeriksaan statis/build yang tercakup CI lulus, bukan bahwa seluruh alur Apps Script atau tampilan perangkat nyata sudah benar.
+
+### Temuan yang masih perlu ditindaklanjuti
+
+1. **Tahap 38.33 belum dikerjakan:** buat matriks role-menu-section-handler dan regression test untuk seluruh role yang benar-benar didukung. Periksa juga konsistensi satu menu aktif setelah navigasi dan saat dashboard dipanggil kembali.
+2. **Ketidaksesuaian definisi Supervisor:** source `Code.gs` mendefinisikan role staf `SUPERADMIN`, `ADMIN`, `KASIR`, `GUDANG`, dan `PETUGAS_PENGANTAR`; `WALI_SANTRI` memakai portal pembeli. Tidak ada `SUPERVISOR` dalam `FMART.ROLES` atau daftar `portalRoleAllowed_`. Karena roadmap lama menyebut Supervisor, status/keperluan role tersebut harus dikonfirmasi sebelum dimasukkan ke matriks atau diberi akses. Jangan menambah role/izin secara otomatis.
+3. **Validasi visual sidebar:** lakukan pemeriksaan khusus Desktop 901–1100 px, Desktop lebar, tinggi layar pendek, tablet landscape, tablet portrait, dan HP. CSS tidak boleh dianggap tervalidasi secara visual hanya dari string assertion.
+4. **Validasi aksesibilitas runtime:** uji Tab/Shift+Tab, fokus awal dan fokus kembali untuk dialog bertumpuk, dialog dinamis, serta kontrol navigasi menggunakan keyboard dan pembaca layar bila tersedia.
+5. **Tahap runtime 34–40:** temuan database, konfigurasi Drive, akun, stok, transaksi, dan perangkat tetap mengikuti gerbang runtime di roadmap. Tidak ada data produksi yang diubah dalam review ini.
+
+**Kesimpulan:** perubahan PR #107–#117 yang diperiksa sudah tercatat di `main` dan CI terbaru lulus. Tahap 38 belum selesai: Tahap 38.33 masih antre, validasi visual/keyboard runtime masih tertunda, dan definisi role Supervisor perlu keputusan pemilik proses. Status produksi tetap belum dinyatakan siap.
