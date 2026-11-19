@@ -2468,9 +2468,9 @@ async function openWaliProfilePage(){
   const user=(state.data&&state.data.user)||{};
   $('waliProfilePageBody').innerHTML=
     '<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">INFORMASI AKUN</div><h3>Data Wali Santri</h3></div><span class="wali-profile-status">'+escapeHtml(preview.status||'AKTIF')+'</span></div>'+
-    '<div class="wali-profile-form"><div class="field"><label>Nama lengkap</label><input value="'+escapeHtml(preview.nama||user.nama||'')+'" readonly></div>'+
-    '<div class="field"><label>Nomor HP / Username</label><input value="'+escapeHtml(preview.noHp||preview.username||user.username||'')+'" readonly></div>'+
-    '<div class="field"><label>Email</label><input value="'+escapeHtml(preview.email||'')+'" readonly></div></div></section>'+
+    '<div class="wali-profile-form"><div class="field"><label for="waliProfilePreviewName">Nama lengkap</label><input id="waliProfilePreviewName" value="'+escapeHtml(preview.nama||user.nama||'')+'" readonly></div>'+
+    '<div class="field"><label for="waliProfilePreviewPhone">Nomor HP / Username</label><input id="waliProfilePreviewPhone" value="'+escapeHtml(preview.noHp||preview.username||user.username||'')+'" readonly></div>'+
+    '<div class="field"><label for="waliProfilePreviewEmail">Email</label><input id="waliProfilePreviewEmail" value="'+escapeHtml(preview.email||'')+'" readonly></div></div></section>'+
     '<section class="wali-profile-section"><div class="wali-profile-section-head"><div><div class="eyebrow">KELUARGA</div><h3>Manajemen Data Santri</h3></div></div><div class="wali-profile-loading">Memuat data santri dan pengaturan…</div></section>';
   try{
     const result=await runServer('getWaliProfileManagement',state.token);

@@ -621,8 +621,17 @@ Perbaikan menyelaraskan petunjuk dan label aksi menjadi "Hubungkan" tanpa mengub
 
 ### Tahap 38.28 — Semantik wajib pada input OTP login staf
 
-**Status: perbaikan repository disiapkan; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #111 telah di-merge ke `main` melalui commit `f1702f7a07ce45e74bfb9204823c57b3958cebc4`; regression CI, build, dan deployment GitHub Pages pasca-merge lulus.**
 
 Audit form login menemukan input kode OTP enam digit belum memiliki atribut `required`, walaupun handler sudah menolak kode kosong atau tidak sesuai pola. Input kini ditandai wajib; batas enam digit, pola numerik, autocomplete OTP, dan validasi handler dipertahankan.
 
 Regression test mengunci semantik field dan validasi enam digit. Tidak mengubah mekanisme OTP, autentikasi, session, atau backend.
+
+
+### Tahap 38.29 — Asosiasi label pada skeleton profil Wali
+
+**Status: perbaikan repository disiapkan; menunggu CI dan merge.**
+
+Pemeriksaan otomatis seluruh source menemukan tiga label pada tampilan sementara saat profil Wali sedang dimuat yang belum terhubung ke input read-only. Label dan input kini diberi pasangan `for`/ID yang eksplisit. Form profil setelah data selesai dimuat tidak diubah.
+
+Regression test mengunci ketiga asosiasi label. Tidak mengubah data profil, hak akses, penyimpanan, atau tampilan.

@@ -1285,3 +1285,14 @@ test('Staff login OTP field exposes required six-digit semantics',()=>{
  const handler=extractFunction(index,'finishStaffLoginWithOtp_');
  assert.ok(handler.includes("!/^[0-9]{6}$/.test(code)"),'Existing six-digit OTP validation must remain.');
 });
+
+test('Wali profile loading skeleton labels are associated with their read-only fields',()=>{
+ const start=index.indexOf('function openWaliProfilePage(){');
+ const end=index.indexOf('function renderWaliProfileManagement(',start);
+ assert.ok(start>=0&&end>start,'Wali profile loader must exist.');
+ const loader=index.slice(start,end);
+ for(const id of ['waliProfilePreviewName','waliProfilePreviewPhone','waliProfilePreviewEmail']){
+  assert.ok(loader.includes('for="'+id+'"'),'Missing skeleton label association for '+id);
+  assert.ok(loader.includes('id="'+id+'"'),'Missing skeleton control '+id);
+ }
+});
