@@ -784,3 +784,21 @@ test('Admin login showcase initialization uses the ID-based DOM helper safely',(
  assert.ok(adminInit.includes("$('loginShowcase').setAttribute("));
  assert.ok(!adminInit.includes("$('.login-showcase')"),'The ID-only helper must not receive a class selector.');
 });
+
+
+test('Staff dashboard shows a recoverable retry state when the initial summary request fails',()=>{
+ const start=index.indexOf('async function loadOps(){');
+ const end=index.indexOf('function renderOps(){',start);
+ assert.ok(start>=0&&end>start,'Operational dashboard loader must exist.');
+ const loader=index.slice(start,end);
+ assert.ok(loader.includes("runServer('getOperationsDashboard',state.token)"));
+ assert.ok(loader.includes("if(!opsData)"),'Initial load failures need a dedicated empty-state fallback.');
+ assert.ok(loader.includes("id=\"retryOpsDashboard\""));
+ assert.ok(loader.includes("$('retryOpsDashboard').onclick=loadOps"),'The retry action must invoke the same loader.');
+ assert.ok(loader.includes("$('opsStats').classList.add('hidden')"),'Empty stats must be hidden when no summary is available.');
+ assert.ok(loader.includes("showToast(message,'error')"),'Refresh failures after a successful load must preserve the current dashboard and report the error.');
+ const renderStart=end;
+ const renderEnd=index.indexOf('async function renderOpsReports',renderStart);
+ const renderer=index.slice(renderStart,renderEnd);
+ assert.ok(renderer.includes("$('opsStats').classList.remove('hidden')"),'Successful dashboard rendering must restore the stats panel.');
+});
