@@ -802,3 +802,26 @@ test('Staff dashboard shows a recoverable retry state when the initial summary r
  const renderer=index.slice(renderStart,renderEnd);
  assert.ok(renderer.includes("$('opsStats').classList.remove('hidden')"),'Successful dashboard rendering must restore the stats panel.');
 });
+
+test('Buyer product-card action label matches its actual detail-opening behavior',()=>{
+ const start=index.indexOf('function productCardMarkup(p){');
+ const end=index.indexOf('\nfunction bindBuyerProductFeedObserver',start);
+ assert.ok(start>=0&&end>start,'Buyer product-card renderer must exist.');
+ const card=index.slice(start,end);
+ assert.ok(card.includes('data-open-product='));
+ assert.ok(card.includes('aria-label="Lihat detail produk '));
+ assert.ok(card.includes('escapeHtml(p.name)'));
+ assert.ok(card.includes('title="Lihat detail produk"'));
+ assert.ok(!card.includes('title="Tambah ke keranjang"'),'The control must not claim to add directly when it opens product details.');
+});
+
+
+test('Buyer product detail loading errors use the non-blocking app feedback pattern',()=>{
+ const start=index.indexOf('async function openProduct(productId){');
+ const end=index.indexOf('\nfunction getCurrentDetailVariation',start);
+ assert.ok(start>=0&&end>start,'Product detail loader must exist.');
+ const fn=index.slice(start,end);
+ assert.ok(fn.includes("showToast(e.message||'Gagal memuat detail produk.','error')"));
+ assert.ok(!fn.includes('alert('),'Product detail failures must not interrupt the page with a blocking browser alert.');
+ assert.ok(fn.includes('finally{loading(false)}'),'Loading state must always be dismissed.');
+});
