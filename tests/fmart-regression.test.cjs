@@ -921,3 +921,21 @@ test('Admin report, audit, and integration loading failures have retryable recov
  assert.ok(integration.includes("$('retryIntegrationStatus').onclick=loadIntegrationStatus"));
  assert.ok(integration.includes('for="tabunganId"'));
 });
+
+
+test('Gudang dashboard exposes the internal waiting-stock queue as a filterable stage',()=>{
+ const start=index.indexOf('function renderOpsWarehouseDashboard(){');
+ const end=index.indexOf('function renderOpsWarehouse(){',start);
+ assert.ok(start>=0&&end>start,'Warehouse dashboard renderer must exist.');
+ const dashboard=index.slice(start,end);
+ assert.ok(dashboard.includes("['MENUNGGU_STOK','Menunggu stok',count.MENUNGGU_STOK"));
+ assert.ok(dashboard.includes('class="warehouse-home-flow warehouse-home-flow-stages"'));
+ assert.ok(dashboard.includes("data-warehouse-stage=\"'+x[0]+'\""));
+ assert.ok(dashboard.includes("openOrders(b.dataset.warehouseStage)"),'Stage cards must open the matching warehouse queue filter.');
+ const styleStart=index.indexOf('/* Tahap 38 — six warehouse fulfillment stages');
+ const styleEnd=index.indexOf('</style>',styleStart);
+ const css=index.slice(styleStart,styleEnd);
+ assert.ok(css.includes('@media(min-width:981px)'));
+ assert.ok(css.includes('grid-template-columns:repeat(3,minmax(0,1fr))'));
+ assert.ok(index.includes("['Menunggu Stok',counts.MENUNGGU_STOK]"),'The existing fulfillment queue must retain its internal stock-waiting count.');
+});
