@@ -457,13 +457,25 @@ PR #77 telah di-merge:
 - Tidak mengubah endpoint, penugasan, status pesanan, bukti pengantaran, atau akses role.
 - Regression tests: 85 lulus, 0 gagal.
 
+### Tahap 38.15 — Ketahanan refresh Workspace Kasir/POS
+
+PR #80 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/80
+- Merge commit: `a93733ade8d9f8ea3208d1024c8e80cc8557e6f9`
+- Jika pencarian katalog POS gagal setelah sebelumnya berhasil, daftar produk dan keranjang terakhir tetap ditampilkan; query dikembalikan ke pencarian terakhir yang berhasil.
+- Kegagalan pemuatan katalog pertama tetap menyediakan tombol **Coba lagi**.
+- Jika refresh antrean QRIS atau riwayat penjualan gagal, hasil sebelumnya dipertahankan dan error diberitahukan.
+- Kegagalan awal QRIS/riwayat tetap menyediakan state error dan tombol retry yang sudah ada.
+- Tidak mengubah transaksi POS, pembayaran, stok, harga, backend, atau data produksi.
+- Regression tests: 87 lulus, 0 gagal.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
 1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal header, sidebar, login Admin dua kolom, dan retry Dashboard Operasional sudah masuk `main`.
 2. Selesaikan audit katalog Wali: pencarian, kategori, gambar, kartu/detail produk, keranjang, dan checkout; perbaikan aksesibilitas kartu/detail dan kuantitas keranjang sudah masuk `main`.
 3. Lanjutkan audit formulir, tabel, filter, laporan, dan modal Admin; asosiasi label form Admin/Gudang, filter/retry laporan, aksesibilitas dialog operasional, pemilih Santri, dan POS Kasir sudah diperbaiki; audit seluruh layar/form dinamis masih berjalan.
-4. Lanjutkan audit alur Gudang, Kasir, dan Petugas Pengantar; ringkasan antrean stok Gudang, filter status Pengantaran, aksesibilitas POS Kasir, dan pemulihan refresh Dashboard Pengantaran sudah diperbaiki.
+4. Lanjutkan audit alur Gudang, Kasir, dan Petugas Pengantar; ringkasan antrean stok Gudang, filter status Pengantaran, aksesibilitas POS Kasir, pemulihan refresh Dashboard Pengantaran, serta preservasi katalog/keranjang/QRIS/riwayat saat refresh POS gagal sudah diperbaiki.
 5. Audit responsivitas HP, tablet portrait/landscape, dan desktop serta regresi lintas role.
 6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
 
-**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.14 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog, pemilih Santri, dan POS Kasir. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
+**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.15 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog, pemilih Santri, serta aksesibilitas dan ketahanan refresh POS Kasir. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
