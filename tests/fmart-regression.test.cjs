@@ -371,7 +371,7 @@ test('Wali-Santri relationship limits count distinct active and pending Wali acc
  assert.ok(admin.includes("String(wali.values[6]||'').toUpperCase()!=='AKTIF'"),'Admin cannot attach relationships to inactive Wali accounts.');
  assert.ok(admin.includes('activeOrPendingWaliIds'));
  const approve=extractFunction(code,'approveWaliSantriRequest');
- assert.ok(approve.includes('countDistinctActiveWaliForSantri_'));
+ assert.ok(approve.includes('countDistinctActiveOrPendingWaliForSantri_'));
 });
 
 test('Self-link and Admin approval enforce the same two active-or-pending Wali limit',()=>{
