@@ -309,7 +309,13 @@ test('Order recipient snapshots are reused by internal order and delivery worksp
  assert.ok(extractFunction(code,'getOperationsOrderDetail').includes('getOrderRecipientSnapshot_(ss,r)'));
  assert.ok(extractFunction(code,'getDeliveryAssignmentWorkspace').includes('getOrderRecipientSnapshot_(ss,r)'));
  assert.ok(extractFunction(code,'getDeliveryDashboard').includes('getOrderRecipientSnapshot_(ss,order)'));
- assert.ok(extractFunction(code,'getOperationsDashboard').includes('getOrderRecipientSnapshot_(ss,r)'));
+ const operations=extractFunction(code,'getOperationsDashboard');
+ const recovery=extractFunction(code,'auditFMartTransactionRecovery_');
+ const reports=extractFunction(code,'getFMartOperationalAudit');
+ assert.ok(operations.includes('getOrderRecipientSnapshot_(ss,r)'));
+ assert.ok(operations.includes('child=getOrderRecipientSnapshot_(ss,o)'),'Payment verification must display the saved recipient.');
+ assert.ok(recovery.includes('p.recipientSnapshot?{userId:p.userId,recipient:p.recipientSnapshot'),'Transaction recovery must validate the new recipient fingerprint.');
+ assert.ok(reports.includes('getOrderRecipientSnapshot_(ss,order.row)'),'Order and delivery history must show the saved recipient.');
  assert.ok(extractFunction(code,'auditFMartDatabaseIntegrity_').includes('ORDER_RECIPIENT_MISSING'));
 });
 
