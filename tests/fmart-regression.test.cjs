@@ -969,3 +969,20 @@ test('Delivery status filters include all backend status aliases in the same use
  assert.ok(fn.includes('matchingStatuses.includes(String(t.assignmentStatus||\'\').toUpperCase())'));
  assert.ok(fn.includes('value="DITUGASKAN"')&&fn.includes('value="DITERIMA"')&&fn.includes('value="DALAM_PERJALANAN"'),'The existing filter options must remain stable and map to status groups.');
 });
+
+
+test('Cashier POS buyer, payment, and quantity controls have accessible names',()=>{
+ const start=index.indexOf('function renderCashierPOSPanel_(){');
+ const end=index.indexOf('function bindCashierPOSPanel_(){',start);
+ assert.ok(start>=0&&end>start,'Cashier POS renderer must exist.');
+ const pos=index.slice(start,end);
+ assert.ok(pos.includes('aria-labelledby="cashierBuyerHeading"'));
+ assert.ok(pos.includes('aria-label="Nama pembeli"'));
+ assert.ok(pos.includes('aria-label="Cari nama atau NIS santri"'));
+ assert.ok(pos.includes('aria-labelledby="cashierPaymentHeading"'));
+ assert.ok(pos.includes('for="cashierPaymentMethod"'));
+ assert.ok(pos.includes('aria-label="Kurangi jumlah '));
+ assert.ok(pos.includes('aria-label="Tambah jumlah '));
+ assert.ok(pos.includes('escapeHtml(x.name)'));
+ assert.ok(pos.includes('aria-label="Cari riwayat penjualan"'));
+});
