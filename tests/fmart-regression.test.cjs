@@ -896,8 +896,8 @@ test('Admin payment, account, and warehouse forms associate labels with controls
 
 test('Admin report and audit filters expose associated labels and selected tab state',()=>{
  const dateControls=index.slice(index.indexOf('function reportDateControls_(prefix){'),index.indexOf('function renderReportWorkspace(){'));
- assert.ok(dateControls.includes('for="'+prefix+'Start"'));
- assert.ok(dateControls.includes('for="'+prefix+'End"'));
+ assert.ok(dateControls.includes("for=\"'+prefix+'Start\""));
+ assert.ok(dateControls.includes("for=\"'+prefix+'End\""));
  const audit=index.slice(index.indexOf('function renderAuditWorkspace(){'),index.indexOf('async function loadAuditLog(){'));
  for(const id of ['auditRole','auditAction','auditSearch'])assert.ok(audit.includes('for="'+id+'"'),id+' filter must have an associated label.');
  const tabs=index.slice(index.indexOf('function renderOpsReports(){'),index.indexOf("let currentReportTab='sales';"));
@@ -909,11 +909,11 @@ test('Admin report and audit filters expose associated labels and selected tab s
 
 test('Admin report, audit, and integration loading failures have retryable recovery states',()=>{
  const report=index.slice(index.indexOf('async function loadReport(){'),index.indexOf('async function loadAuditLog(){'));
- assert.ok(report.includes("body.dataset.loaded='true'"));
+ assert.ok(report.includes("$('reportBody').dataset.loaded='true'"));
  assert.ok(report.includes('id="retryReport"')&&report.includes("$('retryReport').onclick=loadReport"));
  assert.ok(report.includes('hasil sebelumnya tetap ditampilkan'),'A failed report refresh must preserve the previous report.');
  const audit=index.slice(index.indexOf('async function loadAuditLog(){'),index.indexOf('async function loadIntegrationStatus(){'));
- assert.ok(audit.includes("body.dataset.loaded='true'"));
+ assert.ok(audit.includes("$('auditRows').dataset.loaded='true'"));
  assert.ok(audit.includes('id="retryAuditLog"')&&audit.includes("$('retryAuditLog').onclick=loadAuditLog"));
  assert.ok(audit.includes('hasil sebelumnya tetap ditampilkan'),'A failed audit refresh must preserve the previous result.');
  const integration=index.slice(index.indexOf('async function loadIntegrationStatus(){'),index.indexOf('function opsWelcomeMarkup'));
