@@ -1604,73 +1604,66 @@ function getWarehouseHistoryReport(token, startDate, endDate) {
  */
 function getStockCardReport(token, productId, variationId, startDate, endDate) {
   requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
-  productId=String(productId||'').trim();
-  variationId=String(variationId||'').trim();
-  if(!productId) throw new Error('Pilih produk atau variasi untuk membuka kartu persediaan.');
+  productId=String(productId||'').trim();variationId=String(variationId||'').trim();
+  if(!productId)throw new Error('Pilih produk atau variasi untuk membuka kartu persediaan.');
   const start=parseWarehouseDate_(startDate,false),end=parseWarehouseDate_(endDate,true);
-  if(end<start) throw new Error('Tanggal akhir tidak boleh lebih awal dari tanggal mulai.');
-  const ss=getSS_();
-  const products=readRows_(ss.getSheetByName('Produk'));
-  const variations=readRows_(ss.getSheetByName('VariasiProduk'));
-  const stocks=readRows_(ss.getSheetByName('Stok'));
-  const mutations=readRows_(ss.getSheetByName('MutasiStok'));
-  const users=readRows_(ss.getSheetByName('Users'));
+  if(end<start)throw new Error('Tanggal akhir tidak boleh lebih awal dari tanggal mulai.');
+  const ss=getSS_(),products=readRows_(ss.getSheetByName('Produk')),variations=readRows_(ss.getSheetByName('VariasiProduk')),stocks=readRows_(ss.getSheetByName('Stok')),mutations=readRows_(ss.getSheetByName('MutasiStok')),users=readRows_(ss.getSheetByName('Users'));
   const productMap=Object.create(null),variationMap=Object.create(null),userMap=Object.create(null);
   products.forEach(function(r){productMap[String(r[0]||'')]=r;});
   variations.forEach(function(r){variationMap[String(r[0]||'')]=r;});
   users.forEach(function(r){userMap[String(r[0]||'')]=String(r[4]||r[1]||'-');});
   const selectedProduct=productMap[productId];
-  if(!selectedProduct) throw new Error('Produk tidak ditemukan.');
-  if(variationId && (!variationMap[variationId] || String(variationMap[variationId][1]||'')!==productId)) throw new Error('Variasi tidak ditemukan atau bukan milik produk tersebut.');
+  if(!selectedProduct)throw new Error('Produk tidak ditemukan.');
+  if(variationId&&(!variationMap[variationId]||String(variationMap[variationId][1]||'')!==productId))throw new Error('Variasi tidak ditemukan atau bukan milik produk tersebut.');
   const items=[];
   products.forEach(function(p){
-    const pid=String(p[0]||''); if(!pid)return;
+    const pid=String(p[0]||'');if(!pid)return;
     const vars=variations.filter(function(v){return String(v[1]||'')===pid;});
     const candidates=vars.length?vars.map(function(v){return {variationId:String(v[0]||''),variationName:[String(v[2]||''),String(v[3]||'')].filter(Boolean).join(': ')};}):[{variationId:'',variationName:''}];
     candidates.forEach(function(v){
-      const key=pid+'|'+v.variationId;
-      const stockMatches=stocks.filter(function(s){return String(s[1]||'')+'|'+String(s[2]||'')===key;});
+      const key=pid+'|'+v.variationId,stockMatches=stocks.filter(function(s){return String(s[1]||'')+'|'+String(s[2]||'')===key;});
       items.push({key:key,productId:pid,variationId:v.variationId,label:String(p[3]||'Produk')+(v.variationName?' · '+v.variationName:'')+' ('+String(p[2]||'-')+')',stock:stockMatches.length?Number(stockMatches[0][3]):null,duplicateStockRows:stockMatches.length});
     });
   });
-  const key=productId+'|'+variationId;
-  const targetMutations=[];
+  const key=productId+'|'+variationId,targetMutations=[],issues=[],mutationIdCounts=Object.create(null);
   mutations.forEach(function(m,index){
     if(String(m[1]||'')+'|'+String(m[2]||'')!==key)return;
-    const dt=m[10] instanceof Date?m[10]:new Date(m[10]||0),time=dt.getTime();
-    if(!Number.isFinite(time))return;
-    targetMutations.push({row:index+2,id:String(m[0]||''),type:String(m[3]||'').toUpperCase(),qty:Number(m[4]),before:Number(m[5]),after:Number(m[6]),referenceId:String(m[7]||''),note:String(m[8]||''),actor:userMap[String(m[9]||'')]||'-',createdAt:dateIso_(m[10]),time:time});
+    const dt=m[10] instanceof Date?m[10]:new Date(m[10]||0),time=dt.getTime(),id=String(m[0]||'');
+    if(id)mutationIdCounts[id]=(mutationIdCounts[id]||0)+1;
+    if(!Number.isFinite(time)){issues.push('Tanggal mutasi pada baris '+(index+2)+' tidak valid dan tidak dapat diurutkan.');return;}
+    targetMutations.push({row:index+2,id:id,type:String(m[3]||'').toUpperCase(),qty:Number(m[4]),before:Number(m[5]),after:Number(m[6]),referenceId:String(m[7]||''),note:String(m[8]||''),actor:userMap[String(m[9]||'')]||'-',createdAt:dateIso_(m[10]),time:time});
   });
-  const prior=targetMutations.filter(function(m){return m.time<start.getTime();});
-  const period=targetMutations.filter(function(m){return m.time>=start.getTime()&&m.time<=end.getTime();});
-  let openingBalance=null;
-  if(prior.length) openingBalance=prior[prior.length-1].after;
-  else if(period.length) openingBalance=period[0].before;
-  let previous=openingBalance;
-  const issues=[];
-  if(!targetMutations.length) issues.push('Belum ada riwayat mutasi untuk item ini; saldo historis tidak dapat direkonstruksi.');
-  const movements=period.map(function(m){
+  targetMutations.sort(function(a,b){return a.time-b.time||a.row-b.row;});
+  Object.keys(mutationIdCounts).forEach(function(id){if(mutationIdCounts[id]>1)issues.push('ID mutasi '+id+' tercatat lebih dari satu kali.');});
+  if(!targetMutations.length)issues.push('Belum ada riwayat mutasi yang valid untuk item ini; saldo historis tidak dapat direkonstruksi.');
+  let previous=null,openingBalance=null,lastBalance=null;
+  const validated=targetMutations.map(function(m){
     const validType=m.type==='MASUK'||m.type==='KELUAR';
     const arithmetic=validType&&Number.isSafeInteger(m.qty)&&m.qty>0&&Number.isSafeInteger(m.before)&&Number.isSafeInteger(m.after)&&m.after===(m.type==='MASUK'?m.before+m.qty:m.before-m.qty)&&m.after>=0;
     const chain=previous===null||previous===m.before;
     if(!arithmetic)issues.push('Mutasi baris '+m.row+' memiliki aritmetika tidak valid.');
     if(!chain)issues.push('Rantai saldo terputus pada mutasi baris '+m.row+'.');
-    previous=m.after;
-    return {mutationId:m.id,createdAt:m.createdAt,type:m.type,qty:m.qty,before:m.before,after:m.after,referenceId:m.referenceId,actor:m.actor,note:m.note,valid:arithmetic&&chain};
+    previous=m.after;lastBalance=m.after;
+    return {source:m,valid:arithmetic&&chain};
   });
+  const prior=validated.filter(function(x){return x.source.time<start.getTime();}),period=validated.filter(function(x){return x.source.time>=start.getTime()&&x.source.time<=end.getTime();});
+  if(prior.length)openingBalance=prior[prior.length-1].source.after;
+  else if(period.length)openingBalance=period[0].source.before;
+  const movements=period.map(function(x){const m=x.source;return {mutationId:m.id,createdAt:m.createdAt,type:m.type,qty:m.qty,before:m.before,after:m.after,referenceId:m.referenceId,actor:m.actor,note:m.note,valid:x.valid};});
   const selectedItem=items.find(function(x){return x.key===key;});
   if(selectedItem&&selectedItem.duplicateStockRows>1)issues.push('Ditemukan '+selectedItem.duplicateStockRows+' baris stok untuk item yang sama.');
   if(selectedItem&&selectedItem.stock===null)issues.push('Baris stok fisik belum tersedia.');
   if(selectedItem&&selectedItem.stock!==null&&(!Number.isSafeInteger(selectedItem.stock)||selectedItem.stock<0))issues.push('Saldo stok fisik bukan bilangan bulat nol atau lebih.');
-  if(selectedItem&&targetMutations.length&&selectedItem.stock!==targetMutations[targetMutations.length-1].after)issues.push('Stok fisik saat ini berbeda dari saldo mutasi terakhir; periksa rekonsiliasi stok.');
+  if(selectedItem&&targetMutations.length&&selectedItem.stock!==lastBalance)issues.push('Stok fisik saat ini berbeda dari saldo mutasi terakhir; periksa rekonsiliasi stok.');
   const inbound=movements.filter(function(m){return m.type==='MASUK';}).reduce(function(n,m){return n+(Number(m.qty)||0);},0);
   const outbound=movements.filter(function(m){return m.type==='KELUAR';}).reduce(function(n,m){return n+(Number(m.qty)||0);},0);
   return {
     ok:true,period:{start:startDate,end:endDate},
     item:{productId:productId,variationId:variationId,name:String(selectedProduct[3]||''),sku:String(selectedProduct[2]||''),variationName:variationId?[String(variationMap[variationId][2]||''),String(variationMap[variationId][3]||'')].filter(Boolean).join(': '):''},
-    summary:{openingBalance:openingBalance,inboundQty:inbound,outboundQty:outbound,closingBalance:period.length?period[period.length-1].after:openingBalance,currentPhysicalStock:selectedItem?selectedItem.stock:null,duplicateStockRows:selectedItem?selectedItem.duplicateStockRows:0,movementCount:movements.length},
+    summary:{openingBalance:openingBalance,inboundQty:inbound,outboundQty:outbound,closingBalance:period.length?period[period.length-1].source.after:openingBalance,currentPhysicalStock:selectedItem?selectedItem.stock:null,duplicateStockRows:selectedItem?selectedItem.duplicateStockRows:0,movementCount:movements.length},
     movements:movements,items:items,issues:issues,issueCount:issues.length,
-    valuation:{available:false,value:null,reason:'Skema FMart belum menyimpan harga pokok/biaya perolehan per produk atau variasi. Harga jual tidak digunakan sebagai pengganti harga pokok.'}
+    valuation:{available:false,value:null,reason:'Skema FMart belum menyimpan harga pokok/biaya perolehan per produk atau variasi maupun biaya satuan pada dokumen penerimaan. Harga jual tidak digunakan sebagai pengganti harga pokok.'}
   };
 }
 
