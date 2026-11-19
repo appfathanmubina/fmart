@@ -1296,3 +1296,21 @@ test('Wali profile loading skeleton labels are associated with their read-only f
   assert.ok(loader.includes('id="'+id+'"'),'Missing skeleton control '+id);
  }
 });
+
+test('Modal focus lifecycle moves focus into dialogs and restores it safely on close',()=>{
+ const marker='(function setupModalFocusLifecycle_(){';
+ const start=index.indexOf(marker);
+ const end=index.indexOf("document.addEventListener('keydown',e=>{\n      const visible=Array.from(document.querySelectorAll('.modal:not(.hidden)'));",start);
+ assert.ok(start>=0&&end>start,'Shared modal focus lifecycle must be installed before keyboard handling.');
+ const lifecycle=index.slice(start,end);
+ assert.ok(lifecycle.includes("new MutationObserver(records=>"),'Modal visibility changes must be observed centrally.');
+ assert.ok(lifecycle.includes("observer.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']})"));
+ assert.ok(lifecycle.includes("openers.set(modal.id,active&&active!==modal&&!modal.contains(active)?active:null)"),'Opening modal must retain its opener.');
+ assert.ok(lifecycle.includes('focusModal(top)'),'New topmost dialog must receive initial focus.');
+ assert.ok(lifecycle.includes('top.contains(target)&&isUsable(target)'),'Closing a nested dialog must restore focus to its opener in the parent.');
+ assert.ok(lifecycle.includes('if(isUsable(target))focusElement(target);else focusFallback()'),'Closing the final dialog must restore a usable opener or a safe page fallback.');
+ assert.ok(lifecycle.includes("modal.setAttribute('tabindex','-1')"),'A dialog without controls must remain programmatically focusable.');
+ const keyboard=index.slice(end,index.indexOf("window.addEventListener('load',boot)",end));
+ assert.ok(keyboard.includes("if(e.key==='Tab'&&top)"),'Existing Tab focus trap must remain.');
+ assert.ok(keyboard.includes("if(e.key!=='Escape')return"),'Existing Escape behavior must remain.');
+});
