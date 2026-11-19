@@ -743,7 +743,7 @@ Regression test mengunci inventaris endpoint literal dan dinamis, keberadaan fun
 
 ## Tahap 39.3 — Audit statis isolasi data sensitif Wali, Kasir, dan Pengantaran
 
-**Status: regression test dan sinkronisasi roadmap disiapkan; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #122 telah di-merge ke `main` melalui commit `ef1bdaa3ede65ca912a3679c053f133af5b01092`. Regression CI pasca-merge lulus (114 test); build/deployment GitHub Pages masih dipantau.**
 
 Audit statis meninjau pembacaan data pesanan, keranjang, notifikasi, katalog/detail produk, antrean pembayaran, bukti pembayaran, dan tugas pengantaran. Regression test mengunci bahwa:
 - Wali hanya membaca pesanan, detail pesanan, keranjang, notifikasi, dan bukti milik akun/sesi sendiri.
@@ -754,3 +754,14 @@ Audit statis meninjau pembacaan data pesanan, keranjang, notifikasi, katalog/det
 - Kasir hanya dapat membaca bukti pembayaran QRIS; Admin/Superadmin tetap mengikuti guard server yang berlaku.
 
 Perubahan hanya pada regression test dan roadmap. Tidak mengubah endpoint, data, atau hak akses. Validasi ini tetap statis dan tidak menggantikan pengujian runtime lintas akun.
+
+
+## Tahap 39.4 — Pengamanan self-link Wali–Santri berdasarkan nomor wali
+
+**Status: perbaikan source dan regression test disiapkan; menunggu CI dan merge.**
+
+Audit menemukan `requestWaliSantriLink()` sebelumnya mengaktifkan hubungan hanya berdasarkan ID Santri dan status aktif, tanpa membandingkan nomor HP akun Wali dengan kolom master Santri `no_wa_wali`. Pencarian UI juga menyatakan seluruh hubungan langsung aktif tanpa verifikasi. Kondisi ini memungkinkan self-link ke Santri yang nomor walinya tidak cocok.
+
+Perbaikan menerapkan pencocokan nomor yang dinormalisasi dengan `normalizePhone_()`. Nomor cocok mengaktifkan hubungan; nomor tidak cocok/kosong membuat status `MENUNGGU_VERIFIKASI` untuk Admin. Batas maksimum dua relasi mencakup relasi aktif dan pengajuan pending. Daftar pencarian menyembunyikan hubungan aktif maupun pending untuk mencegah pengajuan berulang. UI menjelaskan kedua hasil tersebut. Admin/Superadmin tetap memiliki jalur verifikasi manual.
+
+Regression test mengunci perbandingan nomor, status aktif/pending, audit event, batas relasi, dan copy UI. Tidak ada data relasi lama yang dimigrasi otomatis. Hubungan aktif yang sudah ada tidak dicabut oleh perubahan ini; pengujian runtime dan rekonsiliasi data relasi lama tetap diperlukan pada gerbang runtime.
