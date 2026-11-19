@@ -1623,3 +1623,8 @@ test('Supervisor catalog is read-only and Drive QRIS uses an embeddable thumbnai
  const paymentUi=extractFunction(index,'openPayment');
  assert.ok(paymentUi.includes('qrisImageSrc')&&paymentUi.includes('paymentQrisImage'));
 });
+
+test('Supervisor transaction dashboard returns the complete order history',()=>{
+ const dashboard=extractFunction(code,'getOperationsDashboard');
+ assert.ok(dashboard.includes('session.role===FMART.ROLES.SUPERVISOR?orders.length:60'));
+});

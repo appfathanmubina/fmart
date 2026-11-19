@@ -1514,7 +1514,7 @@ function getOperationsDashboard(token) {
   stockRows.forEach(r => { const key=String(r[1])+'|'+String(r[2]||''); if(stockMap[key]===undefined) stockMap[key]=Number(r[3])||0; });
   const productMap = {}; products.forEach(r => productMap[String(r[0])] = {id:String(r[0]),categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),price:Number(r[5])||0,status:String(r[8]||''),photoUrl:String(r[7]||'')});
   const categoryMap = {}; cats.forEach(r => categoryMap[String(r[0])] = String(r[1]||''));
-  const resultOrders = orders.slice().sort((a,b)=>new Date(b[10]||0).getTime()-new Date(a[10]||0).getTime()).slice(0,60).map(r => {
+  const resultOrders = orders.slice().sort((a,b)=>new Date(b[10]||0).getTime()-new Date(a[10]||0).getTime()).slice(0,session.role===FMART.ROLES.SUPERVISOR?orders.length:60).map(r => {
     const pay=paymentMap[String(r[0])], ship=shipMap[String(r[0])], child=getOrderRecipientSnapshot_(ss,r), wali=userMap[String(r[2])];
     return {orderId:String(r[0]),number:String(r[1]),waliName:wali?wali.name:'-',childName:child?child.name:'-',className:child?child.className:'-',total:Number(r[7])||0,status:String(r[8]||''),createdAt:dateIso_(r[10]),payment:pay?{id:String(pay[0]),method:String(pay[2]||''),nominal:Number(pay[3])||0,status:String(pay[5]||''),buktiUrl:''} : null,shipment:ship?{status:String(ship[4]||''),method:String(ship[2]||''),destination:String(ship[3]||'')} : null};
   });
