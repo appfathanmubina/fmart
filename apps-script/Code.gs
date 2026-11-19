@@ -2373,7 +2373,7 @@ function latestPaymentForOrder_(rows, orderId) {
  * Hanya mengembalikan penugasan milik sesi aktif; endpoint bersifat read-only.
  */
 function getDeliveryDashboard(token) {
-  const session = requireRole_(token, [FMART.ROLES.PETUGAS_PENGANTAR]);
+  const session = requireRole_(token, [FMART.ROLES.PETUGAS_PENGANTAR, FMART.ROLES.GUDANG]);
   const ss = getSS_();
   const assignmentSheet = ss.getSheetByName('Pengantaran');
   if (!assignmentSheet) throw new Error('Struktur Pengantaran belum tersedia. Jalankan setupFMartDatabase_() terlebih dahulu.');
@@ -2470,7 +2470,7 @@ function recordDeliveryHistory_(ss, assignmentId, orderId, session, action, befo
   sheet.appendRow([makeFMartId_('RPD'),orderId,assignmentId,session.userId,session.role,action,beforeStatus,afterStatus,String(note||'').slice(0,500),new Date()]);
 }
 function respondDeliveryAssignment(token, assignmentId, decision, reason) {
-  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);
+  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR,FMART.ROLES.GUDANG]);
   assignmentId=String(assignmentId||'').trim();decision=String(decision||'').toUpperCase();reason=String(reason||'').trim().slice(0,300);
   if(!assignmentId||['DITERIMA','DITOLAK'].indexOf(decision)<0) throw new Error('Respons penugasan tidak valid.');
   if(decision==='DITOLAK'&&!reason) throw new Error('Alasan penolakan wajib diisi.');
@@ -2495,7 +2495,7 @@ function respondDeliveryAssignment(token, assignmentId, decision, reason) {
   } finally {lock.releaseLock();}
 }
 function startDeliveryTrip(token, assignmentId) {
-  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);
+  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR,FMART.ROLES.GUDANG]);
   assignmentId=String(assignmentId||'').trim();
   const lock=LockService.getScriptLock();lock.waitLock(15000);
   try {
@@ -2527,7 +2527,7 @@ function startDeliveryTrip(token, assignmentId) {
   } finally {lock.releaseLock();}
 }
 function reportDeliveryFailure(token, assignmentId, reason) {
-  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);
+  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR,FMART.ROLES.GUDANG]);
   assignmentId=String(assignmentId||'').trim();reason=String(reason||'').trim().slice(0,500);
   if(!assignmentId||reason.length<5)throw new Error('Alasan pengantaran gagal minimal 5 karakter wajib diisi.');
   const lock=LockService.getScriptLock();lock.waitLock(15000);
@@ -2564,7 +2564,7 @@ function reportDeliveryFailure(token, assignmentId, reason) {
 }
 
 function updateDeliveryProgress(token, assignmentId, note) {
-  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);
+  const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR,FMART.ROLES.GUDANG]);
   assignmentId=String(assignmentId||'').trim();note=String(note||'').trim().slice(0,500);
   if(!note) throw new Error('Catatan perkembangan wajib diisi.');
   const lock=LockService.getScriptLock();lock.waitLock(10000);
@@ -2590,7 +2590,7 @@ function updateDeliveryProgress(token, assignmentId, note) {
  * tenggat konfirmasi Wali dimulai dari waktu unggah yang tercatat server.
  */
 function submitDeliveryProof(token,assignmentId,fileName,mimeType,dataUrl,note){
- const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR]);assignmentId=String(assignmentId||'').trim();fileName=sanitizeFileName_(fileName||'bukti-pengantaran');mimeType=String(mimeType||'').toLowerCase().trim();note=String(note||'').trim().slice(0,300);
+ const session=requireRole_(token,[FMART.ROLES.PETUGAS_PENGANTAR,FMART.ROLES.GUDANG]);assignmentId=String(assignmentId||'').trim();fileName=sanitizeFileName_(fileName||'bukti-pengantaran');mimeType=String(mimeType||'').toLowerCase().trim();note=String(note||'').trim().slice(0,300);
  if(!assignmentId||!dataUrl)throw new Error('Foto bukti pengantaran wajib dipilih.');if(['image/jpeg','image/png','image/webp'].indexOf(mimeType)<0)throw new Error('Format foto harus JPG, PNG, atau WEBP.');
  const raw=String(dataUrl).replace(/^data:[^;]+;base64,/,'');if(!raw||raw.length>14*1024*1024)throw new Error('Data foto tidak valid atau terlalu besar.');
  let bytes;try{bytes=Utilities.base64Decode(raw);}catch(e){throw new Error('Data foto tidak valid.');}if(!bytes.length||bytes.length>10*1024*1024)throw new Error('Ukuran foto maksimal 10 MB.');
@@ -2629,7 +2629,7 @@ function getDeliveryProofFolder_() {
 function getDeliveryAssignmentWorkspace(token) {
   requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
   const ss=getSS_(), userRows=readRows_(ss.getSheetByName('Users'));
-  const drivers=userRows.filter(r=>String(r[5]||'').toUpperCase()==='PETUGAS_PENGANTAR'&&String(r[6]||'').toUpperCase()==='AKTIF').map(r=>({userId:String(r[0]),name:String(r[4]||r[1]||'Petugas'),username:String(r[1]||'')}));
+  const drivers=userRows.filter(r=>['PETUGAS_PENGANTAR','GUDANG'].indexOf(String(r[5]||'').toUpperCase())>=0&&String(r[6]||'').toUpperCase()==='AKTIF').map(r=>({userId:String(r[0]),name:String(r[4]||r[1]||'Petugas'),username:String(r[1]||''),role:String(r[5]||'').toUpperCase()}));
   const orders=readRows_(ss.getSheetByName('Pesanan')),payments=readRows_(ss.getSheetByName('Pembayaran')),shipments=readRows_(ss.getSheetByName('Pengiriman')),assignments=readRows_(ss.getSheetByName('Pengantaran'));
   const latestPayment={},latestShipment={},activeAssignment={};
   payments.forEach(r=>{const id=String(r[1]||''),old=latestPayment[id];if(id&&(!old||new Date(r[8]||0).getTime()>=new Date(old[8]||0).getTime()))latestPayment[id]=r;});
@@ -2664,7 +2664,7 @@ function assignDeliveryOrder(token,orderId,petugasUserId,note){
     if(String(order.values[8]||'').toUpperCase()!=='DISIAPKAN')throw new Error('Pesanan harus berstatus DISIAPKAN sebelum ditugaskan.');
     if(!assignmentSheet)throw new Error('Sheet Pengantaran belum tersedia. Jalankan setupFMartDatabase_() terlebih dahulu.');
     const users=readRows_(ss.getSheetByName('Users')),driver=users.find(r=>String(r[0]||'')===petugasUserId);
-    if(!driver||String(driver[5]||'').toUpperCase()!=='PETUGAS_PENGANTAR'||String(driver[6]||'').toUpperCase()!=='AKTIF')throw new Error('Akun Petugas Pengantar tidak ditemukan atau tidak aktif.');
+    if(!driver||['PETUGAS_PENGANTAR','GUDANG'].indexOf(String(driver[5]||'').toUpperCase())<0||String(driver[6]||'').toUpperCase()!=='AKTIF')throw new Error('Akun pelaksana pengantaran tidak ditemukan atau tidak aktif.');
     const payment=readRows_(ss.getSheetByName('Pembayaran')).filter(r=>String(r[1]||'')===orderId).sort((a,b)=>new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime())[0];
     if(!payment||String(payment[5]||'').toUpperCase()!=='TERVERIFIKASI')throw new Error('Pembayaran pesanan belum terverifikasi.');
     const shipment=latestShipmentForOrder_(readRows_(ss.getSheetByName('Pengiriman')),orderId);
