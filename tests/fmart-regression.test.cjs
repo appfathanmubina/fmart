@@ -986,3 +986,18 @@ test('Cashier POS buyer, payment, and quantity controls have accessible names',(
  assert.ok(pos.includes('escapeHtml(x.name)'));
  assert.ok(pos.includes('aria-label="Cari riwayat penjualan"'));
 });
+
+
+test('Delivery dashboard refresh preserves the last rendered tasks when a refresh request fails',()=>{
+ const start=index.indexOf('async function renderDeliveryWorkspace(){');
+ const end=index.indexOf('let deliveryDashboardRendered=false;',start);
+ assert.ok(start>=0&&end>start,'Delivery dashboard loader must exist.');
+ const loader=index.slice(start,end);
+ assert.ok(loader.includes("const hasPreviousDashboard=!!deliveryDashboardData&&deliveryDashboardRendered&&!!currentTaskList&&$('opsMainBody').contains(currentTaskList)"));
+ assert.ok(loader.includes("if(!hasPreviousDashboard)$('opsMainBody').innerHTML="),'Only an initial load should replace the workspace with a loading state.');
+ assert.ok(loader.includes("if(hasPreviousDashboard){"));
+ assert.ok(loader.includes("Data terakhir tetap ditampilkan."),'Refresh failures must preserve the last successful view.');
+ assert.ok(loader.includes("id=\"retryDeliveryDashboard\""),'Initial failures must still offer retry.');
+ const logout=index.indexOf("deliveryDashboardData=null;deliveryDashboardRendered=false;updateCartBadge(0)");
+ assert.ok(logout>=0,'Cached delivery data must be cleared when the user logs out.');
+});
