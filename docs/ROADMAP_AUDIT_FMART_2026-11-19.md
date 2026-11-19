@@ -398,13 +398,72 @@ PR #67 telah di-merge:
 - Tidak mengubah query backend, data audit, integrasi, atau izin Admin/Superadmin.
 - Regression tests: 79 lulus, 0 gagal.
 
+### Tahap 38.9 — Ringkasan antrean menunggu stok pada Dashboard Gudang
+
+PR #69 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/69
+- Merge commit: `50d8be4409be45b8d95d89d7bbde22387d3f3339`
+- Menampilkan kartu **Menunggu stok** pada ringkasan Dashboard Gudang.
+- Kartu membuka antrean pesanan dengan filter `MENUNGGU_STOK`.
+- Enam tahap pemenuhan ditata dalam grid responsif.
+- Informasi ini hanya ditampilkan di portal internal; tidak menambah informasi stok/kekurangan stok ke PWA Wali.
+- Tidak mengubah data stok, reservasi, status pesanan, endpoint, atau hak akses.
+
+### Tahap 38.10 — Aksesibilitas dialog operasional
+
+PR #71 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/71
+- Merge commit: `8bba8c9f31adc0ad27a195a722b151121021cb37`
+- Tombol tutup dialog operasional diberi accessible name dan `type=button`.
+- Tombol Escape kini menutup dialog operasional Admin/Gudang/Kasir.
+- Tidak mengubah isi form, endpoint, role, atau data.
+- Regression tests: 81 lulus, 0 gagal.
+
+### Tahap 38.11 — Aksesibilitas pemilih Santri
+
+PR #72 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/72
+- Merge commit: `9e0c29a4b29584153d875fb1c4c713cdb2722f09`
+- Menghubungkan enam label ke kontrol pencarian Santri, filter kelas, dan pilihan hubungan.
+- Tidak mengubah pencarian, filter, persetujuan relasi, hak akses, atau data.
+- Regression tests: 82 lulus, 0 gagal.
+
+### Tahap 38.12 — Normalisasi filter status Dashboard Pengantaran
+
+PR #74 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/74
+- Merge commit: `9a57149c6fe73c93bcb6aa2b89701d383574520a`
+- Filter status memetakan alias backend yang ekuivalen untuk status Ditugaskan, Diterima, dan Dalam Perjalanan.
+- Opsi filter yang mudah dipahami petugas tetap dipertahankan.
+- Tidak mengubah status assignment, tindakan petugas, atau alur penugasan.
+
+### Tahap 38.13 — Aksesibilitas kontrol Kasir POS
+
+PR #76 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/76
+- Merge commit: `178083d6ae4d351cf4f3c38bc8396bd9bffad2b1`
+- Memberi accessible name pada input nama pembeli, pencarian Santri, pencarian riwayat, metode pembayaran, dan tombol kuantitas berdasarkan produk.
+- Menghubungkan judul kelompok Identitas Pembeli dan Pembayaran ke kontrolnya.
+- Tidak mengubah POS, batas stok Kasir, pembayaran, transaksi, atau data.
+
+### Tahap 38.14 — Ketahanan refresh Dashboard Pengantaran
+
+PR #77 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/77
+- Merge commit: `87794c8fbc79e136b96d772553a66abfdb35e7e7`
+- Saat refresh antrean gagal, daftar tugas dan notifikasi terakhir tetap tampil; error diberitahukan tanpa mengosongkan halaman.
+- Kegagalan pemuatan pertama tetap menyediakan tombol **Coba lagi**.
+- Cache dashboard dibersihkan saat logout agar data akun sebelumnya tidak tertinggal.
+- Tidak mengubah endpoint, penugasan, status pesanan, bukti pengantaran, atau akses role.
+- Regression tests: 85 lulus, 0 gagal.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
 1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal header, sidebar, login Admin dua kolom, dan retry Dashboard Operasional sudah masuk `main`.
 2. Selesaikan audit katalog Wali: pencarian, kategori, gambar, kartu/detail produk, keranjang, dan checkout; perbaikan aksesibilitas kartu/detail dan kuantitas keranjang sudah masuk `main`.
-3. Lanjutkan audit formulir, tabel, filter, laporan, dan modal Admin; asosiasi label formulir serta filter/retry laporan dan audit sudah diperbaiki, audit seluruh layar/form dinamis masih berjalan.
-4. Audit tampilan role Gudang, Kasir, dan Petugas Pengantar pada alur operasional masing-masing.
+3. Lanjutkan audit formulir, tabel, filter, laporan, dan modal Admin; asosiasi label form Admin/Gudang, filter/retry laporan, aksesibilitas dialog operasional, pemilih Santri, dan POS Kasir sudah diperbaiki; audit seluruh layar/form dinamis masih berjalan.
+4. Lanjutkan audit alur Gudang, Kasir, dan Petugas Pengantar; ringkasan antrean stok Gudang, filter status Pengantaran, aksesibilitas POS Kasir, dan pemulihan refresh Dashboard Pengantaran sudah diperbaiki.
 5. Audit responsivitas HP, tablet portrait/landscape, dan desktop serta regresi lintas role.
 6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
 
-**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.8 (header, sidebar, login Admin, pemulihan Dashboard Operasional, katalog/keranjang Wali, formulir Admin/Gudang, serta filter dan pemulihan laporan/audit) telah masuk `main`. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
+**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.14 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog, pemilih Santri, dan POS Kasir. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
