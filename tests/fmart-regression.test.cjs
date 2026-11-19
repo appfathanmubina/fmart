@@ -323,6 +323,12 @@ test('Buyer and staff inline application JavaScript parses after Apps Script tem
  assert.equal(parseError,'',parseError);
 });
 
+test('Logout clears only the active portal session namespace',()=>{
+ assert.ok(index.includes('sessionStorage.removeItem(FMART_SESSION_TOKEN_KEY)'));
+ assert.ok(index.includes("if(sessionStorage.getItem('fmartToken')===state.token)sessionStorage.removeItem('fmartToken')"));
+ assert.ok(!index.includes('sessionStorage.clear()'));
+});
+
 test('Admin PWA resolves its own portal, token namespace, and distinct login layout',()=>{
  assert.ok(index.includes("new URLSearchParams(window.location.search).get('portal')"));
  assert.ok(index.includes("'fmartToken_admin'"));
