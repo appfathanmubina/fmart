@@ -1022,3 +1022,17 @@ test('Cashier QRIS queue and sales-history refresh failures preserve previous re
  assert.ok(sales.includes('Pembaruan riwayat gagal; hasil sebelumnya tetap ditampilkan.'));
  assert.ok(sales.includes('if(body&&!hadData)'),'Initial history loading must still show a loading state.');
 });
+
+
+test('Escape closes only the topmost visible modal and preserves the underlying modal',()=>{
+ const start=index.indexOf("document.addEventListener('keydown',e=>{\n      if(e.key!=='Escape')return;");
+ const end=index.indexOf("window.addEventListener('load',boot)",start);
+ assert.ok(start>=0&&end>start,'Global Escape handler must exist.');
+ const handler=index.slice(start,end);
+ assert.ok(handler.includes("document.querySelectorAll('.modal:not(.hidden)')"));
+ assert.ok(handler.includes('const top=visible[visible.length-1]'));
+ assert.ok(handler.includes('const close=closeById[top.id]'));
+ assert.ok(handler.includes('if(close){e.preventDefault();close()}'));
+ for(const id of ['paymentModal','orderDetailModal','profileModal','childPickerModal','opsModal'])assert.ok(handler.includes(id+':close'));
+ assert.ok(!handler.includes('closeRegister();closeProfile();'),'Escape must not close every modal at once.');
+});
