@@ -15,8 +15,6 @@ Branch produksi sumber: `main`
 
 ## Status tahapan
 
-| 40.4 | Perbaikan tombol Masuk yang terblokir input OTP tersembunyi | Selesai pada repository; runtime belum diuji |
-
 | Tahap | Ruang lingkup | Status |
 |---|---|---|
 | 16 | Pemisahan stok Gudang dan Kasir | Selesai |
@@ -36,6 +34,7 @@ Branch produksi sumber: `main`
 | 30 | Audit matriks endpoint dan alur per role | Selesai secara statis/regresi |
 | 31 | Audit akhir kode dan kesiapan produksi | Selesai secara statis; produksi belum dinyatakan siap sebelum runtime |
 | 32 | Gerbang audit runtime: entry point aman dan instruksi eksekusi | Selesai pada source/dokumentasi; runtime menunggu eksekusi operator |
+| 40.4 | Perbaikan tombol Masuk yang terblokir input OTP tersembunyi | Selesai pada repository; runtime belum diuji |
 
 ## Ringkasan perbaikan tahap 22–30
 
@@ -818,7 +817,7 @@ Kesimpulan source: audit repository statis lulus untuk lingkup yang telah dikerj
 
 ## Tahap 40.4 — Perbaikan tombol masuk yang terblokir validasi OTP tersembunyi
 
-**Status: selesai pada repository. PR #130 telah di-merge ke `main` melalui commit `f0be7fdc1ac31b9356b0d853d93195286389a882`. Regression CI dan build GitHub Pages pasca-merge lulus; deployment GitHub Pages sedang dipastikan. Uji klik aktual pada browser/runtime tetap belum dilakukan.**
+**Status: selesai pada repository. PR #130 telah di-merge ke `main` melalui commit `f0be7fdc1ac31b9356b0d853d93195286389a882`. Regression CI, build, dan deployment GitHub Pages pasca-merge lulus. Uji klik aktual pada browser/runtime tetap belum dilakukan.**
 
 Laporan operator menyatakan tombol Masuk pada halaman login tidak menjalankan proses ketika ditekan. Audit source menemukan input loginOtpCode berada di dalam panel OTP yang disembunyikan, tetapi sejak awal memiliki atribut required. Karena input tersembunyi tersebut tetap menjadi bagian dari form, validasi native browser dapat menolak submit sebelum event submit JavaScript berjalan. Akibatnya, pengguna tidak memperoleh pesan login maupun proses permintaan server.
 

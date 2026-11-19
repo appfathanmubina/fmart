@@ -75,7 +75,7 @@ Jangan mengartikan status source audit atau GitHub Pages build sebagai persetuju
 Baseline repository setelah perbaikan login: `f0be7fdc1ac31b9356b0d853d93195286389a882`.
 
 - **PR #129:** menutup Tahap 40.3 pada sisi dokumentasi; paket serah-terima dan status review/runtime tetap dibedakan.
-- **PR #130 / Tahap 40.4:** memperbaiki tombol Masuk yang sebelumnya dapat diblokir validasi native browser karena kolom OTP tersembunyi memiliki atribut `required` sejak awal. Status `required` sekarang hanya aktif saat panel OTP ditampilkan, lalu dibersihkan saat panel ditutup atau OTP berhasil. Regression CI dan build GitHub Pages pasca-merge lulus.
+- **PR #130 / Tahap 40.4:** memperbaiki tombol Masuk yang sebelumnya dapat diblokir validasi native browser karena kolom OTP tersembunyi memiliki atribut `required` sejak awal. Status `required` sekarang hanya aktif saat panel OTP ditampilkan, lalu dibersihkan saat panel ditutup atau OTP berhasil. Regression CI, build, dan deployment GitHub Pages pasca-merge lulus.
 - Perbaikan tidak mengubah backend autentikasi, akun, role, database, atau data produksi. Tombol Masuk belum diuji langsung pada browser/runtime.
 
 Status keseluruhan tetap: **SOURCE AUDIT / REGRESSION PASS — RUNTIME UAT NOT COMPLETE — PRODUCTION NOT APPROVED.**
