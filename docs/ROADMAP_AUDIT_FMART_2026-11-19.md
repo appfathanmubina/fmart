@@ -261,3 +261,19 @@ PR #52 telah memperbaiki audit penerimaan agar mengenali mutasi stok masuk manua
 - Setelah pencatatan, jalankan audit read-only kembali untuk memastikan baris stok, mutasi, dan AuditLog saling cocok.
 
 Temuan MutasiStok baris 2 dari audit sebelumnya masih menunggu penelusuran data sumber. Perbaikan source tidak membuat AuditLog pengganti dan tidak menghapus/mengubah mutasi lama.
+
+
+## Konfirmasi operator dan perbaikan form pengguna — 19 November 2026
+
+Operator mengonfirmasi bahwa:
+- Folder khusus **FMart - Bukti Pengantaran** sudah dibuat dan Script Property sudah diarahkan ke folder tersebut. Pemeriksaan runtime ulang tidak perlu menjadi prasyarat untuk melanjutkan pekerjaan repository/UI.
+- Akun role **ADMIN** sudah dibuat. Pembuatan akun tersebut tidak lagi menjadi pekerjaan tertunda.
+- Akun **PETUGAS_PENGANTAR** belum dibuat karena pilihan role tersebut tidak tersedia pada form **Tambah Akun Petugas** milik Superadmin.
+
+### Perbaikan terarah
+
+Pemeriksaan source menemukan backend createStaffUser() dan FMART.ROLES sudah menerima PETUGAS_PENGANTAR; role tersebut juga sudah didukung pada portal admin, navigasi, dashboard pengantaran, dan endpoint terkait. Kekurangannya hanya pada daftar pilihan di form Tambah Akun Petugas yang belum menampilkan opsi role tersebut.
+
+Perbaikan ditambahkan pada form dengan tetap memakai endpoint backend yang sama. Tes regresi memastikan opsi tersedia dan backend tetap menerima role tersebut. Tidak ada akun yang dibuat otomatis dan tidak ada data produksi yang diubah.
+
+**Status:** konfirmasi operator dicatat; pembuatan akun Petugas Pengantar dapat dilakukan Superadmin setelah perbaikan source diterapkan pada Apps Script. Tahap 38 (validasi PWA/tampilan/perangkat) dapat dilanjutkan tanpa menunggu audit runtime ulang folder atau akun ADMIN. Validasi runtime yang tersisa tetap dilakukan pada tahap pemeriksaan role dan kesiapan produksi, bukan sebagai penghalang perubahan UI repository.
