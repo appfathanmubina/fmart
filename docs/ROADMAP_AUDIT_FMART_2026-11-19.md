@@ -469,6 +469,38 @@ PR #80 telah di-merge:
 - Tidak mengubah transaksi POS, pembayaran, stok, harga, backend, atau data produksi.
 - Regression tests: 87 lulus, 0 gagal.
 
+### Tahap 38.15 — Ketahanan refresh Workspace Kasir POS
+
+PR #80 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/80
+- Merge commit: `a93733ade8d9f8ea3208d1024c8e80cc8557e6f9`
+- Pencarian katalog POS yang gagal tidak lagi menghilangkan katalog dan keranjang yang sudah berhasil dimuat.
+- Kegagalan refresh antrean QRIS dan riwayat penjualan mempertahankan hasil sebelumnya serta memberi notifikasi error.
+- Pemuatan awal tetap menyediakan pesan dan tombol coba ulang.
+- Tidak mengubah transaksi, pembayaran, stok, harga, backend, atau data produksi.
+
+### Tahap 38.16 — Ketahanan refresh Distribusi Pengantaran
+
+PR #81 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/81
+- Merge commit: `cde67e600690e94724dfcddf9ac96ea1fc100181`
+- Daftar pesanan siap antar dan penugasan aktif tetap terlihat jika refresh distribusi gagal.
+- Pemuatan awal tetap menyediakan tombol coba ulang.
+- Cache distribusi dibersihkan saat logout.
+- Tidak mengubah endpoint, daftar petugas, proses penugasan, status pesanan, atau hak akses.
+- Regression tests: 88 lulus, 0 gagal.
+
+### Tahap 38.17 — Ketahanan refresh Penanganan Komplain
+
+PR #84 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/84
+- Merge commit: `e19232c9276b266761234ef0244b676a5cc338a6`
+- Daftar komplain yang sudah dimuat tetap terlihat jika refresh gagal; error disampaikan tanpa mengosongkan workspace.
+- Pemuatan awal tetap menyediakan tombol coba ulang.
+- Saat logout, konten operasional yang tersembunyi dan cache role terkait dibersihkan agar tidak tertinggal pada sesi akun berikutnya.
+- Tidak mengubah endpoint, alur penyelesaian komplain, tenggat konfirmasi, atau hak akses.
+- Regression tests: 89 lulus, 0 gagal.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
 1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal header, sidebar, login Admin dua kolom, dan retry Dashboard Operasional sudah masuk `main`.
