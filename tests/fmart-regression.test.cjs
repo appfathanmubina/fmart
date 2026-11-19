@@ -892,3 +892,32 @@ test('Admin payment, account, and warehouse forms associate labels with controls
   assert.ok(control&&/\brequired\b/.test(control[0]),id+' must expose its required state.');
  }
 });
+
+
+test('Admin report and audit filters expose associated labels and selected tab state',()=>{
+ const dateControls=index.slice(index.indexOf('function reportDateControls_(prefix){'),index.indexOf('function renderReportWorkspace(){'));
+ assert.ok(dateControls.includes("for=\"'+prefix+'Start\""));
+ assert.ok(dateControls.includes("for=\"'+prefix+'End\""));
+ const audit=index.slice(index.indexOf('function renderAuditWorkspace(){'),index.indexOf('async function loadAuditLog(){'));
+ for(const id of ['auditRole','auditAction','auditSearch'])assert.ok(audit.includes('for="'+id+'"'),id+' filter must have an associated label.');
+ const tabs=index.slice(index.indexOf('function renderOpsReports(){'),index.indexOf("let currentReportTab='sales';"));
+ assert.ok(tabs.includes('role="group" aria-label="Jenis laporan"'));
+ assert.ok(tabs.includes('aria-pressed="true"')&&tabs.includes('aria-pressed="false"'));
+ const setter=index.slice(index.indexOf('function setReportTab_(tab){'),index.indexOf('function localDateInput_',index.indexOf('function setReportTab_(tab){')));
+ assert.ok(setter.includes("setAttribute('aria-pressed'"),'Selected report tab state must be exposed to assistive technology.');
+});
+
+test('Admin report, audit, and integration loading failures have retryable recovery states',()=>{
+ const report=index.slice(index.indexOf('async function loadReport(){'),index.indexOf('async function loadAuditLog(){'));
+ assert.ok(report.includes("$('reportBody').dataset.loaded='true'"));
+ assert.ok(report.includes('id="retryReport"')&&report.includes("$('retryReport').onclick=loadReport"));
+ assert.ok(report.includes('hasil sebelumnya tetap ditampilkan'),'A failed report refresh must preserve the previous report.');
+ const audit=index.slice(index.indexOf('async function loadAuditLog(){'),index.indexOf('async function loadIntegrationStatus(){'));
+ assert.ok(audit.includes("$('auditRows').dataset.loaded='true'"));
+ assert.ok(audit.includes('id="retryAuditLog"')&&audit.includes("$('retryAuditLog').onclick=loadAuditLog"));
+ assert.ok(audit.includes('hasil sebelumnya tetap ditampilkan'),'A failed audit refresh must preserve the previous result.');
+ const integration=index.slice(index.indexOf('async function loadIntegrationStatus(){'),index.indexOf('function opsWelcomeMarkup'));
+ assert.ok(integration.includes('id="retryIntegrationStatus"'));
+ assert.ok(integration.includes("$('retryIntegrationStatus').onclick=loadIntegrationStatus"));
+ assert.ok(integration.includes('for="tabunganId"'));
+});
