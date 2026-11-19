@@ -1632,7 +1632,10 @@ test('Supervisor transaction dashboard returns the complete order history',()=>{
 
 test('Weighted-average HPP and gross profit remain explicit for legacy transactions',()=>{
  const helper=extractFunction(code,'weightedAverageHpp_'),migration=extractFunction(code,'migrateFMartCostingSchema'),order=extractFunction(code,'applyOrderStockPlan_'),pos=extractFunction(code,'applyCashierSaleStock_'),report=extractFunction(code,'getFMartReports');
+ assert.doesNotThrow(()=>new vm.Script(setup),'SetupDatabase schema must remain valid JavaScript');
  assert.ok(setup.includes('HargaPokokRataRata')&&setup.includes('HPPSubtotal'));
+ assert.ok(extractFunction(code,'getAdminCatalog').includes('ensureFMartCostingSchema_'));
+ assert.ok(extractFunction(code,'getStockCatalog').includes('ensureFMartCostingSchema_'));
  assert.ok(migration.includes('ensureFMartCostingSchema_'));
  assert.ok(helper.includes('beforeQty*beforeHpp+incomingTotalCost')&&helper.includes('beforeQty>0&&beforeHpp<=0'));
  assert.ok(order.includes("captureSaleDetailHpp_(ss,'DetailPesanan'")&&pos.includes("captureSaleDetailHpp_(ss,'DetailPenjualanToko'"));
