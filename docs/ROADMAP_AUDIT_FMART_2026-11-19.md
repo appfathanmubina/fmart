@@ -215,3 +215,30 @@ Ditambahkan pengaman agar:
 - fungsi penyimpanan bukti pengantaran menolak penggunaan folder pembayaran yang sama, sehingga bukti pengantaran tidak tercampur dengan bukti pembayaran.
 
 Perbaikan ini hanya mengubah source dan tes. Tidak mengubah Script Properties, Drive, Spreadsheet, akun, stok, maupun transaksi produksi.
+
+
+## Konfirmasi operator dan tindak lanjut Tahap 35–36 — 19 November 2026
+
+Operator mengonfirmasi:
+- Folder khusus **FMart - Bukti Pengantaran** sudah dibuat dan Script Property `FMART_DELIVERY_PROOF_FOLDER_ID` sudah diarahkan ke folder tersebut. Konfirmasi akses aktual tetap menunggu audit runtime read-only berikutnya.
+- Seluruh 294 produk aktif yang belum memiliki baris stok kanonis adalah barang persediaan yang memang dikelola Gudang. Saldo stok akan diinput oleh petugas Gudang; aplikasi/repository tidak boleh menginisialisasi saldo nol secara massal atau mengarang saldo awal.
+
+### Hasil pemeriksaan source alur penerimaan Gudang
+
+Source `createStockReceipt()` dan `completeStockReceipt_()` telah diperiksa:
+- Penerimaan dapat dilakukan untuk produk aktif tanpa variasi maupun produk dengan variasi aktif.
+- Jika baris stok kanonis belum ada, penyelesaian penerimaan membuat baris pada sheet `Stok` dengan saldo sesudah penerimaan.
+- Penerimaan mencatat header, detail, mutasi `MASUK`, dan AuditLog; mekanisme request key/payload mendukung pemulihan tanpa menggandakan efek penerimaan.
+- Karena itu, pengisian awal 294 produk dapat dilakukan melalui proses Penerimaan Barang Gudang berdasarkan hitung fisik/dokumen penerimaan, bukan dengan membuat saldo nol massal.
+
+### Arahan operasional stok awal
+
+1. Petugas Gudang melakukan hitung fisik dan/atau memeriksa dokumen sumber untuk setiap produk.
+2. Catat jumlah yang benar melalui menu **Penerimaan Barang**. Gunakan pemasok/asal barang dan referensi dokumen yang sesuai; untuk hasil stock opname, tulis keterangan yang jelas dan dapat ditelusuri.
+3. Jangan menginput angka perkiraan atau menganggap stok kosong hanya karena baris stok belum tersedia.
+4. Setelah input bertahap selesai, jalankan kembali audit read-only. Temuan `PRODUCT_STOCK_ROW_MISSING` seharusnya berkurang sesuai produk yang sudah memiliki baris saldo kanonis.
+5. Jika penerimaan gagal/terputus, gunakan mekanisme pemulihan dengan request key yang sama sesuai alur aplikasi; jangan mengulang sebagai penerimaan baru sebelum memeriksa riwayat penerimaan.
+
+**Status Tahap 36:** kebijakan sumber saldo awal telah dikonfirmasi dan source penerimaan mendukung pembuatan baris stok kanonis. Rekonsiliasi aktual belum selesai sampai Gudang menginput saldo berdasarkan bukti dan audit ulang membuktikan konsistensinya.
+
+**Catatan folder Drive:** source sudah memiliki pengaman ID folder pembayaran/pengantaran yang sama. Karena folder baru telah dibuat dan property diperbarui, audit runtime berikutnya harus memastikan kedua folder terdeteksi berbeda, accessible, dan private. Jangan membagikan ID folder ke chat.
