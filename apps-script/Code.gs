@@ -1119,8 +1119,6 @@ function getMyOrders(token) {
   const orderRows = readRows_(ss.getSheetByName('Pesanan'))
     .filter(function(r){ return String(r[2]) === String(session.userId); })
     .sort(function(a,b){ return new Date(b[10] || 0).getTime() - new Date(a[10] || 0).getTime(); });
-  const santriMap = {};
-  getChildrenForWali_(ss, session.userId).forEach(function(c){ santriMap[String(c.id)] = c; });
   const paymentRows = readRows_(ss.getSheetByName('Pembayaran'));
   const shipmentRows = readRows_(ss.getSheetByName('Pengiriman'));
   const result = orderRows.map(function(r){
@@ -1541,14 +1539,14 @@ function getWarehouseHistoryReport(token, startDate, endDate) {
   const users=readRows_(ss.getSheetByName('Users')),userMap={};
   users.forEach(function(r){userMap[String(r[0])]=String(r[4]||r[1]||'-');});
   const orders=readRows_(ss.getSheetByName('Pesanan')),orderMap={};
-  orders.forEach(function(r){orderMap[String(r[0])]={number:String(r[1]||r[0]),childId:String(r[3]||''),status:String(r[8]||'')};});
+  orders.forEach(function(r){orderMap[String(r[0])]={number:String(r[1]||r[0]),childId:String(r[3]||''),status:String(r[8]||''),row:r};});
   const santriSheet=ss.getSheetByName('Santri'),santriMap=getSantriColumnMap_(santriSheet),santriNames={};
   readSantriRows_(santriSheet).forEach(function(r){const c=santriRecord_(r,santriMap);if(c.id)santriNames[c.id]=c.name;});
   const auditRows=readRows_(ss.getSheetByName('AuditLog'));
   const orderHistory=auditRows.filter(function(r){return String(r[3]||'').toUpperCase()==='UPDATE_ORDER_STATUS'&&String(r[4]||'').toUpperCase()==='PESANAN'&&inRange(r[9]);}).map(function(r){
     let before={},after={};try{before=JSON.parse(String(r[6]||'{}'));}catch(e){}try{after=JSON.parse(String(r[7]||'{}'));}catch(e){}
     const order=orderMap[String(r[5]||'')]||{};
-    return {id:String(r[0]||''),orderId:String(r[5]||''),orderNumber:order.number||String(r[5]||''),childName:santriNames[order.childId]||'-',fromStatus:String(before.status||'-'),toStatus:String(after.status||'-'),note:String(after.note||r[8]||''),actor:userMap[String(r[1])]||'-',role:String(r[2]||'-'),createdAt:dateIso_(r[9]),sortAt:new Date(r[9]||0).getTime()};
+    return {id:String(r[0]||''),orderId:String(r[5]||''),orderNumber:order.number||String(r[5]||''),childName:order.row?getOrderRecipientSnapshot_(ss,order.row).name:'-',fromStatus:String(before.status||'-'),toStatus:String(after.status||'-'),note:String(after.note||r[8]||''),actor:userMap[String(r[1])]||'-',role:String(r[2]||'-'),createdAt:dateIso_(r[9]),sortAt:new Date(r[9]||0).getTime()};
   }).sort(function(a,b){return b.sortAt-a.sortAt;});
   const deliverySheet=ss.getSheetByName('RiwayatPengantaran'),deliveryRows=deliverySheet?readRows_(deliverySheet):[];
   const deliveryHistory=deliveryRows.filter(function(r){return inRange(r[9]);}).map(function(r){const order=orderMap[String(r[1]||'')]||{};return {id:String(r[0]||''),orderId:String(r[1]||''),orderNumber:order.number||String(r[1]||''),childName:santriNames[order.childId]||'-',assignmentId:String(r[2]||''),action:String(r[5]||''),fromStatus:String(r[6]||'-'),toStatus:String(r[7]||'-'),note:String(r[8]||''),actor:userMap[String(r[3])]||'-',role:String(r[4]||'-'),createdAt:dateIso_(r[9]),sortAt:new Date(r[9]||0).getTime()};}).sort(function(a,b){return b.sortAt-a.sortAt;});
@@ -3804,7 +3802,7 @@ function recoverFMartTransactions_(token,limit){
   const results=[];orders.map((r,i)=>({values:r,rowNumber:i+2})).filter(o=>String(o.values[14]||'')).forEach(o=>{
    if(results.length>=max)return;let p;try{p=JSON.parse(String(o.values[14]))}catch(e){results.push({id:String(o.values[0]),type:'CHECKOUT',ok:false,error:'Payload tidak valid.'});return;}
    if((dm[String(o.values[0])]||0)===(p.items||[]).length&&(sm[String(o.values[0])]||0)===1)return;
-   try{const expected=sha256Hex_(JSON.stringify({userId:p.userId,santriId:p.santriId,selectedCartIds:(p.selectedCartIds||[]).slice().sort(),note:String(o.values[9]||''),shippingMethod:p.shippingMethod,requestedDestination:String(p.requestedDestination||'')}));if(expected!==String(o.values[13]||'')||String(p.userId)!==String(o.values[2]))throw new Error('Fingerprint/pemilik tidak cocok.');const done=completeCheckoutOrder_(ss,o,p,session.userId,session.role);results.push({id:String(o.values[0]),type:'CHECKOUT',ok:true,completed:done.itemCount});}catch(e){results.push({id:String(o.values[0]),type:'CHECKOUT',ok:false,error:String(e.message||e)});}
+   try{const fingerprintPayload=p.recipientSnapshot?{userId:p.userId,recipient:p.recipientSnapshot,selectedCartIds:(p.selectedCartIds||[]).slice().sort(),note:String(o.values[9]||''),shippingMethod:p.shippingMethod,requestedDestination:String(p.requestedDestination||'')}:{userId:p.userId,santriId:p.santriId,selectedCartIds:(p.selectedCartIds||[]).slice().sort(),note:String(o.values[9]||''),shippingMethod:p.shippingMethod,requestedDestination:String(p.requestedDestination||'')};const expected=sha256Hex_(JSON.stringify(fingerprintPayload));if(expected!==String(o.values[13]||'')||String(p.userId)!==String(o.values[2]))throw new Error('Fingerprint/pemilik tidak cocok.');const done=completeCheckoutOrder_(ss,o,p,session.userId,session.role);results.push({id:String(o.values[0]),type:'CHECKOUT',ok:true,completed:done.itemCount});}catch(e){results.push({id:String(o.values[0]),type:'CHECKOUT',ok:false,error:String(e.message||e)});}
   });
   const receipts=readRows_(ss.getSheetByName('PenerimaanBarang')),rDetails=readRows_(ss.getSheetByName('DetailPenerimaanBarang')),mut=readRows_(ss.getSheetByName('MutasiStok')),rdm=Object.create(null),rm=Object.create(null);
   rDetails.forEach(r=>rdm[String(r[1]||'')]=(rdm[String(r[1]||'')]||0)+1);mut.forEach(r=>{if(String(r[3]||'').toUpperCase()==='MASUK')rm[String(r[7]||'')]=(rm[String(r[7]||'')]||0)+1;});
