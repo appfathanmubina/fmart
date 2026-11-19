@@ -4038,3 +4038,9 @@ function runFMartReadinessAudit_() {
   logFMartReadinessAudit_(report);
   return report;
 }
+
+
+/** Public editor entry point for the read-only readiness audit. */
+function runFMartReadinessAudit() {
+  return runFMartReadinessAudit_();
+}
