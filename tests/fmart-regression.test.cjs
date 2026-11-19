@@ -998,8 +998,8 @@ test('Delivery dashboard refresh preserves the last rendered tasks when a refres
  assert.ok(loader.includes("if(hasPreviousDashboard){"));
  assert.ok(loader.includes("Data terakhir tetap ditampilkan."),'Refresh failures must preserve the last successful view.');
  assert.ok(loader.includes("id=\"retryDeliveryDashboard\""),'Initial failures must still offer retry.');
- const logout=index.indexOf("deliveryDashboardData=null;deliveryDashboardRendered=false;deliveryAssignmentData=null;updateCartBadge(0)");
- assert.ok(logout>=0,'Cached delivery and assignment data must be cleared when the user logs out.');
+ const logout=index.indexOf("deliveryDashboardData=null;deliveryDashboardRendered=false;deliveryAssignmentData=null;$('opsMainBody').innerHTML='';updateCartBadge(0)");
+ assert.ok(logout>=0,'Cached delivery and assignment data plus internal DOM must be cleared when the user logs out.');
 });
 
 
@@ -1034,7 +1034,7 @@ test('Delivery assignment refresh preserves the last successful distribution wor
  assert.ok(loader.includes("if(hasPreviousWorkspace){"));
  assert.ok(loader.includes('Data terakhir tetap ditampilkan.'));
  assert.ok(loader.includes('id="retryDeliveryAssign"'),'Initial failure must keep a retry action.');
- assert.ok(index.includes('deliveryAssignmentData=null;updateCartBadge(0)'),'Logout must clear cached distribution data.');
+ assert.ok(index.includes("deliveryAssignmentData=null;$('opsMainBody').innerHTML='';updateCartBadge(0)"),'Logout must clear cached distribution data and internal DOM.');
 });
 
 
