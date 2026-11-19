@@ -1355,6 +1355,58 @@ test('Custom interactive markup remains keyboard operable and native controls st
  assert.ok(!index.includes('role="combobox"'),'Do not replace native selects with inaccessible custom dropdowns.');
 });
 
+test('Staff navigation role matrix matches backend portal roles and active state is singular',()=>{
+ const navStart=index.indexOf('<nav class="bottom-nav hidden" id="staffNav"');
+ const navEnd=index.indexOf('</nav>',navStart);
+ assert.ok(navStart>=0&&navEnd>navStart,'Staff navigation root must exist.');
+ const nav=index.slice(navStart,navEnd);
+ const buttonIds=[...nav.matchAll(/<button\b[^>]*\bid="(staff[A-Za-z0-9]+)"/g)].map(m=>m[1]);
+ assert.deepEqual(buttonIds,['staffDashboard','staffOrders','staffPOS','staffPaymentVerification','staffCatalog','staffStock','staffReceiving','staffWarehouseReports','staffDeliveryAssign','staffDelivery','staffDeliveryComplaints','staffUsers','staffReports','staffPaymentSettings']);
+ const configure=extractFunction(index,'configureStaffNavigation');
+ const permissionBlock=(configure.match(/const permissions=\{([\s\S]*?)\n  \};/)||[])[1];
+ assert.ok(permissionBlock,'Role navigation permission map must exist.');
+ const permissionMap={};
+ for(const match of permissionBlock.matchAll(/([A-Z_]+):\[([^\]]*)\]/g))permissionMap[match[1]]=[...match[2].matchAll(/'([^']+)'/g)].map(x=>x[1]);
+ assert.deepEqual(Object.keys(permissionMap).sort(),['ADMIN','GUDANG','KASIR','PETUGAS_PENGANTAR','SUPERADMIN'].sort());
+ for(const [role,ids] of Object.entries(permissionMap)){
+  assert.ok(ids.includes('staffDashboard'),role+' must have dashboard entry.');
+  assert.ok(ids.every(id=>buttonIds.includes(id)),role+' contains an unknown navigation item.');
+ }
+ const roleBlock=(code.match(/ROLES: Object\.freeze\(\{([^}]+)\}\)/)||[])[1]||'';
+ const backendRoles=[...roleBlock.matchAll(/([A-Z_]+):/g)].map(m=>m[1]).filter(role=>role!=='WALI_SANTRI');
+ assert.deepEqual(backendRoles.sort(),Object.keys(permissionMap).sort(),'Every backend staff role must have exactly one navigation permission set.');
+ const portal=(code.match(/function portalRoleAllowed_\(role, portalMode\)\s*\{([\s\S]*?)\n\}/)||[])[1]||'';
+ for(const role of backendRoles)assert.ok(portal.includes("'"+role+"'"),'Staff role '+role+' must be accepted by the admin portal.');
+ assert.ok(!permissionBlock.includes('SUPERVISOR'),'Do not invent a Supervisor role that is absent from backend roles.');
+ const helper=extractFunction(index,'setStaffActiveNavigation');
+ assert.ok(helper.includes("nav.classList.contains('hidden')")&&helper.includes("target.classList.contains('hidden')"),'Hidden navigation items cannot become active.');
+ assert.ok(helper.includes("setAttribute('aria-current','page')")&&helper.includes("removeAttribute('aria-current')"),'Only the active item must expose aria-current=page.');
+ assert.ok(helper.includes("btn.classList.toggle('active',active)"),'One shared helper must enforce a single active navigation item.');
+ assert.ok(configure.includes("btn.removeAttribute('aria-current')")&&configure.includes("setStaffActiveNavigation('staffDashboard')"));
+ for(const id of buttonIds){
+  if(id==='staffDashboard')continue;
+  assert.ok(index.includes("setStaffActiveNavigation('"+id+"')"),'Menu '+id+' must use the shared active-state helper.');
+ }
+ const handlers={
+  staffPOS:["KASIR","ADMIN","SUPERADMIN"],staffPaymentVerification:["KASIR"],staffOrders:["ADMIN","SUPERADMIN","GUDANG"],
+  staffCatalog:["ADMIN","SUPERADMIN"],staffStock:["ADMIN","GUDANG","SUPERADMIN"],staffReceiving:["ADMIN","GUDANG","SUPERADMIN"],
+  staffWarehouseReports:["ADMIN","GUDANG","SUPERADMIN"],staffDeliveryAssign:["ADMIN","GUDANG","SUPERADMIN"],
+  staffDelivery:["PETUGAS_PENGANTAR","GUDANG"],staffDeliveryComplaints:["ADMIN","SUPERADMIN"],
+  staffUsers:["ADMIN","SUPERADMIN"],staffReports:["ADMIN","SUPERADMIN"],staffPaymentSettings:["SUPERADMIN"]
+ };
+ const eventPattern=/\$\('(staff[A-Za-z0-9]+)'\)\.addEventListener\('click'/g;
+ const events=[...index.matchAll(eventPattern)].map(m=>({id:m[1],pos:m.index}));
+ for(const [id,roles] of Object.entries(handlers)){
+  const eventIndex=events.findIndex(e=>e.id===id);
+  assert.ok(eventIndex>=0,'Missing click handler for '+id);
+  const start=events[eventIndex].pos;
+  const end=events[eventIndex+1]?.pos??index.length;
+  const handler=index.slice(start,end);
+  for(const role of roles)assert.ok(handler.includes("'"+role+"'"),id+' must preserve '+role+' authorization.');
+  assert.ok(handler.includes("setStaffActiveNavigation('"+id+"')"),id+' must update active state through shared helper.');
+ }
+});
+
 test('Desktop staff sidebar has balanced dimensions and clear active, inactive, hover and focus states',()=>{
  const marker='/* Tahap 38.34 — sidebar Desktop yang rapi, seimbang, dan konsisten. */';
  const start=index.indexOf(marker);

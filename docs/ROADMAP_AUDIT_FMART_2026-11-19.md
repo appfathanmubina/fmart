@@ -667,9 +667,11 @@ Audit statis akan meninjau menu navigasi, dropdown khusus, tombol ikon, dan kont
 
 ### Tahap 38.33 — Audit navigasi menu berdasarkan peran dan konsistensi status aktif
 
-**Status: antrean berikutnya; belum dimulai.**
+**Status: perbaikan source dan regression test disiapkan; menunggu CI dan merge.**
 
-Audit statis akan memeriksa deklarasi menu per role, kesesuaian tombol navigasi dengan section yang dirender, penanda menu aktif, dan perlindungan agar menu role lain tidak ikut tampil. Perubahan harus mempertahankan hak akses Superadmin, Admin, Gudang, Kasir, Petugas Pengantar, Supervisor, dan Wali. Regression test harus membuktikan setiap role tetap hanya memperoleh menu yang diizinkan.
+Audit menemukan status aktif sebelumnya dikelola dengan pengulangan penghapusan/penambahan class pada masing-masing handler. Pola ini tidak memiliki satu sumber kebenaran dan tidak mengekspos `aria-current`. Ditambahkan helper `setStaffActiveNavigation()` sebagai satu pintu untuk memilih satu menu aktif, menolak target yang tersembunyi, dan menyetel `aria-current="page"` hanya pada menu terpilih. Konfigurasi role menghapus state aktif/aria-current lama lalu mengaktifkan Dashboard hanya jika role memang memiliki akses. Handler menu dipindahkan memakai helper yang sama; pemeriksaan otorisasi handler tetap dipertahankan.
+
+Matriks menu diselaraskan dengan role staf yang benar-benar didefinisikan backend: `SUPERADMIN`, `ADMIN`, `KASIR`, `GUDANG`, dan `PETUGAS_PENGANTAR`. `WALI_SANTRI` tetap memakai navigasi pembeli. `SUPERVISOR` tidak ada di `FMART.ROLES` maupun jalur portal Admin; tidak ditambahkan sebagai role atau diberi hak akses tanpa keputusan eksplisit pemilik proses. Regression test mengunci daftar menu, kesesuaian role backend dan portal, izin tiap handler, serta state aktif tunggal.
 
 
 ### Tahap 38.34 — Penataan visual sidebar Desktop (prioritas sela atas permintaan pengguna)
@@ -708,3 +710,13 @@ Pada commit `196677e`, workflow **FMart Regression** dan **pages build and deplo
 5. **Tahap runtime 34–40:** temuan database, konfigurasi Drive, akun, stok, transaksi, dan perangkat tetap mengikuti gerbang runtime di roadmap. Tidak ada data produksi yang diubah dalam review ini.
 
 **Kesimpulan:** perubahan PR #107–#117 yang diperiksa sudah tercatat di `main` dan CI terbaru lulus. Tahap 38 belum selesai: Tahap 38.33 masih antre, validasi visual/keyboard runtime masih tertunda, dan definisi role Supervisor perlu keputusan pemilik proses. Status produksi tetap belum dinyatakan siap.
+
+
+### Hasil Tahap 38.33 — audit navigasi role dan status aktif
+
+- Navigasi petugas menggunakan helper terpusat untuk menjaga tepat satu menu aktif.
+- Menu tersembunyi tidak dapat dipilih sebagai menu aktif.
+- Item aktif menampilkan `aria-current="page"`; item lain menghapus atribut tersebut.
+- Hak akses yang ada pada handler tidak diubah; pengujian statis membandingkan daftar menu dengan role backend dan jalur portal Admin.
+- Role Supervisor tetap tidak ditambahkan karena belum ada di definisi backend.
+- Pemeriksaan ini bersifat source/regression. Tampilan dan alur klik lintas role tetap menunggu runtime setelah roadmap audit statis selesai.
