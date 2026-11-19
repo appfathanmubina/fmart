@@ -104,7 +104,7 @@ Jalankan hanya pada data uji yang terisolasi.
 
 ## 6. Audit data, Drive, dan trigger
 
-Jalankan fungsi publik `runFMartReadinessAudit` (tanpa akhiran underscore) dan simpan seluruh hasil. Fungsi audit individual berakhiran underscore dipanggil otomatis oleh audit gabungan. Periksa juga fungsi audit individual bila perlu:
+Jalankan fungsi publik `runFMartReadinessAudit` (tanpa akhiran underscore) dan simpan seluruh hasil. Fungsi audit individual berakhiran underscore dipanggil otomatis oleh audit gabungan. Audit gabungan memanggil pemeriksaan internal berikut secara otomatis (fungsi berakhiran underscore bukan entry point publik untuk dijalankan langsung dari daftar fungsi editor):
 
 - `auditFMartDatabaseIntegrity_()` — header, primary ID, referensi, dan konsistensi database.
 - `auditFMartRuntime_()` — Spreadsheet terhubung, sheet wajib, akun role, folder Drive, dan trigger.
