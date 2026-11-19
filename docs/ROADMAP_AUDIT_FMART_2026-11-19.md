@@ -798,8 +798,17 @@ SOP membedakan prosedur yang sudah tercermin pada source dengan prasyarat yang b
 
 ## Tahap 40.2 — Sinkronisasi checklist UAT dengan pengamanan terbaru
 
-**Status: checklist UAT diperbarui; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #127 telah di-merge ke `main` melalui commit `ea976ce35ed92edf6fe6bb718d909ddacf748659`. Regression CI pasca-merge lulus; build Jekyll lulus dan tahap deployment GitHub Pages masih berjalan saat pembaruan ini dibuat.**
 
 Checklist UAT diperbarui untuk mencakup pencocokan nomor Wali dengan `no_wa_wali`, status pending saat mismatch/kosong, batas dua relasi aktif/pending, folder bukti pengantaran yang terpisah, batas 10 MB, dan penolakan file dari folder yang salah. Baseline regression/Pages build terbaru dicatat tanpa menganggapnya sebagai kelulusan runtime. Role Supervisor juga ditandai belum aktif karena tidak ada di backend.
 
 Tahap ini hanya dokumentasi. UAT runtime tetap belum dilakukan dan harus memakai lingkungan/data terisolasi.
+
+
+## Tahap 40.3 — Paket serah-terima audit repository
+
+**Status: draft disiapkan; menunggu review pemilik proses.**
+
+Ditambahkan `docs/HANDOVER_AUDIT_FMART_2026-11-19.md` yang merangkum PR #117–#127, hasil CI, temuan yang sudah diperbaiki, risiko yang masih terbuka, dan urutan gerbang runtime. README ditautkan ke paket serah-terima.
+
+Kesimpulan source: audit repository statis lulus untuk lingkup yang telah dikerjakan. Runtime UAT belum dilakukan dan produksi belum disetujui. Akun staf, stok awal, konfigurasi Drive/trigger, rekonsiliasi relasi Wali lama, file bukti existing, backup/restore, serta validasi perangkat tetap menjadi prasyarat.
