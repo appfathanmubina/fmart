@@ -3389,8 +3389,8 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
     function renderReportWorkspace(){
       $('reportWorkspace').innerHTML=reportDateControls_('report')+
         '<div id="reportBody"><div class="empty-box">Memuat laporan...</div></div>'+
-        '<div class="section"><div class="section-title"><h2>Integrasi Tabungan</h2></div><div id="integrationBody" class="empty-box">Memuat status integrasi...</div></div>';
-      $('reportRun').onclick=loadReport;loadReport();loadIntegrationStatus();
+        (state.data.user.role==='SUPERVISOR'?'':'<div class="section"><div class="section-title"><h2>Integrasi Tabungan</h2></div><div id="integrationBody" class="empty-box">Memuat status integrasi...</div></div>');
+      $('reportRun').onclick=loadReport;loadReport();if(state.data.user.role!=='SUPERVISOR')loadIntegrationStatus();
     }
     async function loadReport(){
       const start=$('reportStart').value,end=$('reportEnd').value;

@@ -233,7 +233,7 @@ test('Responsive and role navigation coverage remains explicit',()=>{
 });
 test('Role-sensitive reports and QRIS settings remain server-gated',()=>{
  const reports=extractFunction(code,'getFMartReports'),settings=extractFunction(code,'getPaymentSettings'),ops=extractFunction(code,'getOperationsDashboard');
- assert.ok(reports.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN'));
+ assert.ok(reports.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN'));
  assert.ok(settings.includes('FMART.ROLES.SUPERADMIN'));
  assert.ok(ops.includes('pendingPayments:waliQrisQueue,products:[],categories:[]'));
 });
