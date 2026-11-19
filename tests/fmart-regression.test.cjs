@@ -986,3 +986,24 @@ test('Cashier POS buyer, payment, and quantity controls have accessible names',(
  assert.ok(pos.includes('escapeHtml(x.name)'));
  assert.ok(pos.includes('aria-label="Cari riwayat penjualan"'));
 });
+
+
+test('Cashier POS refresh failures preserve previously loaded catalog and cart state',()=>{
+ const pos=index.slice(index.indexOf('async function loadCashierPOSData_(query){'),index.indexOf('async function loadCashierQrisQueue_(render){'));
+ assert.ok(pos.includes('pos.loadedSearch=String(query||\'\');pos.hasLoadedProducts=true'));
+ assert.ok(pos.includes('if(pos.hasLoadedProducts)'));
+ assert.ok(pos.includes('pos.search=pos.loadedSearch||\'\''));
+ assert.ok(pos.includes('hasil sebelumnya tetap ditampilkan'));
+ assert.ok(pos.includes('renderCashierPOSPanel_()'),'Previously loaded POS products and cart must be redrawn after a failed search.');
+ assert.ok(pos.includes('id="cashierPOSRetry"'),'Initial catalog failure must still provide a retry button.');
+});
+
+test('Cashier QRIS queue and sales-history refresh failures preserve previous results',()=>{
+ const qris=index.slice(index.indexOf('async function loadCashierQrisQueue_(render){'),index.indexOf('function cashierQrisRemaining_'));
+ assert.ok(qris.includes('hadData=!!pos.qrisQueueLoaded'));
+ assert.ok(qris.includes('Pembaruan antrean QRIS gagal; data sebelumnya tetap ditampilkan.'));
+ const sales=index.slice(index.indexOf('async function loadCashierSalesHistory_(){'),index.indexOf('function cashierSaleStatus_'));
+ assert.ok(sales.includes('hadData=!!pos.salesHistoryLoaded'));
+ assert.ok(sales.includes('Pembaruan riwayat gagal; hasil sebelumnya tetap ditampilkan.'));
+ assert.ok(sales.includes('if(body&&!hadData)'),'Initial history loading must still show a loading state.');
+});
