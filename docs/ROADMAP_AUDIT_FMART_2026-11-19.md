@@ -541,6 +541,19 @@ PR #97 telah di-merge:
 - Tidak mengubah autentikasi, token/session backend, hak akses, atau data transaksi.
 - Regression tests: 94 lulus, 0 gagal.
 
+### Tahap 38.22 — Focus trap keyboard pada modal
+
+PR #99 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/99
+- Merge commit: `4bb2eb13590941998067e87b4f033aa21f8cd30d`
+- Saat dialog terbuka, Tab dan Shift+Tab tetap berada di modal teratas.
+- Fokus dari luar dialog diarahkan ke elemen pertama/terakhir sesuai arah navigasi.
+- Fokus pada elemen pertama/terakhir berputar ke ujung sebaliknya.
+- Elemen tersembunyi, disabled, dan `aria-hidden=true` dikeluarkan dari urutan fokus.
+- Perilaku Escape yang hanya menutup modal teratas tetap dipertahankan.
+- Tidak mengubah isi modal, tombol close, backdrop, transaksi, atau hak akses.
+- Regression tests: 95 lulus, 0 gagal.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
 1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal header, sidebar, login Admin dua kolom, dan retry Dashboard Operasional sudah masuk `main`.
@@ -550,4 +563,4 @@ PR #97 telah di-merge:
 5. Lanjutkan audit responsivitas HP, tablet portrait/landscape, dan desktop; CSS yang sudah ada mengatur padding header 20 px pada rentang 761–1100 px, selanjutnya periksa tinggi layar pendek, sidebar desktop/tablet landscape, modal, tabel lebar, katalog Wali, POS, dan workspace Gudang/Pengantaran serta regresi lintas role.
 6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
 
-**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.21 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog bertumpuk, pemilih Santri, aksesibilitas dan ketahanan refresh POS Kasir, filter Pengantaran responsif. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
+**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.22 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog bertumpuk, pemilih Santri, aksesibilitas dan ketahanan refresh POS Kasir, filter Pengantaran responsif. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
