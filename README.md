@@ -2,7 +2,7 @@
 
 Repositori ini berisi shell PWA mobile dan salinan antarmuka/backend Google Apps Script dari ZIP Fase 9. Shell memakai halaman Apps Script sebagai aplikasi utama, sehingga transaksi tetap membutuhkan koneksi internet.
 
-**Dokumentasi utama:** [SOP Operasional (draft)](docs/SOP_OPERASIONAL_FMART.md) · [Checklist UAT Tahap 4](docs/UAT-TAHAP-4-FMART.md) · [Roadmap Audit](docs/ROADMAP_AUDIT_FMART_2026-11-19.md)
+**Dokumentasi utama:** [SOP Operasional (draft)](docs/SOP_OPERASIONAL_FMART.md) · [Checklist UAT Tahap 4](docs/UAT-TAHAP-4-FMART.md) · [Roadmap Audit](docs/ROADMAP_AUDIT_FMART_2026-11-19.md) · [Paket Serah-Terima Audit](docs/HANDOVER_AUDIT_FMART_2026-11-19.md)
 
 ## Menyiapkan Apps Script
 
