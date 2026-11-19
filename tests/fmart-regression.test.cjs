@@ -233,7 +233,7 @@ test('Responsive and role navigation coverage remains explicit',()=>{
 });
 test('Role-sensitive reports and QRIS settings remain server-gated',()=>{
  const reports=extractFunction(code,'getFMartReports'),settings=extractFunction(code,'getPaymentSettings'),ops=extractFunction(code,'getOperationsDashboard');
- assert.ok(reports.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN'));
+ assert.ok(reports.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN'));assert.ok(reports.includes('hppMissingLines'));assert.ok(reports.includes('grossProfit:grossProfit'));
  assert.ok(settings.includes('FMART.ROLES.SUPERADMIN'));
  assert.ok(ops.includes('pendingPayments:waliQrisQueue,products:[],categories:[]'));
 });
@@ -1627,4 +1627,14 @@ test('Supervisor catalog is read-only and Drive QRIS uses an embeddable thumbnai
 test('Supervisor transaction dashboard returns the complete order history',()=>{
  const dashboard=extractFunction(code,'getOperationsDashboard');
  assert.ok(dashboard.includes('session.role===FMART.ROLES.SUPERVISOR?orders.length:60'));
+});
+
+
+test('Weighted-average HPP and gross profit remain explicit for legacy transactions',()=>{
+ const helper=extractFunction(code,'weightedAverageHpp_'),migration=extractFunction(code,'migrateFMartCostingSchema'),order=extractFunction(code,'applyOrderStockPlan_'),pos=extractFunction(code,'applyCashierSaleStock_'),report=extractFunction(code,'getFMartReports');
+ assert.ok(setup.includes('HargaPokokRataRata')&&setup.includes('HPPSubtotal'));
+ assert.ok(migration.includes('ensureFMartCostingSchema_'));
+ assert.ok(helper.includes('beforeQty*beforeHpp+incomingTotalCost')&&helper.includes('beforeQty>0&&beforeHpp<=0'));
+ assert.ok(order.includes("captureSaleDetailHpp_(ss,'DetailPesanan'")&&pos.includes("captureSaleDetailHpp_(ss,'DetailPenjualanToko'"));
+ assert.ok(report.includes('hppMissingLines')&&report.includes('grossProfit:grossProfit'));
 });
