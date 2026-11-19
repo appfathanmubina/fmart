@@ -4095,7 +4095,7 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
     (function setupModalFocusLifecycle_(){
       if(typeof MutationObserver==='undefined'||!document.body)return;
       const openers=new Map();
-      let lastTopModal=null,restoreTarget=null,scheduled=false;
+      let lastTopModal=null,restoreTarget=null,pendingOpenedModal=null,scheduled=false;
       const visibleModals=()=>Array.from(document.querySelectorAll('.modal:not(.hidden)'));
       const isUsable=el=>!!(el&&el.isConnected&&el.getClientRects().length&&!el.disabled);
       const focusElement=el=>{
@@ -4122,7 +4122,8 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
         const run=()=>{
           scheduled=false;
           const visible=visibleModals(),top=visible[visible.length-1]||null;
-          if(top&&top.id!==lastTopModal){
+          if(top&&pendingOpenedModal===top.id){
+            pendingOpenedModal=null;
             focusModal(top);
             lastTopModal=top.id;
             restoreTarget=null;
@@ -4150,7 +4151,9 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
           if(visibleNow&&!openers.has(modal.id)){
             const active=document.activeElement;
             openers.set(modal.id,active&&active!==modal&&!modal.contains(active)?active:null);
+            pendingOpenedModal=modal.id;
           }else if(!visibleNow&&openers.has(modal.id)){
+            if(pendingOpenedModal===modal.id)pendingOpenedModal=null;
             restoreTarget=openers.get(modal.id);
             openers.delete(modal.id);
           }

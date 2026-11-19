@@ -639,7 +639,7 @@ Regression test mengunci ketiga asosiasi label. Tidak mengubah data profil, hak 
 
 ### Tahap 38.30 — Audit fokus keyboard pada siklus dialog
 
-**Status: perbaikan source dan regression test selesai; PR menunggu pemeriksaan CI dan merge.**
+**Status: selesai pada repository. PR #114 dan tindak lanjut #115 telah di-merge ke `main`; regression CI lulus. Validasi fokus dengan keyboard pada browser/perangkat tetap menunggu tahap runtime.**
 
 Modal sudah memiliki `role="dialog"`, `aria-modal`, penutupan Escape untuk dialog teratas, dan focus trap Tab/Shift+Tab. Audit lanjutan akan memeriksa:
 - Fokus awal berpindah ke kontrol yang tepat saat dialog dibuka.
@@ -653,6 +653,13 @@ Perbaikan hanya dilakukan setelah alur modal dan pemicu dibuktikan dari source. 
 
 ### Tahap 38.31 — Audit semantik dan nama aksesibel seluruh dialog
 
-**Status: antrean audit berikutnya; belum dimulai.**
+**Status: audit source selesai; regression test menambahkan penguncian untuk 13 dialog statis dan judul dialog operasional dinamis.**
 
 Setelah siklus fokus diperbaiki, audit statis akan mencocokkan seluruh elemen `.modal` dengan `role="dialog"`, `aria-modal="true"`, nama aksesibel melalui `aria-labelledby` atau `aria-label`, dan judul/label yang benar-benar ada. Dialog operasional dinamis juga diperiksa agar judul yang berubah tetap menjadi nama dialog. Perbaikan dibatasi pada markup dan regression test, tanpa mengubah alur bisnis atau layout.
+
+
+### Tahap 38.32 — Audit navigasi keyboard pada menu dan dropdown operasional
+
+**Status: antrean berikutnya; belum dimulai.**
+
+Audit statis akan meninjau menu navigasi, dropdown khusus, tombol ikon, dan kontrol yang dibuat secara dinamis. Fokusnya adalah penggunaan elemen semantik, aktivasi Enter/Space, urutan Tab yang logis, nama aksesibel, dan tidak adanya kontrol interaktif berbasis elemen non-interaktif tanpa keyboard handler. Perbaikan tidak boleh mengubah hak akses menu atau rute role.

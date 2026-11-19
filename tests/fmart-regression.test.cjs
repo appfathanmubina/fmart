@@ -1308,9 +1308,28 @@ test('Modal focus lifecycle moves focus into dialogs and restores it safely on c
  assert.ok(lifecycle.includes("openers.set(modal.id,active&&active!==modal&&!modal.contains(active)?active:null)"),'Opening modal must retain its opener.');
  assert.ok(lifecycle.includes('focusModal(top)'),'New topmost dialog must receive initial focus.');
  assert.ok(lifecycle.includes('top.contains(target)&&isUsable(target)'),'Closing a nested dialog must restore focus to its opener in the parent.');
+ assert.ok(lifecycle.indexOf('if(top&&pendingOpenedModal===top.id)')<lifecycle.indexOf('if(top&&restoreTarget)'), 'A newly opened dialog takes focus first; when only a parent remains, its opener is restored before generic top-modal focus.');
+ assert.ok(lifecycle.includes('pendingOpenedModal=modal.id'),'Newly opened modal must be distinguished from a just-closed nested modal.');
  assert.ok(lifecycle.includes('if(isUsable(target))focusElement(target);else focusFallback()'),'Closing the final dialog must restore a usable opener or a safe page fallback.');
  assert.ok(lifecycle.includes("modal.setAttribute('tabindex','-1')"),'A dialog without controls must remain programmatically focusable.');
  const keyboard=index.slice(end,index.indexOf("window.addEventListener('load',boot)",end));
  assert.ok(keyboard.includes("if(e.key==='Tab'&&top)"),'Existing Tab focus trap must remain.');
  assert.ok(keyboard.includes("if(e.key!=='Escape')return"),'Existing Escape behavior must remain.');
+});
+
+test('Every static dialog root has modal semantics and a resolvable accessible name',()=>{
+ const re=/<div\b(?=[^>]*\bid="([^"]+Modal)")(?=[^>]*\bclass="[^"]*\bmodal\b)([^>]*)>/g;
+ const roots=[];let match;
+ while((match=re.exec(index))!==null)roots.push({id:match[1],attrs:match[2]});
+ assert.ok(roots.length>=12,'Expected the full set of customer and operational dialogs.');
+ for(const root of roots){
+  assert.match(root.attrs,/\brole="dialog"/,'Dialog '+root.id+' must expose dialog role.');
+  assert.match(root.attrs,/\baria-modal="true"/,'Dialog '+root.id+' must be announced as modal.');
+  const label=(root.attrs.match(/\baria-labelledby="([^"]+)"/)||[])[1];
+  const ariaLabel=(root.attrs.match(/\baria-label="([^"]+)"/)||[])[1];
+  assert.ok(label||ariaLabel,'Dialog '+root.id+' must have an accessible name.');
+  if(label)assert.ok(index.includes('id="'+label+'"'),'Dialog '+root.id+' references missing label '+label+'.');
+ }
+ assert.ok(index.includes('id="opsModalTitle"'),'Dynamic operations dialog title target must exist.');
+ assert.ok(index.includes("$('opsModalTitle').textContent=title"),'Dynamic operations dialog must update its accessible title.');
 });
