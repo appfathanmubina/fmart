@@ -839,3 +839,56 @@ test('Wali cart quantity controls are accessible and respect the 10,000-unit lim
  assert.ok(cart.includes("Number(i.qty)>=10000?'disabled':''"),'The increase control must be disabled at the server-side maximum.');
  assert.ok(cart.includes('aria-label="Hapus '));
 });
+
+
+test('Admin category, product, and staff forms associate labels with controls',()=>{
+ const categoryStart=index.indexOf('function openCategoryForm(item){');
+ const productStart=index.indexOf('function openProductForm(item){');
+ const staffStart=index.indexOf('function openStaffUserForm(){');
+ const proofStart=index.indexOf('async function openPaymentProof',staffStart);
+ assert.ok(categoryStart>=0&&productStart>categoryStart&&staffStart>productStart&&proofStart>staffStart);
+ const category=index.slice(categoryStart,productStart);
+ const product=index.slice(productStart,staffStart);
+ const staff=index.slice(staffStart,proofStart);
+ for(const [source,id] of [[category,'catName'],[category,'catDesc'],[category,'catOrder'],[category,'catStatus'],[product,'prdCat'],[product,'prdSku'],[product,'prdName'],[product,'prdDesc'],[product,'prdPrice'],[product,'prdMin'],[product,'prdPhoto'],[product,'prdStatus'],[staff,'staffName'],[staff,'staffEmail'],[staff,'staffPassword'],[staff,'staffRole']]){
+  assert.ok(source.includes('for="'+id+'"'),id+' label must be associated with its control.');
+  assert.ok(source.includes('id="'+id+'"'),id+' control must remain present.');
+ }
+ for(const id of ['catName','prdCat','prdSku','prdName','prdPrice','staffName','staffEmail','staffPassword','staffRole']){
+  const source=id.startsWith('cat')?category:id.startsWith('prd')?product:staff;
+  assert.ok(source.includes('id="'+id+'" required'),id+' must expose its required state to browsers and assistive technology.');
+ }
+});
+
+
+test('Admin payment, account, and warehouse forms associate labels with controls',()=>{
+ const section=(start,end)=>{const a=index.indexOf(start),b=index.indexOf(end,a);assert.ok(a>=0&&b>a,start+' section must exist.');return index.slice(a,b)};
+ const payment=section('function openPaymentSettings(){','async function openReportsFromProfile');
+ const editWali=section('function openEditWaliForm(userId,waliId){','async function handleUserAction');
+ const editUser=section('function openEditUserForm(id){','function openOpsModal');
+ const staff=section('function openStaffUserForm(){','async function openPaymentProof');
+ const receipt=section('function openStockReceiptForm(products){','function openStockMinimumForm');
+ const minimum=section('function openStockMinimumForm(productId,variationId,currentMinimum,itemName){','async function openOpsOrderDetail');
+ const variation=section('function openVariationForm(item){','async function openStockTransferForm');
+ const transfer=section('async function openStockTransferForm(productId,variationId){','function openStockForm');
+ const mutation=section('function openStockForm(productId,variationId){','function closeOpsModal');
+ for(const [source,id] of [
+  [payment,'payQrisImageUrl'],[payment,'payAdminWhatsapp'],
+  [editWali,'editWaliName'],[editWali,'editWaliPhone'],[editWali,'editWaliEmail'],[editWali,'editWaliAddress'],
+  [editUser,'editUserName'],[editUser,'editUserRole'],
+  [receipt,'receiptSupplier'],[receipt,'receiptReference'],[receipt,'receiptDate'],[receipt,'receiptNote'],
+  [minimum,'stockMinimumValue'],
+  [variation,'varName'],[variation,'varValue'],[variation,'varPrice'],[variation,'varStock'],[variation,'varStatus'],
+  [transfer,'transferProduct'],[transfer,'transferVariation'],[transfer,'transferQty'],[transfer,'transferNote'],
+  [mutation,'stockProduct'],[mutation,'stockVariation'],[mutation,'stockType'],[mutation,'stockQty'],[mutation,'stockNote']
+ ]){
+  assert.ok(source.includes('for="'+id+'"'),id+' label must be associated with its control.');
+ }
+ assert.ok(receipt.includes('for="receiptProduct\'+i+\'"')&&receipt.includes('id="receiptProduct\'+i+\'"'));
+ assert.ok(receipt.includes('for="receiptVariation\'+i+\'"')&&receipt.includes('id="receiptVariation\'+i+\'"'));
+ assert.ok(receipt.includes('for="receiptQty\'+i+\'"')&&receipt.includes('id="receiptQty\'+i+\'"'));
+ for(const [source,id] of [[payment,'payQrisImageUrl'],[receipt,'receiptSupplier'],[receipt,'receiptDate'],[minimum,'stockMinimumValue'],[transfer,'transferProduct'],[transfer,'transferQty'],[mutation,'stockProduct'],[mutation,'stockType'],[mutation,'stockQty'],[editUser,'editUserName'],[editUser,'editUserRole'],[editWali,'editWaliName'],[editWali,'editWaliPhone'],[variation,'varName'],[variation,'varValue'],[staff,'staffName'],[staff,'staffEmail'],[staff,'staffPassword']]){
+  const control=source.match(new RegExp('<(?:input|select)[^>]*id="'+id+'"[^>]*>'));
+  assert.ok(control&&/\brequired\b/.test(control[0]),id+' must expose its required state.');
+ }
+});
