@@ -612,8 +612,17 @@ Regression test mengunci kedua kondisi tersebut. Tidak ada perubahan aturan kepu
 
 ### Tahap 38.27 — Konsistensi petunjuk pada pemilih Santri kosong
 
-**Status: perbaikan repository disiapkan; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #110 telah di-merge ke `main` melalui commit `c4892e4b8432acc07d0e8f1d8920cfb43ca8de07`; regression CI, build, dan deployment GitHub Pages pasca-merge lulus.**
 
 Audit ulang setelah Tahap 38.25 menemukan jalur pemilih Santri alternatif ketika Wali belum memiliki relasi. Jalur ini masih memakai petunjuk lama bahwa hubungan perlu diverifikasi Admin dan tombol aksi bertuliskan "Ajukan", padahal tombol tersebut membuka alur self-link langsung untuk Santri aktif.
 
 Perbaikan menyelaraskan petunjuk dan label aksi menjadi "Hubungkan" tanpa mengubah endpoint pencarian atau endpoint relasi. Regression test memastikan alur tetap memakai `openWaliLinkModal` dan self-link Wali. Tidak mengubah aturan relasi, batas jumlah anak, hak akses, atau data.
+
+
+### Tahap 38.28 — Semantik wajib pada input OTP login staf
+
+**Status: perbaikan repository disiapkan; menunggu CI dan merge.**
+
+Audit form login menemukan input kode OTP enam digit belum memiliki atribut `required`, walaupun handler sudah menolak kode kosong atau tidak sesuai pola. Input kini ditandai wajib; batas enam digit, pola numerik, autocomplete OTP, dan validasi handler dipertahankan.
+
+Regression test mengunci semantik field dan validasi enam digit. Tidak mengubah mekanisme OTP, autentikasi, session, atau backend.
