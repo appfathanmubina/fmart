@@ -780,8 +780,17 @@ Regression test mengunci helper dan kedua jalur keputusan. Tidak mengubah strukt
 
 ## Tahap 39.6 — Audit statis guard mutasi, kepemilikan, dan transisi status
 
-**Status: regression test dan sinkronisasi roadmap disiapkan; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #125 telah di-merge ke `main` melalui commit `4aac87e6b8e1e54eb142fcf31bf3cdbe9acd95de`. Regression CI dan build/deployment GitHub Pages pasca-merge lulus.**
 
 Audit statis meninjau endpoint mutasi Wali, Gudang, Kasir, Admin, Superadmin, dan Petugas Pengantar. Regression test mengunci role server-side dan script lock pada mutasi, kepemilikan keranjang/pesanan/pengajuan, kunci idempotensi checkout/pembayaran/stok/POS, pembatasan Kasir pada transaksi QRIS miliknya, larangan Gudang membatalkan pesanan, transisi status pesanan, pembayaran terverifikasi sebelum penugasan, serta kepemilikan penugasan pengantaran.
 
 Penghapusan item keranjang tetap mendelegasikan ke jalur update yang memeriksa pemilik. Penerimaan stok tetap menggunakan jalur penyelesaian/pemulihan bersama. Tahap ini hanya menambah regression test dan dokumentasi; tidak mengubah endpoint atau data.
+
+
+## Tahap 40.1 — Draft SOP Operasional dan serah-terima
+
+**Status: draft source selesai; menunggu review pemilik proses dan verifikasi runtime sebelum disahkan.**
+
+Ditambahkan `docs/SOP_OPERASIONAL_FMART.md` yang merangkum role dan batas akses, akun, master produk, stok Gudang, penerimaan, relasi Wali–Santri, checkout, QRIS, POS, pengantaran, backup manual, pemulihan insiden, dan pemeriksaan rutin. README ditautkan ke SOP, UAT, dan roadmap.
+
+SOP membedakan prosedur yang sudah tercermin pada source dengan prasyarat yang belum terbukti di runtime. Repository tidak memiliki fungsi backup/restore otomatis; SOP karena itu menetapkan backup manual sebelum perubahan berisiko dan melarang restore langsung ke produksi tanpa rekonsiliasi. Dokumen tetap berstatus draft sampai akun, folder, trigger, stok awal, UAT, dan pemulihan diuji pada runtime serta disetujui pemilik proses.
