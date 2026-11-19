@@ -233,7 +233,7 @@ test('Responsive and role navigation coverage remains explicit',()=>{
 });
 test('Role-sensitive reports and QRIS settings remain server-gated',()=>{
  const reports=extractFunction(code,'getFMartReports'),settings=extractFunction(code,'getPaymentSettings'),ops=extractFunction(code,'getOperationsDashboard');
- assert.ok(reports.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN'));
+ assert.ok(reports.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN'));
  assert.ok(settings.includes('FMART.ROLES.SUPERADMIN'));
  assert.ok(ops.includes('pendingPayments:waliQrisQueue,products:[],categories:[]'));
 });
@@ -726,9 +726,10 @@ test('Role workflow authorization matrix protects sensitive endpoints server-sid
   gudang:['getStockReceivingData','createStockReceipt','getStockManagement','adjustStock','transferWarehouseStockToCashier','getDeliveryDashboard','startDeliveryTrip','submitDeliveryProof'],
   pengantar:['getDeliveryDashboard','respondDeliveryAssignment','startDeliveryTrip','reportDeliveryFailure','updateDeliveryProgress','submitDeliveryProof'],
   admin:['getOperationsDashboard','getFMartReports','getFMartAuditLog','getDeliveryAssignmentWorkspace','assignDeliveryOrder','resolveDeliveryComplaint'],
+  supervisor:['getOperationsDashboard','getOperationsOrderDetail','getAdminCatalog','getFMartReports'],
   superadmin:['createStaffUser','savePaymentSettings','setStaffEmail','updateFMartUser','toggleFMartUser','resetFMartUserPassword']
  };
- const roleNames={wali:'WALI_SANTRI',kasir:'KASIR',gudang:'GUDANG',pengantar:'PETUGAS_PENGANTAR',admin:'ADMIN',superadmin:'SUPERADMIN'};
+ const roleNames={wali:'WALI_SANTRI',kasir:'KASIR',gudang:'GUDANG',pengantar:'PETUGAS_PENGANTAR',admin:'ADMIN',supervisor:'SUPERVISOR',superadmin:'SUPERADMIN'};
  for(const group of Object.keys(matrix)){
   for(const name of matrix[group]){
    const fn=extractFunction(code,name);
@@ -1552,7 +1553,7 @@ test('Staff navigation role matrix matches backend portal roles and active state
  assert.ok(permissionBlock,'Role navigation permission map must exist.');
  const permissionMap={};
  for(const match of permissionBlock.matchAll(/([A-Z_]+):\[([^\]]*)\]/g))permissionMap[match[1]]=[...match[2].matchAll(/'([^']+)'/g)].map(x=>x[1]);
- assert.deepEqual(Object.keys(permissionMap).sort(),['ADMIN','GUDANG','KASIR','PETUGAS_PENGANTAR','SUPERADMIN'].sort());
+ assert.deepEqual(Object.keys(permissionMap).sort(),['ADMIN','GUDANG','KASIR','PETUGAS_PENGANTAR','SUPERVISOR','SUPERADMIN'].sort());
  for(const [role,ids] of Object.entries(permissionMap)){
   assert.ok(ids.includes('staffDashboard'),role+' must have dashboard entry.');
   assert.ok(ids.every(id=>buttonIds.includes(id)),role+' contains an unknown navigation item.');
@@ -1562,7 +1563,7 @@ test('Staff navigation role matrix matches backend portal roles and active state
  assert.deepEqual(backendRoles.sort(),Object.keys(permissionMap).sort(),'Every backend staff role must have exactly one navigation permission set.');
  const portal=(code.match(/function portalRoleAllowed_\(role, portalMode\)\s*\{([\s\S]*?)\n\}/)||[])[1]||'';
  for(const role of backendRoles)assert.ok(portal.includes("'"+role+"'"),'Staff role '+role+' must be accepted by the admin portal.');
- assert.ok(!permissionBlock.includes('SUPERVISOR'),'Do not invent a Supervisor role that is absent from backend roles.');
+ assert.ok(permissionBlock.includes('SUPERVISOR'),'Supervisor must have an explicit read-only navigation profile.');
  const helper=extractFunction(index,'setStaffActiveNavigation');
  assert.ok(helper.includes("nav.classList.contains('hidden')")&&helper.includes("target.classList.contains('hidden')"),'Hidden navigation items cannot become active.');
  assert.ok(helper.includes("setAttribute('aria-current','page')")&&helper.includes("removeAttribute('aria-current')"),'Only the active item must expose aria-current=page.');
@@ -1573,11 +1574,11 @@ test('Staff navigation role matrix matches backend portal roles and active state
   assert.ok(index.includes("setStaffActiveNavigation('"+id+"')"),'Menu '+id+' must use the shared active-state helper.');
  }
  const handlers={
-  staffPOS:["KASIR","ADMIN","SUPERADMIN"],staffPaymentVerification:["KASIR"],staffOrders:["ADMIN","SUPERADMIN","GUDANG"],
-  staffCatalog:["ADMIN","SUPERADMIN"],staffStock:["ADMIN","GUDANG","SUPERADMIN"],staffReceiving:["ADMIN","GUDANG","SUPERADMIN"],
+  staffPOS:["KASIR","ADMIN","SUPERADMIN"],staffPaymentVerification:["KASIR"],staffOrders:["ADMIN","SUPERADMIN","GUDANG","SUPERVISOR"],
+  staffCatalog:["ADMIN","SUPERADMIN","SUPERVISOR"],staffStock:["ADMIN","GUDANG","SUPERADMIN"],staffReceiving:["ADMIN","GUDANG","SUPERADMIN"],
   staffWarehouseReports:["ADMIN","GUDANG","SUPERADMIN"],staffDeliveryAssign:["ADMIN","GUDANG","SUPERADMIN"],
   staffDelivery:["PETUGAS_PENGANTAR","GUDANG"],staffDeliveryComplaints:["ADMIN","SUPERADMIN"],
-  staffUsers:["ADMIN","SUPERADMIN"],staffReports:["ADMIN","SUPERADMIN"],staffPaymentSettings:["SUPERADMIN"]
+  staffUsers:["ADMIN","SUPERADMIN"],staffReports:["ADMIN","SUPERADMIN","SUPERVISOR"],staffPaymentSettings:["SUPERADMIN"]
  };
  const eventPattern=/\$\('(staff[A-Za-z0-9]+)'\)\.addEventListener\('click'/g;
  const events=[...index.matchAll(eventPattern)].map(m=>({id:m[1],pos:m.index}));
@@ -1611,4 +1612,19 @@ test('Desktop staff sidebar has balanced dimensions and clear active, inactive, 
  const tabletStart=index.indexOf('/* Tahap F — tablet portrait');
  const tabletEnd=index.indexOf('/* Semua panel petugas',tabletStart);
  assert.ok(tabletStart>=0&&tabletEnd>tabletStart&&index.slice(tabletStart,tabletEnd).includes('overflow-x:auto'),'Tablet portrait bottom navigation must remain unchanged.');
+});
+
+test('Supervisor catalog is read-only and Drive QRIS uses an embeddable thumbnail',()=>{
+ const catalogUi=extractFunction(index,'renderSupervisorCatalog');
+ assert.ok(catalogUi.includes('getAdminCatalog')&&catalogUi.includes('getOperationsDashboard'));
+ assert.ok(!catalogUi.includes('openProductForm')&&!catalogUi.includes('openCategoryForm'));
+ const qrisHelper=extractFunction(index,'qrisDisplayImageUrl_');
+ assert.ok(qrisHelper.includes('drive.google.com/thumbnail'));
+ const paymentUi=extractFunction(index,'openPayment');
+ assert.ok(paymentUi.includes('qrisImageSrc')&&paymentUi.includes('paymentQrisImage'));
+});
+
+test('Supervisor transaction dashboard returns the complete order history',()=>{
+ const dashboard=extractFunction(code,'getOperationsDashboard');
+ assert.ok(dashboard.includes('session.role===FMART.ROLES.SUPERVISOR?orders.length:60'));
 });
