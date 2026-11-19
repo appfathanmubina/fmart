@@ -734,8 +734,23 @@ Pemeriksaan kepemilikan pesanan dilakukan sebelum akses file. Jalur upload, stru
 
 ## Tahap 39.2 — Audit statis inventaris endpoint UI dan otorisasi server
 
+**Status: selesai pada repository. PR #121 telah di-merge ke `main` melalui commit `c223a5c6d395779c6888ee74ad573b1e83d7bef2`. Regression CI pasca-merge lulus (113 test); build/deployment GitHub Pages sedang berjalan saat pembaruan ini dibuat.**
+
+Audit inventaris menemukan 77 nama endpoint literal yang dipanggil UI dan 6 nama endpoint tambahan melalui dua pemetaan dinamis (empat endpoint unik untuk aksi pengantaran dan dua endpoint manajemen Wali), sehingga inventaris mencakup 83 nama endpoint UI yang unik. Semua nama tersebut memiliki fungsi backend. Sebanyak 74 endpoint memakai `requireSession_()` atau `requireRole_()`; tiga jalur pra-autentikasi (`login`, `registerWaliSantri`, dan `verifyAdminLoginOtp`) mempertahankan rate limit/password/portal checks, validasi registrasi, atau challenge OTP satu kali dengan batas percobaan.
+
+Regression test mengunci inventaris endpoint literal dan dinamis, keberadaan fungsi backend, pengamanan pra-autentikasi, role Petugas Pengantar/Gudang pada endpoint pengantaran, serta role Superadmin pada manajemen akun.
+
+
+## Tahap 39.3 — Audit statis isolasi data sensitif Wali, Kasir, dan Pengantaran
+
 **Status: regression test dan sinkronisasi roadmap disiapkan; menunggu CI dan merge.**
 
-Audit inventaris menemukan 77 nama endpoint literal yang dipanggil UI dan 6 nama endpoint tambahan melalui dua pemetaan dinamis (empat endpoint unik untuk aksi pengantaran dan dua endpoint manajemen Wali), sehingga inventaris mencakup 83 nama endpoint UI yang unik. Semua nama tersebut harus memiliki fungsi backend. Seluruh endpoint selain tiga jalur pra-autentikasi (`login`, `registerWaliSantri`, dan `verifyAdminLoginOtp`) wajib memanggil `requireSession_()` atau `requireRole_()`. Jalur pra-autentikasi tetap harus mempertahankan rate limit/password/portal checks, validasi registrasi, atau challenge OTP satu kali dengan batas percobaan.
+Audit statis meninjau pembacaan data pesanan, keranjang, notifikasi, katalog/detail produk, antrean pembayaran, bukti pembayaran, dan tugas pengantaran. Regression test mengunci bahwa:
+- Wali hanya membaca pesanan, detail pesanan, keranjang, notifikasi, dan bukti milik akun/sesi sendiri.
+- Katalog, batch produk, dan detail produk Wali tidak mengirimkan jumlah stok atau ambang stok.
+- Informasi notifikasi Wali tetap menyamarkan kondisi stok internal.
+- Petugas Pengantar/Gudang hanya menerima tugas pengantaran yang ditugaskan ke user aktif.
+- Dashboard Kasir tidak menerima daftar pesanan global; antrean verifikasi hanya QRIS Wali, dan ringkasan penjualan dibatasi pada kasir aktif.
+- Kasir hanya dapat membaca bukti pembayaran QRIS; Admin/Superadmin tetap mengikuti guard server yang berlaku.
 
-Regression test mengunci inventaris endpoint literal dan dinamis, keberadaan fungsi backend, pengamanan pra-autentikasi, role Petugas Pengantar/Gudang pada endpoint pengantaran, serta role Superadmin pada manajemen akun. Pemeriksaan ini tidak menggantikan review detail setiap aturan bisnis maupun pengujian runtime.
+Perubahan hanya pada regression test dan roadmap. Tidak mengubah endpoint, data, atau hak akses. Validasi ini tetap statis dan tidak menggantikan pengujian runtime lintas akun.
