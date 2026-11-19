@@ -313,6 +313,7 @@ test('Order recipient snapshots are reused by internal order and delivery worksp
  assert.ok(delivery.includes("recipientName:String(child.name || 'Santri')"),'Delivery recipient name must come from the immutable order snapshot.');
  assert.ok(delivery.includes("recipientContact:String(child.phone || '')"),'Delivery contact must come from the recipient snapshot, not the Wali account.');
  assert.ok(!delivery.includes('recipientContact:String(wali.phone'),'Delivery must not substitute Wali contact for recipient contact.');
+ assert.ok(!delivery.includes('waliByUserId')&&!delivery.includes('userById'),'Delivery task loading must not read unrelated Wali profile details.');
  assert.ok(index.includes('Kontak penerima:'),'Delivery UI must label the snapshot phone as recipient contact.');
  const operations=extractFunction(code,'getOperationsDashboard');
  const recovery=extractFunction(code,'recoverFMartTransactions_');
