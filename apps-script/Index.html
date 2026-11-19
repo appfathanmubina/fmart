@@ -3348,7 +3348,7 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
     async function loadCashierPOSData_(query){
       if(!state.data||!['KASIR','ADMIN','SUPERADMIN'].includes(state.data.user.role))return;
       const pos=state.cashierPOS,searchSeq=pos.searchSeq=(Number(pos.searchSeq)||0)+1;pos.loading=true;
-      const panel=$('cashierPOSPanel');if(panel&&!pos.products.length)panel.innerHTML='<div class="empty-box">Memuat katalog kasir...</div>';
+      const panel=$('cashierPOSPanel');if(panel&&!pos.hasLoadedProducts)panel.innerHTML='<div class="empty-box">Memuat katalog kasir...</div>';
       try{
         const r=await runServer('getCashierPOSData',state.token,String(query||''));
         if(searchSeq!==pos.searchSeq)return;
@@ -3358,22 +3358,37 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         pos.products=Array.isArray(r.products)?r.products:[];
         pos.recentSales=Array.isArray(r.recentSales)?r.recentSales:[];
         pos.serverTime=r.serverTime||'';
+        pos.loadedSearch=String(query||'');pos.hasLoadedProducts=true;
         if(!pos.qrisQueueLoaded)await loadCashierQrisQueue_(false);
         if(!pos.salesHistoryLoaded)await loadCashierSalesHistory_();
         renderCashierPOSPanel_();
         if(keepSearchFocus){const input=$('cashierPOSSearch');if(input){input.focus();const cursor=Math.min(Number(searchCursor)||input.value.length,input.value.length);input.setSelectionRange(cursor,cursor)}}
-      }catch(e){if(searchSeq!==pos.searchSeq)return;if(panel)panel.innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Katalog POS gagal dimuat.')+'<button type="button" class="secondary" id="cashierPOSRetry" style="margin-top:10px">Coba lagi</button></div>';const retry=$('cashierPOSRetry');if(retry)retry.onclick=()=>loadCashierPOSData_(pos.search)}
-      finally{if(searchSeq===pos.searchSeq)pos.loading=false}
+      }catch(e){
+        if(searchSeq!==pos.searchSeq)return;
+        const message=e&&e.message?e.message:'Katalog POS gagal dimuat.';
+        if(pos.hasLoadedProducts){
+          pos.search=pos.loadedSearch||'';
+          showToast('Pencarian katalog gagal; hasil sebelumnya tetap ditampilkan. '+message,'error');
+          renderCashierPOSPanel_();
+        }else if(panel){
+          panel.innerHTML='<div class="empty-box" role="alert">'+escapeHtml(message)+'<button type="button" class="secondary" id="cashierPOSRetry" style="margin-top:10px">Coba lagi</button></div>';
+          const retry=$('cashierPOSRetry');if(retry)retry.onclick=()=>loadCashierPOSData_(pos.search);
+        }
+      }finally{if(searchSeq===pos.searchSeq)pos.loading=false}
     }
 
     async function loadCashierQrisQueue_(render){
-      const pos=state.cashierPOS;
+      const pos=state.cashierPOS,hadData=!!pos.qrisQueueLoaded;
       try{
         const r=await runServer('getCashierQrisQueue',state.token);
         if(!r||!r.ok)throw new Error('Antrean QRIS belum dapat dimuat.');
         pos.qrisQueue=Array.isArray(r.queue)?r.queue:[];
         pos.qrisQueueError='';pos.qrisQueueLoaded=true;
-      }catch(e){pos.qrisQueueError=e.message||'Antrean QRIS belum dapat dimuat.';pos.qrisQueueLoaded=false}
+      }catch(e){
+        const message=e&&e.message?e.message:'Antrean QRIS belum dapat dimuat.';
+        if(hadData){pos.qrisQueueError='';showToast('Pembaruan antrean QRIS gagal; data sebelumnya tetap ditampilkan. '+message,'error')}
+        else{pos.qrisQueueError=message;pos.qrisQueueLoaded=false}
+      }
       if(render!==false)renderCashierQrisQueue_();
     }
     function cashierQrisRemaining_(item){
@@ -3445,9 +3460,17 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
     }
 
     async function loadCashierSalesHistory_(){
-      const pos=state.cashierPOS,body=$('cashierSalesHistoryBody');if(body)body.innerHTML='<div class="muted">Memuat riwayat penjualan...</div>';
-      try{const r=await runServer('getCashierSalesHistory',state.token,{query:pos.salesQuery||'',from:pos.salesFrom||'',to:pos.salesTo||''});if(!r||!r.ok)throw new Error('Riwayat penjualan belum dapat dimuat.');pos.salesHistory=Array.isArray(r.rows)?r.rows:[];pos.salesHistoryError='';pos.salesHistoryLoaded=true}
-      catch(e){pos.salesHistoryError=e.message||'Riwayat penjualan gagal dimuat.';pos.salesHistoryLoaded=false}
+      const pos=state.cashierPOS,body=$('cashierSalesHistoryBody'),hadData=!!pos.salesHistoryLoaded;
+      if(body&&!hadData)body.innerHTML='<div class="muted">Memuat riwayat penjualan...</div>';
+      try{
+        const r=await runServer('getCashierSalesHistory',state.token,{query:pos.salesQuery||'',from:pos.salesFrom||'',to:pos.salesTo||''});
+        if(!r||!r.ok)throw new Error('Riwayat penjualan belum dapat dimuat.');
+        pos.salesHistory=Array.isArray(r.rows)?r.rows:[];pos.salesHistoryError='';pos.salesHistoryLoaded=true;
+      }catch(e){
+        const message=e&&e.message?e.message:'Riwayat penjualan gagal dimuat.';
+        if(hadData){pos.salesHistoryError='';showToast('Pembaruan riwayat gagal; hasil sebelumnya tetap ditampilkan. '+message,'error')}
+        else{pos.salesHistoryError=message;pos.salesHistoryLoaded=false}
+      }
       renderCashierSalesHistory_();
     }
     function cashierSaleStatus_(s){return s.paymentStatus==='LUNAS'?'LUNAS':s.paymentStatus==='MENUNGGU_KONFIRMASI'?'MENUNGGU QRIS':String(s.paymentStatus||s.status||'-').replace(/_/g,' ')}
