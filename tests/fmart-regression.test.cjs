@@ -937,5 +937,5 @@ test('Gudang dashboard exposes the internal waiting-stock queue as a filterable 
  const css=index.slice(styleStart,styleEnd);
  assert.ok(css.includes('@media(min-width:981px)'));
  assert.ok(css.includes('grid-template-columns:repeat(3,minmax(0,1fr))'));
- assert.ok(index.includes("['MENUNGGU_STOK',counts.MENUNGGU_STOK]"),'The existing fulfillment queue must retain its internal stock-waiting count.');
+ assert.ok(index.includes("['Menunggu Stok',counts.MENUNGGU_STOK]"),'The existing fulfillment queue must retain its internal stock-waiting count.');
 });
