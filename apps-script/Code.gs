@@ -898,7 +898,7 @@ function updateCartItem(token, cartId, qty) {
   } finally { lock.releaseLock(); }
 }
 
-function removeCartItem(token, cartId) { return updateCartItem(token, cartId, 0); }
+function removeCartItem(token, cartId) { requireRole_(token,[FMART.ROLES.WALI_SANTRI]); return updateCartItem(token, cartId, 0); }
 
 
 /** Hash deterministik untuk fingerprint payload transaksi dan bukti file. */
