@@ -564,8 +564,8 @@ test('Warehouse stock valuation never treats selling price as inventory cost',()
 test('Starting delivery can resume interrupted order, shipment, notification and history updates',()=>{
  const fn=extractFunction(code,'startDeliveryTrip');
  assert.ok(fn.includes("const recovering=before==='DALAM_PERJALANAN'"));
- assert.ok(fn.includes("orderStatus==='DISIAPKAN'||!(recovering&&orderStatus==='DIANTAR')"));
- assert.ok(fn.includes("shipmentStatus==='DISIAPKAN'&&!(recovering&&shipmentStatus==='DIANTAR')"));
+ assert.ok(fn.includes("orderStatus!=='DISIAPKAN'&&!(recovering&&orderStatus==='DIANTAR')"));
+ assert.ok(fn.includes("shipmentStatus!=='DISIAPKAN'&&!(recovering&&shipmentStatus==='DIANTAR')"));
  assert.ok(fn.includes("String(n[3])==='Pesanan sedang diantar'"),'Retry must not duplicate the Wali notification.');
  assert.ok(fn.includes("MULAI_PENGANTARAN"),'Delivery history must be deduplicated.');
  assert.ok(fn.includes("START_DELIVERY"),'Audit log must be deduplicated.');
@@ -575,8 +575,8 @@ test('Reporting delivery failure can resume partial updates without duplicate no
  const fn=extractFunction(code,'reportDeliveryFailure');
  assert.ok(fn.includes("const recovering=before==='GAGAL'"));
  assert.ok(fn.includes("String(row[11]||'').indexOf('[GAGAL] '+reason)>=0"),'Recovery must be bound to the original failure reason.');
- assert.ok(fn.includes("orderStatus==='DIANTAR'&&!(recovering&&orderStatus==='DISIAPKAN')"));
- assert.ok(fn.includes("shipmentStatus==='DIANTAR'&&shipmentStatus!=='DISIAPKAN'"));
+ assert.ok(fn.includes("orderStatus!=='DIANTAR'&&!(recovering&&orderStatus==='DISIAPKAN')"));
+ assert.ok(fn.includes("shipmentStatus!=='DIANTAR'&&shipmentStatus!=='DISIAPKAN'"));
  assert.ok(fn.includes("Pengantaran belum berhasil")&&fn.includes("Pengantaran gagal - perlu penugasan ulang"),'Wali and staff notifications must be deduplicated.');
  assert.ok(fn.includes("PENGANTARAN_GAGAL")&&fn.includes("DELIVERY_FAILED"),'History and audit entries must be deduplicated.');
 });
