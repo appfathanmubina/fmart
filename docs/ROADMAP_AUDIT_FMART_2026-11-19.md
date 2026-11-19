@@ -807,8 +807,8 @@ Tahap ini hanya dokumentasi. UAT runtime tetap belum dilakukan dan harus memakai
 
 ## Tahap 40.3 — Paket serah-terima audit repository
 
-**Status: draft disiapkan; menunggu review pemilik proses.**
+**Status: paket serah-terima selesai pada repository. PR #128 telah di-merge ke `main` melalui commit `95a5c04529d4d62101185ca3d9ed28d34ce81c5a`. Review/persetujuan pemilik proses dan gerbang runtime tetap tertunda.**
 
-Ditambahkan `docs/HANDOVER_AUDIT_FMART_2026-11-19.md` yang merangkum PR #117–#127, hasil CI, temuan yang sudah diperbaiki, risiko yang masih terbuka, dan urutan gerbang runtime. README ditautkan ke paket serah-terima.
+Ditambahkan `docs/HANDOVER_AUDIT_FMART_2026-11-19.md` yang merangkum PR #117–#127, hasil CI, temuan yang sudah diperbaiki, risiko yang masih terbuka, dan urutan gerbang runtime. README ditautkan ke paket serah-terima. PR #128 menambahkan dokumen tersebut ke `main`.
 
 Kesimpulan source: audit repository statis lulus untuk lingkup yang telah dikerjakan. Runtime UAT belum dilakukan dan produksi belum disetujui. Akun staf, stok awal, konfigurasi Drive/trigger, rekonsiliasi relasi Wali lama, file bukti existing, backup/restore, serta validasi perangkat tetap menjadi prasyarat.
