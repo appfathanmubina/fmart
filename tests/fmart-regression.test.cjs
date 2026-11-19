@@ -1243,7 +1243,10 @@ test('Wali self-link modal copy matches the direct active relationship flow',()=
  const modal=index.slice(start,end);
  assert.ok(modal.includes('Santri aktif dapat dihubungkan langsung oleh Wali tanpa persetujuan Admin.'));
  assert.ok(!modal.includes('Pengajuan akan diverifikasi Admin/Superadmin'));
- const submit=extractFunction(index,'openWaliRequestForm');
+ const submitStart=index.indexOf('function openWaliRequestForm(');
+ const submitEnd=index.indexOf('function closeProfile(',submitStart);
+ assert.ok(submitStart>=0&&submitEnd>submitStart,'Wali self-link action must exist.');
+ const submit=index.slice(submitStart,submitEnd);
  assert.ok(submit.includes('Hubungan langsung aktif tanpa persetujuan Admin.'));
  assert.ok(submit.includes("runServer('requestWaliSantriLink'"));
 });
