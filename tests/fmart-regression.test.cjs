@@ -726,7 +726,7 @@ test('Role workflow authorization matrix protects sensitive endpoints server-sid
   gudang:['getStockReceivingData','createStockReceipt','getStockManagement','adjustStock','transferWarehouseStockToCashier','getDeliveryDashboard','startDeliveryTrip','submitDeliveryProof'],
   pengantar:['getDeliveryDashboard','respondDeliveryAssignment','startDeliveryTrip','reportDeliveryFailure','updateDeliveryProgress','submitDeliveryProof'],
   admin:['getOperationsDashboard','getFMartReports','getFMartAuditLog','getDeliveryAssignmentWorkspace','assignDeliveryOrder','resolveDeliveryComplaint'],
-  supervisor:['getOperationsDashboard','getAdminCatalog','getFMartReports'],
+  supervisor:['getOperationsDashboard','getOperationsOrderDetail','getAdminCatalog','getFMartReports'],
   superadmin:['createStaffUser','savePaymentSettings','setStaffEmail','updateFMartUser','toggleFMartUser','resetFMartUserPassword']
  };
  const roleNames={wali:'WALI_SANTRI',kasir:'KASIR',gudang:'GUDANG',pengantar:'PETUGAS_PENGANTAR',admin:'ADMIN',supervisor:'SUPERVISOR',superadmin:'SUPERADMIN'};

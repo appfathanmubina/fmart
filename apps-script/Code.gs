@@ -1185,7 +1185,7 @@ function getOrderDetail(token, orderId) {
 
 /** Detail pesanan untuk operasional internal. Tidak mengekspos bukti pembayaran ke role selain Kasir/Superadmin. */
 function getOperationsOrderDetail(token, orderId) {
-  const session = requireRole_(token, [FMART.ROLES.ADMIN, FMART.ROLES.GUDANG, FMART.ROLES.SUPERADMIN]);
+  const session = requireRole_(token, [FMART.ROLES.ADMIN, FMART.ROLES.GUDANG, FMART.ROLES.SUPERVISOR, FMART.ROLES.SUPERADMIN]);
   orderId = String(orderId || '').trim();
   if (!orderId) throw new Error('Pesanan tidak valid.');
   const ss = getSS_();
