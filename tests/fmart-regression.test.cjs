@@ -310,7 +310,7 @@ test('Order recipient snapshots are reused by internal order and delivery worksp
  assert.ok(extractFunction(code,'getDeliveryAssignmentWorkspace').includes('getOrderRecipientSnapshot_(ss,r)'));
  assert.ok(extractFunction(code,'getDeliveryDashboard').includes('getOrderRecipientSnapshot_(ss,order)'));
  const operations=extractFunction(code,'getOperationsDashboard');
- const recovery=extractFunction(code,'auditFMartTransactionRecovery_');
+ const recovery=extractFunction(code,'recoverFMartTransactions_');
  const reports=extractFunction(code,'getWarehouseHistoryReport');
  assert.ok(operations.includes('getOrderRecipientSnapshot_(ss,r)'));
  assert.ok(operations.includes('child=getOrderRecipientSnapshot_(ss,o)'),'Payment verification must display the saved recipient.');
