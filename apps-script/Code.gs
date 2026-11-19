@@ -2713,7 +2713,8 @@ function submitDeliveryProof(token,assignmentId,fileName,mimeType,dataUrl,note){
 
 function getDeliveryProofFolder_() {
   const props=PropertiesService.getScriptProperties(),key='FMART_DELIVERY_PROOF_FOLDER_ID';
-  const id=props.getProperty(key);
+  const id=props.getProperty(key),paymentId=props.getProperty('FMART_PAYMENT_PROOF_FOLDER_ID');
+  if(id&&paymentId&&id===paymentId)throw new Error('Folder bukti pengantaran harus berbeda dari folder bukti pembayaran. Periksa Script Property FMART_DELIVERY_PROOF_FOLDER_ID.');
   if(id) { try { return DriveApp.getFolderById(id); } catch(e) {} }
   const folder=DriveApp.createFolder('FMart - Bukti Pengantaran');
   props.setProperty(key,folder.getId());
@@ -3146,11 +3147,13 @@ function auditFMartRuntime_() {
     storeSalesPaymentByStatus: countStatuses_('PenjualanToko', 11)
   };
 
+  const proofFolderIds = {};
   [
     { key: 'FMART_PAYMENT_PROOF_FOLDER_ID', label: 'paymentProof' },
     { key: 'FMART_DELIVERY_PROOF_FOLDER_ID', label: 'deliveryProof' }
   ].forEach(function(item) {
     const folderId = props.getProperty(item.key);
+    if (folderId) proofFolderIds[item.label] = String(folderId);
     if (!folderId) {
       result.driveFolders[item.label] = { configured: false, accessible: false };
       result.issues.push({ code: 'DRIVE_FOLDER_NOT_CONFIGURED', detail: 'Folder ' + item.label + ' belum dikonfigurasi.' });
@@ -3175,6 +3178,14 @@ function auditFMartRuntime_() {
       result.issues.push({ code: 'DRIVE_FOLDER_INACCESSIBLE', detail: 'Folder ' + item.label + ' tidak dapat diakses oleh akun eksekusi: ' + String(err && err.message || err) });
     }
   });
+
+  if (proofFolderIds.paymentProof && proofFolderIds.deliveryProof &&
+      proofFolderIds.paymentProof === proofFolderIds.deliveryProof) {
+    result.issues.push({
+      code: 'DRIVE_PROOF_FOLDERS_REUSED',
+      detail: 'Folder bukti pembayaran dan bukti pengantaran menggunakan folder Drive yang sama. Pisahkan kedua folder.'
+    });
+  }
 
   try {
     result.triggers = ScriptApp.getProjectTriggers().map(function(trigger) {
