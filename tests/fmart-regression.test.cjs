@@ -233,7 +233,7 @@ test('Responsive and role navigation coverage remains explicit',()=>{
 });
 test('Role-sensitive reports and QRIS settings remain server-gated',()=>{
  const reports=extractFunction(code,'getFMartReports'),settings=extractFunction(code,'getPaymentSettings'),ops=extractFunction(code,'getOperationsDashboard');
- assert.ok(reports.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN'));
+ assert.ok(reports.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN'));assert.ok(reports.includes('hppMissingLines'));assert.ok(reports.includes('grossProfit:grossProfit'));
  assert.ok(settings.includes('FMART.ROLES.SUPERADMIN'));
  assert.ok(ops.includes('pendingPayments:waliQrisQueue,products:[],categories:[]'));
 });
@@ -1627,4 +1627,38 @@ test('Supervisor catalog is read-only and Drive QRIS uses an embeddable thumbnai
 test('Supervisor transaction dashboard returns the complete order history',()=>{
  const dashboard=extractFunction(code,'getOperationsDashboard');
  assert.ok(dashboard.includes('session.role===FMART.ROLES.SUPERVISOR?orders.length:60'));
+});
+
+
+test('Weighted-average HPP and gross profit remain explicit for legacy transactions',()=>{
+ const helper=extractFunction(code,'weightedAverageHpp_'),migration=extractFunction(code,'migrateFMartCostingSchema'),order=extractFunction(code,'applyOrderStockPlan_'),pos=extractFunction(code,'applyCashierSaleStock_'),report=extractFunction(code,'getFMartReports');
+ assert.doesNotThrow(()=>new vm.Script(setup),'SetupDatabase schema must remain valid JavaScript');
+ assert.ok(setup.includes('HargaPokokRataRata')&&setup.includes('HPPSubtotal'));
+ assert.ok(extractFunction(code,'getAdminCatalog').includes('ensureFMartCostingSchema_'));
+ assert.ok(extractFunction(code,'getStockCatalog').includes('ensureFMartCostingSchema_'));
+ assert.ok(migration.includes('ensureFMartCostingSchema_'));
+ assert.ok(helper.includes('beforeQty*beforeHpp+incomingTotalCost')&&helper.includes('beforeQty>0&&beforeHpp<=0'));
+ assert.ok(order.includes("captureSaleDetailHpp_(ss,'DetailPesanan'")&&order.indexOf('if(mutation)')<order.indexOf("captureSaleDetailHpp_(ss,'DetailPesanan'")&&pos.includes("captureSaleDetailHpp_(ss,'DetailPenjualanToko'"));
+ assert.ok(report.includes('hppMissingLines')&&report.includes('grossProfit:grossProfit'));
+});
+
+
+test('HPP entry is available on product, variation, receipt and stock-in forms',()=>{
+ const product=index.slice(index.indexOf('function openProductForm(item)'),index.indexOf('function openStaffUserForm'));
+ const variation=index.slice(index.indexOf('function openVariationForm(item)'),index.indexOf('async function openStockTransferForm'));
+ const receipt=index.slice(index.indexOf('function openStockReceiptForm(products)'),index.indexOf('function openStockMinimumForm'));
+ const adjustment=index.slice(index.indexOf('function openStockForm(productId,variationId)'),index.indexOf('async function advanceWarehouse'));
+ assert.ok(product.includes('prdHpp')&&product.includes('hpp:$('));
+ assert.ok(variation.includes('varHpp')&&variation.includes('hpp:$('));
+ assert.ok(receipt.includes('receipt-cost')&&receipt.includes('unitCost'));
+ assert.ok(adjustment.includes('stockUnitCost')&&adjustment.includes('unitCost'));
+});
+
+
+test('Legacy pending stock receipts can recover without inventing historical acquisition cost',()=>{
+ const recovery=extractFunction(code,'recoverLegacyStockReceiptIfPending_');
+ const receipt=extractFunction(code,'createStockReceipt');
+ assert.ok(receipt.includes('recoverLegacyStockReceiptIfPending_'));
+ assert.ok(recovery.includes('legacyFingerprint')&&recovery.includes('done.legacyCostNotRecorded=true'));
+ assert.ok(index.includes('legacyReceiptSignature'));
 });

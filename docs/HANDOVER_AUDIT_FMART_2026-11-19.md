@@ -79,3 +79,18 @@ Baseline repository setelah perbaikan login: `f0be7fdc1ac31b9356b0d853d931952863
 - Perbaikan tidak mengubah backend autentikasi, akun, role, database, atau data produksi. Tombol Masuk belum diuji langsung pada browser/runtime.
 
 Status keseluruhan tetap: **SOURCE AUDIT / REGRESSION PASS — RUNTIME UAT NOT COMPLETE — PRODUCTION NOT APPROVED.**
+
+
+## Addendum — Tahap 40.6 HPP dan laba kotor (20 November 2026)
+
+PR #135 menambahkan metode HPP rata-rata tertimbang dan snapshot biaya saat barang keluar. Perubahan source menambahkan kolom pada Produk, VariasiProduk, MutasiStok, DetailPenerimaanBarang, DetailPesanan, dan DetailPenjualanToko. Kolom ditambahkan di ujung sheet; data transaksi lama tidak ditimpa.
+
+- Gudang mencatat biaya perolehan per unit pada setiap penerimaan barang dan setiap mutasi stok masuk.
+- Untuk produk/variasi yang sudah memiliki saldo stok tetapi belum memiliki HPP, Admin harus menetapkan HPP pembukaan dari dokumen pembelian atau dasar biaya yang disetujui. Sistem menolak menggabungkan stok lama tanpa nilai biaya dengan stok baru.
+- HPP rata-rata berlaku pada gabungan saldo Gudang dan Kasir; transfer internal tidak mengubah rata-rata.
+- HPP setiap penjualan Wali/POS disimpan pada detail ketika stok dikurangi. Data lama tidak direkonstruksi memakai HPP sekarang karena akan menghasilkan laba historis yang tidak dapat dibuktikan.
+- Laporan hanya menampilkan laba kotor ketika semua baris penjualan terbayar pada periode memiliki snapshot HPP. Jika belum lengkap, angka laba kotor dan HPP total ditahan dan jumlah baris/unit yang belum tercatat ditampilkan.
+- Laba kotor belum mengurangi biaya operasional, sehingga bukan laba bersih.
+- Fungsi migrasi eksplisit: `migrateFMartCostingSchema()`. Pemanggilan katalog Gudang/Admin dan laporan juga menjalankan pemeriksaan skema append-only.
+
+Regression CI pada PR #135: lulus. Runtime UAT, uji migrasi pada salinan Spreadsheet, bukti rekonsiliasi pembelian, serta verifikasi Apps Script deployment tetap belum dilakukan. Status produksi tetap **NOT APPROVED** sampai gerbang UAT selesai.

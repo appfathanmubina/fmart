@@ -918,6 +918,26 @@ function getOrCreateTransactionProofFile_(folder,name,mime,bytes,marker){
  const it=folder.getFilesByName(name);while(it.hasNext()){const f=it.next();if(String(f.getDescription()||'')===String(marker))return f;}
  const file=folder.createFile(Utilities.newBlob(bytes,mime,name));file.setDescription(String(marker));return file;
 }
+
+function ensureFMartCostingSchema_(ss){
+ const defs={Produk:['HargaPokokRataRata'],VariasiProduk:['HargaPokokRataRata'],MutasiStok:['BiayaPerUnit','HPPSebelum','HPPSesudah'],DetailPenerimaanBarang:['BiayaPerUnit','TotalBiaya'],DetailPesanan:['HPPUnit','HPPSubtotal','HPPStatus'],DetailPenjualanToko:['HPPUnit','HPPSubtotal','HPPStatus']};
+ Object.keys(defs).forEach(function(name){let sh=ss.getSheetByName(name);if(!sh)throw new Error('Sheet '+name+' belum tersedia. Jalankan setupFMartDatabase_().');let headers=sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getDisplayValues()[0].map(String);defs[name].forEach(function(h){if(headers.indexOf(h)<0){sh.getRange(1,headers.length+1).setValue(h);headers.push(h);}});});
+}
+function migrateFMartCostingSchema(){const lock=LockService.getScriptLock();lock.waitLock(10000);try{const ss=getSS_();ensureFMartCostingSchema_(ss);SpreadsheetApp.flush();return 'Kolom HPP dan biaya perolehan FMart siap. Data transaksi lama tidak diubah.';}finally{lock.releaseLock();}}
+function getItemHpp_(ss,pid,vid){const name=vid?'VariasiProduk':'Produk',row=findRowById_(ss.getSheetByName(name),vid||pid,1);if(!row)return 0;const sh=ss.getSheetByName(name),h=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],c=h.indexOf('HargaPokokRataRata');return c<0?0:Math.max(0,Math.round(Number(row.values[c])||0));}
+function setItemHpp_(ss,pid,vid,value){const name=vid?'VariasiProduk':'Produk',row=findRowById_(ss.getSheetByName(name),vid||pid,1);if(!row)throw new Error('Master produk/variasi tidak ditemukan saat menyimpan HPP.');const sh=ss.getSheetByName(name),h=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],c=h.indexOf('HargaPokokRataRata');if(c<0)throw new Error('Kolom HPP belum tersedia. Jalankan migrasi skema HPP.');sh.getRange(row.rowNumber,c+1).setValue(Math.max(0,Math.round(Number(value)||0)));}
+function getTotalItemStock_(ss,pid,vid){let total=0;['Stok','StokKasir'].forEach(function(name){const sh=ss.getSheetByName(name);if(!sh)return;const m=readRows_(sh).filter(function(r){return String(r[1])===String(pid)&&String(r[2]||'')===String(vid||'');});if(m.length>1)throw new Error('Saldo stok ganda pada '+name+' untuk produk '+pid+'.');if(m.length){const q=Number(m[0][3]);if(!Number.isSafeInteger(q)||q<0)throw new Error('Saldo stok tidak valid pada '+name+'.');total+=q;}});return total;}
+function weightedAverageHpp_(beforeQty,beforeHpp,incomingQty,incomingTotalCost){beforeQty=Number(beforeQty)||0;beforeHpp=Number(beforeHpp)||0;incomingQty=Number(incomingQty)||0;incomingTotalCost=Number(incomingTotalCost)||0;if(!Number.isSafeInteger(beforeQty)||beforeQty<0||!Number.isSafeInteger(incomingQty)||incomingQty<1||!Number.isSafeInteger(incomingTotalCost)||incomingTotalCost<1)throw new Error('Data perhitungan biaya persediaan tidak valid.');if(beforeQty>0&&beforeHpp<=0)throw new Error('HPP stok lama belum dicatat. Isi Harga Pokok Rata-rata pada master produk/variasi sebelum menambah stok.');return Math.round((beforeQty*beforeHpp+incomingTotalCost)/(beforeQty+incomingQty));}
+function applyHppTransition_(ss,pid,vid,beforeHpp,afterHpp){if(afterHpp===null||afterHpp===undefined||!Number.isFinite(Number(afterHpp)))return;const live=getItemHpp_(ss,pid,vid),before=Math.max(0,Math.round(Number(beforeHpp)||0)),after=Math.max(0,Math.round(Number(afterHpp)||0));if(live===before)setItemHpp_(ss,pid,vid,after);else if(live!==after)throw new Error('HPP berubah sejak jurnal dibuat. Pemulihan dihentikan agar nilai persediaan tidak dihitung ganda.');}
+function captureSaleDetailHpp_(ss,sheetName,transactionId,pid,vid){
+ const sh=ss.getSheetByName(sheetName),rows=readRows_(sh),matches=[];
+ rows.forEach(function(r,i){if(String(r[1])===String(transactionId)&&String(r[2])===String(pid)&&String(r[3]||'')===String(vid||''))matches.push({row:r,rowNumber:i+2});});
+ if(!matches.length)throw new Error('Detail penjualan tidak ditemukan saat menyimpan snapshot HPP.');
+ const hpp=getItemHpp_(ss,pid,vid),headers=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],u=headers.indexOf('HPPUnit')+1,v=headers.indexOf('HPPSubtotal')+1,s=headers.indexOf('HPPStatus')+1;
+ if(!u||!v||!s)throw new Error('Kolom snapshot HPP belum tersedia.');
+ matches.forEach(function(d){if(String(d.row[s-1]||'')==='TERCATAT')return;const qty=Math.max(0,Number(d.row[8])||0);if(hpp>0)sh.getRange(d.rowNumber,u,1,3).setValues([[hpp,hpp*qty,'TERCATAT']]);else sh.getRange(d.rowNumber,u,1,3).setValues([['','','BELUM_DICATAT']]);});
+}
+
 /** Menyelesaikan detail, pengiriman, dan keranjang checkout; aman dipanggil ulang. */
 function completeCheckoutOrder_(ss,order,payload,actor,actorRole){
  const id=String(order.values[0]),detailSheet=ss.getSheetByName('DetailPesanan'),details=readRows_(detailSheet),byId=Object.create(null);
@@ -950,12 +970,13 @@ function completeStockReceipt_(ss,receipt,payload,actor,actorRole){
    else if(live!==Number(x.after))throw new Error('Saldo stok berubah dari nilai sebelum/sesudah penerimaan; pemulihan dihentikan untuk '+key+'.');
   }else{if(x.stockRowExisted)throw new Error('Baris stok yang sebelumnya ada kini hilang. Pemulihan dihentikan untuk '+key+'.');stock.appendRow([x.stockId,x.productId,x.variationId,x.after,x.productMin,new Date()]);}
   if(x.variationId){const v=findRowById_(vars,String(x.variationId),1);if(!v)throw new Error('Variasi tidak ditemukan saat pemulihan penerimaan.');const mirror=Number(v.values[5]);if(mirror===Number(x.before))vars.getRange(v.rowNumber,6,1,3).setValues([[x.after,String(v.values[6]||'AKTIF'),new Date()]]);else if(mirror!==Number(x.after))throw new Error('Saldo mirror variasi berubah; pemulihan dihentikan untuk '+key+'.');}
-  const d=detailRows.find(function(r){return String(r[0])===String(x.detailId);});
-  if(d){if(String(d[1])!==receiptId||String(d[2])!==String(x.productId)||String(d[3]||'')!==String(x.variationId||'')||Number(d[4])!==Number(x.qty))throw new Error('Detail penerimaan tidak cocok; pemulihan dihentikan.');}
-  else detailSheet.appendRow([x.detailId,receiptId,x.productId,x.variationId,x.qty,x.before,x.after,payload.note||'']);
+  if(Number(x.unitCost)>0)applyHppTransition_(ss,x.productId,x.variationId,x.beforeHpp,x.afterHpp);
+   const d=detailRows.find(function(r){return String(r[0])===String(x.detailId);});
+  if(d){if(String(d[1])!==receiptId||String(d[2])!==String(x.productId)||String(d[3]||'')!==String(x.variationId||'')||Number(d[4])!==Number(x.qty))throw new Error('Detail penerimaan tidak cocok; pemulihan dihentikan.');if(Number(x.unitCost)>0)detailSheet.getRange(detailRows.indexOf(d)+2,9,1,2).setValues([[x.unitCost,x.totalCost]]);}
+  else detailSheet.appendRow([x.detailId,receiptId,x.productId,x.variationId,x.qty,x.before,x.after,payload.note||'',x.unitCost||'',x.totalCost||'']);
   const m=mutationRows.find(function(r){return String(r[0])===String(x.mutationId);});
   if(m){if(String(m[7])!==receiptId||String(m[1])!==String(x.productId)||Number(m[4])!==Number(x.qty)||Number(m[5])!==Number(x.before)||Number(m[6])!==Number(x.after))throw new Error('Mutasi penerimaan tidak cocok; pemulihan dihentikan.');}
-  else mutationSheet.appendRow([x.mutationId,x.productId,x.variationId,'MASUK',x.qty,x.before,x.after,receiptId,'Penerimaan '+payload.receiptNumber+(payload.note?' · '+payload.note:''),String(actor||'SYSTEM'),new Date()]);
+  else mutationSheet.appendRow([x.mutationId,x.productId,x.variationId,'MASUK',x.qty,x.before,x.after,receiptId,'Penerimaan '+payload.receiptNumber+(payload.note?' · '+payload.note:''),String(actor||'SYSTEM'),new Date(),x.unitCost||'',x.beforeHpp||0,x.afterHpp||'']);
  });
  const audit=readRows_(ss.getSheetByName('AuditLog'));
  if(!audit.some(function(r){return String(r[3]).toUpperCase()==='CREATE_STOCK_RECEIPT'&&String(r[4]).toUpperCase()==='PENERIMAAN_BARANG'&&String(r[5])===receiptId;}))
@@ -1679,7 +1700,8 @@ function getStockCardReport(token, productId, variationId, startDate, endDate) {
 
 /** Fase 6: laporan operasional terhitung dari data transaksi aktual. */
 function getFMartReports(token,startDate,endDate){
- const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN]),ss=getSS_(),start=parseReportDate_(startDate,false),end=parseReportDate_(endDate,true);if(end<start)throw new Error('Periode laporan tidak valid.');
+ const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN]),ss=getSS_();ensureFMartCostingSchema_(ss);
+ const start=parseReportDate_(startDate,false),end=parseReportDate_(endDate,true);if(end<start)throw new Error('Periode laporan tidak valid.');
  const orders=readRows_(ss.getSheetByName('Pesanan')).filter(r=>inReportRange_(r[10],start,end)),details=readRows_(ss.getSheetByName('DetailPesanan')),allPayments=readRows_(ss.getSheetByName('Pembayaran')),payments=allPayments.filter(r=>inReportRange_(r[8],start,end));
  const posSales=readRows_(ss.getSheetByName('PenjualanToko')).filter(r=>inReportRange_(r[15],start,end)&&String(r[12]||'').toUpperCase()!=='DIBATALKAN'),posDetails=readRows_(ss.getSheetByName('DetailPenjualanToko'));
  const products=readRows_(ss.getSheetByName('Produk')),cats=readRows_(ss.getSheetByName('Kategori')),warehouse=readRows_(ss.getSheetByName('MutasiStok')).filter(r=>inReportRange_(r[10],start,end)),cashier=readRows_(ss.getSheetByName('MutasiStokKasir')).filter(r=>inReportRange_(r[10],start,end));
@@ -1688,20 +1710,19 @@ function getFMartReports(token,startDate,endDate){
  const status=Object.create(null);orders.forEach(r=>{const s=String(r[8]||'').toUpperCase();status[s]=(status[s]||0)+1;});
  const validOrders=orders.filter(r=>String(r[8]||'').toUpperCase()!=='DIBATALKAN'),gross=validOrders.reduce((n,r)=>n+(Number(r[7])||0),0),paid=validOrders.filter(r=>paidIds[String(r[0])]).reduce((n,r)=>n+(Number(r[7])||0),0);
  const posPaid=posSales.filter(r=>String(r[11]||'').toUpperCase()==='LUNAS'),posGross=posSales.reduce((n,r)=>n+(Number(r[7])||0),0),posPaidTotal=posPaid.reduce((n,r)=>n+(Number(r[7])||0),0);
- const categories=Object.create(null),productSales=Object.create(null);
- function addDetail(d,include){if(!include)return;const q=Math.max(0,Number(d[8])||0),amount=Math.max(0,Number(d[9])||0),pid=String(d[2]||''),p=pby[pid],cat=p?String(p[1]||''):'';const cn=cmap[cat]||'Tanpa Kategori';categories[cn]=(categories[cn]||0)+amount;const name=pmap[pid]||String(d[5]||'Produk');if(!productSales[name])productSales[name]={name:name,qty:0,amount:0};productSales[name].qty+=q;productSales[name].amount+=amount;}
- const orderIds=Object.create(null);validOrders.forEach(r=>orderIds[String(r[0])]=true);details.forEach(d=>addDetail(d,!!orderIds[String(d[1])]));const posIds=Object.create(null);posPaid.forEach(r=>posIds[String(r[0])]=true);posDetails.forEach(d=>addDetail(d,!!posIds[String(d[1])]));
+ const categories=Object.create(null),productSales=Object.create(null),paidOrderIds=Object.create(null);validOrders.filter(r=>paidIds[String(r[0])]).forEach(r=>paidOrderIds[String(r[0])]=true);
+ let profitRevenue=0,cogs=0,hppMissingLines=0,hppMissingQty=0,hppCostedLines=0;
+ function addDetail(d,include,forProfit){if(!include)return;const q=Math.max(0,Number(d[8])||0),amount=Math.max(0,Number(d[9])||0),pid=String(d[2]||''),p=pby[pid],cat=p?String(p[1]||''):'';const cn=cmap[cat]||'Tanpa Kategori';categories[cn]=(categories[cn]||0)+amount;const name=pmap[pid]||String(d[5]||'Produk');if(!productSales[name])productSales[name]={name:name,qty:0,amount:0};productSales[name].qty+=q;productSales[name].amount+=amount;if(forProfit){profitRevenue+=amount;const hs=String(d[12]||'').toUpperCase(),unit=Number(d[10]),cost=Number(d[11]);if(hs==='TERCATAT'&&Number.isSafeInteger(unit)&&unit>0&&Number.isSafeInteger(cost)&&cost>=0){cogs+=cost;hppCostedLines++;}else{hppMissingLines++;hppMissingQty+=q;}}}
+ const orderIds=Object.create(null);validOrders.forEach(r=>orderIds[String(r[0])]=true);details.forEach(d=>addDetail(d,!!orderIds[String(d[1])],!!paidOrderIds[String(d[1])]));
+ const posIds=Object.create(null);posPaid.forEach(r=>posIds[String(r[0])]=true);posDetails.forEach(d=>addDetail(d,!!posIds[String(d[1])],!!posIds[String(d[1])]));
+ const profitDiscount=validOrders.filter(r=>paidIds[String(r[0])]).reduce((n,r)=>n+(Number(r[6])||0),0)+posPaid.reduce((n,r)=>n+(Number(r[6])||0),0);profitRevenue=Math.max(0,profitRevenue-profitDiscount);
+ const hppComplete=hppMissingLines===0,grossProfit=hppComplete?profitRevenue-cogs:null,grossMarginPercent=hppComplete&&profitRevenue>0?Math.round(grossProfit/profitRevenue*10000)/100:null;
  const methods=Object.create(null);payments.filter(r=>String(r[5]||'').toUpperCase()==='TERVERIFIKASI').forEach(r=>{const m=String(r[2]||'Lainnya');methods[m]=(methods[m]||0)+(Number(r[3])||0);});posPaid.forEach(r=>{const m=String(r[8]||'Lainnya');methods[m]=(methods[m]||0)+(Number(r[7])||0);});
- const sum=(rows,type)=>rows.filter(r=>String(r[3]||'').toUpperCase()===type).reduce((n,r)=>n+(Number(r[4])||0),0);
- const inWh=sum(warehouse,'MASUK'),outWh=sum(warehouse,'KELUAR'),inCash=sum(cashier,'MASUK'),outCash=sum(cashier,'KELUAR'),daily=Object.create(null);
+ const sum=(rows,type)=>rows.filter(r=>String(r[3]||'').toUpperCase()===type).reduce((n,r)=>n+(Number(r[4])||0),0),inWh=sum(warehouse,'MASUK'),outWh=sum(warehouse,'KELUAR'),inCash=sum(cashier,'MASUK'),outCash=sum(cashier,'KELUAR'),daily=Object.create(null);
  function addDay(date,amount,isPos){const key=formatReportDay_(date);if(!daily[key])daily[key]={date:key,orders:0,posSales:0,amount:0};if(isPos)daily[key].posSales++;else daily[key].orders++;daily[key].amount+=Number(amount)||0;}
  validOrders.forEach(r=>addDay(r[10],r[7],false));posPaid.forEach(r=>addDay(r[15],r[7],true));
- return {ok:true,period:{start:start.toISOString(),end:end.toISOString(),timezone:'Asia/Jakarta',dateField:'CreatedAt'},
- summary:{orders:orders.length,activeOrders:orders.filter(r=>!['DITERIMA','DIBATALKAN'].includes(String(r[8]||'').toUpperCase())).length,gross:gross,paid:paid,unpaid:Math.max(0,gross-paid),averageOrder:validOrders.length?Math.round(gross/validOrders.length):0,posSales:posSales.length,posGross:posGross,posPaid:posPaidTotal,stockIn:inWh+inCash,stockOut:outWh+outCash,stockInWarehouse:inWh,stockOutWarehouse:outWh,stockInCashier:inCash,stockOutCashier:outCash},
- statusCounts:status,categorySales:Object.keys(categories).map(k=>({name:k,amount:categories[k]})).sort((a,b)=>b.amount-a.amount),paymentMethods:Object.keys(methods).map(k=>({name:k,amount:methods[k]})).sort((a,b)=>b.amount-a.amount),
- daily:Object.keys(daily).sort().map(k=>daily[k]),topProducts:Object.keys(productSales).map(k=>productSales[k]).sort((a,b)=>b.amount-a.amount).slice(0,10),generatedAt:new Date().toISOString(),generatedBy:{userId:session.userId,nama:session.nama}};
+ return {ok:true,period:{start:start.toISOString(),end:end.toISOString(),timezone:'Asia/Jakarta',dateField:'CreatedAt'},summary:{orders:orders.length,activeOrders:orders.filter(r=>!['DITERIMA','DIBATALKAN'].includes(String(r[8]||'').toUpperCase())).length,gross:gross,paid:paid,unpaid:Math.max(0,gross-paid),averageOrder:validOrders.length?Math.round(gross/validOrders.length):0,posSales:posSales.length,posGross:posGross,posPaid:posPaidTotal,stockIn:inWh+inCash,stockOut:outWh+outCash,stockInWarehouse:inWh,stockOutWarehouse:outWh,stockInCashier:inCash,stockOutCashier:outCash,costRevenue:profitRevenue,cogs:hppComplete?cogs:null,grossProfit:grossProfit,grossMarginPercent:grossMarginPercent,hppComplete:hppComplete,hppMissingLines:hppMissingLines,hppMissingQty:hppMissingQty,hppCostedLines:hppCostedLines},statusCounts:status,categorySales:Object.keys(categories).map(k=>({name:k,amount:categories[k]})).sort((a,b)=>b.amount-a.amount),paymentMethods:Object.keys(methods).map(k=>({name:k,amount:methods[k]})).sort((a,b)=>b.amount-a.amount),daily:Object.keys(daily).sort().map(k=>daily[k]),topProducts:Object.keys(productSales).map(k=>productSales[k]).sort((a,b)=>b.amount-a.amount).slice(0,10),generatedAt:new Date().toISOString(),generatedBy:{userId:session.userId,nama:session.nama}};
 }
-
 function getFMartAuditLog(token, startDate, endDate, roleFilter, actionFilter, searchText, limit) {
   requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
   const start=parseReportDate_(startDate,false), end=parseReportDate_(endDate,true);
@@ -1759,12 +1780,12 @@ function getSettingValue_(key){const s=getSS_().getSheetByName('Pengaturan');con
 
 function getAdminCatalog(token) {
   requireRole_(token, [FMART.ROLES.ADMIN, FMART.ROLES.SUPERVISOR, FMART.ROLES.SUPERADMIN]);
-  const ss=getSS_();
+  const ss=getSS_();ensureFMartCostingSchema_(ss);
   const categories=readRows_(ss.getSheetByName('Kategori')).map(r=>({id:String(r[0]),name:String(r[1]||''),description:String(r[2]||''),order:Number(r[3])||0,status:String(r[4]||'')}));
-  const products=readRows_(ss.getSheetByName('Produk')).map(r=>({id:String(r[0]),categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),description:String(r[4]||''),price:Number(r[5])||0,minStock:Number(r[6])||0,photoUrl:String(r[7]||''),status:String(r[8]||'')}));
+  const products=readRows_(ss.getSheetByName('Produk')).map(r=>({id:String(r[0]),categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),description:String(r[4]||''),price:Number(r[5])||0,minStock:Number(r[6])||0,photoUrl:String(r[7]||''),status:String(r[8]||''),hpp:Math.max(0,Number(r[11])||0)}));
   const stockRows=readRows_(ss.getSheetByName('Stok')),stockByKey=Object.create(null);
   stockRows.forEach(function(r){const key=String(r[1]||'')+'|'+String(r[2]||'');if(!Object.prototype.hasOwnProperty.call(stockByKey,key))stockByKey[key]=Math.max(0,Number(r[3])||0);});
-  const variations=readRows_(ss.getSheetByName('VariasiProduk')).map(r=>{const key=String(r[1]||'')+'|'+String(r[0]||'');return {id:String(r[0]),productId:String(r[1]),name:String(r[2]||''),value:String(r[3]||''),priceAddition:Number(r[4])||0,stock:Object.prototype.hasOwnProperty.call(stockByKey,key)?stockByKey[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockByKey,key),status:String(r[6]||'')};});
+  const variations=readRows_(ss.getSheetByName('VariasiProduk')).map(r=>{const key=String(r[1]||'')+'|'+String(r[0]||'');return {id:String(r[0]),productId:String(r[1]),name:String(r[2]||''),value:String(r[3]||''),priceAddition:Number(r[4])||0,stock:Object.prototype.hasOwnProperty.call(stockByKey,key)?stockByKey[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockByKey,key),status:String(r[6]||''),hpp:Math.max(0,Number(r[9])||0)};});
   return {ok:true,categories:categories,products:products,variations:variations};
 }
 
@@ -1782,19 +1803,19 @@ function saveCategory(token, id, name, description, order, status) {
 }
 
 function saveProduct(token, data) {
-  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);const ss=getSS_();
   const lock=LockService.getScriptLock(); lock.waitLock(10000);
-  try {
+  try {ensureFMartCostingSchema_(ss);
   if(!data || typeof data!=='object') throw new Error('Data produk tidak valid.');
-  const id=String(data.id||'').trim(), categoryId=String(data.categoryId||'').trim(), sku=String(data.sku||'').trim().slice(0,60), name=String(data.name||'').trim().slice(0,150), description=String(data.description||'').trim().slice(0,1000), price=Math.round(Number(data.price)), minStock=Math.max(0,Math.floor(Number(data.minStock)||0)), photoUrl=String(data.photoUrl||'').trim().slice(0,500), status=String(data.status||'AKTIF').toUpperCase();
-  if(!categoryId||!name||!sku||!Number.isFinite(price)||price<0)throw new Error('Data produk belum lengkap.');
+  const id=String(data.id||'').trim(), categoryId=String(data.categoryId||'').trim(), sku=String(data.sku||'').trim().slice(0,60), name=String(data.name||'').trim().slice(0,150), description=String(data.description||'').trim().slice(0,1000), price=Math.round(Number(data.price)), minStock=Math.max(0,Math.floor(Number(data.minStock)||0)), photoUrl=String(data.photoUrl||'').trim().slice(0,500), status=String(data.status||'AKTIF').toUpperCase(),hpp=data.hpp===undefined?null:(data.hpp===''?0:Math.round(Number(data.hpp)));
+  if(!categoryId||!name||!sku||!Number.isFinite(price)||price<0||(hpp!==null&&(!Number.isSafeInteger(hpp)||hpp<0)))throw new Error('Data produk atau HPP belum valid.');
   if(!/^https?:\/\//i.test(photoUrl) && photoUrl) throw new Error('Foto produk harus berupa URL http/https.');
   const cat=findRowById_(getSS_().getSheetByName('Kategori'),categoryId,1); if(!cat || String(cat.values[4]).toUpperCase()!=='AKTIF') throw new Error('Kategori tidak tersedia.');
   if(['AKTIF','NONAKTIF'].indexOf(status)<0)throw new Error('Status produk tidak valid.');
-  const sheet=getSS_().getSheetByName('Produk'); const now=new Date();
+  const sheet=ss.getSheetByName('Produk'); const now=new Date();
   const rows=readRows_(sheet); if(rows.some(r=>String(r[2]).toLowerCase()===sku.toLowerCase() && String(r[0])!==id))throw new Error('SKU sudah digunakan.');
-  if(id){const row=findRowById_(sheet,id,1);if(!row)throw new Error('Produk tidak ditemukan.');const before=JSON.stringify(row.values);sheet.getRange(row.rowNumber,2,1,9).setValues([[categoryId,sku,name,description,price,minStock,photoUrl,status,now]]);writeAudit_(session.userId,session.role,'UPDATE_PRODUCT','PRODUK',id,before,JSON.stringify({categoryId,sku,name,description,price,minStock,photoUrl,status}),'Perubahan produk');}
-  else {const newId=makeFMartId_('PRD');sheet.appendRow([newId,categoryId,sku,name,description,price,minStock,photoUrl,status,now,now]);writeAudit_(session.userId,session.role,'CREATE_PRODUCT','PRODUK',newId,'',JSON.stringify({categoryId,sku,name,description,price,minStock,photoUrl,status}),'Produk baru');}
+  if(id){const row=findRowById_(sheet,id,1);if(!row)throw new Error('Produk tidak ditemukan.');if(hpp===0&&getItemHpp_(ss,id,'')>0&&getTotalItemStock_(ss,id,'')>0)throw new Error('HPP tidak boleh dikosongkan selama produk masih memiliki stok.');const before=JSON.stringify(row.values);sheet.getRange(row.rowNumber,2,1,9).setValues([[categoryId,sku,name,description,price,minStock,photoUrl,status,now]]);if(hpp!==null)sheet.getRange(row.rowNumber,12).setValue(hpp);writeAudit_(session.userId,session.role,'UPDATE_PRODUCT','PRODUK',id,before,JSON.stringify({categoryId,sku,name,description,price,minStock,photoUrl,status,hpp:getItemHpp_(ss,id,'')}),'Perubahan produk');}
+  else {const newId=makeFMartId_('PRD');sheet.appendRow([newId,categoryId,sku,name,description,price,minStock,photoUrl,status,now,now,hpp===null?0:hpp]);writeAudit_(session.userId,session.role,'CREATE_PRODUCT','PRODUK',newId,'',JSON.stringify({categoryId,sku,name,description,price,minStock,photoUrl,status,hpp:hpp===null?0:hpp}),'Produk baru');}
   SpreadsheetApp.flush(); return getAdminCatalog(token);
   } finally { lock.releaseLock(); }
 }
@@ -1804,11 +1825,11 @@ function saveVariation(token, data) {
   const lock=LockService.getScriptLock();lock.waitLock(10000);
   try{
     if(!data||typeof data!=='object')throw new Error('Data variasi tidak valid.');
-    const id=String(data.id||'').trim(),productId=String(data.productId||'').trim(),name=String(data.name||'').trim().slice(0,80),value=String(data.value||'').trim().slice(0,100),addition=Math.round(Number(data.priceAddition)||0),requestedStock=Math.max(0,Math.floor(Number(data.stock)||0)),status=String(data.status||'AKTIF').toUpperCase();
-    if(!productId||!name||!value||addition<0)throw new Error('Data variasi belum lengkap.');
-    if(!Number.isSafeInteger(requestedStock)||requestedStock<0)throw new Error('Stok awal variasi tidak valid.');
+    const id=String(data.id||'').trim(),productId=String(data.productId||'').trim(),name=String(data.name||'').trim().slice(0,80),value=String(data.value||'').trim().slice(0,100),addition=Math.round(Number(data.priceAddition)||0),requestedStock=Math.max(0,Math.floor(Number(data.stock)||0)),status=String(data.status||'AKTIF').toUpperCase(),hpp=data.hpp===undefined?null:(data.hpp===''?0:Math.round(Number(data.hpp)));
+    if(!productId||!name||!value||addition<0||(hpp!==null&&(!Number.isSafeInteger(hpp)||hpp<0)))throw new Error('Data variasi atau HPP belum valid.');
+    if(!Number.isSafeInteger(requestedStock)||requestedStock<0)throw new Error('Stok awal variasi tidak valid.');if(!id&&requestedStock>0&&!(hpp>0))throw new Error('HPP wajib diisi jika variasi dibuat dengan stok awal.');
     if(['AKTIF','NONAKTIF'].indexOf(status)<0)throw new Error('Status variasi tidak valid.');
-    const ss=getSS_(),product=findRowById_(ss.getSheetByName('Produk'),productId,1);
+    const ss=getSS_();ensureFMartCostingSchema_(ss);const product=findRowById_(ss.getSheetByName('Produk'),productId,1);
     if(!product)throw new Error('Produk tidak ditemukan.');
     const sheet=ss.getSheetByName('VariasiProduk'),stockSheet=ss.getSheetByName('Stok'),stockRows=readRows_(stockSheet),now=new Date();
     let variationId=id,stock=requestedStock,beforeData='',existingVariation=null;
@@ -1819,15 +1840,15 @@ function saveVariation(token, data) {
       const matches=stockRows.filter(function(r){return String(r[1])===productId&&String(r[2]||'')===id;});
       if(matches.length!==1)throw new Error(matches.length?'Ditemukan baris stok ganda untuk variasi ini. Perbaiki data Gudang sebelum menyimpan variasi.':'Baris stok variasi tidak ditemukan. Jalankan audit Gudang sebelum mengubah variasi.');
       stock=Number(matches[0][3]);
-      if(!Number.isSafeInteger(stock)||stock<0)throw new Error('Saldo stok kanonis variasi tidak valid.');
+      if(!Number.isSafeInteger(stock)||stock<0)throw new Error('Saldo stok kanonis variasi tidak valid.');if(hpp===0&&getItemHpp_(ss,productId,id)>0&&getTotalItemStock_(ss,productId,id)>0)throw new Error('HPP tidak boleh dikosongkan selama variasi masih memiliki stok.');
       beforeData=JSON.stringify(existingVariation.values);
     }else{
       variationId=makeFMartId_('VAR');
       if(stockRows.some(function(r){return String(r[1])===productId&&String(r[2]||'')===variationId;}))throw new Error('ID variasi bentrok dengan data stok yang sudah ada.');
     }
     // Semua validasi selesai sebelum sheet master atau stok ditulis.
-    if(existingVariation)sheet.getRange(existingVariation.rowNumber,2,1,7).setValues([[productId,name,value,addition,stock,status,now]]);
-    else sheet.appendRow([variationId,productId,name,value,addition,stock,status,now,now]);
+    if(existingVariation){sheet.getRange(existingVariation.rowNumber,2,1,7).setValues([[productId,name,value,addition,stock,status,now]]);if(hpp!==null)sheet.getRange(existingVariation.rowNumber,10).setValue(hpp);}
+    else sheet.appendRow([variationId,productId,name,value,addition,stock,status,now,now,hpp===null?0:hpp]);
     if(!existingVariation)stockSheet.appendRow([makeFMartId_('STK'),productId,variationId,stock,Math.max(0,Number(product.values[6])||0),now]);
     else{
       const stockRowNumber=stockRows.findIndex(function(r){return String(r[1])===productId&&String(r[2]||'')===variationId;})+2;
@@ -1837,9 +1858,9 @@ function saveVariation(token, data) {
     if(!existingVariation&&stock>0){
       const mutationSheet=ss.getSheetByName('MutasiStok');
       if(!mutationSheet)throw new Error('Sheet MutasiStok tidak tersedia untuk mencatat stok awal variasi.');
-      mutationSheet.appendRow([makeFMartId_('MUT'),productId,variationId,'MASUK',stock,0,stock,variationId,'Stok awal saat variasi dibuat',session.userId,now]);
+      mutationSheet.appendRow([makeFMartId_('MUT'),productId,variationId,'MASUK',stock,0,stock,variationId,'Stok awal saat variasi dibuat',session.userId,now,hpp||'',0,hpp||'']);
     }
-    writeAudit_(session.userId,session.role,id?'UPDATE_VARIATION':'CREATE_VARIATION','VARIASI_PRODUK',variationId,beforeData,JSON.stringify({productId,name,value,addition,stock,status}),'Perubahan variasi; saldo Stok menjadi sumber utama dan stok awal variasi baru dicatat sebagai mutasi MASUK');
+    writeAudit_(session.userId,session.role,id?'UPDATE_VARIATION':'CREATE_VARIATION','VARIASI_PRODUK',variationId,beforeData,JSON.stringify({productId,name,value,addition,stock,status,hpp:getItemHpp_(ss,productId,variationId)}),'Perubahan variasi; saldo Stok menjadi sumber utama dan stok awal variasi baru dicatat sebagai mutasi MASUK');
     SpreadsheetApp.flush();const queueResult=(!existingVariation&&stock>0)?processPendingStockOrders_(ss,session.userId,'VARIASI_BARU',session.role):{processed:0};SpreadsheetApp.flush();const catalog=getAdminCatalog(token);catalog.stockQueueProcessed=queueResult.processed;return catalog;
   }finally{lock.releaseLock();}
 }
@@ -1847,7 +1868,7 @@ function saveVariation(token, data) {
 function ensureReceivingSheets_(ss) {
   const definitions=[
     {name:'PenerimaanBarang',headers:['PenerimaanId','NomorPenerimaan','Pemasok','ReferensiDokumen','TanggalTerima','Catatan','JumlahBaris','TotalQty','CreatedBy','CreatedAt']},
-    {name:'DetailPenerimaanBarang',headers:['DetailPenerimaanId','PenerimaanId','ProdukId','VariasiId','Qty','StokSebelum','StokSesudah','Catatan']}
+    {name:'DetailPenerimaanBarang',headers:['DetailPenerimaanId','PenerimaanId','ProdukId','VariasiId','Qty','StokSebelum','StokSesudah','Catatan','BiayaPerUnit','TotalBiaya']}
   ];
   definitions.forEach(function(def){
     let sheet=ss.getSheetByName(def.name);
@@ -1861,7 +1882,7 @@ function ensureReceivingSheets_(ss) {
 
 function getStockReceivingData(token) {
   requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
-  const ss=getSS_();ensureReceivingSheets_(ss);
+  const ss=getSS_();ensureFMartCostingSchema_(ss);ensureReceivingSheets_(ss);
   const products=getStockCatalog(token).products;
   const productRows=readRows_(ss.getSheetByName('Produk')),variationRows=readRows_(ss.getSheetByName('VariasiProduk'));
   const userRows=readRows_(ss.getSheetByName('Users')),users={};
@@ -1870,9 +1891,24 @@ function getStockReceivingData(token) {
   const receipts=readRows_(ss.getSheetByName('PenerimaanBarang')).slice(-50).reverse().map(function(r){
     const receiptId=String(r[0]||'');
     const details=readRows_(ss.getSheetByName('DetailPenerimaanBarang')).filter(function(d){return String(d[1])===receiptId;});
-    return {id:receiptId,number:String(r[1]||''),supplier:String(r[2]||''),reference:String(r[3]||''),receivedAt:r[4] instanceof Date?r[4].toISOString():String(r[4]||''),note:String(r[5]||''),lineCount:Number(r[6])||details.length,totalQty:Number(r[7])||0,actor:users[String(r[8])]||'-',createdAt:r[9] instanceof Date?r[9].toISOString():String(r[9]||''),items:details.map(function(d){const p=pmap[String(d[2])],v=variationRows.find(function(x){return String(x[0])===String(d[3]);});return {productName:p?String(p[3]||''):'Produk tidak ditemukan',variationName:v?[String(v[2]||''),String(v[3]||'')].filter(Boolean).join(': '):'',qty:Number(d[4])||0,before:Number(d[5])||0,after:Number(d[6])||0,note:String(d[7]||'')};})};
+    return {id:receiptId,number:String(r[1]||''),supplier:String(r[2]||''),reference:String(r[3]||''),receivedAt:r[4] instanceof Date?r[4].toISOString():String(r[4]||''),note:String(r[5]||''),lineCount:Number(r[6])||details.length,totalQty:Number(r[7])||0,actor:users[String(r[8])]||'-',createdAt:r[9] instanceof Date?r[9].toISOString():String(r[9]||''),items:details.map(function(d){const p=pmap[String(d[2])],v=variationRows.find(function(x){return String(x[0])===String(d[3]);});return {productName:p?String(p[3]||''):'Produk tidak ditemukan',variationName:v?[String(v[2]||''),String(v[3]||'')].filter(Boolean).join(': '):'',qty:Number(d[4])||0,before:Number(d[5])||0,after:Number(d[6])||0,unitCost:Number(d[8])||0,totalCost:Number(d[9])||0,note:String(d[7]||'')};})};
   });
   return {ok:true,products:products,receipts:receipts};
+}
+
+
+function recoverLegacyStockReceiptIfPending_(session,supplier,reference,note,receivedDate,rawItems,requestKey){
+ const lock=LockService.getScriptLock();lock.waitLock(15000);
+ try{
+  const ss=getSS_();ensureFMartCostingSchema_(ss);ensureReceivingSheets_(ss);const sheet=ss.getSheetByName('PenerimaanBarang'),existing=readRows_(sheet).map((r,i)=>({values:r,rowNumber:i+2})).find(x=>String(x.values[10]||'')===requestKey);
+  if(!existing)return null;
+  let saved;try{saved=JSON.parse(String(existing.values[12]||'{}'));}catch(e){throw new Error('Payload pemulihan penerimaan tidak dapat dibaca. Hubungi Admin.');}
+  if(!Array.isArray(saved.items)||saved.items.every(x=>Number(x.unitCost)>0))return null;
+  const grouped=Object.create(null);rawItems.forEach(function(x){const pid=String(x&&x.productId||'').trim(),vid=String(x&&x.variationId||'').trim(),qty=Number(x&&x.qty);if(!pid||!Number.isInteger(qty)||qty<1)throw new Error('Data pemulihan penerimaan lama tidak valid.');const k=pid+'|'+vid;if(!grouped[k])grouped[k]={productId:pid,variationId:vid,qty:0};grouped[k].qty+=qty;});
+  const legacyInput={supplier:supplier,reference:reference,note:note,receivedDate:receivedDate,items:Object.keys(grouped).sort().map(k=>grouped[k])},legacyFingerprint=sha256Hex_(JSON.stringify(legacyInput));
+  if(String(existing.values[11]||'')!==legacyFingerprint)throw new Error('Kunci penerimaan lama sudah terikat pada item berbeda. Jangan ulangi dengan data yang diubah.');
+  const done=completeStockReceipt_(ss,existing,saved,session.userId,session.role),queued=processPendingStockOrders_(ss,session.userId,'PENERIMAAN_BARANG',session.role);done.ordersReleased=queued.processed;done.recovered=true;done.legacyCostNotRecorded=true;return done;
+ }finally{lock.releaseLock();}
 }
 
 function createStockReceipt(token,payload){
@@ -1883,11 +1919,12 @@ function createStockReceipt(token,payload){
  if(!supplier)throw new Error('Nama pemasok atau asal barang wajib diisi.');
  if(rawItems.length<1||rawItems.length>100)throw new Error('Tambahkan minimal satu item penerimaan dan maksimal 100 baris.');
  let receivedAt=new Date();if(receivedDate){if(!/^\d{4}-\d{2}-\d{2}$/.test(receivedDate))throw new Error('Tanggal penerimaan tidak valid.');const p=receivedDate.split('-').map(Number);receivedAt=new Date(p[0],p[1]-1,p[2],12);if(isNaN(receivedAt.getTime())||receivedAt.getFullYear()!==p[0]||receivedAt.getMonth()!==p[1]-1||receivedAt.getDate()!==p[2])throw new Error('Tanggal penerimaan tidak valid.');}
- const grouped=Object.create(null);rawItems.forEach(x=>{const pid=String(x&&x.productId||'').trim(),vid=String(x&&x.variationId||'').trim(),qty=Number(x&&x.qty);if(!pid||!Number.isInteger(qty)||qty<1)throw new Error('Setiap item harus memiliki produk dan jumlah bilangan bulat minimal 1.');const k=pid+'|'+vid;if(!grouped[k])grouped[k]={productId:pid,variationId:vid,qty:0};grouped[k].qty+=qty;if(!Number.isSafeInteger(grouped[k].qty))throw new Error('Jumlah penerimaan terlalu besar.');});
- const input={supplier:supplier,reference:reference,note:note,receivedDate:receivedDate,items:Object.keys(grouped).sort().map(k=>grouped[k])},fingerprint=sha256Hex_(JSON.stringify(input));
+ const legacyRecovery=recoverLegacyStockReceiptIfPending_(session,supplier,reference,note,receivedDate,rawItems,requestKey);if(legacyRecovery)return legacyRecovery;
+ const grouped=Object.create(null);rawItems.forEach(x=>{const pid=String(x&&x.productId||'').trim(),vid=String(x&&x.variationId||'').trim(),qty=Number(x&&x.qty),unitCost=Number(x&&x.unitCost);if(!pid||!Number.isInteger(qty)||qty<1||!Number.isSafeInteger(unitCost)||unitCost<1)throw new Error('Setiap item harus memiliki produk, jumlah, dan biaya perolehan per unit yang valid.');const k=pid+'|'+vid;if(!grouped[k])grouped[k]={productId:pid,variationId:vid,qty:0,totalCost:0};grouped[k].qty+=qty;grouped[k].totalCost+=qty*unitCost;if(!Number.isSafeInteger(grouped[k].qty)||!Number.isSafeInteger(grouped[k].totalCost))throw new Error('Jumlah atau nilai biaya penerimaan terlalu besar.');});
+ const input={supplier:supplier,reference:reference,note:note,receivedDate:receivedDate,items:Object.keys(grouped).sort().map(k=>({productId:grouped[k].productId,variationId:grouped[k].variationId,qty:grouped[k].qty,totalCost:grouped[k].totalCost,unitCost:Math.round(grouped[k].totalCost/grouped[k].qty)}))},fingerprint=sha256Hex_(JSON.stringify(input));
  const lock=LockService.getScriptLock();lock.waitLock(15000);
  try{
-  const ss=getSS_();ensureReceivingSheets_(ss);const receiptSheet=ss.getSheetByName('PenerimaanBarang'),existing=readRows_(receiptSheet).map((r,i)=>({values:r,rowNumber:i+2})).find(x=>String(x.values[10]||'')===requestKey);
+  const ss=getSS_();ensureFMartCostingSchema_(ss);ensureReceivingSheets_(ss);const receiptSheet=ss.getSheetByName('PenerimaanBarang'),existing=readRows_(receiptSheet).map((r,i)=>({values:r,rowNumber:i+2})).find(x=>String(x.values[10]||'')===requestKey);
   if(existing){if(String(existing.values[11]||'')!==fingerprint)throw new Error('Kunci penerimaan pernah dipakai untuk data berbeda. Buat permintaan baru.');let saved;try{saved=JSON.parse(String(existing.values[12]||'{}'));}catch(e){throw new Error('Payload pemulihan penerimaan tidak dapat dibaca. Hubungi Admin.');}const done=completeStockReceipt_(ss,existing,saved,session.userId,session.role);const queued=processPendingStockOrders_(ss,session.userId,'PENERIMAAN_BARANG',session.role);done.ordersReleased=queued.processed;done.recovered=true;return done;}
   const products=readRows_(ss.getSheetByName('Produk')),variations=readRows_(ss.getSheetByName('VariasiProduk')),stocks=readRows_(ss.getSheetByName('Stok'));
   const prepared=input.items.map(item=>{
@@ -1897,7 +1934,8 @@ function createStockReceipt(token,payload){
    const matches=stocks.filter(r=>String(r[1])===item.productId&&String(r[2]||'')===item.variationId);if(matches.length>1)throw new Error('Ditemukan baris stok ganda. Penerimaan dihentikan.');
    const before=matches.length?Number(matches[0][3]):(v?Number(v[5]):0);if(!Number.isSafeInteger(before)||before<0)throw new Error('Saldo stok awal tidak valid.');
    const after=before+item.qty;if(!Number.isSafeInteger(after))throw new Error('Hasil stok terlalu besar.');
-   return {productId:item.productId,variationId:item.variationId,qty:item.qty,before:before,after:after,productMin:Math.max(0,Number(p[6])||0),stockRowExisted:matches.length>0,detailId:makeFMartId_('DRC'),mutationId:makeFMartId_('MUT'),stockId:makeFMartId_('STK')};
+   const beforeQty=getTotalItemStock_(ss,item.productId,item.variationId),beforeHpp=getItemHpp_(ss,item.productId,item.variationId),afterHpp=weightedAverageHpp_(beforeQty,beforeHpp,item.qty,item.totalCost);
+   return {productId:item.productId,variationId:item.variationId,qty:item.qty,before:before,after:after,unitCost:item.unitCost,totalCost:item.totalCost,beforeHpp:beforeHpp,afterHpp:afterHpp,productMin:Math.max(0,Number(p[6])||0),stockRowExisted:matches.length>0,detailId:makeFMartId_('DRC'),mutationId:makeFMartId_('MUT'),stockId:makeFMartId_('STK')};
   });
   stocks.forEach((r)=>{});const now=new Date(),receiptId=makeFMartId_('RCV'),receiptNumber='PN-'+Utilities.formatDate(now,FMART_DB.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Utilities.getUuid().slice(0,4).toUpperCase();
   const saved={supplier:supplier,reference:reference,note:note,receivedDateInput:receivedDate,receivedAt:receivedAt.toISOString(),createdAt:now.toISOString(),createdBy:session.userId,receiptNumber:receiptNumber,items:prepared};
@@ -1910,9 +1948,9 @@ function createStockReceipt(token,payload){
 
 function getStockCatalog(token) {
   requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
-  const ss=getSS_(),products=readRows_(ss.getSheetByName('Produk')).filter(function(r){return String(r[8]||'').toUpperCase()==='AKTIF';}),vars=readRows_(ss.getSheetByName('VariasiProduk')).filter(function(r){return String(r[6]||'').toUpperCase()==='AKTIF';}),stocks=readRows_(ss.getSheetByName('Stok'));
+  const ss=getSS_();ensureFMartCostingSchema_(ss);const products=readRows_(ss.getSheetByName('Produk')).filter(function(r){return String(r[8]||'').toUpperCase()==='AKTIF';}),vars=readRows_(ss.getSheetByName('VariasiProduk')).filter(function(r){return String(r[6]||'').toUpperCase()==='AKTIF';}),stocks=readRows_(ss.getSheetByName('Stok'));
   const stockMap=Object.create(null);stocks.forEach(function(r){const key=String(r[1])+'|'+String(r[2]||'');if(!Object.prototype.hasOwnProperty.call(stockMap,key))stockMap[key]=Math.max(0,Number(r[3])||0);});
-  return {ok:true,products:products.map(function(p){const pid=String(p[0]),vs=vars.filter(function(v){return String(v[1])===pid;}).map(function(v){const key=pid+'|'+String(v[0]);return {id:String(v[0]),name:String(v[2]||''),value:String(v[3]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,key)?stockMap[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,key)};}),baseKey=pid+'|';return {id:pid,name:String(p[3]||''),sku:String(p[2]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,baseKey)?stockMap[baseKey]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,baseKey),variations:vs};})};
+  return {ok:true,products:products.map(function(p){const pid=String(p[0]),vs=vars.filter(function(v){return String(v[1])===pid;}).map(function(v){const key=pid+'|'+String(v[0]);return {id:String(v[0]),name:String(v[2]||''),value:String(v[3]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,key)?stockMap[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,key),hpp:Math.max(0,Number(v[9])||0)};}),baseKey=pid+'|';return {id:pid,name:String(p[3]||''),sku:String(p[2]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,baseKey)?stockMap[baseKey]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,baseKey),hpp:Math.max(0,Number(p[11])||0),variations:vs};})};
 }
 
 
@@ -1978,15 +2016,15 @@ function setStockMinimum(token, productId, variationId, minStock) {
   }finally{lock.releaseLock();}
 }
 
-function adjustStock(token, productId, variationId, type, qty, note, requestKey) {
+function adjustStock(token, productId, variationId, type, qty, note, requestKey, unitCost) {
   const session=requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
-  productId=String(productId||'').trim();variationId=String(variationId||'').trim();type=String(type||'').toUpperCase();qty=Number(qty);note=String(note||'').trim().slice(0,300);requestKey=String(requestKey||'').trim();
+  productId=String(productId||'').trim();variationId=String(variationId||'').trim();type=String(type||'').toUpperCase();qty=Number(qty);note=String(note||'').trim().slice(0,300);requestKey=String(requestKey||'').trim();unitCost=unitCost===''||unitCost===null||unitCost===undefined?0:Number(unitCost);
   if(!/^[A-Za-z0-9_-]{12,80}$/.test(requestKey))throw new Error('Kunci mutasi tidak valid. Muat ulang formulir dan coba kembali.');
-  if(!productId||!Number.isSafeInteger(qty)||qty<1||['MASUK','KELUAR'].indexOf(type)<0)throw new Error('Jumlah mutasi harus berupa bilangan bulat positif dan data mutasi harus valid.');
-  const fingerprint=sha256Hex_(JSON.stringify({productId:productId,variationId:variationId,type:type,qty:qty,note:note}));
+  if(!productId||!Number.isSafeInteger(qty)||qty<1||['MASUK','KELUAR'].indexOf(type)<0||(type==='MASUK'&&(!Number.isSafeInteger(unitCost)||unitCost<1)))throw new Error('Jumlah mutasi harus valid. Untuk stok masuk, isi biaya perolehan per unit.');
+  const fingerprint=sha256Hex_(JSON.stringify({productId:productId,variationId:variationId,type:type,qty:qty,note:note,unitCost:unitCost}));
   const lock=LockService.getScriptLock();lock.waitLock(10000);
   try{
-    const ss=getSS_(),product=findRowById_(ss.getSheetByName('Produk'),productId,1);if(!product)throw new Error('Produk tidak ditemukan.');
+    const ss=getSS_();ensureFMartCostingSchema_(ss);const product=findRowById_(ss.getSheetByName('Produk'),productId,1);if(!product)throw new Error('Produk tidak ditemukan.');
     const activeVariations=readRows_(ss.getSheetByName('VariasiProduk')).filter(v=>String(v[1])===productId&&String(v[6]||'').toUpperCase()==='AKTIF');if(activeVariations.length&&!variationId)throw new Error('Pilih variasi produk yang akan dimutasi.');
     let variationRow=null;if(variationId){variationRow=findRowById_(ss.getSheetByName('VariasiProduk'),variationId,1);if(!variationRow||String(variationRow.values[1])!==productId||String(variationRow.values[6]||'').toUpperCase()!=='AKTIF')throw new Error('Variasi tidak valid atau tidak aktif.');}
     if(String(product.values[8]||'').toUpperCase()!=='AKTIF')throw new Error('Produk nonaktif tidak dapat dimutasi.');
@@ -1995,28 +2033,30 @@ function adjustStock(token, productId, variationId, type, qty, note, requestKey)
     if(stockMatches.length>1)throw new Error('Ditemukan baris stok ganda. Mutasi dihentikan sampai data diperiksa.');
     const row=stockMatches.length?stockMatches[0]:-1,rawBefore=row>=0?Number(currentStockRows[row][3]):(variationRow?Number(variationRow.values[5]):0);
     if(!Number.isSafeInteger(rawBefore)||rawBefore<0)throw new Error('Saldo stok saat ini tidak valid.');
-    const before=rawBefore,after=type==='MASUK'?before+qty:before-qty,reservedNow=(getStockReservationMap_(ss,'')[productId+'|'+variationId]||0);
+    const before=rawBefore,after=type==='MASUK'?before+qty:before-qty,reservedNow=(getStockReservationMap_(ss,'')[productId+'|'+variationId]||0),beforeQty=getTotalItemStock_(ss,productId,variationId),beforeHpp=getItemHpp_(ss,productId,variationId),afterHpp=type==='MASUK'?weightedAverageHpp_(beforeQty,beforeHpp,qty,qty*unitCost):beforeHpp;
     if(type==='KELUAR'&&after<reservedNow)throw new Error('Stok tidak dapat dikurangi di bawah jumlah yang sedang direservasi ('+reservedNow+' unit).');
     if(!Number.isSafeInteger(after)||after<0)throw new Error('Hasil stok tidak valid atau stok tidak mencukupi.');
     const existing=readRows_(mutationSheet).map((r,i)=>({values:r,rowNumber:i+2})).filter(x=>String(x.values[7]||'')===requestKey);
     if(existing.length>1)throw new Error('Kunci mutasi memiliki lebih dari satu catatan. Hubungi Admin untuk rekonsiliasi.');
     if(existing.length){
       const m=existing[0].values;
-      if(String(m[1])!==productId||String(m[2]||'')!==variationId||String(m[3]).toUpperCase()!==type||Number(m[4])!==qty||String(m[8]||'')!==note||String(m[9]||'')!==session.userId)throw new Error('Kunci mutasi sudah digunakan untuk transaksi berbeda.');
+      if(String(m[1])!==productId||String(m[2]||'')!==variationId||String(m[3]).toUpperCase()!==type||Number(m[4])!==qty||String(m[8]||'')!==note||String(m[9]||'')!==session.userId||(type==='MASUK'&&Number(m[11])!==unitCost))throw new Error('Kunci mutasi sudah digunakan untuk transaksi berbeda.');
       const savedBefore=Number(m[5]),savedAfter=Number(m[6]);if(!Number.isSafeInteger(savedBefore)||!Number.isSafeInteger(savedAfter)||savedAfter!==(type==='MASUK'?savedBefore+qty:savedBefore-qty)||savedAfter<0)throw new Error('Jurnal mutasi tidak valid; pemulihan dihentikan.');
       const live=row>=0?Number(sheet.getRange(row+2,4).getValue()):null;
       if(live===null){if(savedBefore!==0)throw new Error('Baris saldo stok hilang; pemulihan dihentikan.');sheet.appendRow([makeFMartId_('STK'),productId,variationId,savedAfter,Number(product.values[6])||0,new Date()]);}
       else if(live===savedBefore){sheet.getRange(row+2,4).setValue(savedAfter);sheet.getRange(row+2,6).setValue(new Date());}
       else if(live!==savedAfter)throw new Error('Saldo stok tidak cocok dengan jurnal mutasi; pemulihan dihentikan.');
       if(variationId&&variationRow){const mirror=Number(variationRow.values[5]);if(mirror===savedBefore)ss.getSheetByName('VariasiProduk').getRange(variationRow.rowNumber,6,1,3).setValues([[savedAfter,String(variationRow.values[6]||'AKTIF'),new Date()]]);else if(mirror!==savedAfter)throw new Error('Saldo variasi tidak cocok dengan jurnal mutasi.');}
+      if(type==='MASUK')applyHppTransition_(ss,productId,variationId,Number(m[12])||0,Number(m[13])||afterHpp);
       SpreadsheetApp.flush();const queue=type==='MASUK'?processPendingStockOrders_(ss,session.userId,'PENYESUAIAN_STOK',session.role):{processed:0};const dashboard=getOperationsDashboard(token);dashboard.stockQueueProcessed=queue.processed;dashboard.duplicate=true;return dashboard;
     }
     const now=new Date(),mutationId=makeFMartId_('MUT');
-    mutationSheet.appendRow([mutationId,productId,variationId,type,qty,before,after,requestKey,note,session.userId,now]);
+    mutationSheet.appendRow([mutationId,productId,variationId,type,qty,before,after,requestKey,note,session.userId,now,type==='MASUK'?unitCost:'',type==='MASUK'?beforeHpp:'',type==='MASUK'?afterHpp:'']);
     SpreadsheetApp.flush();
     if(row>=0){const live=Number(sheet.getRange(row+2,4).getValue());if(live!==before)throw new Error('Saldo stok berubah atau tidak valid. Muat ulang data Gudang.');sheet.getRange(row+2,4).setValue(after);sheet.getRange(row+2,6).setValue(now);}
     else sheet.appendRow([makeFMartId_('STK'),productId,variationId,after,Number(product.values[6])||0,now]);
     if(variationId&&variationRow)ss.getSheetByName('VariasiProduk').getRange(variationRow.rowNumber,6,1,3).setValues([[after,String(variationRow.values[6]||'AKTIF'),now]]);
+    if(type==='MASUK')applyHppTransition_(ss,productId,variationId,beforeHpp,afterHpp);
     writeAudit_(session.userId,session.role,'ADJUST_STOCK','STOK',requestKey,'',JSON.stringify({productId:productId,variationId:variationId,stockBefore:before,stockAfter:after,type:type,qty:qty}),'Mutasi stok manual',now);
     SpreadsheetApp.flush();const queue=type==='MASUK'?processPendingStockOrders_(ss,session.userId,'PENYESUAIAN_STOK',session.role):{processed:0};SpreadsheetApp.flush();const dashboard=getOperationsDashboard(token);dashboard.stockQueueProcessed=queue.processed;return dashboard;
   }finally{lock.releaseLock();}
@@ -2050,13 +2090,14 @@ function buildOrderStockPlan_(ss,orderId){
 }
 
 function applyOrderStockPlan_(ss,orderId,plan,actor,now,finalizeReservations){
+ ensureFMartCostingSchema_(ss);
  const stock=ss.getSheetByName('Stok'),vars=ss.getSheetByName('VariasiProduk'),mut=ss.getSheetByName('MutasiStok');
  plan.forEach(x=>{
   const matches=readRows_(mut).map((r,i)=>({row:r,rowNumber:i+2})).filter(m=>String(m.row[7]||'')===String(orderId)&&String(m.row[1]||'')===String(x.pid)&&String(m.row[2]||'')===String(x.vid||'')&&String(m.row[3]||'').toUpperCase()==='KELUAR');
   if(matches.length>1)throw new Error('Mutasi stok ganda untuk pesanan '+orderId+'.');
   const mutation=matches[0]||null;
   if(mutation){const m=mutation.row;if(Number(m[4])!==Number(x.qty)||Number(m[5])!==Number(x.before)||Number(m[6])!==Number(x.after))throw new Error('Mutasi stok pesanan tidak sesuai dengan detail.');}
-  else mut.appendRow([makeFMartId_('MUT'),x.pid,x.vid,'KELUAR',x.qty,x.before,x.after,String(orderId),'Penjualan '+orderId,String(actor||'SYSTEM'),now]);
+  else {captureSaleDetailHpp_(ss,'DetailPesanan',orderId,x.pid,x.vid);mut.appendRow([makeFMartId_('MUT'),x.pid,x.vid,'KELUAR',x.qty,x.before,x.after,String(orderId),'Penjualan '+orderId,String(actor||'SYSTEM'),now]);}
   const liveRow=x.index>=0?stock.getRange(x.index+2,1,1,6).getValues()[0]:null;
   const live=liveRow?Number(liveRow[3]):Number((getProductSnapshot_(ss,x.pid,x.vid,'GUDANG')||{}).stock);
   if(live===Number(x.before)){
@@ -3670,9 +3711,10 @@ function getStoreSaleReservationMap_(ss) {
 }
 
 function applyCashierSaleStock_(ss,saleId,items,session,now) {
+  ensureFMartCostingSchema_(ss);
   const stockSheet=ss.getSheetByName('StokKasir'),mutationSheet=ss.getSheetByName('MutasiStokKasir');if(!stockSheet||!mutationSheet)throw new Error('Sheet StokKasir atau MutasiStokKasir belum tersedia. Jalankan setupFMartDatabase_().');
   const prepared=[],seen=Object.create(null);items.forEach(function(item){const idx=Number(item.stockRow),before=Number(item.before),qty=Number(item.qty),key=String(item.productId)+'|'+String(item.variationId||'');if(!Number.isInteger(idx)||idx<0||!Number.isSafeInteger(before)||before<0||!Number.isSafeInteger(qty)||qty<1||before<qty||seen[key])throw new Error('Rencana pengurangan stok Kasir tidak valid atau memuat item ganda.');seen[key]=true;const live=Number(stockSheet.getRange(idx+2,4).getValue());if(!Number.isSafeInteger(live)||live!==before)throw new Error('Stok Kasir berubah saat transaksi diproses. Muat ulang POS sebelum mencoba kembali.');prepared.push({item:item,idx:idx,before:before,after:before-qty,qty:qty});});
-  prepared.forEach(function(x){stockSheet.getRange(x.idx+2,4,1,3).setValues([[x.after,Number(stockSheet.getRange(x.idx+2,5).getValue())||0,now]]);mutationSheet.appendRow([makeFMartId_('MCK'),x.item.productId,x.item.variationId,'KELUAR',x.qty,x.before,x.after,saleId,'Penjualan langsung toko FMart',session.userId,now]);});
+  prepared.forEach(function(x){captureSaleDetailHpp_(ss,'DetailPenjualanToko',saleId,x.item.productId,x.item.variationId);stockSheet.getRange(x.idx+2,4,1,3).setValues([[x.after,Number(stockSheet.getRange(x.idx+2,5).getValue())||0,now]]);mutationSheet.appendRow([makeFMartId_('MCK'),x.item.productId,x.item.variationId,'KELUAR',x.qty,x.before,x.after,saleId,'Penjualan langsung toko FMart',session.userId,now]);});
 }
 
 

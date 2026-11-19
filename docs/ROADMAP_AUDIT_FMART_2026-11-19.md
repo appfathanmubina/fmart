@@ -840,3 +840,18 @@ Perubahan dibatasi pada markup/handler login, regression test, dan roadmap. Tida
 - Katalog Supervisor dibuat sebagai tampilan baca-saja tanpa tombol tambah/edit/variasi. Laporan Supervisor tidak menampilkan tab Audit. Keuntungan belum dapat dihitung karena skema saat ini tidak menyimpan harga pokok/biaya perolehan.
 - Perbaikan QRIS PWA mempertahankan URL Drive asli untuk tombol buka/unduh, tetapi menggunakan endpoint thumbnail Drive untuk elemen gambar.
 - Uji runtime pada PWA dan verifikasi izin berbagi file Drive masih wajib dilakukan setelah source siap.
+
+
+## Tahap 40.6 — Harga Pokok Rata-rata, biaya perolehan, dan laba kotor
+
+**Status: implementasi source selesai pada PR #135; regression CI lulus pada commit `e6b076e1706c402665dd89d4623cb64ea92499df`. Perubahan lanjutan untuk menjaga HPP stok tetap tercatat sedang diperiksa. Runtime Spreadsheet/Apps Script/PWA belum diuji.**
+
+- Menambahkan kolom `HargaPokokRataRata` pada master Produk dan VariasiProduk. Migrasi bersifat append-only; kolom lama dan data transaksi yang sudah ada tidak ditulis ulang.
+- Penerimaan barang dan mutasi stok MASUK meminta biaya perolehan aktual per unit, menyimpan nilai penerimaan, dan memperbarui HPP dengan metode rata-rata tertimbang atas saldo Gudang + Kasir.
+- Transfer internal tidak mengubah HPP gabungan. Stok KELUAR tidak mengubah rata-rata biaya; penjualan Wali dan POS menyimpan snapshot HPP pada detail saat stok benar-benar keluar.
+- Laporan menampilkan omzet terbayar, HPP, laba kotor, dan margin kotor. Laba kotor bukan laba bersih karena biaya operasional belum dicatat.
+- Transaksi lama tanpa bukti HPP tetap ditandai belum lengkap. Tidak ada pengisian biaya nol atau estimasi otomatis untuk riwayat lama.
+- Untuk saldo stok lama yang belum memiliki HPP, Admin harus memasukkan biaya pembukaan berdasarkan bukti yang dapat dipertanggungjawabkan sebelum penerimaan/penambahan stok berikutnya. Sistem menolak menghitung rata-rata jika stok lama belum bernilai.
+- Fungsi publik `migrateFMartCostingSchema()` tersedia untuk menyiapkan kolom secara eksplisit; endpoint katalog, penerimaan, mutasi, dan laporan juga memastikan kolom tersedia secara idempotent.
+
+**Gerbang runtime:** verifikasi migrasi pada salinan Spreadsheet, uji penerimaan dan mutasi stok dengan HPP, transfer Gudang-Kasir, penjualan Wali/POS, transaksi retry, dan rekonsiliasi laba kotor dengan bukti pembelian. Jangan menilai hasil produksi sebelum UAT.
