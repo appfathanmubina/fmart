@@ -15,6 +15,8 @@ Branch produksi sumber: `main`
 
 ## Status tahapan
 
+| 40.4 | Perbaikan tombol Masuk yang terblokir input OTP tersembunyi | Selesai pada repository; runtime belum diuji |
+
 | Tahap | Ruang lingkup | Status |
 |---|---|---|
 | 16 | Pemisahan stok Gudang dan Kasir | Selesai |
@@ -816,7 +818,7 @@ Kesimpulan source: audit repository statis lulus untuk lingkup yang telah dikerj
 
 ## Tahap 40.4 — Perbaikan tombol masuk yang terblokir validasi OTP tersembunyi
 
-**Status: perbaikan source dan regression test disiapkan; menunggu CI, review PR, dan merge.**
+**Status: selesai pada repository. PR #130 telah di-merge ke `main` melalui commit `f0be7fdc1ac31b9356b0d853d93195286389a882`. Regression CI dan build GitHub Pages pasca-merge lulus; deployment GitHub Pages sedang dipastikan. Uji klik aktual pada browser/runtime tetap belum dilakukan.**
 
 Laporan operator menyatakan tombol Masuk pada halaman login tidak menjalankan proses ketika ditekan. Audit source menemukan input loginOtpCode berada di dalam panel OTP yang disembunyikan, tetapi sejak awal memiliki atribut required. Karena input tersembunyi tersebut tetap menjadi bagian dari form, validasi native browser dapat menolak submit sebelum event submit JavaScript berjalan. Akibatnya, pengguna tidak memperoleh pesan login maupun proses permintaan server.
 
