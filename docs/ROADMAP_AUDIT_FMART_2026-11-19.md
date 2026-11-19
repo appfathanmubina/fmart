@@ -469,16 +469,6 @@ PR #80 telah di-merge:
 - Tidak mengubah transaksi POS, pembayaran, stok, harga, backend, atau data produksi.
 - Regression tests: 87 lulus, 0 gagal.
 
-### Tahap 38.15 — Ketahanan refresh Workspace Kasir POS
-
-PR #80 telah di-merge:
-- PR: https://github.com/appfathanmubina/fmart/pull/80
-- Merge commit: `a93733ade8d9f8ea3208d1024c8e80cc8557e6f9`
-- Pencarian katalog POS yang gagal tidak lagi menghilangkan katalog dan keranjang yang sudah berhasil dimuat.
-- Kegagalan refresh antrean QRIS dan riwayat penjualan mempertahankan hasil sebelumnya serta memberi notifikasi error.
-- Pemuatan awal tetap menyediakan pesan dan tombol coba ulang.
-- Tidak mengubah transaksi, pembayaran, stok, harga, backend, atau data produksi.
-
 ### Tahap 38.16 — Ketahanan refresh Distribusi Pengantaran
 
 PR #81 telah di-merge:
@@ -512,13 +502,24 @@ PR #88 telah di-merge:
 - Tidak mengubah tombol close, backdrop, isi form, atau alur transaksi.
 - Regression tests: 90 lulus, 0 gagal.
 
+### Tahap 38.19 — Responsivitas filter Dashboard Pengantaran
+
+PR #87 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/87
+- Merge commit: `79ce53ab0d9efc8e0c6f69e122e51c60f23f7d80`
+- Pencarian tugas dan filter status menggunakan dua kolom dengan proporsi lebih lebar untuk pencarian pada Desktop/Tablet lebar.
+- Pada layar maksimal 620 px, kedua kontrol ditumpuk satu kolom agar tetap terbaca dan mudah disentuh.
+- Kontrol menggunakan `min-width:0` dan `box-sizing:border-box` untuk mencegah luapan.
+- Tidak mengubah pencarian, filter status, alias status, data tugas, atau hak akses.
+- Regression tests: 91 lulus, 0 gagal.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
 1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal header, sidebar, login Admin dua kolom, dan retry Dashboard Operasional sudah masuk `main`.
 2. Selesaikan audit katalog Wali: pencarian, kategori, gambar, kartu/detail produk, keranjang, dan checkout; perbaikan aksesibilitas kartu/detail dan kuantitas keranjang sudah masuk `main`.
 3. Lanjutkan audit formulir, tabel, filter, laporan, dan modal Admin; asosiasi label form Admin/Gudang, filter/retry laporan, aksesibilitas dialog operasional, pemilih Santri, dan POS Kasir sudah diperbaiki; audit seluruh layar/form dinamis masih berjalan.
-4. Lanjutkan audit alur Gudang, Kasir, dan Petugas Pengantar; ringkasan antrean stok Gudang, filter status Pengantaran, aksesibilitas POS Kasir, pemulihan refresh Dashboard Pengantaran, serta preservasi katalog/keranjang/QRIS/riwayat saat refresh POS gagal sudah diperbaiki.
-5. Audit responsivitas HP, tablet portrait/landscape, dan desktop serta regresi lintas role.
+4. Lanjutkan audit alur Gudang, Kasir, dan Petugas Pengantar; ringkasan antrean stok Gudang, normalisasi filter status Pengantaran, responsivitas filter mobile, aksesibilitas POS Kasir, serta pemulihan refresh Dashboard/Distribusi/Komplain dan POS sudah diperbaiki.
+5. Lanjutkan audit responsivitas HP, tablet portrait/landscape, dan desktop, terutama sidebar desktop/tablet, modal, tabel lebar, katalog Wali, POS, dan workspace Gudang/Pengantaran; lakukan regresi lintas role.
 6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
 
-**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.18 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog, pemilih Santri, serta aksesibilitas dan ketahanan refresh POS Kasir. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
+**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.19 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog bertumpuk, pemilih Santri, aksesibilitas dan ketahanan refresh POS Kasir, serta filter Pengantaran responsif. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
