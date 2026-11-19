@@ -580,3 +580,26 @@ test('Reporting delivery failure can resume partial updates without duplicate no
  assert.ok(fn.includes("Pengantaran belum berhasil")&&fn.includes("Pengantaran gagal - perlu penugasan ulang"),'Wali and staff notifications must be deduplicated.');
  assert.ok(fn.includes("PENGANTARAN_GAGAL")&&fn.includes("DELIVERY_FAILED"),'History and audit entries must be deduplicated.');
 });
+
+test('PWA service worker keeps the shell installable when the OneSignal CDN is unavailable',()=>{
+ assert.ok(serviceWorker.includes('try {'));
+ assert.ok(serviceWorker.includes('catch (error)'));
+ assert.ok(serviceWorker.includes('PWA shell must still install'));
+ assert.ok(serviceWorker.includes("const CACHE = 'fmart-shell-v16'"),'A cache version bump must invalidate stale shell assets.');
+ assert.ok(serviceWorker.includes("cache.add(asset).catch"),'One unavailable optional shell asset must not reject the entire cache installation.');
+});
+
+test('PWA service worker caches first-seen static assets and keeps deployment config network-first',()=>{
+ assert.ok(serviceWorker.includes('caches.match(request).then(cached => {'));
+ assert.ok(serviceWorker.includes('if (cached) return cached;'));
+ assert.ok(serviceWorker.includes('cache.put(request, response.clone())'));
+ const configHandler=serviceWorker.slice(serviceWorker.indexOf("if (/\\/config\\.js$/i.test(url.pathname))"),serviceWorker.indexOf('// Cache-first untuk aset'));
+ assert.ok(configHandler.includes('fetch(request)'),'Deployment config must prefer the network.');
+ assert.ok(configHandler.includes('catch(() => caches.match(request))'),'Last known configuration remains the offline fallback.');
+});
+
+test('PWA offline navigation preserves separate Wali and Admin shell fallbacks',()=>{
+ assert.ok(serviceWorker.includes("const isAdminRoute = /\\/adminFMart16720\\/?$/i.test(url.pathname)"));
+ assert.ok(serviceWorker.includes("cached || caches.match(isAdminRoute ? './adminFMart16720/' : './index.html')"));
+ assert.ok(serviceWorker.includes("url.origin !== self.location.origin"),'The service worker must not cache cross-origin Apps Script responses.');
+});
