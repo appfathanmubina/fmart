@@ -369,3 +369,30 @@ test('Staff portal opens its shell before dashboard data and does not load the b
  assert.ok(!staffBranch.includes("runServer('getCatalog'"));
  assert.ok(load.includes('retryOpsStartup'));
 });
+
+
+test('Gudang can be assigned as a delivery executor without granting access to other users assignments',()=>{
+ const dashboard=extractFunction(code,'getDeliveryDashboard');
+ const respond=extractFunction(code,'respondDeliveryAssignment');
+ const start=extractFunction(code,'startDeliveryTrip');
+ const progress=extractFunction(code,'updateDeliveryProgress');
+ const fail=extractFunction(code,'reportDeliveryFailure');
+ const proof=extractFunction(code,'submitDeliveryProof');
+ const workspace=extractFunction(code,'getDeliveryAssignmentWorkspace');
+ const assign=extractFunction(code,'assignDeliveryOrder');
+ for(const fn of [dashboard,respond,start,progress,fail,proof])assert.ok(fn.includes('FMART.ROLES.GUDANG'),'Gudang executor permission missing in delivery workflow.');
+ assert.ok(dashboard.includes("String(row[2] || '') === String(session.userId)"),'Executor dashboard must remain scoped to the signed-in assignee.');
+ for(const fn of [respond,start,progress,fail,proof])assert.ok(fn.includes('session.userId'),'Delivery mutations must retain assignee ownership checks.');
+ assert.ok(workspace.includes("'PETUGAS_PENGANTAR','GUDANG'"),'Distribution list must include active Gudang accounts.');
+ assert.ok(assign.includes("'PETUGAS_PENGANTAR','GUDANG'"),'Assignment endpoint must validate both supported executor roles.');
+ assert.ok(assign.includes("String(driver[6]||'').toUpperCase()!=='AKTIF'"),'Inactive users must not be assigned.');
+});
+
+test('Gudang delivery workspace is available in the staff UI without changing its warehouse landing flow',()=>{
+ const nav=extractFunction(index,'configureStaffNavigation');
+ const workspace=extractFunction(index,'renderDeliveryWorkspace');
+ assert.ok(nav.includes("GUDANG:['staffDashboard','staffOrders','staffStock','staffReceiving','staffWarehouseReports','staffDeliveryAssign','staffDelivery']"));
+ assert.ok(workspace.includes("'PETUGAS_PENGANTAR','GUDANG'"));
+ assert.ok(index.includes("if(!['PETUGAS_PENGANTAR','GUDANG'].includes(state.data.user.role)){showToast('Menu tidak tersedia untuk role Anda.')"));
+ assert.ok(index.includes("await loadOps();"),'Gudang must retain the existing warehouse startup/dashboard flow.');
+});
