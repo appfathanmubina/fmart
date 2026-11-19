@@ -1021,14 +1021,14 @@ Audit statis repository tidak menggantikan inspeksi visual. Sebelum produksi, la
 
 Checklist lengkap role, transaksi, concurrency, audit database/Drive/stok/POS/penerimaan, trigger, Executions, serta browser/perangkat tersedia di `docs/UAT-TAHAP-4-FMART.md`.
 
-Untuk memudahkan sinkronisasi Apps Script, `setupFMartDatabase()` menjadi entry point publik untuk migrasi header yang additive. Setelah setup pada Spreadsheet yang benar, jalankan `runFMartReadinessAudit()` untuk audit gabungan read-only. Fungsi audit tidak mengubah data dan tidak memasang trigger.
+Jalankan `setupFMartDatabase_()` hanya dari Apps Script Editor pada project dan Spreadsheet yang benar. Jalankan `runFMartReadinessAudit_()` dari Apps Script Editor untuk audit gabungan read-only. Akhiran `_` menandai fungsi internal yang tidak diekspos sebagai endpoint `google.script.run` dari browser. Jangan menghapus akhiran tersebut atau membuat wrapper publik tanpa autentikasi dan otorisasi. Fungsi audit tidak mengubah data dan tidak memasang trigger.
 
 Status: CI Tahap 2 (18/18) dan Tahap 3 (22/22) lulus. Runtime UAT belum dijalankan karena project Apps Script/Spreadsheet tidak tersedia melalui koneksi repository ini. Jangan menguji transaksi duplikat/gagal/bersamaan pada data produksi; gunakan salinan Spreadsheet dan project uji dengan data dummy. Hasil UAT harus diisi PASS/FAIL/BLOCKED dengan Execution ID dan bukti yang sudah disamarkan.
 
 
 ## Membaca Execution Log Readiness Audit
 
-```runFMartReadinessAudit()``` tetap menjalankan seluruh pemeriksaan read-only dan mengembalikan objek report lengkap. Untuk mencegah Execution Log terpotong ketika banyak temuan ditemukan, hasil log sekarang dipisah menjadi beberapa entri:
+```runFMartReadinessAudit_()``` tetap menjalankan seluruh pemeriksaan read-only dan mengembalikan objek report lengkap. Untuk mencegah Execution Log terpotong ketika banyak temuan ditemukan, hasil log sekarang dipisah menjadi beberapa entri:
 
 - `FMART_AUDIT_SUMMARY`: waktu pemeriksaan, status keseluruhan, jumlah temuan, dan ringkasan per modul.
 - `FMART_AUDIT_CHECK`: metadata dan hitungan per modul, termasuk konfigurasi runtime yang aman ditampilkan.

@@ -3855,7 +3855,7 @@ function logFMartReadinessAudit_(report) {
 }
 
 /** One-click, read-only readiness audit for Apps Script editor. */
-function runFMartReadinessAudit() {
+function runFMartReadinessAudit_() {
   const checks = {};
   function run_(name, callback) {
     try { checks[name] = callback(); }

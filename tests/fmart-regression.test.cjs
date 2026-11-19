@@ -222,8 +222,11 @@ test('Role-sensitive reports and QRIS settings remain server-gated',()=>{
 
 
 test('Apps Script editor exposes safe setup and read-only readiness entry points',()=>{
- const setupEntry=extractFunction(setup,'setupFMartDatabase'),readiness=extractFunction(code,'runFMartReadinessAudit');
- assert.ok(setupEntry.includes('setupFMartDatabase_'));
+ const setupEntry=extractFunction(setup,'setupFMartDatabase_'),readiness=extractFunction(code,'runFMartReadinessAudit_');
+ assert.ok(!setup.includes('function setupFMartDatabase('),'Database setup must not be exposed as a browser endpoint.');
+ assert.ok(!code.includes('function runFMartReadinessAudit('),'Readiness audit must not be exposed as a browser endpoint.');
+ assert.ok(setupEntry.includes('SpreadsheetApp.getActiveSpreadsheet()'));
+ assert.ok(setupEntry.includes('ensureSheet_'));
  for(const name of ['auditFMartDatabaseIntegrity_','auditFMartRuntime_','auditFMartOperationalSync_','auditFMartStockReconciliation_','auditCashierPOSIntegrity_','auditWarehouseReceivingIntegrity_','auditFMartTransactionRecovery_'])assert.ok(readiness.includes(name));
  assert.ok(readiness.includes("mode:'READ_ONLY'"));
  assert.ok(!readiness.includes('installDeliveryAutomationTrigger_'));
@@ -238,7 +241,7 @@ test('Cashier POS integrity audit reads the cashier stock ledger, not warehouse 
 
 
 test('Readiness audit logs bounded diagnostic chunks without truncating the full report',()=>{
- const audit=extractFunction(code,'runFMartReadinessAudit');
+ const audit=extractFunction(code,'runFMartReadinessAudit_');
  const logger=extractFunction(code,'logFMartReadinessAudit_');
  assert.ok(audit.includes('logFMartReadinessAudit_(report)'));
  assert.ok(!audit.includes('Logger.log(JSON.stringify(report,null,2))'));
