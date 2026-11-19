@@ -1355,6 +1355,40 @@ test('Custom interactive markup remains keyboard operable and native controls st
  assert.ok(!index.includes('role="combobox"'),'Do not replace native selects with inaccessible custom dropdowns.');
 });
 
+test('Sensitive Wali, Kasir and delivery reads enforce data ownership and role minimization',()=>{
+ const myOrders=extractFunction(code,'getMyOrders');
+ assert.ok(myOrders.includes('requireRole_(token, [FMART.ROLES.WALI_SANTRI])'));
+ assert.ok(myOrders.includes('String(r[2]) === String(session.userId)'),'Wali order lists must be scoped to the active account.');
+ const orderDetail=extractFunction(code,'getOrderDetail');
+ assert.ok(orderDetail.includes('requireRole_(token, [FMART.ROLES.WALI_SANTRI])'));
+ assert.ok(orderDetail.includes('String(orderRow.values[2]) !== String(session.userId)'),'Wali order details must reject another account order.');
+ const cart=extractFunction(code,'getCart');
+ assert.ok(cart.includes('requireRole_(token, [FMART.ROLES.WALI_SANTRI])'));
+ assert.ok(cart.includes("if (String(r[1]) !== String(session.userId)) return;"),'Cart reads must be scoped to the current Wali.');
+ const notifications=extractFunction(code,'getMyNotifications');
+ assert.ok(notifications.includes("String(r[1]||'')===String(session.userId)"),'Notifications must be scoped to their recipient.');
+ assert.ok(notifications.includes('redactStockDetails'),'Wali notification copy must continue to redact internal stock conditions.');
+ const catalog=extractFunction(code,'getCatalog');
+ assert.ok(catalog.includes('if (session.role === FMART.ROLES.WALI_SANTRI)'));
+ assert.ok(catalog.includes('products:[]')&&catalog.includes('children:getChildrenForWali_(ss,session.userId)'),'Wali catalog bootstrap must not return stock-bearing product rows.');
+ const batch=extractFunction(code,'getBuyerProductBatch');
+ assert.ok(batch.includes('requireRole_(token,[FMART.ROLES.WALI_SANTRI])'));
+ assert.ok(!batch.includes('stock:'),'Buyer product batches must not contain stock quantities.');
+ const detail=extractFunction(code,'getProductDetail');
+ assert.ok(detail.includes('delete productResult.stock')&&detail.includes('delete productResult.minStock'),'Wali product detail must remove stock and minimum-stock fields.');
+ const delivery=extractFunction(code,'getDeliveryDashboard');
+ assert.ok(delivery.includes('requireRole_(token, [FMART.ROLES.PETUGAS_PENGANTAR, FMART.ROLES.GUDANG])'));
+ assert.ok(delivery.includes("String(row[2] || '') === String(session.userId)"),'Delivery tasks must only include assignments owned by the active driver/Gudang account.');
+ const operations=extractFunction(code,'getOperationsDashboard');
+ assert.ok(operations.includes('if(session.role===FMART.ROLES.KASIR)'));
+ assert.ok(operations.includes('orders:[],pendingPayments:waliQrisQueue'),'Cashier dashboard must not return the global order list.');
+ assert.ok(operations.includes("String(p[2]||'').toUpperCase()==='QRIS'"),'Cashier payment queue must be limited to QRIS Wali payments.');
+ assert.ok(operations.includes("String(r[13]||'')===String(session.userId)"),'Cashier sales metrics must be scoped to the current cashier.');
+ const cashierProof=extractFunction(code,'getPaymentProofData');
+ assert.ok(cashierProof.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN,FMART.ROLES.KASIR'));
+ assert.ok(cashierProof.includes("session.role===FMART.ROLES.KASIR&&String(pay.values[2]||'').toUpperCase()!=='QRIS'"),'Cashier proof access must remain QRIS-only.');
+});
+
 test('All UI server endpoints resolve and have server-side authorization or explicit pre-auth safeguards',()=>{
  const literalNames=[...new Set([...index.matchAll(/runServer\(\s*['"]([^'"]+)['"]/g)].map(m=>m[1]))];
  assert.ok(literalNames.length>=75,'The UI server endpoint inventory must be comprehensive.');
