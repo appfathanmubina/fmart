@@ -12,7 +12,7 @@ const FMART = Object.freeze({
   PASSWORD_HASH_MODE_PROPERTY: 'FMART_PASSWORD_HASH_MODE', // Default LEGACY sampai benchmark runtime Apps Script lulus.
   PASSWORD_HASH_ITERATIONS: 600000,
   SPREADSHEET_PROPERTY: 'FMART_SPREADSHEET_ID',
-  ROLES: Object.freeze({ WALI_SANTRI:'WALI_SANTRI', ADMIN:'ADMIN', KASIR:'KASIR', GUDANG:'GUDANG', PETUGAS_PENGANTAR:'PETUGAS_PENGANTAR', SUPERADMIN:'SUPERADMIN' })
+  ROLES: Object.freeze({ WALI_SANTRI:'WALI_SANTRI', ADMIN:'ADMIN', KASIR:'KASIR', GUDANG:'GUDANG', PETUGAS_PENGANTAR:'PETUGAS_PENGANTAR', SUPERVISOR:'SUPERVISOR', SUPERADMIN:'SUPERADMIN' })
 });
 
 function doGet(e) {
@@ -29,7 +29,7 @@ function doGet(e) {
 function portalRoleAllowed_(role, portalMode) {
   role = String(role || '').toUpperCase();
   if (portalMode === 'ADMINFMART16720') {
-    return ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'].indexOf(role) >= 0;
+    return ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR'].indexOf(role) >= 0;
   }
   return role === FMART.ROLES.WALI_SANTRI;
 }
@@ -72,7 +72,7 @@ function login(username, password, portalMode) {
     const loginValue = portalMode === 'ADMINFMART16720'
       ? normalizeEmail_(rows[i][10])
       : normalizeUsername_(rows[i][1]);
-    if (loginValue === username && (portalMode !== 'ADMINFMART16720' || ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'].indexOf(rowRole) >= 0)) {
+    if (loginValue === username && (portalMode !== 'ADMINFMART16720' || ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR'].indexOf(rowRole) >= 0)) {
       if (targetIndex !== -1) {
         recordLoginFailure_(rate);
         return {ok:false,message:'Email atau password tidak valid.'};
@@ -260,7 +260,7 @@ function setStaffEmail(token,userId,email) {
     const sheet=getSS_().getSheetByName('Users'),target=findRowById_(sheet,String(userId||''),1);
     if(!target) throw new Error('Akun staf tidak ditemukan.');
     const role=String(target.values[5]||'').toUpperCase();
-    if(['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'].indexOf(role)<0) throw new Error('Email hanya dapat diatur untuk akun staf.');
+    if(['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR'].indexOf(role)<0) throw new Error('Email hanya dapat diatur untuk akun staf.');
     const rows=sheet.getLastRow()>1?sheet.getRange(2,1,sheet.getLastRow()-1,12).getValues():[];
     if(rows.some(function(r){return String(r[0]||'')!==String(userId)&&normalizeEmail_(r[10])===email;})) throw new Error('Email sudah digunakan akun lain.');
 
@@ -587,7 +587,7 @@ function findWaliByUserId_(ss, userId) {
 }
 
 function getInitialData(token) {
-  const session = requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
+  const session = requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN]);
   const ss = getSS_();
   const result = {user:{userId:session.userId,username:session.username,nama:session.nama,role:session.role},categories:[],products:[],children:[]};
 
@@ -613,7 +613,7 @@ function getChildrenForWali_(ss, userId) {
 
 /** Fase 2: katalog produk aktif. Harga/stok selalu dibaca dari server. */
 function getProductDetail(token, productId) {
-  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
+  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN]);
   productId = String(productId || '').trim();
   if (!productId) throw new Error('Produk tidak valid.');
   const ss = getSS_();
@@ -656,7 +656,7 @@ function getProductDetail(token, productId) {
 }
 
 function getCatalog(token) {
-  const session = requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERADMIN]);
+  const session = requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN]);
   const ss = getSS_();
   const categorySheet = ss.getSheetByName('Kategori');
   const productSheet = ss.getSheetByName('Produk');
@@ -1492,7 +1492,7 @@ function getDeliveryProofImage(token,orderId) {
 
 /** Fase 5: operasi internal FMart. Semua otorisasi dilakukan di server. */
 function getOperationsDashboard(token) {
-  const session = requireRole_(token, [FMART.ROLES.ADMIN, FMART.ROLES.KASIR, FMART.ROLES.GUDANG, FMART.ROLES.SUPERADMIN]);
+  const session = requireRole_(token, [FMART.ROLES.ADMIN, FMART.ROLES.KASIR, FMART.ROLES.GUDANG, FMART.ROLES.SUPERVISOR, FMART.ROLES.SUPERADMIN]);
   const ss = getSS_();
   const orders = readRows_(ss.getSheetByName('Pesanan'));
   const payments = readRows_(ss.getSheetByName('Pembayaran'));
@@ -1679,7 +1679,7 @@ function getStockCardReport(token, productId, variationId, startDate, endDate) {
 
 /** Fase 6: laporan operasional terhitung dari data transaksi aktual. */
 function getFMartReports(token,startDate,endDate){
- const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]),ss=getSS_(),start=parseReportDate_(startDate,false),end=parseReportDate_(endDate,true);if(end<start)throw new Error('Periode laporan tidak valid.');
+ const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN]),ss=getSS_(),start=parseReportDate_(startDate,false),end=parseReportDate_(endDate,true);if(end<start)throw new Error('Periode laporan tidak valid.');
  const orders=readRows_(ss.getSheetByName('Pesanan')).filter(r=>inReportRange_(r[10],start,end)),details=readRows_(ss.getSheetByName('DetailPesanan')),allPayments=readRows_(ss.getSheetByName('Pembayaran')),payments=allPayments.filter(r=>inReportRange_(r[8],start,end));
  const posSales=readRows_(ss.getSheetByName('PenjualanToko')).filter(r=>inReportRange_(r[15],start,end)&&String(r[12]||'').toUpperCase()!=='DIBATALKAN'),posDetails=readRows_(ss.getSheetByName('DetailPenjualanToko'));
  const products=readRows_(ss.getSheetByName('Produk')),cats=readRows_(ss.getSheetByName('Kategori')),warehouse=readRows_(ss.getSheetByName('MutasiStok')).filter(r=>inReportRange_(r[10],start,end)),cashier=readRows_(ss.getSheetByName('MutasiStokKasir')).filter(r=>inReportRange_(r[10],start,end));
@@ -1758,7 +1758,7 @@ function setFMartIntegrationTabunganId(token, spreadsheetId){
 function getSettingValue_(key){const s=getSS_().getSheetByName('Pengaturan');const rows=readRows_(s);const r=rows.find(x=>String(x[0])===String(key));return r?String(r[1]||''):'';}
 
 function getAdminCatalog(token) {
-  requireRole_(token, [FMART.ROLES.ADMIN, FMART.ROLES.SUPERADMIN]);
+  requireRole_(token, [FMART.ROLES.ADMIN, FMART.ROLES.SUPERVISOR, FMART.ROLES.SUPERADMIN]);
   const ss=getSS_();
   const categories=readRows_(ss.getSheetByName('Kategori')).map(r=>({id:String(r[0]),name:String(r[1]||''),description:String(r[2]||''),order:Number(r[3])||0,status:String(r[4]||'')}));
   const products=readRows_(ss.getSheetByName('Produk')).map(r=>({id:String(r[0]),categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),description:String(r[4]||''),price:Number(r[5])||0,minStock:Number(r[6])||0,photoUrl:String(r[7]||''),status:String(r[8]||'')}));
@@ -2217,7 +2217,7 @@ function createStaffUser(token, username, password, nama, role, email) {
     if(!isValidStaffEmail_(email)) throw new Error('Email staf wajib diisi dengan format yang valid.');
     username=email;
     role=String(role||'').trim().toUpperCase();
-    if(['ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'].indexOf(role)<0) throw new Error('Peran petugas tidak valid.');
+    if(['ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR'].indexOf(role)<0) throw new Error('Peran petugas tidak valid.');
     const result=createFMartUser_(username,password,nama,role,email);
     writeAudit_(session.userId,session.role,'CREATE_USER','USER',result.userId,'',JSON.stringify({username:result.username,role:result.role}),'Membuat pengguna');
     SpreadsheetApp.flush();
@@ -2233,7 +2233,7 @@ function getStaffUserManagement(token) {
   const rows=readRows_(getSS_().getSheetByName('Users'));
   const users=rows.map(function(r){
     return {userId:String(r[0]||''),username:String(r[1]||''),email:String(r[10]||r[1]||''),nama:String(r[4]||''),role:String(r[5]||''),status:String(r[6]||''),createdAt:dateIso_(r[7]),lastLoginAt:dateIso_(r[9])};
-  }).filter(function(u){return u.userId && ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR'].indexOf(u.role)>=0;});
+  }).filter(function(u){return u.userId && ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR'].indexOf(u.role)>=0;});
   return {ok:true,users:users,canManage:session.role==='SUPERADMIN',currentUserId:session.userId};
 }
 
@@ -2478,7 +2478,7 @@ function updateFMartUser(token,userId,nama,role){
     const sheet=getSS_().getSheetByName('Users'),row=findRowById_(sheet,String(userId||''),1);if(!row)throw new Error('Pengguna tidak ditemukan.');
     const targetRole=String(row.values[5]||'').toUpperCase();if(targetRole==='SUPERADMIN')throw new Error('Data Superadmin tidak dapat diubah dari menu ini.');
     nama=String(nama||'').trim().slice(0,120);role=String(role||'').toUpperCase();
-    if(!nama)throw new Error('Nama wajib diisi.');if(['ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','WALI_SANTRI'].indexOf(role)<0)throw new Error('Role tidak valid.');
+    if(!nama)throw new Error('Nama wajib diisi.');if(['ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR','WALI_SANTRI'].indexOf(role)<0)throw new Error('Role tidak valid.');
     const before={nama:String(row.values[4]||''),role:targetRole},now=new Date();
     sheet.getRange(row.rowNumber,5,1,2).setValues([[nama,role]]);sheet.getRange(row.rowNumber,9).setValue(now);
     writeAudit_(session.userId,session.role,'UPDATE_USER','USER',String(userId),JSON.stringify(before),JSON.stringify({nama:nama,role:role}),'Mengubah data pengguna');SpreadsheetApp.flush();

@@ -829,3 +829,14 @@ Perbaikan:
 - Menambah regression test untuk memastikan input OTP tersembunyi tidak memblokir submit awal dan status wajib hanya aktif pada fase OTP.
 
 Perubahan dibatasi pada markup/handler login, regression test, dan roadmap. Tidak mengubah autentikasi backend, struktur database, akun, atau data produksi. Pengujian CI mengunci penyebab pada level source; konfirmasi klik aktual tetap memerlukan uji browser/runtime setelah PR siap dan sesuai gerbang UAT.
+
+
+## Tahap 40.5 — Role Supervisor read-only dan pratinjau QRIS Drive pada PWA
+
+**Status: dikerjakan pada branch `feature/supervisor-readonly-qris-pwa`; menunggu regression CI dan review sebelum merge.**
+
+- Menambahkan role `SUPERVISOR` pada autentikasi portal Admin, pembuatan/pengubahan akun, bootstrap dashboard, katalog, transaksi, dan laporan.
+- Hak akses Supervisor dibatasi untuk pengawasan: dashboard, daftar/rincian pesanan, katalog seluruh produk termasuk stok, dan laporan penjualan. Tidak diberikan endpoint mutasi, POS, verifikasi pembayaran, pengelolaan akun, pengaturan pembayaran, stok, atau pengantaran.
+- Katalog Supervisor dibuat sebagai tampilan baca-saja tanpa tombol tambah/edit/variasi. Laporan Supervisor tidak menampilkan tab Audit. Keuntungan belum dapat dihitung karena skema saat ini tidak menyimpan harga pokok/biaya perolehan.
+- Perbaikan QRIS PWA mempertahankan URL Drive asli untuk tombol buka/unduh, tetapi menggunakan endpoint thumbnail Drive untuk elemen gambar.
+- Uji runtime pada PWA dan verifikasi izin berbagi file Drive masih wajib dilakukan setelah source siap.
