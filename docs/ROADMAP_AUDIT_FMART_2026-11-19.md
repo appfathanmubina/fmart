@@ -603,8 +603,17 @@ Perbaikan hanya menyelaraskan petunjuk dialog dengan alur aktual. Regression tes
 
 ### Tahap 38.26 — Semantik catatan wajib saat penolakan pembayaran
 
-**Status: perbaikan repository disiapkan; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #109 telah di-merge ke `main` melalui commit `0402bb5245217d71cde931544b6c3244706e019d`; regression CI, build, dan deployment GitHub Pages pasca-merge lulus.**
 
 Form verifikasi pembayaran sudah memvalidasi bahwa alasan penolakan harus diisi, sedangkan catatan saat menerima pembayaran bersifat opsional. Atribut `required` kini mengikuti keputusan petugas: aktif untuk penolakan dan tidak aktif untuk penerimaan. Validasi handler yang sudah ada tetap dipertahankan.
 
 Regression test mengunci kedua kondisi tersebut. Tidak ada perubahan aturan keputusan pembayaran, endpoint, payload, atau data.
+
+
+### Tahap 38.27 — Konsistensi petunjuk pada pemilih Santri kosong
+
+**Status: perbaikan repository disiapkan; menunggu CI dan merge.**
+
+Audit ulang setelah Tahap 38.25 menemukan jalur pemilih Santri alternatif ketika Wali belum memiliki relasi. Jalur ini masih memakai petunjuk lama bahwa hubungan perlu diverifikasi Admin dan tombol aksi bertuliskan "Ajukan", padahal tombol tersebut membuka alur self-link langsung untuk Santri aktif.
+
+Perbaikan menyelaraskan petunjuk dan label aksi menjadi "Hubungkan" tanpa mengubah endpoint pencarian atau endpoint relasi. Regression test memastikan alur tetap memakai `openWaliLinkModal` dan self-link Wali. Tidak mengubah aturan relasi, batas jumlah anak, hak akses, atau data.

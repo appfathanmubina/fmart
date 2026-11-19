@@ -1257,3 +1257,17 @@ test('Payment rejection note is semantically required only for rejection',()=>{
  assert.ok(fn.includes("if(!accepting&&!note)"),'Existing rejection validation must remain.');
  assert.ok(fn.includes("accepting?'Catatan pemeriksaan (opsional)':'Jelaskan alasan penolakan'"));
 });
+
+test('Empty Wali child picker copy and action match direct self-link behavior',()=>{
+ const start=index.indexOf('function renderEmptyChildPicker(){');
+ const end=index.indexOf('let childPickerSearchTimer',start);
+ assert.ok(start>=0&&end>start,'Empty child picker renderer must exist.');
+ const empty=index.slice(start,end);
+ assert.ok(empty.includes('Cari Santri aktif di bawah ini lalu hubungkan langsung tanpa persetujuan Admin.'));
+ assert.ok(!empty.includes('diverifikasi Admin'));
+ const searchStart=index.indexOf('async function searchChildPickerDirectory(');
+ const searchEnd=index.indexOf('function ',searchStart+10);
+ const search=index.slice(searchStart,searchEnd>0?searchEnd:undefined);
+ assert.ok(index.includes("data-picker-request=\"'+escapeHtml(c.id)+'\">Hubungkan</button>"));
+ assert.ok(search.includes('openWaliLinkModal(c)'),'Selecting a Santri must continue to use the direct Wali self-link flow.');
+});
