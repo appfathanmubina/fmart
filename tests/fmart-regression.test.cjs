@@ -316,7 +316,7 @@ test('Order recipient snapshots are reused by internal order and delivery worksp
  assert.ok(operations.includes('child=getOrderRecipientSnapshot_(ss,o)'),'Payment verification must display the saved recipient.');
  assert.ok(recovery.includes('p.recipientSnapshot?{userId:p.userId,recipient:p.recipientSnapshot'),'Transaction recovery must validate the new recipient fingerprint.');
  assert.ok(reports.includes('getOrderRecipientSnapshot_(ss,order.row)'),'Order and delivery history must show the saved recipient.');
- assert.ok(extractFunction(code,'auditFMartDatabaseIntegrity_').includes('ORDER_RECIPIENT_MISSING'));
+ assert.ok(extractFunction(code,'auditFMartOperationalSync_').includes('ORDER_RECIPIENT_MISSING'));
 });
 
 
