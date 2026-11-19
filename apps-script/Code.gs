@@ -2224,6 +2224,17 @@ function searchSantriForWaliSelf(token,query,className){
 }
 
 /** Fase 8.12.1: Wali mengajukan hubungan dengan Santri; status awal MENUNGGU_VERIFIKASI. */
+function countDistinctActiveWaliForSantri_(relationRows,santriId){
+  const activeWaliIds={};
+  (relationRows||[]).forEach(function(row){
+    if(String(row[2]||'')===String(santriId||'')&&String(row[3]||'').toUpperCase()==='AKTIF'){
+      const waliId=String(row[1]||'');
+      if(waliId)activeWaliIds[waliId]=true;
+    }
+  });
+  return Object.keys(activeWaliIds).length;
+}
+
 function requestWaliSantriLink(token,santriId,hubungan){
   const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
   santriId=String(santriId||'').trim(); hubungan=String(hubungan||'').trim().toUpperCase();
@@ -2235,9 +2246,11 @@ function requestWaliSantriLink(token,santriId,hubungan){
     if(!rs||!santriSheet) throw new Error('Database relasi belum siap. Jalankan setupFMartDatabase_().');
     const wali=findWaliByUserId_(ss,session.userId); if(!wali) throw new Error('Data Wali Santri tidak ditemukan.');
     const santri=findSantriRowById_(santriSheet,santriId), santriMap=getSantriColumnMap_(santriSheet); if(!santri||santriRecord_(santri.values,santriMap).status.toUpperCase()!=='AKTIF') throw new Error('Data Santri tidak ditemukan atau tidak aktif.');
-    const relRows=readRows_(rs), existing=relRows.find(function(r){return String(r[1]||'')===wali.waliId&&String(r[2]||'')===santriId;});
-    const activeCount=relRows.filter(function(r){return String(r[2]||'')===santriId&&String(r[3]||'').toUpperCase()==='AKTIF';}).length;
-    if(existing&&String(existing[3]||'').toUpperCase()==='AKTIF') throw new Error('Santri sudah terhubung dengan akun Anda.');
+    const relRows=readRows_(rs), pairRows=relRows.map(function(row,index){return {row:row,index:index};}).filter(function(item){return String(item.row[1]||'')===wali.waliId&&String(item.row[2]||'')===santriId;});
+    const activePair=pairRows.some(function(item){return String(item.row[3]||'').toUpperCase()==='AKTIF';});
+    const existing=pairRows.length?pairRows[pairRows.length-1].row:null;
+    const activeCount=countDistinctActiveWaliForSantri_(relRows,santriId);
+    if(activePair) throw new Error('Santri sudah terhubung dengan akun Anda.');
     if(activeCount>=2) throw new Error('Santri ini sudah memiliki maksimal 2 Wali Santri aktif.');
     const now=new Date();
     if(existing){const rowNum=relRows.indexOf(existing)+2;rs.getRange(rowNum,4,1,3).setValues([['AKTIF',now,hubungan]]);}
@@ -2265,10 +2278,12 @@ function linkWaliSantri(token,waliId,santriId,hubungan){
   const lock=LockService.getScriptLock();lock.waitLock(10000);try{
     const ss=getSS_(),ws=ss.getSheetByName('WaliSantri'),ssheet=ss.getSheetByName('Santri'),rs=ss.getSheetByName('WaliSantriSantri');if(!ws||!ssheet||!rs)throw new Error('Database relasi Wali Santri belum siap. Jalankan setupFMartDatabase_().');
     const wali=findRowById_(ws,waliId,1),santri=findSantriRowById_(ssheet,santriId),santriMap=getSantriColumnMap_(ssheet);if(!wali)throw new Error('Data Wali Santri tidak ditemukan.');if(!santri||santriRecord_(santri.values,santriMap).status.toUpperCase()!=='AKTIF')throw new Error('Santri tidak ditemukan atau tidak aktif.');
-    const relRows=readRows_(rs),duplicate=relRows.find(function(r){return String(r[1]||'')===waliId&&String(r[2]||'')===santriId&&String(r[3]||'').toUpperCase()==='AKTIF';});
-    const activeOrPendingCount=relRows.filter(function(r){return String(r[2]||'')===santriId&&['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(r[3]||'').toUpperCase())>=0;}).length;
-    if(!duplicate && activeOrPendingCount>=2) throw new Error('Santri ini sudah memiliki maksimal 2 Wali Santri aktif/pending.');if(duplicate)throw new Error('Santri sudah terhubung dengan Wali Santri ini.');
-    const existing=relRows.find(function(r){return String(r[1]||'')===waliId&&String(r[2]||'')===santriId;}),now=new Date();
+    if(String(wali.values[6]||'').toUpperCase()!=='AKTIF')throw new Error('Akun Wali Santri tidak aktif.');
+    const relRows=readRows_(rs),pairRows=relRows.map(function(row,index){return {row:row,index:index};}).filter(function(item){return String(item.row[1]||'')===waliId&&String(item.row[2]||'')===santriId;}),duplicate=pairRows.some(function(item){return String(item.row[3]||'').toUpperCase()==='AKTIF';});
+    const activeOrPendingWaliIds={};relRows.forEach(function(row){if(String(row[2]||'')===santriId&&['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(row[3]||'').toUpperCase())>=0&&String(row[1]||''))activeOrPendingWaliIds[String(row[1])]=true;});
+    if(!duplicate&&!activeOrPendingWaliIds[waliId]&&Object.keys(activeOrPendingWaliIds).length>=2)throw new Error('Santri ini sudah memiliki maksimal 2 Wali Santri aktif/pending.');
+    if(duplicate)throw new Error('Santri sudah terhubung dengan Wali Santri ini.');
+    const existing=pairRows.length?pairRows[pairRows.length-1].row:null,now=new Date();
     if(existing){const rowNum=relRows.indexOf(existing)+2;rs.getRange(rowNum,4,1,3).setValues([['AKTIF',now,hubungan]]);}else rs.appendRow([makeFMartId_('REL'),waliId,santriId,'AKTIF',now,hubungan]);
     writeAudit_(session.userId,session.role,'LINK_WALI_SANTRI','WALI_SANTRI_SANTRI',waliId,'',JSON.stringify({waliId:waliId,santriId:santriId,status:'AKTIF',hubungan:hubungan}),'Menghubungkan Wali Santri dengan Santri');SpreadsheetApp.flush();return {ok:true};
   }finally{lock.releaseLock();}
@@ -2279,7 +2294,8 @@ function approveWaliSantriRequest(token,relasiId){
   const lock=LockService.getScriptLock();lock.waitLock(10000);try{const ss=getSS_(),rs=ss.getSheetByName('WaliSantriSantri'),row=findRowById_(rs,relasiId,1);if(!row)throw new Error('Pengajuan tidak ditemukan.');if(String(row.values[3]||'').toUpperCase()!=='MENUNGGU_VERIFIKASI')throw new Error('Pengajuan ini sudah diproses.');
     const santriSheet=ss.getSheetByName('Santri'),santri=findSantriRowById_(santriSheet,String(row.values[2])),santriMap=getSantriColumnMap_(santriSheet);
     const wali=findRowById_(ss.getSheetByName('WaliSantri'),String(row.values[1]),1);if(!wali||String(wali.values[6]||'').toUpperCase()!=='AKTIF')throw new Error('Akun Wali Santri tidak aktif.');if(!santri||santriRecord_(santri.values,santriMap).status.toUpperCase()!=='AKTIF')throw new Error('Santri tidak aktif.');
-    const activeCount=readRows_(rs).filter(function(r){return String(r[2]||'')===String(row.values[2]||'')&&String(r[3]||'').toUpperCase()==='AKTIF';}).length;
+    const relationRows=readRows_(rs);
+    const activeCount=countDistinctActiveWaliForSantri_(relationRows,String(row.values[2]||''));
     if(activeCount>=2) throw new Error('Santri ini sudah memiliki 2 Wali Santri aktif.');
     rs.getRange(row.rowNumber,4).setValue('AKTIF');writeAudit_(session.userId,session.role,'APPROVE_WALI_SANTRI_REQUEST','WALI_SANTRI_SANTRI',relasiId,'',JSON.stringify({status:'AKTIF'}),'Menyetujui pengajuan hubungan Wali Santri');SpreadsheetApp.flush();return {ok:true,message:'Pengajuan disetujui.'};
   }finally{lock.releaseLock();}
