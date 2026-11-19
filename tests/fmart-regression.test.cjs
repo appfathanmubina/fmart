@@ -1287,7 +1287,7 @@ test('Staff login OTP field exposes required six-digit semantics',()=>{
 });
 
 test('Wali profile loading skeleton labels are associated with their read-only fields',()=>{
- const start=index.indexOf('async function openWaliProfileManagement(){');
+ const start=index.indexOf('function openWaliProfilePage(){');
  const end=index.indexOf('function renderWaliProfileManagement(',start);
  assert.ok(start>=0&&end>start,'Wali profile loader must exist.');
  const loader=index.slice(start,end);
