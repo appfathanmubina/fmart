@@ -976,7 +976,7 @@ function completeStockReceipt_(ss,receipt,payload,actor,actorRole){
   else detailSheet.appendRow([x.detailId,receiptId,x.productId,x.variationId,x.qty,x.before,x.after,payload.note||'',x.unitCost||'',x.totalCost||'']);
   const m=mutationRows.find(function(r){return String(r[0])===String(x.mutationId);});
   if(m){if(String(m[7])!==receiptId||String(m[1])!==String(x.productId)||Number(m[4])!==Number(x.qty)||Number(m[5])!==Number(x.before)||Number(m[6])!==Number(x.after))throw new Error('Mutasi penerimaan tidak cocok; pemulihan dihentikan.');}
-  else mutationSheet.appendRow([x.mutationId,x.productId,x.variationId,'MASUK',x.qty,x.before,x.after,receiptId,'Penerimaan '+payload.receiptNumber+(payload.note?' · '+payload.note:''),String(actor||'SYSTEM'),new Date()]);
+  else mutationSheet.appendRow([x.mutationId,x.productId,x.variationId,'MASUK',x.qty,x.before,x.after,receiptId,'Penerimaan '+payload.receiptNumber+(payload.note?' · '+payload.note:''),String(actor||'SYSTEM'),new Date(),x.unitCost||'',x.beforeHpp||0,x.afterHpp||'']);
  });
  const audit=readRows_(ss.getSheetByName('AuditLog'));
  if(!audit.some(function(r){return String(r[3]).toUpperCase()==='CREATE_STOCK_RECEIPT'&&String(r[4]).toUpperCase()==='PENERIMAAN_BARANG'&&String(r[5])===receiptId;}))
@@ -1715,6 +1715,7 @@ function getFMartReports(token,startDate,endDate){
  function addDetail(d,include,forProfit){if(!include)return;const q=Math.max(0,Number(d[8])||0),amount=Math.max(0,Number(d[9])||0),pid=String(d[2]||''),p=pby[pid],cat=p?String(p[1]||''):'';const cn=cmap[cat]||'Tanpa Kategori';categories[cn]=(categories[cn]||0)+amount;const name=pmap[pid]||String(d[5]||'Produk');if(!productSales[name])productSales[name]={name:name,qty:0,amount:0};productSales[name].qty+=q;productSales[name].amount+=amount;if(forProfit){profitRevenue+=amount;const hs=String(d[12]||'').toUpperCase(),unit=Number(d[10]),cost=Number(d[11]);if(hs==='TERCATAT'&&Number.isSafeInteger(unit)&&unit>0&&Number.isSafeInteger(cost)&&cost>=0){cogs+=cost;hppCostedLines++;}else{hppMissingLines++;hppMissingQty+=q;}}}
  const orderIds=Object.create(null);validOrders.forEach(r=>orderIds[String(r[0])]=true);details.forEach(d=>addDetail(d,!!orderIds[String(d[1])],!!paidOrderIds[String(d[1])]));
  const posIds=Object.create(null);posPaid.forEach(r=>posIds[String(r[0])]=true);posDetails.forEach(d=>addDetail(d,!!posIds[String(d[1])],!!posIds[String(d[1])]));
+ const profitDiscount=validOrders.filter(r=>paidIds[String(r[0])]).reduce((n,r)=>n+(Number(r[6])||0),0)+posPaid.reduce((n,r)=>n+(Number(r[6])||0),0);profitRevenue=Math.max(0,profitRevenue-profitDiscount);
  const hppComplete=hppMissingLines===0,grossProfit=hppComplete?profitRevenue-cogs:null,grossMarginPercent=hppComplete&&profitRevenue>0?Math.round(grossProfit/profitRevenue*10000)/100:null;
  const methods=Object.create(null);payments.filter(r=>String(r[5]||'').toUpperCase()==='TERVERIFIKASI').forEach(r=>{const m=String(r[2]||'Lainnya');methods[m]=(methods[m]||0)+(Number(r[3])||0);});posPaid.forEach(r=>{const m=String(r[8]||'Lainnya');methods[m]=(methods[m]||0)+(Number(r[7])||0);});
  const sum=(rows,type)=>rows.filter(r=>String(r[3]||'').toUpperCase()===type).reduce((n,r)=>n+(Number(r[4])||0),0),inWh=sum(warehouse,'MASUK'),outWh=sum(warehouse,'KELUAR'),inCash=sum(cashier,'MASUK'),outCash=sum(cashier,'KELUAR'),daily=Object.create(null);
@@ -1779,7 +1780,7 @@ function getSettingValue_(key){const s=getSS_().getSheetByName('Pengaturan');con
 
 function getAdminCatalog(token) {
   requireRole_(token, [FMART.ROLES.ADMIN, FMART.ROLES.SUPERVISOR, FMART.ROLES.SUPERADMIN]);
-  const ss=getSS_();
+  const ss=getSS_();ensureFMartCostingSchema_(ss);
   const categories=readRows_(ss.getSheetByName('Kategori')).map(r=>({id:String(r[0]),name:String(r[1]||''),description:String(r[2]||''),order:Number(r[3])||0,status:String(r[4]||'')}));
   const products=readRows_(ss.getSheetByName('Produk')).map(r=>({id:String(r[0]),categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),description:String(r[4]||''),price:Number(r[5])||0,minStock:Number(r[6])||0,photoUrl:String(r[7]||''),status:String(r[8]||''),hpp:Math.max(0,Number(r[11])||0)}));
   const stockRows=readRows_(ss.getSheetByName('Stok')),stockByKey=Object.create(null);
@@ -1857,7 +1858,7 @@ function saveVariation(token, data) {
     if(!existingVariation&&stock>0){
       const mutationSheet=ss.getSheetByName('MutasiStok');
       if(!mutationSheet)throw new Error('Sheet MutasiStok tidak tersedia untuk mencatat stok awal variasi.');
-      mutationSheet.appendRow([makeFMartId_('MUT'),productId,variationId,'MASUK',stock,0,stock,variationId,'Stok awal saat variasi dibuat',session.userId,now]);
+      mutationSheet.appendRow([makeFMartId_('MUT'),productId,variationId,'MASUK',stock,0,stock,variationId,'Stok awal saat variasi dibuat',session.userId,now,hpp||'',0,hpp||'']);
     }
     writeAudit_(session.userId,session.role,id?'UPDATE_VARIATION':'CREATE_VARIATION','VARIASI_PRODUK',variationId,beforeData,JSON.stringify({productId,name,value,addition,stock,status,hpp:getItemHpp_(ss,productId,variationId)}),'Perubahan variasi; saldo Stok menjadi sumber utama dan stok awal variasi baru dicatat sebagai mutasi MASUK');
     SpreadsheetApp.flush();const queueResult=(!existingVariation&&stock>0)?processPendingStockOrders_(ss,session.userId,'VARIASI_BARU',session.role):{processed:0};SpreadsheetApp.flush();const catalog=getAdminCatalog(token);catalog.stockQueueProcessed=queueResult.processed;return catalog;
@@ -1931,7 +1932,7 @@ function createStockReceipt(token,payload){
 
 function getStockCatalog(token) {
   requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
-  const ss=getSS_(),products=readRows_(ss.getSheetByName('Produk')).filter(function(r){return String(r[8]||'').toUpperCase()==='AKTIF';}),vars=readRows_(ss.getSheetByName('VariasiProduk')).filter(function(r){return String(r[6]||'').toUpperCase()==='AKTIF';}),stocks=readRows_(ss.getSheetByName('Stok'));
+  const ss=getSS_();ensureFMartCostingSchema_(ss);const products=readRows_(ss.getSheetByName('Produk')).filter(function(r){return String(r[8]||'').toUpperCase()==='AKTIF';}),vars=readRows_(ss.getSheetByName('VariasiProduk')).filter(function(r){return String(r[6]||'').toUpperCase()==='AKTIF';}),stocks=readRows_(ss.getSheetByName('Stok'));
   const stockMap=Object.create(null);stocks.forEach(function(r){const key=String(r[1])+'|'+String(r[2]||'');if(!Object.prototype.hasOwnProperty.call(stockMap,key))stockMap[key]=Math.max(0,Number(r[3])||0);});
   return {ok:true,products:products.map(function(p){const pid=String(p[0]),vs=vars.filter(function(v){return String(v[1])===pid;}).map(function(v){const key=pid+'|'+String(v[0]);return {id:String(v[0]),name:String(v[2]||''),value:String(v[3]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,key)?stockMap[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,key),hpp:Math.max(0,Number(v[9])||0)};}),baseKey=pid+'|';return {id:pid,name:String(p[3]||''),sku:String(p[2]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,baseKey)?stockMap[baseKey]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,baseKey),hpp:Math.max(0,Number(p[11])||0),variations:vs};})};
 }
