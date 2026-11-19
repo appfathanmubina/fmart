@@ -579,7 +579,7 @@ PR #101 telah di-merge:
 
 ### Tahap 38.24 — Semantik field wajib checkout, pembayaran, dan keamanan akun
 
-**Status: selesai pada repository. PR #107 telah di-merge ke `main` melalui commit `e3d414ca9669f1a40d0e913be24999e7009d6d52`; regression CI PR lulus. CI pasca-merge `main` telah meluluskan build dan regresi; workflow deployment GitHub Pages masih berjalan saat catatan ini diperbarui.**
+**Status: selesai pada repository. PR #107 telah di-merge ke `main` melalui commit `e3d414ca9669f1a40d0e913be24999e7009d6d52`; regression CI PR lulus. CI pasca-merge `main` (build, regresi, dan deployment GitHub Pages) juga lulus.**
 
 Audit statis menemukan beberapa field yang sudah ditandai wajib secara visual dan divalidasi oleh handler, tetapi belum memiliki atribut semantik `required`:
 - Nama penerima pada checkout.
@@ -594,8 +594,17 @@ Regression test mengunci atribut wajib dan perilaku dinamis alamat. Tidak ada pe
 
 ### Tahap 38.25 — Konsistensi petunjuk penghubung Santri aktif
 
-**Status: perbaikan repository disiapkan; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #108 telah di-merge ke `main` melalui commit `ef430a39fe5a7b374b3c921107fddf8e6daf5230`; regression CI, build, dan deployment GitHub Pages pasca-merge lulus.**
 
 Audit lintas alur Wali menemukan teks lama pada dialog Tambah Anak yang menyebut pengajuan relasi harus diverifikasi Admin/Superadmin. Teks tersebut tidak lagi sesuai dengan alur saat ini: Wali dapat menghubungkan Santri berstatus aktif secara langsung, tanpa persetujuan Admin; batas jumlah relasi dan validasi akun tetap dijaga backend.
 
 Perbaikan hanya menyelaraskan petunjuk dialog dengan alur aktual. Regression test memastikan teks lama tidak muncul kembali dan aksi tetap menggunakan endpoint `requestWaliSantriLink`. Tidak mengubah aturan relasi, pencarian Santri, hak akses, atau data.
+
+
+### Tahap 38.26 — Semantik catatan wajib saat penolakan pembayaran
+
+**Status: perbaikan repository disiapkan; menunggu CI dan merge.**
+
+Form verifikasi pembayaran sudah memvalidasi bahwa alasan penolakan harus diisi, sedangkan catatan saat menerima pembayaran bersifat opsional. Atribut `required` kini mengikuti keputusan petugas: aktif untuk penolakan dan tidak aktif untuk penerimaan. Validasi handler yang sudah ada tetap dipertahankan.
+
+Regression test mengunci kedua kondisi tersebut. Tidak ada perubahan aturan keputusan pembayaran, endpoint, payload, atau data.
