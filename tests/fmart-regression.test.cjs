@@ -998,8 +998,8 @@ test('Delivery dashboard refresh preserves the last rendered tasks when a refres
  assert.ok(loader.includes("if(hasPreviousDashboard){"));
  assert.ok(loader.includes("Data terakhir tetap ditampilkan."),'Refresh failures must preserve the last successful view.');
  assert.ok(loader.includes("id=\"retryDeliveryDashboard\""),'Initial failures must still offer retry.');
- const logout=index.indexOf("deliveryDashboardData=null;deliveryDashboardRendered=false;updateCartBadge(0)");
- assert.ok(logout>=0,'Cached delivery data must be cleared when the user logs out.');
+ const logout=index.indexOf("deliveryDashboardData=null;deliveryDashboardRendered=false;deliveryAssignmentData=null;updateCartBadge(0)");
+ assert.ok(logout>=0,'Cached delivery and assignment data must be cleared when the user logs out.');
 });
 
 
@@ -1021,4 +1021,18 @@ test('Cashier QRIS queue and sales-history refresh failures preserve previous re
  assert.ok(sales.includes('hadData=!!pos.salesHistoryLoaded'));
  assert.ok(sales.includes('Pembaruan riwayat gagal; hasil sebelumnya tetap ditampilkan.'));
  assert.ok(sales.includes('if(body&&!hadData)'),'Initial history loading must still show a loading state.');
+});
+
+
+test('Delivery assignment refresh preserves the last successful distribution workspace on request failure',()=>{
+ const start=index.indexOf('async function renderDeliveryAssignmentWorkspace(){');
+ const end=index.indexOf('function drawDeliveryAssignmentWorkspace(){',start);
+ assert.ok(start>=0&&end>start,'Delivery assignment loader must exist.');
+ const loader=index.slice(start,end);
+ assert.ok(loader.includes("const hasPreviousWorkspace=!!deliveryAssignmentData&&!!refreshButton&&$('opsMainBody').contains(refreshButton)"));
+ assert.ok(loader.includes("if(!hasPreviousWorkspace)$('opsMainBody').innerHTML="),'Only the initial load should replace the workspace with a loading state.');
+ assert.ok(loader.includes("if(hasPreviousWorkspace){"));
+ assert.ok(loader.includes('Data terakhir tetap ditampilkan.'));
+ assert.ok(loader.includes('id="retryDeliveryAssign"'),'Initial failure must keep a retry action.');
+ assert.ok(index.includes('deliveryAssignmentData=null;updateCartBadge(0)'),'Logout must clear cached distribution data.');
 });

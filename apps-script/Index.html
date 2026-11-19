@@ -2490,9 +2490,22 @@ function showStaffApp(){$('customerNav').classList.add('hidden');$('staffNav').c
     let deliveryAssignmentData=null;
 async function renderDeliveryAssignmentWorkspace(){
   if(!state.data||!['ADMIN','GUDANG','SUPERADMIN'].includes(state.data.user.role))return;
-  $('opsMainTitle').textContent='Distribusi Pengantaran';$('opsMainBody').innerHTML='<div class="panel-loading"><span class="spinner"></span><span>Memuat pesanan siap antar...</span></div>';
-  try{deliveryAssignmentData=await runServer('getDeliveryAssignmentWorkspace',state.token);drawDeliveryAssignmentWorkspace();}
-  catch(e){$('opsMainBody').innerHTML='<div class="empty-box">Gagal memuat distribusi: '+escapeHtml(e.message||'Terjadi kesalahan.')+'<button type="button" class="secondary" id="retryDeliveryAssign" style="margin-top:12px;width:100%">Coba lagi</button></div>';if($('retryDeliveryAssign'))$('retryDeliveryAssign').onclick=renderDeliveryAssignmentWorkspace;}
+  $('opsMainTitle').textContent='Distribusi Pengantaran';
+  const refreshButton=$('refreshDeliveryAssign');
+  const hasPreviousWorkspace=!!deliveryAssignmentData&&!!refreshButton&&$('opsMainBody').contains(refreshButton);
+  if(!hasPreviousWorkspace)$('opsMainBody').innerHTML='<div class="panel-loading"><span class="spinner"></span><span>Memuat pesanan siap antar...</span></div>';
+  try{
+    deliveryAssignmentData=await runServer('getDeliveryAssignmentWorkspace',state.token);
+    drawDeliveryAssignmentWorkspace();
+  }catch(e){
+    const message=e&&e.message?e.message:'Terjadi kesalahan.';
+    if(hasPreviousWorkspace){
+      showToast('Distribusi gagal diperbarui. Data terakhir tetap ditampilkan. '+message,'error');
+      return;
+    }
+    $('opsMainBody').innerHTML='<div class="empty-box" role="alert">Gagal memuat distribusi: '+escapeHtml(message)+'<button type="button" class="secondary" id="retryDeliveryAssign" style="margin-top:12px;width:100%">Coba lagi</button></div>';
+    if($('retryDeliveryAssign'))$('retryDeliveryAssign').onclick=renderDeliveryAssignmentWorkspace;
+  }
 }
 function drawDeliveryAssignmentWorkspace(){
   const data=deliveryAssignmentData||{},drivers=data.drivers||[],ready=data.ready||[],assigned=data.assigned||[];
@@ -2763,7 +2776,7 @@ function openProfile(){
     loading(true,'Keluar...');
     if(window.parent!==window)window.parent.postMessage({type:'FMART_ONESIGNAL_LOGOUT'},'https://appfathanmubina.github.io');
     try{await runServer('logout',state.token)}catch(e){}
-    finally{sessionStorage.removeItem(FMART_SESSION_TOKEN_KEY);if(sessionStorage.getItem('fmartToken')===state.token)sessionStorage.removeItem('fmartToken');if(FMART_PORTAL_MODE!=='ADMINFMART16720')sessionStorage.removeItem('fmartSelectedChildId');state.token='';state.data=null;state.profile=null;state.selectedChildId='';state.cart=null;deliveryDashboardData=null;deliveryDashboardRendered=false;updateCartBadge(0);loading(false);showLogin('Anda telah keluar dari FMart.')}
+    finally{sessionStorage.removeItem(FMART_SESSION_TOKEN_KEY);if(sessionStorage.getItem('fmartToken')===state.token)sessionStorage.removeItem('fmartToken');if(FMART_PORTAL_MODE!=='ADMINFMART16720')sessionStorage.removeItem('fmartSelectedChildId');state.token='';state.data=null;state.profile=null;state.selectedChildId='';state.cart=null;deliveryDashboardData=null;deliveryDashboardRendered=false;deliveryAssignmentData=null;updateCartBadge(0);loading(false);showLogin('Anda telah keluar dari FMart.')}
   };
 }
 async function openPaymentSettings(){closeProfile();loading(true,'Memuat pengaturan QRIS...');try{const r=await runServer('getPaymentSettings',state.token);$('opsModalTitle').textContent='Pengaturan QRIS';$('opsModalBody').innerHTML='<div class="notice">FMart hanya menerima pembayaran melalui QRIS. Masukkan tautan gambar QRIS resmi yang dapat diakses oleh Wali.</div><div class="field"><label for="payQrisImageUrl">URL Gambar QRIS (HTTPS) *</label><input id="payQrisImageUrl" type="url" value="'+escapeHtml(r.qrisImageUrl||'')+'" placeholder="https://.../qris.png" required><small class="muted">Pastikan gambar QRIS aktif, jelas dipindai, dan tautannya dapat dibuka tanpa login.</small></div><div class="field"><label for="payAdminWhatsapp">WhatsApp Admin/Kasir (opsional)</label><input id="payAdminWhatsapp" inputmode="tel" value="'+escapeHtml(r.adminWhatsapp||'')+'" placeholder="08xxxxxxxxxx"></div><button class="primary" id="savePaymentSettingsBtn">Simpan QRIS</button>';$('opsModal').classList.remove('hidden');$('savePaymentSettingsBtn').onclick=async()=>{const b=$('savePaymentSettingsBtn');if(b.disabled)return;b.disabled=true;loading(true,'Menyimpan pengaturan QRIS...');try{await runServer('savePaymentSettings',state.token,'','','',$('payAdminWhatsapp').value,$('payQrisImageUrl').value);closeOpsModal();showToast('Pengaturan QRIS berhasil disimpan.','success')}catch(e){showToast(e.message||'Gagal menyimpan QRIS.')}finally{b.disabled=false;loading(false)}}}catch(e){showToast(e.message||'Pengaturan QRIS gagal dimuat.')}finally{loading(false)}}
