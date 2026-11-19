@@ -866,6 +866,7 @@ test('Admin payment, account, and warehouse forms associate labels with controls
  const payment=section('function openPaymentSettings(){','async function openReportsFromProfile');
  const editWali=section('function openEditWaliForm(userId,waliId){','async function handleUserAction');
  const editUser=section('function openEditUserForm(id){','function openOpsModal');
+ const staff=section('function openStaffUserForm(){','async function openPaymentProof');
  const receipt=section('function openStockReceiptForm(products){','function openStockMinimumForm');
  const minimum=section('function openStockMinimumForm(productId,variationId,currentMinimum,itemName){','async function openOpsOrderDetail');
  const variation=section('function openVariationForm(item){','async function openStockTransferForm');
