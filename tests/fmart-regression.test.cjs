@@ -1107,13 +1107,13 @@ test('Admin, Gudang, and Wali management search/filter controls expose accessibl
 });
 
 
-test('Tablet portrait header does not retain the desktop sidebar left offset',()=>{
- assert.ok(index.includes('body.admin-portal .header-inner{padding-left:228px}'),'The tablet-landscape/sidebar layout offset must remain explicit.');
- const start=index.indexOf('@media (min-width:761px) and (max-width:900px){');
- const end=index.indexOf('/* Semua panel petugas:',start);
- assert.ok(start>=0&&end>start,'Tablet portrait responsive block must exist.');
- const portrait=index.slice(start,end);
- assert.ok(portrait.includes('body.admin-portal .header-inner{padding-left:20px;padding-right:20px}'));
- assert.ok(portrait.includes('body.admin-portal #staffNav.bottom-nav{'));
- assert.ok(portrait.includes('body.admin-portal #operationsView{'));
+test('Admin header uses the existing compact spacing throughout the tablet breakpoint',()=>{
+ const start=index.indexOf('@media (min-width:761px) and (max-width:1100px){');
+ const end=index.indexOf('.report-tabs{',start);
+ assert.ok(start>=0&&end>start,'Tablet header override must exist.');
+ const tablet=index.slice(start,end);
+ assert.ok(tablet.includes('body.admin-portal .header-inner{'));
+ assert.ok(tablet.includes('padding-left:20px!important;'));
+ assert.ok(tablet.includes('padding-right:20px!important;'));
+ assert.ok(!index.includes('Navigasi tablet portrait berada di bawah, jadi header tidak boleh menyisakan ruang sidebar.'));
 });
