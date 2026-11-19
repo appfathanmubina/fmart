@@ -455,3 +455,27 @@ test('Buyer product detail UI never displays physical stock or shortage informat
  assert.ok(cart.includes('!i.available?')&&cart.includes('Produk tidak tersedia'),'Cart may only report inactive products, never stock shortages.');
  assert.ok(!detail.includes('p.stock')&&!detail.includes('p.minStock'));
 });
+
+test('Changing a staff email does not mutate account security state when verification email delivery fails',()=>{
+ const fn=extractFunction(code,'setStaffEmail');
+ const send=fn.indexOf('MailApp.sendEmail');
+ const emailWrite=fn.indexOf('setValues([[email,false]])');
+ const securityTimestampWrite=fn.indexOf('setValue(new Date())');
+ assert.ok(send>=0&&emailWrite>send&&securityTimestampWrite>send,'Account email and auth timestamp must only change after the verification email is accepted.');
+ assert.ok(fn.includes("catch(sendError)"));
+ assert.ok(fn.includes('CacheService.getScriptCache().remove(challengeKey)'),'A failed email delivery must discard its unusable challenge.');
+ assert.ok(fn.includes('Data email akun tidak diubah'),'Failure response must make the no-mutation guarantee clear.');
+ assert.ok(fn.includes('requireRole_(token,[FMART.ROLES.SUPERADMIN])'),'Only Superadmin may change staff email.');
+});
+
+test('Admin OTP and sessions remain bound to the active account security state',()=>{
+ const otp=extractFunction(code,'verifyAdminLoginOtp');
+ const session=extractFunction(code,'requireSession_');
+ assert.ok(otp.includes('challenge.attempts>=5'));
+ assert.ok(otp.includes('cache.remove(key)'),'Successful OTP must be consumed before a session is created.');
+ assert.ok(otp.includes("String(user.values[6]||'').toUpperCase()!=='AKTIF'"));
+ assert.ok(otp.includes("String(user.values[5]||'').toUpperCase()!==challenge.role"));
+ assert.ok(otp.includes('normalizeEmail_(user.values[10])!==challenge.email'));
+ assert.ok(otp.includes('updatedAt!==Number(challenge.authUpdatedAt)'));
+ assert.ok(session.includes("status!=='AKTIF'||role!==String(s.role).toUpperCase()||updatedAt!==Number(s.authUpdatedAt)"),'Disabled accounts, changed roles, and password/security changes must revoke existing sessions.');
+});
