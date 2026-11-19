@@ -1355,6 +1355,45 @@ test('Custom interactive markup remains keyboard operable and native controls st
  assert.ok(!index.includes('role="combobox"'),'Do not replace native selects with inaccessible custom dropdowns.');
 });
 
+test('All UI server endpoints resolve and have server-side authorization or explicit pre-auth safeguards',()=>{
+ const literalNames=[...new Set([...index.matchAll(/runServer\(\s*['"]([^'"]+)['"]/g)].map(m=>m[1]))];
+ assert.ok(literalNames.length>=75,'The UI server endpoint inventory must be comprehensive.');
+ const deliveryMap=(index.match(/const endpoint=\{([^}]+)\}\[action\]/)||[])[1]||'';
+ assert.ok(deliveryMap,'Delivery action endpoint mapping must be explicit.');
+ const deliveryNames=[...new Set([...deliveryMap.matchAll(/:\s*'([A-Za-z0-9_]+)'/g)].map(m=>m[1]))];
+ assert.deepEqual(deliveryNames,['respondDeliveryAssignment','startDeliveryTrip','updateDeliveryProgress','reportDeliveryFailure']);
+ assert.ok(index.includes("runServer(action==='toggle'?'toggleFMartUser':'resetFMartUserPassword'"),'Wali management actions must use the fixed server endpoint allowlist.');
+ const dynamicNames=[...deliveryNames,'toggleFMartUser','resetFMartUserPassword'];
+ const names=[...new Set([...literalNames,...dynamicNames])];
+ assert.ok(names.length>=83,'Literal and dynamic endpoint inventory must include all UI-exposed server methods.');
+ for(const name of names){
+  const start=code.indexOf('function '+name+'(');
+  assert.ok(start>=0,'UI endpoint '+name+' must resolve to a backend function.');
+  const end=code.indexOf('\nfunction ',start+10);
+  const body=code.slice(start,end<0?code.length:end);
+  if(['login','registerWaliSantri','verifyAdminLoginOtp'].includes(name))continue;
+  assert.ok(body.includes('requireSession_(')||body.includes('requireRole_('),'Endpoint '+name+' must validate a server-side session or role.');
+ }
+ const login=extractFunction(code,'login');
+ assert.ok(login.includes('LOGIN_MAX_FAILURES')&&login.includes('recordLoginFailure_')&&login.includes('verifyPassword_')&&login.includes('portalRoleAllowed_'),'Public login must retain rate limiting, password verification and portal-role checks.');
+ const registration=extractFunction(code,'registerWaliSantri');
+ assert.ok(registration.includes('LockService.getScriptLock()')&&registration.includes('PASSWORD_MIN_LENGTH')&&registration.includes('normalizePhone_'),'Public Wali registration must retain locking and input validation.');
+ const otp=extractFunction(code,'verifyAdminLoginOtp');
+ assert.ok(otp.includes("portalMode || '') !== 'ADMINFMART16720'")&&otp.includes('challenge.attempts>=5')&&otp.includes('constantTimeEqual_')&&otp.includes('cache.remove(key)'),'Pre-auth OTP must remain portal-bound, one-time and attempt-limited.');
+ for(const name of dynamicNames){
+  const start=code.indexOf('function '+name+'('),end=code.indexOf('\nfunction ',start+10),body=code.slice(start,end<0?code.length:end);
+  assert.ok(body.includes('requireRole_('),'Dynamic endpoint '+name+' must enforce role authorization.');
+ }
+ for(const name of ['respondDeliveryAssignment','startDeliveryTrip','updateDeliveryProgress','reportDeliveryFailure']){
+  const start=code.indexOf('function '+name+'('),end=code.indexOf('\nfunction ',start+10),body=code.slice(start,end<0?code.length:end);
+  assert.ok(body.includes('FMART.ROLES.PETUGAS_PENGANTAR')&&body.includes('FMART.ROLES.GUDANG'),'Delivery endpoint '+name+' must retain the driver/Gudang role boundary.');
+ }
+ for(const name of ['toggleFMartUser','resetFMartUserPassword']){
+  const start=code.indexOf('function '+name+'('),end=code.indexOf('\nfunction ',start+10),body=code.slice(start,end<0?code.length:end);
+  assert.ok(body.includes('FMART.ROLES.SUPERADMIN'),'User administration endpoint '+name+' must remain Superadmin-only.');
+ }
+});
+
 test('Wali delivery proof preview is restricted to owned orders and the private delivery proof folder',()=>{
  const fn=extractFunction(code,'getDeliveryProofImage');
  assert.ok(fn.includes('requireRole_(token,[FMART.ROLES.WALI_SANTRI])'),'Only Wali may retrieve delivery proof previews.');
