@@ -1104,7 +1104,7 @@ function getWaliDashboard(token) {
 }
 
 function isWaliStockRelatedText_(value) {
-  return /stok|stock|restok|re[\\s-]?stock|persediaan|inventory|ketersediaan|barang\\s+(?:belum\\s+)?(?:tersedia|lengkap|terpenuhi|habis)|kekurangan|kurang\\s+stok|stok\\s+kurang|antrean\\s+gudang|gudang|warehouse|fulfillment|pemenuhan|belum\\s+terpenuhi|belum\\s+lengkap|menunggu\\s+seluruh|reservasi|backorder|supply|tidak\\s+mencukupi|tidak\\s+cukup|sisa\\s+stok|unit\\s+tersedia/i.test(String(value||''));
+  return /stok|stock|restok|re[\s-]?stock|persediaan|inventory|ketersediaan|barang\s+(?:belum\s+)?(?:tersedia|lengkap|terpenuhi|habis)|kekurangan|kurang\s+stok|stok\s+kurang|antrean\s+gudang|gudang|warehouse|fulfillment|pemenuhan|belum\s+terpenuhi|belum\s+lengkap|menunggu\s+seluruh|reservasi|backorder|supply|tidak\s+mencukupi|tidak\s+cukup|sisa\s+stok|unit\s+tersedia/i.test(String(value||''));
 }
 
 function sanitizeWaliStockNote_(note, orderStatus) {
