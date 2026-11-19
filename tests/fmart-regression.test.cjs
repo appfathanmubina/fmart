@@ -939,3 +939,12 @@ test('Gudang dashboard exposes the internal waiting-stock queue as a filterable 
  assert.ok(css.includes('grid-template-columns:repeat(3,minmax(0,1fr))'));
  assert.ok(index.includes("['Menunggu Stok',counts.MENUNGGU_STOK]"),'The existing fulfillment queue must retain its internal stock-waiting count.');
 });
+
+
+test('Operations modal has an accessible close name and supports Escape dismissal',()=>{
+ assert.ok(index.includes('id="closeOpsModal" aria-label="Tutup dialog"'));
+ assert.ok(index.includes("$('closeOpsModal').addEventListener('click',closeOpsModal)"));
+ const escapeHandler=index.match(/document\.addEventListener\('keydown',e=>\{if\(e\.key==='Escape'\)\{([^}]+)\}\}\);/);
+ assert.ok(escapeHandler,'Global Escape handler must exist.');
+ assert.ok(escapeHandler[1].includes('closeOpsModal()'),'Escape must close the staff operations modal.');
+});
