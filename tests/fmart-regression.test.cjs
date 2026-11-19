@@ -1128,3 +1128,18 @@ test('Logout closes every modal and clears the operational modal content',()=>{
  assert.ok(logout.includes("$('opsModalBody').innerHTML=''"),'Operational form content must not remain visible or cached after logout.');
  assert.ok(logout.includes("$('opsMainBody').innerHTML=''"),'Operational workspace content must be cleared.');
 });
+
+
+test('Modal keyboard navigation traps Tab and Shift+Tab inside the topmost visible dialog',()=>{
+ const start=index.indexOf("document.addEventListener('keydown',e=>{\n      const visible=Array.from(document.querySelectorAll('.modal:not(.hidden)'));");
+ const end=index.indexOf("window.addEventListener('load',boot)",start);
+ assert.ok(start>=0&&end>start,'Global modal keyboard handler must exist.');
+ const handler=index.slice(start,end);
+ assert.ok(handler.includes("if(e.key==='Tab'&&top)"));
+ assert.ok(handler.includes("top.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex=\"-1\"])')"));
+ assert.ok(handler.includes("if(!top.contains(document.activeElement))"));
+ assert.ok(handler.includes("e.shiftKey?last:first"));
+ assert.ok(handler.includes("document.activeElement===first"));
+ assert.ok(handler.includes("document.activeElement===last"));
+ assert.ok(handler.includes("const close=closeById[top.id]"),'Existing Escape close behavior must remain intact.');
+});
