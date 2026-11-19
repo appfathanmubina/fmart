@@ -839,3 +839,23 @@ test('Wali cart quantity controls are accessible and respect the 10,000-unit lim
  assert.ok(cart.includes("Number(i.qty)>=10000?'disabled':''"),'The increase control must be disabled at the server-side maximum.');
  assert.ok(cart.includes('aria-label="Hapus '));
 });
+
+
+test('Admin category, product, and staff forms associate labels with controls',()=>{
+ const categoryStart=index.indexOf('function openCategoryForm(item){');
+ const productStart=index.indexOf('function openProductForm(item){');
+ const staffStart=index.indexOf('function openStaffUserForm(){');
+ const proofStart=index.indexOf('async function openPaymentProof',staffStart);
+ assert.ok(categoryStart>=0&&productStart>categoryStart&&staffStart>productStart&&proofStart>staffStart);
+ const category=index.slice(categoryStart,productStart);
+ const product=index.slice(productStart,staffStart);
+ const staff=index.slice(staffStart,proofStart);
+ for(const [source,id] of [[category,'catName'],[category,'catDesc'],[category,'catOrder'],[category,'catStatus'],[product,'prdCat'],[product,'prdSku'],[product,'prdName'],[product,'prdDesc'],[product,'prdPrice'],[product,'prdMin'],[product,'prdPhoto'],[product,'prdStatus'],[staff,'staffName'],[staff,'staffEmail'],[staff,'staffPassword'],[staff,'staffRole']]){
+  assert.ok(source.includes('for="'+id+'"'),id+' label must be associated with its control.');
+  assert.ok(source.includes('id="'+id+'"'),id+' control must remain present.');
+ }
+ for(const id of ['catName','prdCat','prdSku','prdName','prdPrice','staffName','staffEmail','staffPassword','staffRole']){
+  const source=id.startsWith('cat')?category:id.startsWith('prd')?product:staff;
+  assert.ok(source.includes('id="'+id+'" required'),id+' must expose its required state to browsers and assistive technology.');
+ }
+});
