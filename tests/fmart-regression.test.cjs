@@ -223,6 +223,8 @@ test('Role-sensitive reports and QRIS settings remain server-gated',()=>{
 
 test('Apps Script editor exposes safe setup and read-only readiness entry points',()=>{
  const setupEntry=extractFunction(setup,'setupFMartDatabase_'),readiness=extractFunction(code,'runFMartReadinessAudit_');
+ assert.ok(!setup.includes('function setupFMartDatabase('),'Database setup must not be exposed as a browser endpoint.');
+ assert.ok(!code.includes('function runFMartReadinessAudit('),'Readiness audit must not be exposed as a browser endpoint.');
  assert.ok(setupEntry.includes('setupFMartDatabase_'));
  for(const name of ['auditFMartDatabaseIntegrity_','auditFMartRuntime_','auditFMartOperationalSync_','auditFMartStockReconciliation_','auditCashierPOSIntegrity_','auditWarehouseReceivingIntegrity_','auditFMartTransactionRecovery_'])assert.ok(readiness.includes(name));
  assert.ok(readiness.includes("mode:'READ_ONLY'"));
