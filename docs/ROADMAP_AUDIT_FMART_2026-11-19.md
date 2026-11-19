@@ -121,3 +121,69 @@ Perbaikan source yang dibuat pada tindak lanjut Tahap 33:
 3. Menambahkan regresi untuk kedua kondisi tersebut.
 
 **Batasan:** tidak mengubah data Santri, akun, Script Properties, folder Drive, stok, atau AuditLog produksi. Temuan data/configuration harus ditangani terpisah setelah verifikasi pemilik data.
+
+
+## Pembaruan tindak lanjut operator — 19 November 2026
+
+Operator melaporkan tindak lanjut atas temuan Tahap 33:
+- Baris duplikat master Santri sudah dihapus oleh operator. Status integritas belum ditandai bersih sampai audit read-only dijalankan ulang.
+- Akun role `ADMIN` dan `PETUGAS_PENGANTAR` memang belum dibuat dan akan dibuat kemudian oleh operator. Ini adalah keputusan operasional yang disengaja; aplikasi tidak boleh membuat atau mengaktifkan akun tersebut otomatis.
+- Script Property `FMART_DELIVERY_PROOF_FOLDER_ID` sudah ditambahkan oleh operator. Akses folder dan pembacaan konfigurasi masih perlu dikonfirmasi oleh audit runtime ulang.
+- Tidak ada perubahan data produksi yang dilakukan oleh pekerjaan repository ini.
+
+## Status tindak lanjut runtime Tahap 33
+
+**Menunggu audit read-only ulang dari operator.** Setelah sinkronisasi source Tahap 33 ke Apps Script, jalankan `runFMartReadinessAudit_()` sekali lagi dan bagikan hasil yang sudah disamarkan.
+
+Kriteria pemeriksaan ulang:
+1. Temuan duplikasi `SantriId` dan NIS sudah tidak muncul.
+2. Folder `deliveryProof` terdeteksi configured, accessible, dan private.
+3. Pemeriksaan manual inbound audit tidak lagi menghasilkan false positive.
+4. Pemeriksaan stok produk aktif menunjukkan kondisi master stok aktual. Jika ada `PRODUCT_STOCK_ROW_MISSING`, jumlah dan daftar ID internal harus ditinjau; jangan menjalankan perbaikan massal tanpa rekonsiliasi.
+5. Role ADMIN dan PETUGAS_PENGANTAR yang belum dibuat tetap boleh muncul sebagai peringatan konfigurasi. Tidak dibuat otomatis.
+
+Audit read-only ulang tidak menguji transaksi, tidak membuat akun, tidak membuat folder, dan tidak mengubah data. Jangan lanjut ke uji transaksi end-to-end sebelum integritas data dan konfigurasi dasar terkonfirmasi.
+
+## Roadmap lanjutan Tahap 34–40
+
+| Tahap | Ruang lingkup | Kegiatan utama | Kriteria selesai |
+|---|---|---|---|
+| 34 | Rekonsiliasi master Santri dan integritas data aktual | Jalankan ulang audit; verifikasi duplikasi, NIS, SantriId, relasi Wali–Santri, dan referensi transaksi lama | Tidak ada duplikasi/relasi ambigu; semua temuan dijelaskan dan disetujui sebelum perubahan data |
+| 35 | Validasi akun, role, dan konfigurasi Drive | Konfirmasi role yang memang akan dioperasikan; uji akses folder bukti pembayaran/pengantaran; periksa trigger dan Executions | Hak akses sesuai desain; folder bukti tetap privat; trigger terbukti berjalan atau temuan tercatat |
+| 36 | Rekonsiliasi stok Gudang, Kasir, dan penerimaan | Cocokkan master produk/variasi, saldo stok kanonis, mutasi, penerimaan, transfer, reservasi, dan saldo fisik | Tidak ada saldo ganda/negatif atau selisih tak terjelaskan; stok Wali tetap tersembunyi |
+| 37 | Validasi transaksi dan pemulihan | Uji keranjang, checkout, pembayaran, verifikasi, stok kurang, POS Kasir, pembatalan, retry/idempotency, dan pemulihan proses terputus | Tidak ada transaksi ganda, saldo salah, status saling bertentangan, atau notifikasi ganda |
+| 38 | Validasi PWA, tampilan, dan perangkat | Uji jalur Wali/Admin pada desktop dan HP; navigasi, modal, gambar, cache, instalasi, jaringan putus/pulih, dan sesi | Alur inti dapat digunakan pada perangkat sasaran tanpa regresi visual/fungsional yang menghambat |
+| 39 | Perbaikan temuan akhir dan audit kesiapan produksi | Perbaiki temuan Tahap 34–38; jalankan regresi penuh, audit keamanan endpoint, dan rekonsiliasi akhir | Semua temuan kritis/tinggi ditutup; CI lulus; checklist produksi ditandatangani |
+| 40 | Dokumentasi operasional dan serah-terima produksi | Finalisasi SOP akun, katalog, stok, penerimaan, transaksi, pengantaran, backup, pemulihan, dan prosedur insiden | Dokumen operasional lengkap; status produksi diputuskan berdasarkan bukti audit, bukan hanya CI |
+
+### Pengembangan katalog foto produk
+
+**Kondisi saat ini:** formulir Produk menyediakan kolom `URL foto (opsional)`; backend menyimpan URL HTTP/HTTPS pada kolom `FotoUrl`. URL tersebut dipakai oleh katalog Wali, detail produk, dan keranjang. Belum ada kontrol unggah file langsung pada formulir.
+
+**Peningkatan yang direncanakan sebagai Tahap 41 (fitur pengembangan setelah gerbang audit runtime):**
+- Tombol pilih/ambil foto dari perangkat pada form Tambah/Edit Produk.
+- Upload melalui backend Apps Script ke folder khusus `FMART_PRODUCT_IMAGE_FOLDER_ID`, terpisah dari folder bukti pembayaran dan pengantaran.
+- Validasi MIME, ukuran, nama file, dan kepemilikan file terhadap folder khusus.
+- Simpan referensi file yang stabil pada master Produk; jangan membuka folder bukti transaksi kepada publik.
+- Sajikan foto ke katalog melalui jalur yang aman dan efisien, dengan fallback gambar kosong bila file hilang/tidak dapat diakses.
+- Saat foto diganti, lakukan penghapusan file lama hanya setelah referensi baru berhasil tersimpan dan tidak ada produk lain yang menggunakannya.
+- Tambahkan regresi untuk upload gagal, file tidak valid, file tidak berada di folder, foto lama, dan foto tanpa akses.
+- Pertahankan dukungan URL foto lama agar data produk yang sudah ada tetap kompatibel.
+
+**Kriteria selesai:** Admin dapat menambah/mengganti foto dari HP maupun desktop; Wali dapat melihat foto tanpa memperoleh akses ke folder bukti transaksi; kegagalan upload tidak merusak data produk atau foto sebelumnya.
+
+### Keputusan valuasi persediaan — masih terbuka
+
+Sebelum fitur nilai modal persediaan dikembangkan, pemilik proses perlu memilih metode biaya: rata-rata bergerak atau FIFO. Desain harus mencatat harga perolehan pada detail penerimaan dan mengalirkannya secara konsisten pada transfer, penjualan, retur, dan koreksi stok. Harga jual tidak boleh dipakai sebagai pengganti harga pokok.
+
+## Gerbang kelulusan akhir
+
+FMart belum boleh dinyatakan siap produksi hanya karena semua PR sudah merge atau CI lulus. Status siap produksi baru dapat diputuskan setelah:
+- audit integritas aktual dan konfigurasi runtime selesai;
+- akun yang diperlukan tersedia dan berhasil diuji oleh pemilik masing-masing;
+- seluruh alur transaksi dan pemulihannya lulus pada runtime terkontrol;
+- PWA diuji pada perangkat sasaran;
+- bukti transaksi, Drive, stok, laporan, dan AuditLog direkonsiliasi;
+- temuan kritis/tinggi ditutup dan SOP operasional tersedia.
+
+Pekerjaan repository dapat diselesaikan lebih dahulu, tetapi gerbang runtime tetap memerlukan eksekusi dan bukti dari Apps Script serta perangkat yang dikelola operator.
