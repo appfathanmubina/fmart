@@ -789,8 +789,17 @@ Penghapusan item keranjang tetap mendelegasikan ke jalur update yang memeriksa p
 
 ## Tahap 40.1 — Draft SOP Operasional dan serah-terima
 
-**Status: draft source selesai; menunggu review pemilik proses dan verifikasi runtime sebelum disahkan.**
+**Status: draft source selesai dan sudah masuk `main` melalui PR #126 (commit `0e465cde6ed8055f6c157cce1d3d3fdc9143282b`). Menunggu review pemilik proses dan verifikasi runtime sebelum disahkan.**
 
 Ditambahkan `docs/SOP_OPERASIONAL_FMART.md` yang merangkum role dan batas akses, akun, master produk, stok Gudang, penerimaan, relasi Wali–Santri, checkout, QRIS, POS, pengantaran, backup manual, pemulihan insiden, dan pemeriksaan rutin. README ditautkan ke SOP, UAT, dan roadmap.
 
 SOP membedakan prosedur yang sudah tercermin pada source dengan prasyarat yang belum terbukti di runtime. Repository tidak memiliki fungsi backup/restore otomatis; SOP karena itu menetapkan backup manual sebelum perubahan berisiko dan melarang restore langsung ke produksi tanpa rekonsiliasi. Dokumen tetap berstatus draft sampai akun, folder, trigger, stok awal, UAT, dan pemulihan diuji pada runtime serta disetujui pemilik proses.
+
+
+## Tahap 40.2 — Sinkronisasi checklist UAT dengan pengamanan terbaru
+
+**Status: checklist UAT diperbarui; menunggu CI dan merge.**
+
+Checklist UAT diperbarui untuk mencakup pencocokan nomor Wali dengan `no_wa_wali`, status pending saat mismatch/kosong, batas dua relasi aktif/pending, folder bukti pengantaran yang terpisah, batas 10 MB, dan penolakan file dari folder yang salah. Baseline regression/Pages build terbaru dicatat tanpa menganggapnya sebagai kelulusan runtime. Role Supervisor juga ditandai belum aktif karena tidak ada di backend.
+
+Tahap ini hanya dokumentasi. UAT runtime tetap belum dilakukan dan harus memakai lingkungan/data terisolasi.
