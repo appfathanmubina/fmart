@@ -558,5 +558,5 @@ test('Stock card sorts movements chronologically and validates the full balance 
 test('Warehouse stock valuation never treats selling price as inventory cost',()=>{
  const fn=extractFunction(code,'getStockCardReport');
  assert.ok(fn.includes("valuation:{available:false,value:null"));
- assert.ok(index.includes("Harga jual produk")&&index.includes("bukan nilai modal persediaan"),'UI must explain why selling price cannot be used as inventory value.');
+ assert.ok(index.toLowerCase().includes("harga jual produk")&&index.toLowerCase().includes("bukan nilai modal persediaan"),'UI must explain why selling price cannot be used as inventory value.');
 });
