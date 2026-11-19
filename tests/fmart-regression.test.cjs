@@ -479,3 +479,12 @@ test('Admin OTP and sessions remain bound to the active account security state',
  assert.ok(otp.includes('updatedAt!==Number(challenge.authUpdatedAt)'));
  assert.ok(session.includes("status!=='AKTIF'||role!==String(s.role).toUpperCase()||updatedAt!==Number(s.authUpdatedAt)"),'Disabled accounts, changed roles, and password/security changes must revoke existing sessions.');
 });
+
+test('Database integrity audit accepts manual order recipient snapshots without a SantriId',()=>{
+ const databaseAudit=extractFunction(setup,'auditFMartDatabaseIntegrity_');
+ const operationalAudit=extractFunction(code,'auditFMartOperationalSync_');
+ assert.ok(databaseAudit.includes("checkReference_('Pesanan', 3, 'Santri', 'SantriId pesanan', true)"),'SantriId is optional for orders that use the manual recipient snapshot model.');
+ assert.ok(operationalAudit.includes("const hasManualRecipient=!!(payload.recipientSnapshot&&String(payload.recipientSnapshot.name||'').trim())"));
+ assert.ok(operationalAudit.includes("if(!sid&&!hasManualRecipient)issue('ORDER_RECIPIENT_MISSING'"),'Orders without SantriId must still have a valid recipient snapshot.');
+ assert.ok(operationalAudit.includes("if(sid&&!santriById[sid])issue('ORDER_SANTRI_REFERENCE_MISSING'"),'Legacy Santri-linked orders must continue validating their Santri reference.');
+});
