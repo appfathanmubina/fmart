@@ -14,6 +14,15 @@ Pada CI Tahap 2 dan 3, pemeriksaan sintaks `Code.gs`, sintaks service worker, re
 
 **Yang belum divalidasi:** runtime Google Apps Script, izin Drive, Spreadsheet produksi, trigger terpasang, riwayat Executions, transaksi multi-user/bersamaan, serta tampilan browser dan perangkat nyata. CI statis bukan bukti bahwa UAT runtime sudah lulus.
 
+### Baseline repository terbaru — 19 November 2026
+
+- Branch `main` setelah PR #125: `4aac87e6b8e1e54eb142fcf31bf3cdbe9acd95de` (perubahan SOP/roadmap dokumentasi menyusul pada PR #126).
+- Regression suite: 117 test lulus.
+- Build/deployment GitHub Pages: lulus pada commit tersebut.
+- Perubahan keamanan terbaru: validasi folder bukti pengantaran, inventaris 83 endpoint UI, isolasi data Wali/Kasir/Pengantaran, self-link Wali berbasis pencocokan `no_wa_wali`, dan batas maksimum dua relasi aktif/pending.
+
+Hasil CI ini hanya baseline source. Semua skenario pada dokumen ini tetap harus dijalankan dan dilaporkan secara runtime sebelum produksi dinyatakan siap.
+
 ## 2. Sinkronisasi Apps Script
 
 1. Buat backup Spreadsheet sebelum migrasi header.
@@ -47,12 +56,26 @@ Siapkan akun uji terpisah untuk setiap role. Jangan berbagi password atau OTP me
 | Petugas Pengantar | Dashboard dan tugas pengantaran miliknya | Tugas petugas lain, stok, POS, pembayaran, pengaturan |
 | Wali Santri | Katalog, keranjang, pesanan anak yang terhubung, pembayaran QRIS, bukti pengantaran/konfirmasi | Pesanan wali lain, menu staf, pengaturan QRIS |
 
+Catatan role:
+- Role `SUPERVISOR` belum didefinisikan di backend saat ini. Jangan membuat akun uji atau memberi akses Supervisor sampai ada keputusan dan implementasi eksplisit.
+- Hubungan Wali–Santri yang berstatus `MENUNGGU_VERIFIKASI` belum memberi akses sebagai Santri terhubung; hanya relasi `AKTIF` yang boleh digunakan untuk akses data/checkout sebagai Santri terhubung.
+
 Untuk setiap role:
 - Login berhasil dan identitas/role benar.
 - Menu yang tidak berhak tidak muncul dan tidak dapat difokuskan dengan keyboard.
 - Coba panggil endpoint terlarang secara langsung dari UI console/test harness. Backend harus tetap menolak meskipun menu disembunyikan.
 - Kasir hanya boleh melihat/memeriksa bukti QRIS Wali sesuai batas akses; Kasir tidak boleh mengubah konfigurasi QRIS.
 - Pengaturan QRIS hanya dapat dibuka dan diubah oleh Superadmin.
+
+### 4.1 Relasi Wali–Santri berdasarkan nomor wali
+
+- Siapkan satu Santri aktif dengan `no_wa_wali` terisi dan akun Wali dengan nomor sama dalam format berbeda (misalnya 08... dan +62...); setelah normalisasi, relasi harus langsung menjadi `AKTIF`.
+- Uji nomor berbeda; permintaan harus berstatus `MENUNGGU_VERIFIKASI` dan tidak boleh memberi akses ke data Santri sebagai anak terhubung.
+- Uji `no_wa_wali` kosong; hasil juga harus pending, bukan aktif.
+- Uji pengajuan pending berulang; tidak boleh membuat relasi pending ganda.
+- Pastikan Admin dapat memeriksa dan menyetujui melalui jalur verifikasi manual.
+- Pastikan maksimal dua akun Wali unik dalam gabungan status aktif/pending. Jika data lama sudah melampaui batas, persetujuan Admin harus ditolak sampai relasi direkonsiliasi.
+- Relasi aktif lama tidak boleh dicabut otomatis oleh perubahan ini.
 
 ## 5. Uji transaksi
 
@@ -97,9 +120,12 @@ Jalankan hanya pada data uji yang terisolasi.
 
 ### 5.6 Bukti pengantaran dan konfirmasi
 - Hanya petugas yang ditugaskan boleh mengunggah bukti.
-- Uji signature file dan penolakan MIME palsu.
+- Uji signature file dan penolakan MIME palsu; format pratinjau hanya JPG/PNG/WEBP.
+- File maksimal 10 MB; file di atas batas harus ditolak.
+- Pastikan file tersimpan di folder `FMART_DELIVERY_PROOF_FOLDER_ID`, dan folder ini berbeda dari `FMART_PAYMENT_PROOF_FOLDER_ID`.
+- Uji file yang berada di folder lain; endpoint pratinjau harus menolak file tersebut.
 - Retry bukti yang sama untuk penugasan yang sama harus menggunakan bukti yang sama dan tidak membuat konfirmasi/notifikasi/riwayat ganda.
-- Pastikan Wali hanya melihat bukti untuk pesanan miliknya.
+- Pastikan Wali hanya melihat bukti untuk pesanan miliknya dan tidak dapat meminta file milik Wali lain.
 - Pastikan auto-confirm tujuh hari hanya berlaku untuk pengantaran yang memang menunggu konfirmasi; tidak boleh berlaku untuk pengambilan langsung.
 
 ## 6. Audit data, Drive, dan trigger
@@ -115,6 +141,9 @@ Jalankan fungsi privat `runFMartReadinessAudit_` dari daftar fungsi Apps Script 
 - `auditFMartTransactionRecovery_()` — transaksi yang mungkin terhenti.
 
 Pemeriksaan Drive:
+- Pastikan `FMART_DELIVERY_PROOF_FOLDER_ID` dan `FMART_PAYMENT_PROOF_FOLDER_ID` berisi ID folder berbeda dan folder tidak dibagikan publik tanpa alasan.
+- File bukti pengantaran harus benar-benar berada di folder pengantaran yang dikonfigurasi; file di luar folder harus ditolak.
+- Folder bukti QRIS dan pengantaran tersedia dan ID-nya sesuai pengaturan.
 - Folder bukti QRIS dan pengantaran tersedia dan ID-nya sesuai pengaturan.
 - File bukti dapat dibuka oleh role yang berhak dan ditolak bagi role yang tidak berhak.
 - Tidak ada folder bukti publik tanpa alasan yang disetujui.
