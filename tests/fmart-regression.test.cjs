@@ -1036,3 +1036,16 @@ test('Delivery assignment refresh preserves the last successful distribution wor
  assert.ok(loader.includes('id="retryDeliveryAssign"'),'Initial failure must keep a retry action.');
  assert.ok(index.includes('deliveryAssignmentData=null;updateCartBadge(0)'),'Logout must clear cached distribution data.');
 });
+
+
+test('Delivery complaints refresh preserves the last successful workspace and logout clears internal content',()=>{
+ const start=index.indexOf('async function renderDeliveryComplaintsWorkspace(){');
+ const end=index.indexOf('async function renderDeliveryWorkspace(){',start);
+ assert.ok(start>=0&&end>start,'Delivery complaints loader must exist.');
+ const fn=index.slice(start,end);
+ assert.ok(fn.includes("const hasPreviousWorkspace=!!refreshButton&&$('opsMainBody').contains(refreshButton)"));
+ assert.ok(fn.includes("if(!hasPreviousWorkspace)$('opsMainBody').innerHTML="));
+ assert.ok(fn.includes('Komplain gagal diperbarui. Data terakhir tetap ditampilkan.'));
+ assert.ok(fn.includes('id="retryDeliveryComplaints"'),'Initial failure must keep a retry action.');
+ assert.ok(index.includes("$('opsMainBody').innerHTML='';updateCartBadge(0)"),'Logout must clear internal operational DOM to avoid stale content across accounts.');
+});
