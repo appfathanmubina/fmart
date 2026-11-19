@@ -1271,3 +1271,17 @@ test('Empty Wali child picker copy and action match direct self-link behavior',(
  assert.ok(index.includes("data-picker-request=\"'+escapeHtml(c.id)+'\">Hubungkan</button>"));
  assert.ok(search.includes('openWaliLinkModal(c)'),'Selecting a Santri must continue to use the direct Wali self-link flow.');
 });
+
+test('Staff login OTP field exposes required six-digit semantics',()=>{
+ const start=index.indexOf('id="loginOtpCode"');
+ const inputStart=index.lastIndexOf('<input',start);
+ const inputEnd=index.indexOf('>',start);
+ assert.ok(start>=0&&inputStart>=0&&inputEnd>start,'OTP input must exist.');
+ const input=index.slice(inputStart,inputEnd+1);
+ assert.ok(input.includes('required'));
+ assert.ok(input.includes('maxlength="6"'));
+ assert.ok(input.includes('pattern="[0-9]{6}"'));
+ assert.ok(input.includes('autocomplete="one-time-code"'));
+ const handler=extractFunction(index,'finishStaffLoginWithOtp_');
+ assert.ok(handler.includes("!/^[0-9]{6}$/.test(code)"),'Existing six-digit OTP validation must remain.');
+});
