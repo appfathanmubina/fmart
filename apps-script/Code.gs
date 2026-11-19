@@ -2383,7 +2383,6 @@ function getDeliveryDashboard(token) {
   if (!assignmentSheet) throw new Error('Struktur Pengantaran belum tersedia. Jalankan setupFMartDatabase_() terlebih dahulu.');
   const assignments = readRows_(assignmentSheet);
   const orders = readRows_(ss.getSheetByName('Pesanan'));
-  const users = readRows_(ss.getSheetByName('Users'));
   const santriSheet = ss.getSheetByName('Santri');
   const santriMap = getSantriColumnMap_(santriSheet);
   const santriRows = readSantriRows_(santriSheet);
@@ -2391,11 +2390,6 @@ function getDeliveryDashboard(token) {
   santriRows.forEach(function(row) {
     const child = santriRecord_(row, santriMap);
     if (child.id) santriById[child.id] = child;
-  });
-  const userById = {};
-  users.forEach(function(row) {
-    const id = String(row[0] || '');
-    if (id) userById[id] = {name:String(row[4] || ''), username:String(row[1] || '')};
   });
   const orderById = {};
   orders.forEach(function(row) {
@@ -2425,7 +2419,6 @@ function getDeliveryDashboard(token) {
     const order = orderById[orderId];
     if (!order) return null;
     const child = getOrderRecipientSnapshot_(ss,order);
-    const wali = waliByUserId[String(order[2] || '')] || userById[String(order[2] || '')] || {};
     const shipment = shipmentByOrder[orderId] || [];
     const proof = proofByAssignment[String(row[0]||'')] || [];
     return {
