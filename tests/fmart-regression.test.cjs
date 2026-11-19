@@ -886,7 +886,7 @@ test('Admin payment, account, and warehouse forms associate labels with controls
  assert.ok(receipt.includes('for="receiptProduct\'+i+\'"')&&receipt.includes('id="receiptProduct\'+i+\'"'));
  assert.ok(receipt.includes('for="receiptVariation\'+i+\'"')&&receipt.includes('id="receiptVariation\'+i+\'"'));
  assert.ok(receipt.includes('for="receiptQty\'+i+\'"')&&receipt.includes('id="receiptQty\'+i+\'"'));
- for(const [source,id] of [[payment,'payQrisImageUrl'],[receipt,'receiptSupplier'],[receipt,'receiptDate'],[minimum,'stockMinimumValue'],[transfer,'transferProduct'],[transfer,'transferQty'],[mutation,'stockProduct'],[mutation,'stockType'],[mutation,'stockQty'],[editUser,'editUserName'],[editUser,'editUserRole']]){
+ for(const [source,id] of [[payment,'payQrisImageUrl'],[receipt,'receiptSupplier'],[receipt,'receiptDate'],[minimum,'stockMinimumValue'],[transfer,'transferProduct'],[transfer,'transferQty'],[mutation,'stockProduct'],[mutation,'stockType'],[mutation,'stockQty'],[editUser,'editUserName'],[editUser,'editUserRole'],[editWali,'editWaliName'],[editWali,'editWaliPhone'],[variation,'varName'],[variation,'varValue'],[staff,'staffName'],[staff,'staffEmail'],[staff,'staffPassword']]){
   assert.ok(source.includes('id="'+id+'" required'),id+' must expose its required state.');
  }
 });
