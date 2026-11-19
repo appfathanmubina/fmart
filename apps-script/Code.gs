@@ -921,7 +921,7 @@ function getOrCreateTransactionProofFile_(folder,name,mime,bytes,marker){
 
 function ensureFMartCostingSchema_(ss){
  const defs={Produk:['HargaPokokRataRata'],VariasiProduk:['HargaPokokRataRata'],MutasiStok:['BiayaPerUnit','HPPSebelum','HPPSesudah'],DetailPenerimaanBarang:['BiayaPerUnit','TotalBiaya'],DetailPesanan:['HPPUnit','HPPSubtotal','HPPStatus'],DetailPenjualanToko:['HPPUnit','HPPSubtotal','HPPStatus']};
- Object.keys(defs).forEach(function(name){let sh=ss.getSheetByName(name);if(!sh)throw new Error('Sheet '+name+' belum tersedia. Jalankan setupFMartDatabase_().');let headers=sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getDisplayValues()[0].map(String);defs[name].forEach(function(h){if(headers.indexOf(h)<0){sh.getRange(1,headers.length+1).setValue(h);headers.push(h);}});sh.setFrozenRows(1);});
+ Object.keys(defs).forEach(function(name){let sh=ss.getSheetByName(name);if(!sh)throw new Error('Sheet '+name+' belum tersedia. Jalankan setupFMartDatabase_().');let headers=sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getDisplayValues()[0].map(String);defs[name].forEach(function(h){if(headers.indexOf(h)<0){sh.getRange(1,headers.length+1).setValue(h);headers.push(h);}});});
 }
 function migrateFMartCostingSchema(){const ss=getSS_();ensureFMartCostingSchema_(ss);SpreadsheetApp.flush();return 'Kolom HPP dan biaya perolehan FMart siap. Data transaksi lama tidak diubah.';}
 function getItemHpp_(ss,pid,vid){const name=vid?'VariasiProduk':'Produk',row=findRowById_(ss.getSheetByName(name),vid||pid,1);if(!row)return 0;const sh=ss.getSheetByName(name),h=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],c=h.indexOf('HargaPokokRataRata');return c<0?0:Math.max(0,Math.round(Number(row.values[c])||0));}
@@ -2077,12 +2077,11 @@ function applyOrderStockPlan_(ss,orderId,plan,actor,now,finalizeReservations){
  ensureFMartCostingSchema_(ss);
  const stock=ss.getSheetByName('Stok'),vars=ss.getSheetByName('VariasiProduk'),mut=ss.getSheetByName('MutasiStok');
  plan.forEach(x=>{
-  captureSaleDetailHpp_(ss,'DetailPesanan',orderId,x.pid,x.vid);
   const matches=readRows_(mut).map((r,i)=>({row:r,rowNumber:i+2})).filter(m=>String(m.row[7]||'')===String(orderId)&&String(m.row[1]||'')===String(x.pid)&&String(m.row[2]||'')===String(x.vid||'')&&String(m.row[3]||'').toUpperCase()==='KELUAR');
   if(matches.length>1)throw new Error('Mutasi stok ganda untuk pesanan '+orderId+'.');
   const mutation=matches[0]||null;
   if(mutation){const m=mutation.row;if(Number(m[4])!==Number(x.qty)||Number(m[5])!==Number(x.before)||Number(m[6])!==Number(x.after))throw new Error('Mutasi stok pesanan tidak sesuai dengan detail.');}
-  else mut.appendRow([makeFMartId_('MUT'),x.pid,x.vid,'KELUAR',x.qty,x.before,x.after,String(orderId),'Penjualan '+orderId,String(actor||'SYSTEM'),now]);
+  else {captureSaleDetailHpp_(ss,'DetailPesanan',orderId,x.pid,x.vid);mut.appendRow([makeFMartId_('MUT'),x.pid,x.vid,'KELUAR',x.qty,x.before,x.after,String(orderId),'Penjualan '+orderId,String(actor||'SYSTEM'),now]);}
   const liveRow=x.index>=0?stock.getRange(x.index+2,1,1,6).getValues()[0]:null;
   const live=liveRow?Number(liveRow[3]):Number((getProductSnapshot_(ss,x.pid,x.vid,'GUDANG')||{}).stock);
   if(live===Number(x.before)){

@@ -1638,7 +1638,7 @@ test('Weighted-average HPP and gross profit remain explicit for legacy transacti
  assert.ok(extractFunction(code,'getStockCatalog').includes('ensureFMartCostingSchema_'));
  assert.ok(migration.includes('ensureFMartCostingSchema_'));
  assert.ok(helper.includes('beforeQty*beforeHpp+incomingTotalCost')&&helper.includes('beforeQty>0&&beforeHpp<=0'));
- assert.ok(order.includes("captureSaleDetailHpp_(ss,'DetailPesanan'")&&pos.includes("captureSaleDetailHpp_(ss,'DetailPenjualanToko'"));
+ assert.ok(order.includes("captureSaleDetailHpp_(ss,'DetailPesanan'")&&order.indexOf('if(mutation)')<order.indexOf("captureSaleDetailHpp_(ss,'DetailPesanan'")&&pos.includes("captureSaleDetailHpp_(ss,'DetailPenjualanToko'"));
  assert.ok(report.includes('hppMissingLines')&&report.includes('grossProfit:grossProfit'));
 });
 
