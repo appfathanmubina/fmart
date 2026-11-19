@@ -769,10 +769,19 @@ Regression test mengunci perbandingan nomor, status aktif/pending, audit event, 
 
 ## Tahap 39.5 — Konsistensi batas maksimum dua relasi aktif/pending
 
-**Status: perbaikan source dan regression test disiapkan; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #124 telah di-merge ke `main` melalui commit `dc0121d7b9bf8762cd7c2d6c1847d5bad5acd628`. Regression CI pasca-merge lulus; build/deployment GitHub Pages masih dipantau.**
 
 Review lanjutan menemukan jalur persetujuan Admin `approveWaliSantriRequest()` hanya menghitung relasi `AKTIF`, sementara jalur self-link dan penambahan manual memperhitungkan relasi `AKTIF` serta `MENUNGGU_VERIFIKASI`. Pada data lama dengan beberapa pengajuan pending, persetujuan dapat menghasilkan lebih dari dua relasi aktif/pending.
 
 Ditambahkan helper hitung distinct Wali aktif/pending dan digunakan konsisten oleh self-link serta persetujuan Admin. Persetujuan masih diizinkan bila jumlah total relasi aktif/pending tidak melebihi dua; jika data lama sudah melebihi batas, persetujuan ditolak sampai Admin memeriksa relasi lain. Tidak ada relasi yang otomatis dihapus atau diubah.
 
 Regression test mengunci helper dan kedua jalur keputusan. Tidak mengubah struktur sheet atau data produksi; rekonsiliasi data lama tetap menjadi pekerjaan runtime.
+
+
+## Tahap 39.6 — Audit statis guard mutasi, kepemilikan, dan transisi status
+
+**Status: regression test dan sinkronisasi roadmap disiapkan; menunggu CI dan merge.**
+
+Audit statis meninjau endpoint mutasi Wali, Gudang, Kasir, Admin, Superadmin, dan Petugas Pengantar. Regression test mengunci role server-side dan script lock pada mutasi, kepemilikan keranjang/pesanan/pengajuan, kunci idempotensi checkout/pembayaran/stok/POS, pembatasan Kasir pada transaksi QRIS miliknya, larangan Gudang membatalkan pesanan, transisi status pesanan, pembayaran terverifikasi sebelum penugasan, serta kepemilikan penugasan pengantaran.
+
+Penghapusan item keranjang tetap mendelegasikan ke jalur update yang memeriksa pemilik. Penerimaan stok tetap menggunakan jalur penyelesaian/pemulihan bersama. Tahap ini hanya menambah regression test dan dokumentasi; tidak mengubah endpoint atau data.

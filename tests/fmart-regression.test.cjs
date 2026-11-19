@@ -374,6 +374,66 @@ test('Wali-Santri relationship limits count distinct active and pending Wali acc
  assert.ok(approve.includes('countDistinctActiveOrPendingWaliForSantri_'));
 });
 
+test('Critical write endpoints retain role guards, locks, ownership and state-transition checks',()=>{
+ const roleMatrix={
+  addToCart:['WALI_SANTRI'],updateCartItem:['WALI_SANTRI'],checkoutCart:['WALI_SANTRI'],submitPayment:['WALI_SANTRI'],
+  markOrderReceived:['WALI_SANTRI'],reportDeliveryComplaint:['WALI_SANTRI'],cancelMyWaliSantriRequest:['WALI_SANTRI'],
+  adjustStock:['GUDANG','ADMIN','SUPERADMIN'],transferWarehouseStockToCashier:['GUDANG','ADMIN','SUPERADMIN'],createStockReceipt:['GUDANG','ADMIN','SUPERADMIN'],
+  createCashierSale:['KASIR','ADMIN','SUPERADMIN'],cancelCashierQrisSale:['KASIR','ADMIN','SUPERADMIN'],confirmCashierQrisPayment:['KASIR','ADMIN','SUPERADMIN'],
+  updateOrderOperation:['GUDANG','ADMIN','SUPERADMIN'],assignDeliveryOrder:['ADMIN','GUDANG','SUPERADMIN'],
+  respondDeliveryAssignment:['PETUGAS_PENGANTAR','GUDANG'],startDeliveryTrip:['PETUGAS_PENGANTAR','GUDANG'],
+  updateDeliveryProgress:['PETUGAS_PENGANTAR','GUDANG'],reportDeliveryFailure:['PETUGAS_PENGANTAR','GUDANG'],submitDeliveryProof:['PETUGAS_PENGANTAR','GUDANG'],
+  verifyPayment:['ADMIN','SUPERADMIN','KASIR'],linkWaliSantri:['ADMIN','SUPERADMIN'],approveWaliSantriRequest:['ADMIN','SUPERADMIN'],
+  createStaffUser:['SUPERADMIN'],toggleFMartUser:['SUPERADMIN'],resetFMartUserPassword:['SUPERADMIN']
+ };
+ for(const [name,roles] of Object.entries(roleMatrix)){
+  const fn=extractFunction(code,name);
+  assert.ok(fn.includes('requireRole_('),name+' must enforce server-side role authorization.');
+  for(const role of roles)assert.ok(fn.includes('FMART.ROLES.'+role),name+' must retain '+role+' authorization.');
+  assert.ok(fn.includes('LockService.getScriptLock()'),name+' must serialize concurrent writes.');
+ }
+ const remove=extractFunction(code,'removeCartItem');
+ assert.ok(remove.includes("requireRole_(token,[FMART.ROLES.WALI_SANTRI])")&&remove.includes('updateCartItem(token, cartId, 0)'),'Cart removal must delegate to the owner-checked update path.');
+ const cart=extractFunction(code,'updateCartItem');
+ assert.ok(cart.includes('String(row.values[1]) !== session.userId'),'Wali cannot change another account cart item.');
+ for(const name of ['checkoutCart','submitPayment']){
+  const fn=extractFunction(code,name);
+  assert.ok(fn.includes('requestKey'),'Checkout/payment writes must retain idempotency keys.');
+  assert.ok(fn.includes('session.userId'),'Checkout/payment writes must bind the transaction to the active Wali.');
+ }
+ for(const name of ['markOrderReceived','reportDeliveryComplaint']){
+  const fn=extractFunction(code,name);
+  assert.ok(fn.includes('String(order.values[2])!==String(session.userId)'),'Wali order mutations must be owner-scoped.');
+ }
+ const cancelRequest=extractFunction(code,'cancelMyWaliSantriRequest');
+ assert.ok(cancelRequest.includes("String(row.values[1] || '') !== String(wali.waliId)"));
+ assert.ok(cancelRequest.includes("!== 'MENUNGGU_VERIFIKASI'"));
+ for(const name of ['adjustStock','transferWarehouseStockToCashier','createStockReceipt','createCashierSale']){
+  const fn=extractFunction(code,name);
+  assert.ok(fn.includes('requestKey'),'Stock/POS mutations must be idempotent.');
+ }
+ const receipt=extractFunction(code,'createStockReceipt');
+ assert.ok(receipt.includes('completeStockReceipt_'),'Stock receipt must use the shared atomic completion/recovery path.');
+ const cashierCancel=extractFunction(code,'cancelCashierQrisSale');
+ const cashierConfirm=extractFunction(code,'confirmCashierQrisPayment');
+ for(const fn of [cashierCancel,cashierConfirm]){
+  assert.ok(fn.includes("String(sale.values[13]||'')!==String(session.userId)"),'Cashier actions must be limited to sales created by that cashier.');
+  assert.ok(fn.includes("String(sale.values[8]||'').toUpperCase()!=='QRIS'"),'Cashier payment action must be QRIS-only.');
+ }
+ const verify=extractFunction(code,'verifyPayment');
+ assert.ok(verify.includes("paymentMethod!=='QRIS'"),'Kasir may only verify QRIS Wali payments.');
+ const orderUpdate=extractFunction(code,'updateOrderOperation');
+ assert.ok(orderUpdate.includes("nextStatus==='DIBATALKAN' && session.role==='GUDANG'"));
+ assert.ok(orderUpdate.includes('orderFlow[current].indexOf(nextStatus)<0'),'Order status changes must follow the server transition map.');
+ const assignment=extractFunction(code,'assignDeliveryOrder');
+ assert.ok(assignment.includes("driver[6]||'').toUpperCase()!=='AKTIF'")&&assignment.includes("payment[5]||'').toUpperCase()!=='TERVERIFIKASI'"));
+ for(const name of ['respondDeliveryAssignment','startDeliveryTrip','updateDeliveryProgress','reportDeliveryFailure','submitDeliveryProof']){
+  const fn=extractFunction(code,name);
+  assert.ok(fn.includes('session.userId'),'Delivery writes must bind the task to the active staff account.');
+  assert.ok(fn.includes("!==session.userId")||fn.includes("!== session.userId")||fn.includes("!==String(session.userId)"),name+' must reject another user assignment.');
+ }
+});
+
 test('Self-link and Admin approval enforce the same two active-or-pending Wali limit',()=>{
  const helper=extractFunction(code,'countDistinctActiveOrPendingWaliForSantri_');
  assert.ok(helper.includes("['AKTIF','MENUNGGU_VERIFIKASI']"));
