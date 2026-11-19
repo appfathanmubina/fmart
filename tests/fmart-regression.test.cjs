@@ -543,3 +543,21 @@ test('Stock transfer and adjustment preserve warehouse reservation floor and var
  assert.ok(adjustment.includes("getRange(variationRow.rowNumber,6,1,3).setValues"));
  assert.ok(transfer.includes("getRange(vr.rowNumber,6,1,3).setValues"));
 });
+
+test('Stock card sorts movements chronologically and validates the full balance chain',()=>{
+ const fn=extractFunction(code,'getStockCardReport');
+ assert.ok(fn.includes("targetMutations.sort(function(a,b){return a.time-b.time||a.row-b.row;})"),'Rows must be ordered by movement timestamp, not spreadsheet insertion order.');
+ assert.ok(fn.includes("const chain=previous===null||previous===m.before"),'The report must validate continuity across all historical movements, not only the selected period.');
+ assert.ok(fn.includes("if(!Number.isFinite(time))"),'Invalid movement timestamps must be surfaced instead of silently affecting period balances.');
+ assert.ok(fn.includes("mutationIdCounts[id]>1"),'Duplicate movement IDs must be reported.');
+ assert.ok(fn.includes("selectedItem.stock!==lastBalance"),'Current physical stock must reconcile to the latest chronologically valid movement.');
+ assert.ok(fn.includes("valuation:{available:false,value:null"),'Stock value must remain unavailable without purchase-cost data.');
+ assert.ok(fn.includes("Harga jual tidak digunakan sebagai pengganti harga pokok."));
+});
+
+test('Warehouse stock valuation never treats selling price as inventory cost',()=>{
+ const fn=extractFunction(code,'getStockCardReport');
+ const ui=index.slice(index.indexOf("function drawWarehouseHistoryReport"),index.indexOf("function drawWarehouseCardReport_"));
+ assert.ok(fn.includes("valuation:{available:false,value:null"));
+ assert.ok(ui.includes("Harga jual produk")&&ui.includes("bukan nilai modal persediaan"),'UI must explain why selling price cannot be used as inventory value.');
+});
