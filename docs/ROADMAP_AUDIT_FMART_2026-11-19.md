@@ -152,7 +152,7 @@ Audit read-only ulang tidak menguji transaksi, tidak membuat akun, tidak membuat
 | 35 | Validasi akun, role, dan konfigurasi Drive | Konfirmasi role yang memang akan dioperasikan; uji akses folder bukti pembayaran/pengantaran; periksa trigger dan Executions | Hak akses sesuai desain; folder bukti tetap privat; trigger terbukti berjalan atau temuan tercatat |
 | 36 | Rekonsiliasi stok Gudang, Kasir, dan penerimaan | Cocokkan master produk/variasi, saldo stok kanonis, mutasi, penerimaan, transfer, reservasi, dan saldo fisik | Tidak ada saldo ganda/negatif atau selisih tak terjelaskan; stok Wali tetap tersembunyi |
 | 37 | Validasi transaksi dan pemulihan | Uji keranjang, checkout, pembayaran, verifikasi, stok kurang, POS Kasir, pembatalan, retry/idempotency, dan pemulihan proses terputus | Tidak ada transaksi ganda, saldo salah, status saling bertentangan, atau notifikasi ganda |
-| 38 | Validasi PWA, tampilan, dan perangkat | Uji jalur Wali/Admin pada desktop dan HP; navigasi, modal, gambar, cache, instalasi, jaringan putus/pulih, dan sesi | Alur inti dapat digunakan pada perangkat sasaran tanpa regresi visual/fungsional yang menghambat |
+| 38 | Validasi PWA, tampilan, dan perangkat | Audit login, dashboard, header, navigasi, sidebar Desktop/Tablet, katalog Wali, modal/form/tabel Admin, seluruh role, responsivitas, cache, instalasi, dan jaringan | Regresi visual/fungsional kritis ditutup; CI lulus; perangkat sasaran dan alur runtime tervalidasi |
 | 39 | Perbaikan temuan akhir dan audit kesiapan produksi | Perbaiki temuan Tahap 34–38; jalankan regresi penuh, audit keamanan endpoint, dan rekonsiliasi akhir | Semua temuan kritis/tinggi ditutup; CI lulus; checklist produksi ditandatangani |
 | 40 | Dokumentasi operasional dan serah-terima produksi | Finalisasi SOP akun, katalog, stok, penerimaan, transaksi, pengantaran, backup, pemulihan, dan prosedur insiden | Dokumen operasional lengkap; status produksi diputuskan berdasarkan bukti audit, bukan hanya CI |
 
@@ -277,3 +277,40 @@ Pemeriksaan source menemukan backend createStaffUser() dan FMART.ROLES sudah men
 Perbaikan ditambahkan pada form dengan tetap memakai endpoint backend yang sama. Tes regresi memastikan opsi tersedia dan backend tetap menerima role tersebut. Tidak ada akun yang dibuat otomatis dan tidak ada data produksi yang diubah.
 
 **Status:** konfirmasi operator dicatat; pembuatan akun Petugas Pengantar dapat dilakukan Superadmin setelah perbaikan source diterapkan pada Apps Script. Tahap 38 (validasi PWA/tampilan/perangkat) dapat dilanjutkan tanpa menunggu audit runtime ulang folder atau akun ADMIN. Validasi runtime yang tersisa tetap dilakukan pada tahap pemeriksaan role dan kesiapan produksi, bukan sebagai penghalang perubahan UI repository.
+
+
+## Kemajuan Tahap 38 — 19 November 2026
+
+### Tahap 38.2 — Sidebar Desktop/Tablet (perbaikan repository)
+
+**Status: selesai pada repository; validasi perangkat fisik masih tertunda.**
+
+PR #55 telah di-merge ke `main`:
+- PR: https://github.com/appfathanmubina/fmart/pull/55
+- Merge commit: `4e854866497e5462afb15704750572c2d0733fd6`
+- Menambahkan accessible label untuk navigasi Wali dan petugas.
+- Memperkuat perilaku scroll sidebar vertikal pada desktop dan tablet landscape, termasuk pembatasan scroll chaining dan scrollbar yang selaras tema.
+- Mencegah label menu panjang mendorong lebar sidebar.
+- Menyesuaikan kepadatan sidebar untuk viewport pendek (tinggi maksimal 640 px).
+- Mempertahankan bottom navigation horizontal untuk tablet portrait (761–900 px) agar area konten tetap memadai.
+- Tidak mengubah urutan menu, izin role, backend, transaksi, maupun data produksi.
+
+**Validasi otomatis:**
+- Regression tests: 67 lulus, 0 gagal.
+- Pemeriksaan sintaks backend: lulus.
+- Pemeriksaan sintaks service worker: lulus.
+- Pemeriksaan patch whitespace: lulus.
+- GitHub Pages build dan deployment setelah merge: berhasil.
+
+**Batas validasi:** CI dan build tidak menggantikan pemeriksaan visual pada browser/perangkat fisik. Sidebar masih harus diperiksa pada desktop, tablet landscape, tablet portrait, dan tinggi layar pendek saat validasi perangkat Tahap 38.
+
+### Urutan pekerjaan Tahap 38 berikutnya
+
+1. Audit login, dashboard, header, dan navigasi untuk Wali serta Admin.
+2. Audit katalog Wali: kartu produk, detail, keranjang, dan checkout.
+3. Audit formulir, tabel, filter, laporan, dan modal Admin.
+4. Audit tampilan role Gudang, Kasir, dan Petugas Pengantar.
+5. Audit responsivitas HP, tablet, dan desktop serta regresi lintas role.
+6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
+
+**Status keseluruhan Tahap 38: masih berjalan.** Tahap 38.2 sudah selesai pada repository; belum ada klaim bahwa seluruh PWA telah tervalidasi di runtime/perangkat.
