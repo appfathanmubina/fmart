@@ -524,6 +524,23 @@ PR #91 telah di-merge:
 - Tidak mengubah query, endpoint, hak akses, data, atau proses operasional.
 - Regression tests: 92 lulus, 0 gagal.
 
+### Catatan review — Header tablet dan cascade CSS
+
+- Pemeriksaan ulang setelah PR #92 menemukan bahwa aturan CSS yang sudah ada pada rentang 761–1100 px menetapkan padding header kiri/kanan 20 px dengan `!important`, sehingga tablet portrait sebenarnya sudah tercakup.
+- Override tambahan dari PR #92 tidak memberi perubahan visual dan telah dibersihkan melalui PR #96: https://github.com/appfathanmubina/fmart/pull/96
+- Regression test kini mengunci aturan tablet 20 px yang memang berlaku; tidak ada klaim perbaikan visual baru dari temuan tersebut.
+
+### Tahap 38.21 — Pembersihan modal dan workspace saat logout
+
+PR #97 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/97
+- Merge commit: `2f6411b4a6c867fabb7530dcfd8cedc3a18abf9b`
+- Saat logout, seluruh modal yang masih terbuka ditutup.
+- Konten modal operasional dikosongkan.
+- Cache dashboard/distribusi dan konten workspace operasional tetap dibersihkan untuk mencegah sisa sesi akun sebelumnya.
+- Tidak mengubah autentikasi, token/session backend, hak akses, atau data transaksi.
+- Regression tests: 94 lulus, 0 gagal.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
 1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal header, sidebar, login Admin dua kolom, dan retry Dashboard Operasional sudah masuk `main`.
@@ -533,4 +550,4 @@ PR #91 telah di-merge:
 5. Lanjutkan audit responsivitas HP, tablet portrait/landscape, dan desktop; CSS yang sudah ada mengatur padding header 20 px pada rentang 761–1100 px, selanjutnya periksa tinggi layar pendek, sidebar desktop/tablet landscape, modal, tabel lebar, katalog Wali, POS, dan workspace Gudang/Pengantaran serta regresi lintas role.
 6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
 
-**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.20 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog bertumpuk, pemilih Santri, aksesibilitas dan ketahanan refresh POS Kasir, filter Pengantaran responsif. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
+**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.21 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog bertumpuk, pemilih Santri, aksesibilitas dan ketahanan refresh POS Kasir, filter Pengantaran responsif. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
