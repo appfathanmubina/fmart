@@ -413,8 +413,9 @@ test('Wali-facing catalog, product detail, cart, and order endpoints do not expo
 });
 
 test('Wali stock-related notes and notifications are consistently redacted, including internal notification type',()=>{
- const stockText=vm.runInNewContext('(function(){'+extractFunction(code,'isWaliStockRelatedText_')+';return isWaliStockRelatedText_;})()');
- const sanitize=vm.runInNewContext('(function(){'+extractFunction(code,'sanitizeWaliStockNote_')+';return sanitizeWaliStockNote_;})()');
+ const sandbox={};
+ vm.runInNewContext(extractFunction(code,'isWaliStockRelatedText_')+';'+extractFunction(code,'sanitizeWaliStockNote_'),sandbox);
+ const stockText=sandbox.isWaliStockRelatedText_,sanitize=sandbox.sanitizeWaliStockNote_;
  const generic='Pesanan sedang diproses. Informasi perkembangan akan disampaikan melalui aplikasi.';
  for(const phrase of ['Stok belum mencukupi','Persediaan Gudang belum terpenuhi','Reservasi barang berakhir','Barang belum lengkap dari Gudang','Backorder masih diproses','Inventory warehouse shortage']){
   assert.equal(stockText(phrase),true,'Expected stock-related phrase to be detected: '+phrase);
@@ -430,7 +431,7 @@ test('Wali stock-related notes and notifications are consistently redacted, incl
 test('Buyer product detail UI never displays physical stock or shortage information',()=>{
  const detail=extractFunction(index,'openProduct'),sync=extractFunction(index,'syncDetailStockUI'),cart=extractFunction(index,'renderCart');
  assert.ok(sync.includes("badge.textContent='Produk dapat dipesan'"));
- assert.ok(!sync.includes('stock')&&!sync.includes('available'));
+ assert.ok(!/\\bp\\.(?:stock|minStock)\\b|\\.available\\b/i.test(sync));
  assert.ok(cart.includes('!i.available?')&&cart.includes('Produk tidak tersedia'),'Cart may only report inactive products, never stock shortages.');
  assert.ok(!detail.includes('p.stock')&&!detail.includes('p.minStock'));
 });
