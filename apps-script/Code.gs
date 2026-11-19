@@ -1473,7 +1473,6 @@ function getOperationsDashboard(token) {
   const proofByAssignment = {};
   proofRows.forEach(function(p){ const key=String(p[2]||''); if(key) proofByAssignment[key]=p; });
   const shipments = readRows_(ss.getSheetByName('Pengiriman'));
-  const users = readRows_(ss.getSheetByName('Users'));
   const santri = readSantriRows_(ss.getSheetByName('Santri'));
   const products = readRows_(ss.getSheetByName('Produk'));
   const stockRows = readRows_(ss.getSheetByName('Stok'));
@@ -2398,7 +2397,6 @@ function getDeliveryDashboard(token) {
     const id = String(row[0] || '');
     if (id) userById[id] = {name:String(row[4] || ''), username:String(row[1] || '')};
   });
-  const waliByUserId={};readRows_(ss.getSheetByName('WaliSantri')).forEach(function(row){const id=String(row[1]||'');if(id)waliByUserId[id]={name:String(row[2]||''),phone:String(row[3]||'')};});
   const orderById = {};
   orders.forEach(function(row) {
     const id = String(row[0] || '');
