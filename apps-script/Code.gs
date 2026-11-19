@@ -1061,7 +1061,7 @@ function getWaliDashboard(token) {
     const orderId = String(row[0]);
     const status = String(row[8] || '');
     const payment = paymentMap[orderId] || null;
-    const child = childMap[String(row[3])] || {name:'Santri',className:''};
+    const child = getOrderRecipientSnapshot_(ss,row);
     return {
       orderId:orderId,
       number:String(row[1] || ''),
@@ -1160,7 +1160,7 @@ function getOrderDetail(token, orderId) {
   const proof=proofRows.length?proofRows[0]:null;
   const complaintRows=readRows_(ss.getSheetByName('KomplainPengantaran')).filter(function(x){return String(x[1]||'')===orderId;}).sort(function(a,b){return new Date(b[7]||0).getTime()-new Date(a[7]||0).getTime();});
   const latestComplaint=complaintRows.length?complaintRows[0]:null;
-  return {ok:true,order:{orderId:String(r[0]),number:String(r[1]),santriId:String(r[3]),childName:String(child.name||''),className:String(child.className||''),subtotal:Number(r[4])||0,shipping:Number(r[5])||0,discount:Number(r[6])||0,total:Number(r[7])||0,status:sanitizeWaliOrderStatus_(r[8]),note:sanitizeWaliStockNote_(r[9],r[8]),createdAt:dateIso_(r[10]),updatedAt:dateIso_(r[11]),deliveryProof:proof?{proofId:String(proof[0]),uploadedAt:dateIso_(proof[10]),fileName:String(proof[5]||''),mimeType:String(proof[6]||''),note:String(proof[8]||'')}:null,deliveryConfirmation:confirmation?{id:String(confirmation[0]),uploadedAt:dateIso_(confirmation[2]),deadline:dateIso_(confirmation[3]),status:String(confirmation[4]||''),complaintActive:confirmation[8]===true||String(confirmation[8]).toUpperCase()==='TRUE'}:null,deliveryComplaint:latestComplaint?{type:String(latestComplaint[4]||''),description:String(latestComplaint[5]||''),status:String(latestComplaint[6]||''),reportedAt:dateIso_(latestComplaint[7])}:null,details:details,payment:payment?{id:payment.id,method:payment.method,nominal:payment.nominal,status:payment.status,buktiUrl:payment.buktiUrl,buktiSumber:payment.buktiSumber,submittedBy:payment.submittedBy,catatan:sanitizeWaliStockNote_(payment.catatan,''),createdAt:dateIso_(payment.createdAt),verifiedAt:dateIso_(payment.verifiedAt)}:null,shipment:shipment?{id:shipment.id,method:shipment.method,destination:shipment.destination,status:sanitizeWaliOrderStatus_(shipment.status),dikirimAt:dateIso_(shipment.dikirimAt),diterimaAt:dateIso_(shipment.diterimaAt),updatedAt:dateIso_(shipment.updatedAt)}:null}};
+  return {ok:true,order:{orderId:String(r[0]),number:String(r[1]),santriId:String(r[3]||''),childName:String(child.name||''),className:String(child.className||''),recipient:child,subtotal:Number(r[4])||0,shipping:Number(r[5])||0,discount:Number(r[6])||0,total:Number(r[7])||0,status:sanitizeWaliOrderStatus_(r[8]),note:sanitizeWaliStockNote_(r[9],r[8]),createdAt:dateIso_(r[10]),updatedAt:dateIso_(r[11]),deliveryProof:proof?{proofId:String(proof[0]),uploadedAt:dateIso_(proof[10]),fileName:String(proof[5]||''),mimeType:String(proof[6]||''),note:String(proof[8]||'')}:null,deliveryConfirmation:confirmation?{id:String(confirmation[0]),uploadedAt:dateIso_(confirmation[2]),deadline:dateIso_(confirmation[3]),status:String(confirmation[4]||''),complaintActive:confirmation[8]===true||String(confirmation[8]).toUpperCase()==='TRUE'}:null,deliveryComplaint:latestComplaint?{type:String(latestComplaint[4]||''),description:String(latestComplaint[5]||''),status:String(latestComplaint[6]||''),reportedAt:dateIso_(latestComplaint[7])}:null,details:details,payment:payment?{id:payment.id,method:payment.method,nominal:payment.nominal,status:payment.status,buktiUrl:payment.buktiUrl,buktiSumber:payment.buktiSumber,submittedBy:payment.submittedBy,catatan:sanitizeWaliStockNote_(payment.catatan,''),createdAt:dateIso_(payment.createdAt),verifiedAt:dateIso_(payment.verifiedAt)}:null,shipment:shipment?{id:shipment.id,method:shipment.method,destination:shipment.destination,status:sanitizeWaliOrderStatus_(shipment.status),dikirimAt:dateIso_(shipment.dikirimAt),diterimaAt:dateIso_(shipment.diterimaAt),updatedAt:dateIso_(shipment.updatedAt)}:null}};
 }
 
 
@@ -1487,7 +1487,7 @@ function getOperationsDashboard(token) {
   const productMap = {}; products.forEach(r => productMap[String(r[0])] = {id:String(r[0]),categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),price:Number(r[5])||0,status:String(r[8]||''),photoUrl:String(r[7]||'')});
   const categoryMap = {}; cats.forEach(r => categoryMap[String(r[0])] = String(r[1]||''));
   const resultOrders = orders.slice().sort((a,b)=>new Date(b[10]||0).getTime()-new Date(a[10]||0).getTime()).slice(0,60).map(r => {
-    const pay=paymentMap[String(r[0])], ship=shipMap[String(r[0])], child=childMap[String(r[3])], wali=userMap[String(r[2])];
+    const pay=paymentMap[String(r[0])], ship=shipMap[String(r[0])], child=getOrderRecipientSnapshot_(ss,r), wali=userMap[String(r[2])];
     return {orderId:String(r[0]),number:String(r[1]),waliName:wali?wali.name:'-',childName:child?child.name:'-',className:child?child.className:'-',total:Number(r[7])||0,status:String(r[8]||''),createdAt:dateIso_(r[10]),payment:pay?{id:String(pay[0]),method:String(pay[2]||''),nominal:Number(pay[3])||0,status:String(pay[5]||''),buktiUrl:''} : null,shipment:ship?{status:String(ship[4]||''),method:String(ship[2]||''),destination:String(ship[3]||'')} : null};
   });
   let lowStock=0;
@@ -2424,7 +2424,7 @@ function getDeliveryDashboard(token) {
     const orderId = String(row[1] || '');
     const order = orderById[orderId];
     if (!order) return null;
-    const child = santriById[String(order[3] || '')] || {};
+    const child = getOrderRecipientSnapshot_(ss,order);
     const wali = waliByUserId[String(order[2] || '')] || userById[String(order[2] || '')] || {};
     const shipment = shipmentByOrder[orderId] || [];
     const proof = proofByAssignment[String(row[0]||'')] || [];
@@ -2647,7 +2647,7 @@ function getDeliveryAssignmentWorkspace(token) {
     const id=String(r[0]||''),status=String(r[8]||'').toUpperCase();if(!id||['DISIAPKAN','DIANTAR'].indexOf(status)<0)return;
     const pay=latestPayment[id],ship=latestShipment[id]||[];
     if(String(pay&&pay[5]||'').toUpperCase()!=='TERVERIFIKASI'||String(ship[2]||'').toUpperCase()!=='ANTAR_PESANTREN')return;
-    const child=santriById[String(r[3]||'')]||{},wali=waliByUserId[String(r[2]||'')]||userById[String(r[2]||'')]||{};
+    const child=getOrderRecipientSnapshot_(ss,r),wali=waliByUserId[String(r[2]||'')]||userById[String(r[2]||'')]||{};
     const task={orderId:id,number:String(r[1]||id),status:status,total:Number(r[7])||0,childName:String(child.name||'Santri'),className:String(child.className||''),waliName:String(wali.name||'Wali Santri'),waliContact:String(wali.phone||wali.username||''),destination:String(ship[3]||''),shipmentStatus:String(ship[4]||'')};
     const current=activeAssignment[id];
     if(current){const driver=userById[String(current[2]||'')]||{};task.assignedAt=dateIso_(current[5]);task.driverName=String(driver.name||'Petugas');task.driverId=String(current[2]||'');task.assignmentStatus=String(current[3]||'');assigned.push(task);}
@@ -2727,7 +2727,7 @@ function buildCartSnapshot_(ss, userId, santriId) {
 
 function normalizeOrderRecipient_(data, shippingMethod, note) {
   data=data&&typeof data==='object'?data:{};
-  const recipient={name:String(data.name||'').trim().replace(/\\s+/g,' ').slice(0,120),className:String(data.className||'').trim().slice(0,80),asrama:String(data.asrama||'').trim().slice(0,100),phone:String(data.phone||'').trim().slice(0,30),address:String(data.address||'').trim().slice(0,300)};
+  const recipient={name:String(data.name||'').trim().replace(/\s+/g,' ').slice(0,120),className:String(data.className||'').trim().slice(0,80),asrama:String(data.asrama||'').trim().slice(0,100),phone:String(data.phone||'').trim().slice(0,30),address:String(data.address||'').trim().slice(0,300)};
   if(recipient.name.length<2)throw new Error('Nama Santri/penerima wajib diisi.');
   if(String(shippingMethod||'').toUpperCase()==='ANTAR_PESANTREN'&&!recipient.address)throw new Error('Alamat atau lokasi pengiriman wajib diisi.');
   if(recipient.phone&&!/^[0-9+() .-]{8,30}$/.test(recipient.phone))throw new Error('Nomor kontak penerima tidak valid.');
