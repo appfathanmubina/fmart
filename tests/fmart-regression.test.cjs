@@ -948,3 +948,16 @@ test('Operations modal has an accessible close name and supports Escape dismissa
  assert.ok(escapeHandler,'Global Escape handler must exist.');
  assert.ok(escapeHandler[1].includes('closeOpsModal()'),'Escape must close the staff operations modal.');
 });
+
+
+test('Delivery status filters include all backend status aliases in the same user-facing group',()=>{
+ const start=index.indexOf('function drawDeliveryDashboard(){');
+ const end=index.indexOf('async function loadDeliveryProofPreview',start);
+ assert.ok(start>=0&&end>start,'Delivery dashboard renderer must exist.');
+ const fn=index.slice(start,end);
+ assert.ok(fn.includes("DITUGASKAN:['DITUGASKAN','BARU','MENUNGGU_KONFIRMASI']"));
+ assert.ok(fn.includes("DITERIMA:['DITERIMA','DITERIMA_PETUGAS']"));
+ assert.ok(fn.includes("DALAM_PERJALANAN:['DALAM_PERJALANAN','DIANTAR']"));
+ assert.ok(fn.includes('matchingStatuses.includes(String(t.assignmentStatus||\'\').toUpperCase())'));
+ assert.ok(fn.includes('value="DITUGASKAN"')&&fn.includes('value="DITERIMA"')&&fn.includes('value="DALAM_PERJALANAN"'),'The existing filter options must remain stable and map to status groups.');
+});
