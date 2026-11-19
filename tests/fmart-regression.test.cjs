@@ -359,13 +359,14 @@ test('Order recipient snapshots are reused by internal order and delivery worksp
 });
 
 
-test('Wali-Santri relationship limits count distinct Wali accounts and block duplicate active links',()=>{
+test('Wali-Santri relationship limits count distinct active and pending Wali accounts',()=>{
  const helper=extractFunction(code,'countDistinctActiveWaliForSantri_');
  assert.ok(helper.includes('activeWaliIds[waliId]=true'));
  assert.ok(helper.includes('Object.keys(activeWaliIds).length'));
  const self=extractFunction(code,'requestWaliSantriLink');
  assert.ok(self.includes('pairRows.some(function(item){return String(item.row[3]||\'\').toUpperCase()===\'AKTIF\';})'));
- assert.ok(self.includes('countDistinctActiveWaliForSantri_(relRows,santriId)'));
+ assert.ok(self.includes("['AKTIF','MENUNGGU_VERIFIKASI']"));
+ assert.ok(self.includes('linkedWaliIds')&&self.includes('otherWaliCount>=2'));
  const admin=extractFunction(code,'linkWaliSantri');
  assert.ok(admin.includes("String(wali.values[6]||'').toUpperCase()!=='AKTIF'"),'Admin cannot attach relationships to inactive Wali accounts.');
  assert.ok(admin.includes('activeOrPendingWaliIds'));
@@ -373,20 +374,21 @@ test('Wali-Santri relationship limits count distinct Wali accounts and block dup
  assert.ok(approve.includes('countDistinctActiveWaliForSantri_'));
 });
 
-test('Wali can link an active Santri immediately without Admin approval',()=>{
+test('Wali self-link auto-activates only on exact phone match and otherwise waits for Admin',()=>{
  const link=extractFunction(code,'requestWaliSantriLink');
  const classes=extractFunction(code,'getSantriClassesForWaliSelf');
  const search=extractFunction(code,'searchSantriForWaliSelf');
  assert.ok(link.includes("requireRole_(token,[FMART.ROLES.WALI_SANTRI])"));
- assert.ok(link.includes("['AKTIF',now,hubungan]"));
- assert.ok(link.includes("'AKTIF',now,hubungan"));
- assert.ok(!link.includes('MENUNGGU_VERIFIKASI'));
- assert.ok(link.includes('activeCount>=2'));
- assert.ok(classes.includes("String(r[3]||'').toUpperCase()==='AKTIF'"));
- assert.ok(search.includes("String(r[3]||'').toUpperCase()==='AKTIF'"));
- assert.ok(index.includes('Hubungan langsung aktif tanpa persetujuan Admin.'));
- assert.ok(index.includes('Hubungkan Santri'));
- assert.ok(!index.includes('Pengajuan dari Wali harus disetujui Admin/Superadmin.'));
+ assert.ok(link.includes("santriField_(santri.values,santriMap,'no_wa_wali')"));
+ assert.ok(link.includes('guardianPhone===waliPhone'));
+ assert.ok(link.includes("phoneMatched?'AKTIF':'MENUNGGU_VERIFIKASI'"));
+ assert.ok(link.includes('REQUEST_WALI_SANTRI_SELF'));
+ assert.ok(classes.includes("['AKTIF','MENUNGGU_VERIFIKASI']"));
+ assert.ok(search.includes("['AKTIF','MENUNGGU_VERIFIKASI']"));
+ assert.ok(index.includes('Hubungan aktif otomatis jika nomor HP Wali cocok dengan no_wa_wali'));
+ assert.ok(index.includes('pengajuan menunggu verifikasi Admin'));
+ assert.ok(index.includes('Proses Penghubungan'));
+ assert.ok(!index.includes('Hubungan langsung aktif tanpa persetujuan Admin.'));
 });
 
 
