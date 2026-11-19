@@ -1262,7 +1262,7 @@ test('Wali self-link activates only on exact normalized guardian phone match',()
  assert.ok(request.includes("phoneMatched?'AKTIF':'MENUNGGU_VERIFIKASI'"),'Mismatch or missing phone must become an Admin-verification request.');
  assert.ok(request.includes("phoneMatched?'LINK_WALI_SANTRI_SELF':'REQUEST_WALI_SANTRI_SELF'"),'Audit events must distinguish direct link from pending request.');
  assert.ok(request.includes("status:'MENUNGGU_VERIFIKASI'")&&request.includes('Pengajuan dikirim ke Admin untuk verifikasi.'));
- assert.ok(request.includes("['AKTIF','MENUNGGU_VERIFIKASI']")&&request.includes('otherWaliCount>=2'),'The maximum two Wali limit must include pending requests.');
+ assert.ok(request.includes('countDistinctActiveOrPendingWaliForSantri_(relRows,santriId)')&&request.includes('otherWaliCount>=2'),'The maximum two Wali limit must include pending requests.');
  for(const name of ['getSantriClassesForWaliSelf','searchSantriForWaliSelf']){
   const fn=extractFunction(code,name);
   assert.ok(fn.includes("['AKTIF','MENUNGGU_VERIFIKASI']"),name+' must hide both already linked and pending Santri from duplicate requests.');
