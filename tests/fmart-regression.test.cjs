@@ -603,3 +603,37 @@ test('PWA offline navigation preserves separate Wali and Admin shell fallbacks',
  assert.ok(serviceWorker.includes("cached || caches.match(isAdminRoute ? './adminFMart16720/' : './index.html')"));
  assert.ok(serviceWorker.includes("url.origin !== self.location.origin"),'The service worker must not cache cross-origin Apps Script responses.');
 });
+
+test('Top-level cart removal endpoint explicitly enforces the Wali portal role',()=>{
+ const fn=extractFunction(code,'removeCartItem');
+ assert.ok(fn.includes("requireRole_(token,[FMART.ROLES.WALI_SANTRI])"),'Cart removal must enforce Wali authorization at its own public entry point.');
+ assert.ok(fn.includes('updateCartItem(token, cartId, 0)'),'Removal must continue to reuse the validated cart update logic.');
+});
+
+test('Role workflow authorization matrix protects sensitive endpoints server-side',()=>{
+ const matrix={
+  wali:['getCart','addToCart','updateCartItem','removeCartItem','checkoutCart','getMyOrders','getOrderDetail','submitPayment','markOrderReceived','reportDeliveryComplaint','requestWaliSantriLink'],
+  kasir:['getCashierPOSData','createCashierSale','getCashierSalesHistory','getCashierQrisQueue','confirmCashierQrisPayment','cancelCashierQrisSale','verifyPayment'],
+  gudang:['getStockReceivingData','createStockReceipt','getStockManagement','adjustStock','transferWarehouseStockToCashier','getDeliveryDashboard','startDeliveryTrip','submitDeliveryProof'],
+  pengantar:['getDeliveryDashboard','respondDeliveryAssignment','startDeliveryTrip','reportDeliveryFailure','updateDeliveryProgress','submitDeliveryProof'],
+  admin:['getOperationsDashboard','getFMartReports','getFMartAuditLog','getDeliveryAssignmentWorkspace','assignDeliveryOrder','resolveDeliveryComplaint'],
+  superadmin:['createStaffUser','savePaymentSettings','setStaffEmail','updateFMartUser','toggleFMartUser','resetFMartUserPassword']
+ };
+ const roleNames={wali:'WALI_SANTRI',kasir:'KASIR',gudang:'GUDANG',pengantar:'PETUGAS_PENGANTAR',admin:'ADMIN',superadmin:'SUPERADMIN'};
+ for(const group of Object.keys(matrix)){
+  for(const name of matrix[group]){
+   const fn=extractFunction(code,name);
+   assert.ok(fn,'Endpoint exists: '+name);
+   assert.ok(fn.includes('requireRole_(')||fn.includes('requireSession_('),'Endpoint must validate session/role: '+name);
+   assert.ok(fn.includes('FMART.ROLES.'+roleNames[group])||(group==='admin'&&fn.includes('FMART.ROLES.SUPERADMIN'))||(group==='superadmin'&&fn.includes('FMART.ROLES.SUPERADMIN')),'Endpoint role matrix must include '+roleNames[group]+': '+name);
+  }
+ }
+});
+
+test('Manual recipient checkout remains separate from official Wali-Santri linking workflows',()=>{
+ const checkout=extractFunction(code,'checkoutCart');
+ const link=extractFunction(code,'requestWaliSantriLink');
+ assert.ok(checkout.includes('normalizeOrderRecipient_'));
+ assert.ok(!checkout.includes('requestWaliSantriLink('),'Checkout must not create official Wali-Santri relationships.');
+ assert.ok(link.includes("requireRole_(token,[FMART.ROLES.WALI_SANTRI])"));
+});
