@@ -187,3 +187,31 @@ FMart belum boleh dinyatakan siap produksi hanya karena semua PR sudah merge ata
 - temuan kritis/tinggi ditutup dan SOP operasional tersedia.
 
 Pekerjaan repository dapat diselesaikan lebih dahulu, tetapi gerbang runtime tetap memerlukan eksekusi dan bukti dari Apps Script serta perangkat yang dikelola operator.
+
+
+## Hasil audit runtime ulang — 19 November 2026, 09:32 WIB
+
+Operator mengirimkan Execution log baru setelah membersihkan duplikasi Santri dan menambahkan Script Property folder pengantaran. Hasil yang terbaca:
+- Pemeriksaan database: **0 issue**; jumlah Santri 708.
+- Total gabungan: **297 issue**.
+- Runtime: 2 issue, hanya role ADMIN dan PETUGAS_PENGANTAR yang belum aktif (sesuai rencana operator).
+- Operational sync: 294 issue `PRODUCT_STOCK_ROW_MISSING`, pada baris Produk 3–296; jumlah produk 295, variasi 0, baris Stok 1.
+- Stock/POS, Cashier POS, dan Transaction Recovery: 0 issue.
+- Warehouse receiving: 1 issue `MANUAL_INBOUND_AUDIT_MISSING` pada MutasiStok baris 2.
+- Folder pembayaran dan folder pengantaran keduanya terbaca accessible/private, tetapi **keduanya bernama "FMart - Bukti Pembayaran"**. Ini menunjukkan kemungkinan besar Script Property folder pengantaran menunjuk folder pembayaran yang sama. Perlu dipisahkan; jangan mengunggah bukti pengantaran ke folder pembayaran.
+
+### Tindak lanjut berdasarkan bukti
+
+1. **Master Santri (Tahap 34):** pemeriksaan database kini bersih. Tahap 34 masih memerlukan pengecekan referensi relasi/pesanan dan dapat ditutup setelah konfirmasi tidak ada referensi yatim dari baris yang dihapus.
+2. **Folder Drive (Tahap 35):** perlu folder khusus bernama `FMart - Bukti Pengantaran`, dengan sharing PRIVATE/NONE, lalu Script Property `FMART_DELIVERY_PROOF_FOLDER_ID` diarahkan ke folder tersebut. Jangan kirim ID folder ke chat.
+3. **Akun:** ADMIN dan PETUGAS_PENGANTAR belum dibuat sesuai keputusan operator. Tidak dibuat otomatis; ini menjadi prasyarat operasional sebelum pengujian role terkait.
+4. **Produk/Stok (Tahap 36):** 294 produk aktif tanpa variasi tidak memiliki baris stok kanonis. Jangan mengisi 294 baris dengan saldo nol secara massal sebelum memastikan semua produk tersebut memang dikelola sebagai barang persediaan dan bukan item katalog/nonstok. Saldo awal harus mengikuti bukti stok fisik atau dokumen penerimaan; tidak boleh mengasumsikan nol.
+5. **Mutasi masuk manual:** MutasiStok baris 2 perlu ditelusuri ke AuditLog dan dokumen sumber. Tidak boleh menghapus/mengubah mutasi lama atau membuat AuditLog pengganti tanpa bukti yang sesuai.
+
+### Perbaikan repository lanjutan dari temuan folder
+
+Ditambahkan pengaman agar:
+- audit runtime melaporkan `DRIVE_PROOF_FOLDERS_REUSED` jika kedua Script Property menggunakan ID folder yang sama;
+- fungsi penyimpanan bukti pengantaran menolak penggunaan folder pembayaran yang sama, sehingga bukti pengantaran tidak tercampur dengan bukti pembayaran.
+
+Perbaikan ini hanya mengubah source dan tes. Tidak mengubah Script Properties, Drive, Spreadsheet, akun, stok, maupun transaksi produksi.
