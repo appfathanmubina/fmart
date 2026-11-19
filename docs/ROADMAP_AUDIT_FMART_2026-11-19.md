@@ -554,13 +554,24 @@ PR #99 telah di-merge:
 - Tidak mengubah isi modal, tombol close, backdrop, transaksi, atau hak akses.
 - Regression tests: 95 lulus, 0 gagal.
 
+### Tahap 38.23 — Fallback foto produk pada katalog, detail, dan keranjang Wali
+
+PR #101 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/101
+- Merge commit: `8826cf826750abb8d4eabcd26347ebea65eaa47b`
+- Kartu katalog, detail produk, dan thumbnail keranjang kini memiliki fallback saat URL foto kosong, tidak aman, atau gagal dimuat.
+- Error gambar ditangani secara delegated capture sehingga gambar gagal disembunyikan dan placeholder ditampilkan tanpa mengganggu layout.
+- Selector thumbnail keranjang diperbaiki agar gambar di dalam wadah menggunakan ukuran 100% dan `object-fit:cover`.
+- Tidak mengubah URL/data gambar produk, proses upload, harga, stok, atau checkout.
+- Regression tests: 96 lulus, 0 gagal.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
 1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal header, sidebar, login Admin dua kolom, dan retry Dashboard Operasional sudah masuk `main`.
-2. Selesaikan audit katalog Wali: pencarian, kategori, gambar, kartu/detail produk, keranjang, dan checkout; perbaikan aksesibilitas kartu/detail dan kuantitas keranjang sudah masuk `main`.
+2. Selesaikan audit katalog Wali: pencarian, kategori, gambar, kartu/detail produk, keranjang, dan checkout; perbaikan aksesibilitas kartu/detail, kuantitas keranjang, serta fallback foto katalog/detail/keranjang sudah masuk `main`.
 3. Lanjutkan audit formulir, tabel, filter, laporan, dan modal Admin; asosiasi label form Admin/Gudang, accessible name pencarian/filter, filter/retry laporan, aksesibilitas dialog operasional, pemilih Santri, dan POS Kasir sudah diperbaiki; audit seluruh layar/form dinamis masih berjalan.
 4. Lanjutkan audit alur Gudang, Kasir, dan Petugas Pengantar; ringkasan antrean stok Gudang, normalisasi filter status Pengantaran, responsivitas filter mobile, aksesibilitas POS Kasir, serta pemulihan refresh Dashboard/Distribusi/Komplain dan POS sudah diperbaiki.
 5. Lanjutkan audit responsivitas HP, tablet portrait/landscape, dan desktop; CSS yang sudah ada mengatur padding header 20 px pada rentang 761–1100 px, selanjutnya periksa tinggi layar pendek, sidebar desktop/tablet landscape, modal, tabel lebar, katalog Wali, POS, dan workspace Gudang/Pengantaran serta regresi lintas role.
 6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
 
-**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.22 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog bertumpuk, pemilih Santri, aksesibilitas dan ketahanan refresh POS Kasir, filter Pengantaran responsif. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
+**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.23 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog bertumpuk, pemilih Santri, aksesibilitas dan ketahanan refresh POS Kasir, filter Pengantaran responsif. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
