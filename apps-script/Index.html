@@ -4007,7 +4007,7 @@ async function renderSupervisorCatalog(){
         if(!receiptPending||(receiptPending.signature!==receiptSignature&&receiptPending.signature!==legacyReceiptSignature)){receiptPending={signature:receiptSignature,key:'rc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,12)};try{localStorage.setItem('fmart.receipt.pending',JSON.stringify(receiptPending))}catch(e){}}
         payload.requestKey=receiptPending.key;
         const result=await runServer('createStockReceipt',state.token,payload);try{localStorage.removeItem('fmart.receipt.pending')}catch(e){}
-        closeOpsModal();showToast('Penerimaan '+result.number+' berhasil dicatat.','success');await renderOpsReceiving()}
+        closeOpsModal();showToast(result.legacyCostNotRecorded?'Penerimaan lama dipulihkan. Biaya historisnya belum tercatat; lengkapi HPP pembukaan berdasarkan bukti biaya.':'Penerimaan '+result.number+' berhasil dicatat.','success');await renderOpsReceiving()}
         catch(e){showToast(e.message||'Penerimaan gagal disimpan.','error')}
         finally{btn.disabled=false;loading(false)}
       };
