@@ -1,7 +1,9 @@
 # FMart — Paket Serah-Terima Audit Repository
 
 **Tanggal:** 19 November 2026  
-**Baseline `main`:** `ea976ce35ed92edf6fe6bb718d909ddacf748659`  
+**Baseline source saat paket disusun:** `4aac87e6b8e1e54eb142fcf31bf3cdbe9acd95de`  
+**Baseline dokumentasi sebelum paket serah-terima:** `ea976ce35ed92edf6fe6bb718d909ddacf748659`  
+**PR paket serah-terima:** #128, merge commit `95a5c04529d4d62101185ca3d9ed28d34ce81c5a`  
 **Status:** Audit source dan dokumentasi repository selesai untuk lingkup yang tercatat; runtime UAT dan persetujuan produksi belum dilakukan.
 
 Dokumen ini merangkum hasil pekerjaan PR dan daftar gerbang yang masih harus diselesaikan. Baca bersama [Roadmap Audit](ROADMAP_AUDIT_FMART_2026-11-19.md), [Checklist UAT](UAT-TAHAP-4-FMART.md), dan [SOP Operasional (draft)](SOP_OPERASIONAL_FMART.md).
@@ -21,8 +23,9 @@ Dokumen ini merangkum hasil pekerjaan PR dan daftar gerbang yang masih harus dis
 | #125 | Guard mutasi, lock, ownership, idempotensi, dan transisi status dikunci dengan regression test |
 | #126 | SOP Operasional draft ditambahkan dan ditautkan dari README |
 | #127 | Checklist UAT disinkronkan dengan pengamanan terbaru |
+| #128 | Paket serah-terima audit repository ditambahkan |
 
-Perubahan PR #117–#125 sudah melewati regression CI. Pada baseline source PR #125, 117 test lulus dan build/deployment GitHub Pages lulus. Untuk commit dokumentasi terbaru `ea976ce`, regression CI lulus; build Jekyll lulus dan tahap deployment GitHub Pages masih berjalan saat paket ini disiapkan.
+Perubahan PR #117–#125 sudah melewati regression CI. Pada baseline source PR #125, 117 test lulus dan build/deployment GitHub Pages lulus. Untuk commit dokumentasi `ea976ce`, regression CI lulus; build Jekyll dan deployment GitHub Pages kemudian selesai dengan sukses.
 
 ## 2. Temuan yang sudah diperbaiki pada source
 
