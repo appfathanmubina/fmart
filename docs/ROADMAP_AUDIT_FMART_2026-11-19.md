@@ -354,13 +354,57 @@ PR #62 telah di-merge ke `main`:
 - Pemeriksaan Tahap 38 untuk Wali difokuskan pada katalog, pencarian, kategori, kartu/detail produk, keranjang, checkout, dan navigasi.
 - Tidak ada informasi stok atau antrean pemenuhan yang ditambahkan ke tampilan Wali.
 
+### Tahap 38.5 — Aksesibilitas kartu dan detail produk Wali
+
+PR #64 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/64
+- Merge commit: `8194c069af38f5f9a18eef6f673b3c38f810ccb1`
+- Label tombol pada kartu produk disesuaikan dengan aksi sebenarnya, yaitu membuka detail produk.
+- Kegagalan pemuatan detail produk memakai notifikasi FMart non-blocking, bukan browser alert.
+- Loading state tetap ditutup melalui `finally`.
+- Tidak mengubah pilihan variasi, jumlah, keranjang, harga, stok, atau checkout.
+- Regression tests: 74 lulus, 0 gagal.
+
+### Tahap 38.6 — Aksesibilitas kontrol kuantitas keranjang Wali
+
+PR #65 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/65
+- Merge commit: `177158d45c199414578e42dd93bbbd7c2cf4c1fb`
+- Tombol tambah/kurangi jumlah, input kuantitas, dan hapus item mendapat accessible label yang spesifik terhadap produk.
+- Input menampilkan batas maksimum 10.000 unit dan tombol tambah dinonaktifkan saat batas tercapai.
+- Tidak mengubah aturan keranjang atau validasi server.
+- Regression tests: 75 lulus, 0 gagal.
+
+### Tahap 38.7 — Asosiasi label dan required state formulir Admin/Gudang
+
+PR #66 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/66
+- Merge commit: `a89716d40ac8242fc9fad7cd0d6415a1131ff240`
+- Menghubungkan label dengan input/select pada form kategori, produk, akun petugas, edit akun/Wali, QRIS, penerimaan barang, stok minimum, variasi, transfer Gudang→Kasir, dan mutasi stok.
+- Form penerimaan memakai ID/label dinamis per baris.
+- Field wajib ditandai sesuai validasi backend.
+- Tidak mengubah handler, payload, endpoint, hak akses, atau aturan bisnis.
+- Regression tests: 77 lulus, 0 gagal.
+
+### Tahap 38.8 — Filter laporan/audit dan pemulihan pemuatan
+
+PR #67 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/67
+- Merge commit: `dc6948bf26bc619a7951c1647cfe23a0ebad813c`
+- Label tanggal laporan/audit dan filter aktivitas dihubungkan ke kontrolnya.
+- Status tab laporan diekspos melalui `aria-pressed`.
+- Laporan, aktivitas audit, dan status integrasi memiliki tombol coba ulang saat pemuatan awal gagal.
+- Jika refresh laporan/audit gagal, hasil sebelumnya tetap ditampilkan dan error diberitahukan.
+- Tidak mengubah query backend, data audit, integrasi, atau izin Admin/Superadmin.
+- Regression tests: 79 lulus, 0 gagal.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
-1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal login Admin, brand navigation, sidebar, dan retry Dashboard Operasional sudah masuk `main`.
-2. Audit katalog Wali: kartu produk, detail, keranjang, dan checkout.
-3. Audit formulir, tabel, filter, laporan, dan modal Admin.
-4. Audit tampilan role Gudang, Kasir, dan Petugas Pengantar.
-5. Audit responsivitas HP, tablet, dan desktop serta regresi lintas role.
+1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal header, sidebar, login Admin dua kolom, dan retry Dashboard Operasional sudah masuk `main`.
+2. Selesaikan audit katalog Wali: pencarian, kategori, gambar, kartu/detail produk, keranjang, dan checkout; perbaikan aksesibilitas kartu/detail dan kuantitas keranjang sudah masuk `main`.
+3. Lanjutkan audit formulir, tabel, filter, laporan, dan modal Admin; asosiasi label formulir serta filter/retry laporan dan audit sudah diperbaiki, audit seluruh layar/form dinamis masih berjalan.
+4. Audit tampilan role Gudang, Kasir, dan Petugas Pengantar pada alur operasional masing-masing.
+5. Audit responsivitas HP, tablet portrait/landscape, dan desktop serta regresi lintas role.
 6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
 
-**Status keseluruhan Tahap 38: masih berjalan.** Tahap 38.2 sudah selesai pada repository; belum ada klaim bahwa seluruh PWA telah tervalidasi di runtime/perangkat.
+**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.8 (header, sidebar, login Admin, pemulihan Dashboard Operasional, katalog/keranjang Wali, formulir Admin/Gudang, serta filter dan pemulihan laporan/audit) telah masuk `main`. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
