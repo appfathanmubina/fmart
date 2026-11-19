@@ -725,10 +725,17 @@ Pada commit `5c4805c`, workflow **FMart Regression** pasca-merge berstatus sukse
 
 ## Tahap 39.1 — Audit statis keamanan endpoint bukti pengantaran
 
-**Status: perbaikan source dan regression test disiapkan; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #120 telah di-merge ke `main` melalui commit `20e80c5ecdcc869d735bb9cc1316c28e7d12f40c`. Regression CI pasca-merge lulus; build/deployment GitHub Pages masih diperiksa.**
 
-Audit statis endpoint yang dipanggil UI menemukan bahwa `getDeliveryProofImage()` sudah membatasi akses ke role Wali dan memverifikasi kepemilikan pesanan, tetapi belum memverifikasi bahwa file berada di folder khusus `FMART_DELIVERY_PROOF_FOLDER_ID`. Endpoint bukti pembayaran sudah memeriksa folder sumber; jalur bukti pengantaran belum setara.
+Audit statis menemukan endpoint `getDeliveryProofImage()` sudah membatasi akses ke role Wali dan memverifikasi kepemilikan pesanan, tetapi belum memverifikasi bahwa file berada di folder khusus `FMART_DELIVERY_PROOF_FOLDER_ID`. Perbaikan menambahkan validasi konfigurasi folder, menolak jika folder bukti pengantaran sama dengan folder bukti pembayaran, memeriksa parent folder file sebelum membaca blob, dan menerapkan batas 10 MB serta MIME gambar yang diizinkan.
 
-Perbaikan menambahkan validasi konfigurasi folder, menolak jika folder bukti pengantaran sama dengan folder bukti pembayaran, memeriksa parent folder file sebelum membaca blob, dan menerapkan batas 10 MB serta MIME gambar yang diizinkan. Pemeriksaan kepemilikan pesanan dilakukan sebelum akses file. Jalur upload, struktur sheet, ID file yang tersimpan, dan data transaksi tidak diubah. Jika folder belum dikonfigurasi atau file lama berada di luar folder yang ditetapkan, pratinjau ditolak secara fail-closed; data tidak dipindahkan atau dihapus otomatis.
+Pemeriksaan kepemilikan pesanan dilakukan sebelum akses file. Jalur upload, struktur sheet, ID file yang tersimpan, dan data transaksi tidak diubah. Jika folder belum dikonfigurasi atau file lama berada di luar folder yang ditetapkan, pratinjau ditolak secara fail-closed; data tidak dipindahkan atau dihapus otomatis. Regression test mengunci role Wali, ownership pesanan, folder khusus, pemisahan folder pembayaran/pengantaran, ukuran maksimum, dan MIME.
 
-Regression test mengunci role Wali, ownership pesanan, folder khusus, pemisahan folder pembayaran/pengantaran, ukuran maksimum, dan MIME. Tidak ada runtime Apps Script, Drive, atau data produksi yang diakses/diubah.
+
+## Tahap 39.2 — Audit statis inventaris endpoint UI dan otorisasi server
+
+**Status: regression test dan sinkronisasi roadmap disiapkan; menunggu CI dan merge.**
+
+Audit inventaris menemukan 77 nama endpoint literal yang dipanggil UI dan 6 nama endpoint tambahan melalui dua pemetaan dinamis (empat endpoint unik untuk aksi pengantaran dan dua endpoint manajemen Wali), sehingga inventaris mencakup 83 nama endpoint UI yang unik. Semua nama tersebut harus memiliki fungsi backend. Seluruh endpoint selain tiga jalur pra-autentikasi (`login`, `registerWaliSantri`, dan `verifyAdminLoginOtp`) wajib memanggil `requireSession_()` atau `requireRole_()`. Jalur pra-autentikasi tetap harus mempertahankan rate limit/password/portal checks, validasi registrasi, atau challenge OTP satu kali dengan batas percobaan.
+
+Regression test mengunci inventaris endpoint literal dan dinamis, keberadaan fungsi backend, pengamanan pra-autentikasi, role Petugas Pengantar/Gudang pada endpoint pengantaran, serta role Superadmin pada manajemen akun. Pemeriksaan ini tidak menggantikan review detail setiap aturan bisnis maupun pengujian runtime.
