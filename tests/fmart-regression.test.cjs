@@ -1105,3 +1105,22 @@ test('Admin, Gudang, and Wali management search/filter controls expose accessibl
   assert.ok(tag.includes('aria-label="'+label+'"'),id+' must have a meaningful accessible name.');
  }
 });
+
+
+test('Horizontally scrollable data tables are keyboard reachable and announced as regions',()=>{
+ const wrappers=[...index.matchAll(/<div class="table-wrap"[^>]*>/g)].map(m=>m[0]);
+ assert.ok(wrappers.length>=15,'Expected the primary data-table wrappers to remain present.');
+ for(const tag of wrappers){
+  assert.ok(tag.includes('tabindex="0"'),'Every horizontal table region must be keyboard focusable.');
+  assert.ok(tag.includes('role="region"'),'Scrollable table wrapper must be exposed as a region.');
+  assert.ok(tag.includes('aria-label="Tabel data FMart; geser secara horizontal untuk melihat kolom lainnya"'),'Scrollable table region must have an accessible description.');
+ }
+ const picker=[...index.matchAll(/<div class="picker-table-wrap"[^>]*>/g)].map(m=>m[0]);
+ assert.ok(picker.length>=2);
+ for(const tag of picker){
+  assert.ok(tag.includes('tabindex="0"')&&tag.includes('role="region"'));
+  assert.ok(tag.includes('aria-label="Daftar Santri; geser secara horizontal untuk melihat kolom lainnya"'));
+ }
+ assert.ok(index.includes('.table-wrap[tabindex="0"]:focus-visible'));
+ assert.ok(index.includes('.picker-table-wrap[tabindex="0"]:focus-visible'));
+});
