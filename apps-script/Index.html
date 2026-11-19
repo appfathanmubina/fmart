@@ -3100,9 +3100,29 @@ function closeOrderDetail(){$('orderDetailModal').classList.add('hidden')}
 function closePayment(){$('paymentModal').classList.add('hidden')}
 
     let opsData=null;
-    async function loadOps(){loading(true,'Memuat dashboard operasional...');try{opsData=await runServer('getOperationsDashboard',state.token);renderOps();}catch(e){showToast(e.message||'Dashboard operasional gagal dimuat.')}finally{loading(false)}}
+    async function loadOps(){
+  loading(true,'Memuat dashboard operasional...');
+  try{
+    opsData=await runServer('getOperationsDashboard',state.token);
+    renderOps();
+  }catch(e){
+    const message=e&&e.message?e.message:'Dashboard operasional gagal dimuat.';
+    if(!opsData){
+      $('opsStats').classList.add('hidden');
+      $('opsTitle').textContent='Dashboard Operasional';
+      $('opsMainTitle').textContent='Dashboard belum tersedia';
+      $('opsMainBody').innerHTML='<div class="empty-box" role="alert"><strong>Data dashboard belum dapat dimuat.</strong><div class="muted" style="margin-top:6px">'+escapeHtml(message)+'</div><button type="button" class="primary" style="margin-top:14px" id="retryOpsDashboard">Coba muat ulang</button></div>';
+      if($('retryOpsDashboard'))$('retryOpsDashboard').onclick=loadOps;
+    }else{
+      showToast(message,'error');
+    }
+  }finally{
+    loading(false);
+  }
+}
     function renderOps(){
       if(!opsData)return;
+      $('opsStats').classList.remove('hidden');
       const role=state.data.user.role, stats=opsData.stats||{};
       let cards=[];
       if(role==='ADMIN'||role==='SUPERADMIN'){
