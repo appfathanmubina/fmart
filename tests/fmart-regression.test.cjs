@@ -1643,8 +1643,8 @@ test('Weighted-average HPP and gross profit remain explicit for legacy transacti
 test('HPP entry is available on product, variation, receipt and stock-in forms',()=>{
  const product=index.slice(index.indexOf('function openProductForm(item)'),index.indexOf('function openStaffUserForm'));
  const variation=index.slice(index.indexOf('function openVariationForm(item)'),index.indexOf('async function openStockTransferForm'));
- const receipt=extractFunction(index,'openStockReceiptForm');
- const adjustment=extractFunction(index,'openStockForm');
+ const receipt=index.slice(index.indexOf('function openStockReceiptForm(products)'),index.indexOf('function openStockMinimumForm'));
+ const adjustment=index.slice(index.indexOf('function openStockForm(productId,variationId)'),index.indexOf('async function advanceWarehouse'));
  assert.ok(product.includes('prdHpp')&&product.includes('hpp:$('));
  assert.ok(variation.includes('varHpp')&&variation.includes('hpp:$('));
  assert.ok(receipt.includes('receipt-cost')&&receipt.includes('unitCost'));

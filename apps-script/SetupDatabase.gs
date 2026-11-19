@@ -43,7 +43,7 @@ const FMART_DB = Object.freeze({
     PENGATURAN: ['Key','Value','Description','UpdatedAt'],
     RESERVASI_STOK: ['ReservasiId','PesananId','ProdukId','VariasiId','Qty','Status','CreatedAt','ExpiresAt','UpdatedAt'],
     PENJUALAN_TOKO: ['PenjualanId','NomorTransaksi','JenisPembeli','NamaPembeli','SantriId','Subtotal','Diskon','Total','MetodePembayaran','NominalDiterima','Kembalian','StatusPembayaran','StatusTransaksi','KasirUserId','Catatan','CreatedAt','UpdatedAt','RequestKey','ReferensiPembayaran'],
-    DETAIL_PENJUALAN_TOKO: ['DetailPenjualanId','PenjualanId','ProdukId','VariasiId','SKU','NamaProduk','NamaVariasi','Harga','Qty','Subtotal','HPPUnit','HPPSubtotal','HPPStatus']
+    DETAIL_PENJUALAN_TOKO: ['DetailPenjualanId','PenjualanId','ProdukId','VariasiId','SKU','NamaProduk','NamaVariasi','Harga','Qty','Subtotal','HPPUnit','HPPSubtotal','HPPStatus'],
     RESERVASI_STOK_TOKO: ['ReservasiId','PenjualanId','ProdukId','VariasiId','Qty','Status','CreatedAt','ExpiresAt','UpdatedAt'],
     AUDIT_LOG: ['AuditId','ActorUserId','ActorRole','Action','EntityType','EntityId','BeforeData','AfterData','Note','CreatedAt']
   }
