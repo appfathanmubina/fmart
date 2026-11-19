@@ -111,7 +111,7 @@ Backend menyiapkan format versi `pbkdf2-sha256:600000:...` berbasis PBKDF2-HMAC-
 - Admin dapat melihat daftar akun petugas. Pembuatan, perubahan peran, aktivasi/nonaktifasi, dan reset password tetap dibatasi ke Superadmin di backend.
 - Akun Superadmin tidak dapat diedit, dinonaktifkan, atau direset dari menu ini.
 - Form tambah petugas memakai email sebagai username dan menyediakan peran Admin, Kasir, atau Gudang. Pembuatan akun Superadmin tetap melalui prosedur setup yang terkontrol.
-- Login OTP email tetap dinonaktifkan sementara sesuai keputusan pengembangan; fungsi OTP dipertahankan untuk diaktifkan kembali setelah Tahap 1–12 stabil.
+- Login Admin saat ini mewajibkan OTP email. Sesi petugas hanya dibuat setelah password benar dan kode OTP enam digit berhasil diverifikasi. OTP berlaku lima menit, hanya dapat digunakan satu kali, dibatasi lima percobaan, dan pengiriman ulang mengikuti cooldown. Pastikan akun staf memiliki alamat email aktif yang dapat diakses. Ketentuan ini mengikuti implementasi backend dan antarmuka login pada `apps-script/Code.gs` dan `apps-script/Index.html`.
 - Pemeriksaan tahap ini bersifat statis. Sinkronisasi Apps Script, deployment, dan pengujian role aktual masih perlu dilakukan.
 
 
