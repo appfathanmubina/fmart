@@ -3213,13 +3213,21 @@ function transferWarehouseStockToCashier(token,productId,variationId,qty,note,re
     let beforeW,beforeC,afterW,afterC,transferId=requestKey,now=new Date(),duplicate=priorW.length>0||priorC.length>0;
     if(duplicate){
       const valid=(r,type,before,after)=>String(r[1])===productId&&String(r[2]||'')===variationId&&String(r[3]).toUpperCase()===type&&Number(r[4])===qty&&String(r[8]||'')==='Transfer Gudang ke Kasir'+(note?' · '+note:'')&&String(r[9]||'')===session.userId&&Number(r[6])===Number(r[5])+(type==='MASUK'?qty:-qty);
-      const source=priorW[0]||priorC[0];if(!source||!valid(source,priorW.length?'KELUAR':'MASUK'))throw new Error('Kunci pemindahan sudah digunakan untuk transaksi berbeda.');
-      beforeW=priorW.length?Number(priorW[0][5]):Number(priorC[0][6]);afterW=priorW.length?Number(priorW[0][6]):Number(priorC[0][5]);
-      beforeC=priorC.length?Number(priorC[0][5]):Number(priorW[0][6]);afterC=priorC.length?Number(priorC[0][6]):Number(priorW[0][5]);
+      if(!priorW.length)throw new Error('Jurnal Gudang transfer tidak ditemukan. Pemulihan dihentikan agar saldo tidak ditebak.');
       if(priorW.length>1||priorC.length>1)throw new Error('Jurnal transfer ganda; pemulihan dihentikan.');
-      if(priorW.length&&(!valid(priorW[0],'KELUAR')||Number(priorW[0][5])!==beforeW||Number(priorW[0][6])!==afterW))throw new Error('Jurnal Gudang tidak cocok.');
+      if(!valid(priorW[0],'KELUAR'))throw new Error('Jurnal Gudang tidak cocok dengan permintaan transfer.');
+      beforeW=Number(priorW[0][5]);afterW=Number(priorW[0][6]);
+      if(!Number.isSafeInteger(beforeW)||!Number.isSafeInteger(afterW)||afterW!==beforeW-qty||afterW<0)throw new Error('Saldo sebelum/sesudah pada jurnal Gudang tidak valid.');
+      if(priorC.length){
+        if(!valid(priorC[0],'MASUK')||Number(priorC[0][6])!==Number(priorC[0][5])+qty)throw new Error('Jurnal Kasir tidak cocok dengan permintaan transfer.');
+        beforeC=Number(priorC[0][5]);afterC=Number(priorC[0][6]);
+      }else{
+        beforeC=cMatches.length?Number(cMatches[0].row[3]):0;
+        if(!Number.isSafeInteger(beforeC)||beforeC<0)throw new Error('Saldo Kasir tidak valid untuk pemulihan transfer.');
+        afterC=beforeC+qty;
+        if(!Number.isSafeInteger(afterC))throw new Error('Saldo Kasir melebihi batas angka yang aman.');
+      }
       if(priorC.length&&(!valid(priorC[0],'MASUK')||Number(priorC[0][5])!==beforeC||Number(priorC[0][6])!==afterC))throw new Error('Jurnal Kasir tidak cocok.');
-      if(!priorW.length)wm.appendRow([makeFMartId_('MUT'),productId,variationId,'KELUAR',qty,beforeW,afterW,transferId,'Transfer Gudang ke Kasir'+(note?' · '+note:''),session.userId,now]);
       if(!priorC.length)cm.appendRow([makeFMartId_('MCK'),productId,variationId,'MASUK',qty,beforeC,afterC,transferId,'Transfer Gudang ke Kasir'+(note?' · '+note:''),session.userId,now]);
     }else{
       const snap=getProductSnapshot_(ss,productId,variationId,'GUDANG');if(!snap||!snap.active)throw new Error('Produk atau variasi tidak aktif.');
