@@ -317,6 +317,21 @@ PR #57 telah di-merge ke `main`:
 
 **Status Tahap 38.1:** perbaikan navigasi header ini sudah masuk `main`; audit login, dashboard, dan elemen header lainnya masih berlanjut.
 
+### Tahap 38.3 — Pemulihan dua kolom Login Admin Desktop/Tablet
+
+PR #59 telah di-merge ke `main`:
+- PR: https://github.com/appfathanmubina/fmart/pull/59
+- Merge commit: `30830b8905db5156bcdf73397cad390e2fdecef2`
+- Memulihkan panel informasi kiri dan form kanan pada login Admin untuk layar Desktop/Tablet (mulai 761 px).
+- Menggunakan proporsi 6:4 untuk tablet/layar menengah dan 7:3 untuk desktop lebar.
+- Menjaga tampilan satu kolom pada HP (maksimal 760 px).
+- Copy panel informasi disesuaikan untuk petugas: operasional terpusat, data terpantau, dan akses berbasis peran.
+- Tidak mengubah email/password, OTP, sesi, autentikasi, backend, izin role, atau data.
+- Regression tests: 70 lulus, 0 gagal; pemeriksaan sintaks backend, service worker, dan patch whitespace lulus.
+- GitHub Pages build/deployment setelah merge sedang diverifikasi.
+
+**Batas validasi:** hasil CI otomatis belum menggantikan pemeriksaan visual pada browser dan perangkat nyata. Login Admin masih harus dilihat pada desktop, tablet landscape/portrait, dan HP.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
 1. Audit login, dashboard, header, dan navigasi untuk Wali serta Admin.
@@ -326,4 +341,4 @@ PR #57 telah di-merge ke `main`:
 5. Audit responsivitas HP, tablet, dan desktop serta regresi lintas role.
 6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
 
-**Status keseluruhan Tahap 38: masih berjalan.** Tahap 38.2 sudah selesai pada repository; belum ada klaim bahwa seluruh PWA telah tervalidasi di runtime/perangkat.
+**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1 (header), 38.2 (sidebar), dan 38.3 (login Admin) telah masuk `main`; audit katalog, komponen Admin, seluruh role, dan validasi perangkat/runtime masih berlanjut.
