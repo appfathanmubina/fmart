@@ -3841,6 +3841,21 @@ function auditFMartStockReconciliation_() {
 }
 
 
+/** Memvalidasi mutasi MASUK manual terhadap AuditLog, termasuk referensi requestKey baru. */
+function hasMatchingManualInboundAudit_(auditRows, mutation) {
+  const pid=String(mutation[1]||''),variationId=String(mutation[2]||''),requestKey=String(mutation[7]||'');
+  const mutationTime=new Date(mutation[10]||0).getTime();
+  return (auditRows||[]).some(function(a){
+    if(String(a[3]||'').toUpperCase()!=='ADJUST_STOCK'||String(a[4]||'').toUpperCase()!=='STOK')return false;
+    let after={};try{after=JSON.parse(String(a[7]||'{}'));}catch(e){}
+    const entityId=String(a[5]||''),auditTime=new Date(a[9]||0).getTime();
+    return (entityId===requestKey||entityId===pid)&&String(after.productId||'')===pid&&
+      String(after.variationId||'')===variationId&&String(after.type||'').toUpperCase()==='MASUK'&&
+      Number(after.qty)===Number(mutation[4])&&Number(after.stockBefore)===Number(mutation[5])&&
+      Number(after.stockAfter)===Number(mutation[6])&&auditTime===mutationTime;
+  });
+}
+
 /**
  * Tahap 13 — Audit penerimaan barang dan jejak mutasi Gudang.
  * Read-only: tidak membuat sheet dan tidak mengubah data.
@@ -3883,15 +3898,19 @@ function auditWarehouseReceivingIntegrity_() {
     if(!id)issue('MUTATION_ID_EMPTY','MutasiStok',i+2,'MutasiId kosong.');
     else if(mutationIds[id])issue('MUTATION_ID_DUPLICATE','MutasiStok',i+2,'MutasiId duplikat.');
     mutationIds[id]=true;
-    if(type==='MASUK'&&ref){
-      if(receiptById[ref]){
-        if(!mutationsByReceipt[ref])mutationsByReceipt[ref]=[];
-        mutationsByReceipt[ref].push({row:i+2,values:m});
-      }else{
-        if(!variationIds[ref])issue('INBOUND_MUTATION_REFERENCE_UNKNOWN','MutasiStok',i+2,'Mutasi masuk memiliki referensi yang bukan PenerimaanId atau VariasiId stok awal: '+ref+'.');
-        else if(Number(m[5])!==0||!Number.isSafeInteger(Number(m[4]))||Number(m[4])<1||Number(m[6])!==Number(m[4]))issue('OPENING_STOCK_MUTATION_INVALID','MutasiStok',i+2,'Mutasi stok awal variasi harus mencatat saldo 0 menjadi jumlah stok awal yang sama dengan qty.');
-      }
+    if(type!=='MASUK')return;
+    if(ref&&receiptById[ref]){
+      if(!mutationsByReceipt[ref])mutationsByReceipt[ref]=[];
+      mutationsByReceipt[ref].push({row:i+2,values:m});
+      return;
     }
+    if(ref&&variationIds[ref]){
+      if(Number(m[5])!==0||!Number.isSafeInteger(Number(m[4]))||Number(m[4])<1||Number(m[6])!==Number(m[4]))
+        issue('OPENING_STOCK_MUTATION_INVALID','MutasiStok',i+2,'Mutasi stok awal variasi harus mencatat saldo 0 menjadi jumlah stok awal yang sama dengan qty.');
+      return;
+    }
+    if(!hasMatchingManualInboundAudit_(auditRows,m))
+      issue('MANUAL_INBOUND_AUDIT_MISSING','MutasiStok',i+2,'Mutasi MASUK manual tidak memiliki AuditLog ADJUST_STOCK yang cocok dengan referensi, produk, variasi, jumlah, saldo, dan timestamp.');
   });
   Object.keys(receiptById).forEach(function(id){
     const receipt=receiptById[id],r=receipt.values,receiptDetails=detailsByReceipt[id]||[],receiptMutations=mutationsByReceipt[id]||[];
@@ -3926,20 +3945,6 @@ function auditWarehouseReceivingIntegrity_() {
   });
   Object.keys(mutationsByReceipt).forEach(function(id){
     if(!receiptById[id])issue('RECEIPT_MUTATION_ORPHAN','MutasiStok',mutationsByReceipt[id][0].row,'Mutasi MASUK merujuk penerimaan yang tidak ditemukan: '+id+'.');
-  });
-  mutations.forEach(function(m,i){
-    if(String(m[3]||'').toUpperCase()!=='MASUK'||String(m[7]||''))return;
-    const pid=String(m[1]||''),hasAudit=auditRows.some(function(a){
-      if(String(a[3]||'').toUpperCase()!=='ADJUST_STOCK'||String(a[4]||'').toUpperCase()!=='STOK')return false;
-      let after={};try{after=JSON.parse(String(a[7]||'{}'));}catch(e){}
-      const auditTime=new Date(a[9]||0).getTime(),mutationTime=new Date(m[10]||0).getTime();
-      const entityId=String(a[5]||''),requestKey=String(m[7]||'');
-      return (entityId===requestKey||entityId===pid)&&String(after.productId||'')===pid&&
-        String(after.variationId||'')===String(m[2]||'')&&String(after.type||'').toUpperCase()==='MASUK'&&
-        Number(after.qty)===Number(m[4])&&Number(after.stockBefore)===Number(m[5])&&
-        Number(after.stockAfter)===Number(m[6])&&auditTime===mutationTime;
-    });
-    if(!hasAudit)issue('MANUAL_INBOUND_AUDIT_MISSING','MutasiStok',i+2,'Mutasi MASUK manual tanpa referensi tidak memiliki AuditLog ADJUST_STOCK yang cocok.');
   });
   return {
     checkedAt:new Date().toISOString(),mode:'READ_ONLY',
