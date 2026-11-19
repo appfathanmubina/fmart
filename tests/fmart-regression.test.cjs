@@ -1105,3 +1105,15 @@ test('Admin, Gudang, and Wali management search/filter controls expose accessibl
   assert.ok(tag.includes('aria-label="'+label+'"'),id+' must have a meaningful accessible name.');
  }
 });
+
+
+test('Tablet portrait header does not retain the desktop sidebar left offset',()=>{
+ assert.ok(index.includes('body.admin-portal .header-inner{padding-left:228px}'),'The tablet-landscape/sidebar layout offset must remain explicit.');
+ const start=index.indexOf('@media (min-width:761px) and (max-width:900px){');
+ const end=index.indexOf('/* Semua panel petugas:',start);
+ assert.ok(start>=0&&end>start,'Tablet portrait responsive block must exist.');
+ const portrait=index.slice(start,end);
+ assert.ok(portrait.includes('body.admin-portal .header-inner{padding-left:20px;padding-right:20px}'));
+ assert.ok(portrait.includes('body.admin-portal #staffNav.bottom-nav{'));
+ assert.ok(portrait.includes('body.admin-portal #operationsView{'));
+});

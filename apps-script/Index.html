@@ -1432,6 +1432,8 @@ body.admin-portal .warehouse-home-actions button:focus-visible,body.admin-portal
 
 /* Tahap F — tablet portrait: navigasi petugas tidak mengambil lebar konten. */
 @media (min-width:761px) and (max-width:900px){
+  /* Navigasi tablet portrait berada di bawah, jadi header tidak boleh menyisakan ruang sidebar. */
+  body.admin-portal .header-inner{padding-left:20px;padding-right:20px}
   body.admin-portal #staffNav.bottom-nav{
     position:fixed;z-index:40;top:auto;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));
     width:auto;height:72px;display:flex;flex-direction:row;align-items:stretch;justify-content:flex-start;
