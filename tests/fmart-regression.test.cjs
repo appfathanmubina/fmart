@@ -528,7 +528,8 @@ test('Warehouse-to-cashier transfers recover both ledgers and balances exactly o
  const fn=extractFunction(code,'transferWarehouseStockToCashier');
  assert.ok(fn.includes("priorW=readRows_(wm).filter(r=>String(r[7]||'')===requestKey)"));
  assert.ok(fn.includes("priorC=readRows_(cm).filter(r=>String(r[7]||'')===requestKey)"));
- assert.ok(fn.includes("if(!priorW.length)wm.appendRow")&&fn.includes("if(!priorC.length)cm.appendRow"),'Retry must complete a missing side of the paired transfer ledger.');
+ assert.ok(fn.includes("if(!priorW.length)throw new Error"),'Recovery must fail closed if the source ledger is missing instead of guessing the warehouse before-balance.');
+ assert.ok(fn.includes("if(!priorC.length)cm.appendRow"),'Retry must complete the missing cashier ledger from the verified warehouse journal and current cashier balance.');
  assert.ok(fn.includes("if(live===before)"),'Retry must apply a balance that was not yet changed.');
  assert.ok(fn.includes("else if(live!==after)throw new Error"),'Unexpected balance must stop transfer recovery.');
  assert.ok(fn.includes("String(r[9]||'')===session.userId"),'A different actor must not replay another user transfer.');
