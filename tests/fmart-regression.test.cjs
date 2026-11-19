@@ -944,9 +944,12 @@ test('Gudang dashboard exposes the internal waiting-stock queue as a filterable 
 test('Operations modal has an accessible close name and supports Escape dismissal',()=>{
  assert.ok(index.includes('id="closeOpsModal" aria-label="Tutup dialog"'));
  assert.ok(index.includes("$('closeOpsModal').addEventListener('click',closeOpsModal)"));
- const escapeHandler=index.match(/document\.addEventListener\('keydown',e=>\{if\(e\.key==='Escape'\)\{([^}]+)\}\}\);/);
- assert.ok(escapeHandler,'Global Escape handler must exist.');
- assert.ok(escapeHandler[1].includes('closeOpsModal()'),'Escape must close the staff operations modal.');
+ const escapeStart=index.indexOf("document.addEventListener('keydown',e=>{\n      if(e.key!=='Escape')return;");
+ const escapeEnd=index.indexOf("window.addEventListener('load',boot)",escapeStart);
+ const escapeHandler=index.slice(escapeStart,escapeEnd);
+ assert.ok(escapeStart>=0&&escapeEnd>escapeStart,'Global Escape handler must exist.');
+ assert.ok(escapeHandler.includes('opsModal:closeOpsModal'),'Escape must still close the staff operations modal when it is on top.');
+ assert.ok(escapeHandler.includes('const close=closeById[top.id]'),'Escape must dispatch to the topmost visible modal.');
 });
 
 
