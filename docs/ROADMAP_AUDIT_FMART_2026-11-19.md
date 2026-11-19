@@ -630,8 +630,22 @@ Regression test mengunci semantik field dan validasi enam digit. Tidak mengubah 
 
 ### Tahap 38.29 — Asosiasi label pada skeleton profil Wali
 
-**Status: perbaikan repository disiapkan; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #112 telah di-merge ke `main` melalui commit `5e048897cd520ff4d62b3ed705b584e1a01330db`; regression CI, build, dan deployment GitHub Pages pasca-merge lulus.**
 
 Pemeriksaan otomatis seluruh source menemukan tiga label pada tampilan sementara saat profil Wali sedang dimuat yang belum terhubung ke input read-only. Label dan input kini diberi pasangan `for`/ID yang eksplisit. Form profil setelah data selesai dimuat tidak diubah.
 
 Regression test mengunci ketiga asosiasi label. Tidak mengubah data profil, hak akses, penyimpanan, atau tampilan.
+
+
+### Tahap 38.30 — Audit fokus keyboard pada siklus dialog
+
+**Status: audit statis awal menemukan ruang perbaikan; belum diimplementasikan.**
+
+Modal sudah memiliki `role="dialog"`, `aria-modal`, penutupan Escape untuk dialog teratas, dan focus trap Tab/Shift+Tab. Audit lanjutan akan memeriksa:
+- Fokus awal berpindah ke kontrol yang tepat saat dialog dibuka.
+- Fokus kembali ke pemicu yang membuka dialog setelah ditutup.
+- Fokus tetap benar ketika dialog bertumpuk atau konten dialog operasional diganti.
+- Logout tidak mengembalikan fokus ke elemen dari sesi lama.
+- Dialog tanpa kontrol interaktif tetap dapat menerima fokus.
+
+Perbaikan hanya dilakukan setelah alur modal dan pemicu dibuktikan dari source. Regression test harus menjaga perilaku Escape dan focus trap yang sudah ada. Validasi visual/keyboard perangkat tetap menunggu runtime Tahap 38.
