@@ -1814,7 +1814,7 @@ function saveProduct(token, data) {
   if(['AKTIF','NONAKTIF'].indexOf(status)<0)throw new Error('Status produk tidak valid.');
   const sheet=ss.getSheetByName('Produk'); const now=new Date();
   const rows=readRows_(sheet); if(rows.some(r=>String(r[2]).toLowerCase()===sku.toLowerCase() && String(r[0])!==id))throw new Error('SKU sudah digunakan.');
-  if(id){const row=findRowById_(sheet,id,1);if(!row)throw new Error('Produk tidak ditemukan.');const before=JSON.stringify(row.values);sheet.getRange(row.rowNumber,2,1,9).setValues([[categoryId,sku,name,description,price,minStock,photoUrl,status,now]]);if(hpp!==null)sheet.getRange(row.rowNumber,12).setValue(hpp);writeAudit_(session.userId,session.role,'UPDATE_PRODUCT','PRODUK',id,before,JSON.stringify({categoryId,sku,name,description,price,minStock,photoUrl,status,hpp:getItemHpp_(ss,id,'')}),'Perubahan produk');}
+  if(id){const row=findRowById_(sheet,id,1);if(!row)throw new Error('Produk tidak ditemukan.');if(hpp===0&&getItemHpp_(ss,id,'')>0&&getTotalItemStock_(ss,id,'')>0)throw new Error('HPP tidak boleh dikosongkan selama produk masih memiliki stok.');const before=JSON.stringify(row.values);sheet.getRange(row.rowNumber,2,1,9).setValues([[categoryId,sku,name,description,price,minStock,photoUrl,status,now]]);if(hpp!==null)sheet.getRange(row.rowNumber,12).setValue(hpp);writeAudit_(session.userId,session.role,'UPDATE_PRODUCT','PRODUK',id,before,JSON.stringify({categoryId,sku,name,description,price,minStock,photoUrl,status,hpp:getItemHpp_(ss,id,'')}),'Perubahan produk');}
   else {const newId=makeFMartId_('PRD');sheet.appendRow([newId,categoryId,sku,name,description,price,minStock,photoUrl,status,now,now,hpp===null?0:hpp]);writeAudit_(session.userId,session.role,'CREATE_PRODUCT','PRODUK',newId,'',JSON.stringify({categoryId,sku,name,description,price,minStock,photoUrl,status,hpp:hpp===null?0:hpp}),'Produk baru');}
   SpreadsheetApp.flush(); return getAdminCatalog(token);
   } finally { lock.releaseLock(); }
@@ -1840,7 +1840,7 @@ function saveVariation(token, data) {
       const matches=stockRows.filter(function(r){return String(r[1])===productId&&String(r[2]||'')===id;});
       if(matches.length!==1)throw new Error(matches.length?'Ditemukan baris stok ganda untuk variasi ini. Perbaiki data Gudang sebelum menyimpan variasi.':'Baris stok variasi tidak ditemukan. Jalankan audit Gudang sebelum mengubah variasi.');
       stock=Number(matches[0][3]);
-      if(!Number.isSafeInteger(stock)||stock<0)throw new Error('Saldo stok kanonis variasi tidak valid.');
+      if(!Number.isSafeInteger(stock)||stock<0)throw new Error('Saldo stok kanonis variasi tidak valid.');if(hpp===0&&getItemHpp_(ss,productId,id)>0&&getTotalItemStock_(ss,productId,id)>0)throw new Error('HPP tidak boleh dikosongkan selama variasi masih memiliki stok.');
       beforeData=JSON.stringify(existingVariation.values);
     }else{
       variationId=makeFMartId_('VAR');
