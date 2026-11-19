@@ -512,3 +512,33 @@ test('Verified payment can resume an interrupted order transition without duplic
  assert.ok(verify.includes("String(r[3]||'').toUpperCase()==='VERIFY_PAYMENT'&&String(r[5]||'')===paymentId"),'Verification audit must be deduplicated during retry.');
  assert.ok(verify.indexOf("if(paymentStatus==='TERVERIFIKASI')")<verify.indexOf("if(paymentStatus!=='MENUNGGU_VERIFIKASI')"),'Recovery must be checked before rejecting an already-verified payment.');
 });
+
+test('Manual stock adjustments are idempotent and recover journal-first partial writes',()=>{
+ const fn=extractFunction(code,'adjustStock');
+ assert.ok(fn.includes("requestKey=String(requestKey||'').trim()"));
+ assert.ok(fn.includes("String(x.values[7]||'')===requestKey"));
+ assert.ok(fn.indexOf("mutationSheet.appendRow")<fn.indexOf("sheet.getRange(row+2,4).setValue(after)"),'Mutation journal must be written before stock balance.');
+ assert.ok(fn.includes("if(live===savedBefore)"),'Retry must finish an interrupted balance update.');
+ assert.ok(fn.includes("if(live!==savedAfter)throw new Error"),'Unexpected balance must stop recovery.');
+ assert.ok(fn.includes("String(m[9]||'')!==session.userId"),'A different actor must not replay another user request key.');
+ assert.ok(html.includes("fmart.stock.adjust.pending")&&html.includes("pending.key"),'UI must retain request key while retrying the same adjustment.');
+});
+
+test('Warehouse-to-cashier transfers recover both ledgers and balances exactly once',()=>{
+ const fn=extractFunction(code,'transferWarehouseStockToCashier');
+ assert.ok(fn.includes("priorW=readRows_(wm).filter(r=>String(r[7]||'')===requestKey)"));
+ assert.ok(fn.includes("priorC=readRows_(cm).filter(r=>String(r[7]||'')===requestKey)"));
+ assert.ok(fn.includes("if(!priorW.length)wm.appendRow")&&fn.includes("if(!priorC.length)cm.appendRow"),'Retry must complete a missing side of the paired transfer ledger.');
+ assert.ok(fn.includes("if(live===before)"),'Retry must apply a balance that was not yet changed.');
+ assert.ok(fn.includes("else if(live!==after)throw new Error"),'Unexpected balance must stop transfer recovery.');
+ assert.ok(fn.includes("String(r[9]||'')===session.userId"),'A different actor must not replay another user transfer.');
+ assert.ok(html.includes("fmart.stock.transfer.pending")&&html.includes("pending.key"));
+});
+
+test('Stock transfer and adjustment preserve warehouse reservation floor and variation mirror',()=>{
+ const adjustment=extractFunction(code,'adjustStock'),transfer=extractFunction(code,'transferWarehouseStockToCashier');
+ assert.ok(adjustment.includes("after<reservedNow"));
+ assert.ok(transfer.includes("beforeW-qty<reserved"));
+ assert.ok(adjustment.includes("getRange(variationRow.rowNumber,6,1,3).setValues"));
+ assert.ok(transfer.includes("getRange(vr.rowNumber,6,1,3).setValues"));
+});
