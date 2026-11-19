@@ -798,7 +798,7 @@ SOP membedakan prosedur yang sudah tercermin pada source dengan prasyarat yang b
 
 ## Tahap 40.2 — Sinkronisasi checklist UAT dengan pengamanan terbaru
 
-**Status: selesai pada repository. PR #127 telah di-merge ke `main` melalui commit `ea976ce35ed92edf6fe6bb718d909ddacf748659`. Regression CI pasca-merge lulus; build Jekyll lulus dan tahap deployment GitHub Pages masih berjalan saat pembaruan ini dibuat.**
+**Status: selesai pada repository. PR #127 telah di-merge ke `main` melalui commit `ea976ce35ed92edf6fe6bb718d909ddacf748659`. Regression CI pasca-merge lulus; build Jekyll dan deployment GitHub Pages pasca-merge juga lulus.**
 
 Checklist UAT diperbarui untuk mencakup pencocokan nomor Wali dengan `no_wa_wali`, status pending saat mismatch/kosong, batas dua relasi aktif/pending, folder bukti pengantaran yang terpisah, batas 10 MB, dan penolakan file dari folder yang salah. Baseline regression/Pages build terbaru dicatat tanpa menganggapnya sebagai kelulusan runtime. Role Supervisor juga ditandai belum aktif karena tidak ada di backend.
 

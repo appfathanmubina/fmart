@@ -25,7 +25,7 @@ Dokumen ini merangkum hasil pekerjaan PR dan daftar gerbang yang masih harus dis
 | #127 | Checklist UAT disinkronkan dengan pengamanan terbaru |
 | #128 | Paket serah-terima audit repository ditambahkan |
 
-Perubahan PR #117–#125 sudah melewati regression CI. Pada baseline source PR #125, 117 test lulus dan build/deployment GitHub Pages lulus. Untuk commit dokumentasi terbaru `ea976ce`, regression CI lulus; build Jekyll lulus dan tahap deployment GitHub Pages masih berjalan saat paket ini disiapkan.
+Perubahan PR #117–#125 sudah melewati regression CI. Pada baseline source PR #125, 117 test lulus dan build/deployment GitHub Pages lulus. Untuk commit dokumentasi `ea976ce`, regression CI lulus; build Jekyll dan deployment GitHub Pages kemudian selesai dengan sukses.
 
 ## 2. Temuan yang sudah diperbaiki pada source
 
