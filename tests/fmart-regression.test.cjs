@@ -814,3 +814,14 @@ test('Buyer product-card action label matches its actual detail-opening behavior
  assert.ok(card.includes('title="Lihat detail produk"'));
  assert.ok(!card.includes('title="Tambah ke keranjang"'),'The control must not claim to add directly when it opens product details.');
 });
+
+
+test('Buyer product detail loading errors use the non-blocking app feedback pattern',()=>{
+ const start=index.indexOf('async function openProduct(productId){');
+ const end=index.indexOf('\nfunction getCurrentDetailVariation',start);
+ assert.ok(start>=0&&end>start,'Product detail loader must exist.');
+ const fn=index.slice(start,end);
+ assert.ok(fn.includes("showToast(e.message||'Gagal memuat detail produk.','error')"));
+ assert.ok(!fn.includes('alert('),'Product detail failures must not interrupt the page with a blocking browser alert.');
+ assert.ok(fn.includes('finally{loading(false)}'),'Loading state must always be dismissed.');
+});
