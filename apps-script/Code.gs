@@ -946,7 +946,7 @@ function completeStockReceipt_(ss,receipt,payload,actor,actorRole){
  SpreadsheetApp.flush();return {ok:true,id:receiptId,number:payload.receiptNumber,totalLines:payload.items.length,totalQty:payload.items.reduce(function(n,x){return n+Number(x.qty);},0)};
 }
 
-/** Satu checkout menghasilkan satu pesanan untuk satu santri dan hanya item terpilih. */
+/** Satu checkout menghasilkan satu pesanan untuk satu snapshot penerima dan hanya item terpilih. */
 function checkoutCart(token,recipientData,selectedCartIds,catatan,metodePengiriman,tujuan,requestKey){
  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
  const recipient=normalizeOrderRecipient_(recipientData,metodePengiriman,tujuan);selectedCartIds=Array.isArray(selectedCartIds)?Array.from(new Set(selectedCartIds.map(x=>String(x||'').trim()).filter(Boolean))):[];
@@ -954,8 +954,7 @@ function checkoutCart(token,recipientData,selectedCartIds,catatan,metodePengirim
  if(!/^[A-Za-z0-9_-]{12,80}$/.test(requestKey))throw new Error('Kunci checkout tidak valid. Muat ulang checkout dan coba kembali.');
  if(!selectedCartIds.length)throw new Error('Pilih minimal satu barang untuk checkout.');
  if(['AMBIL_FMART','ANTAR_PESANTREN'].indexOf(metodePengiriman)<0)throw new Error('Metode pengiriman tidak valid.');
- // Tujuan dasar berasal dari data Santri yang telah diverifikasi sebagai alamat pengiriman.
- // Catatan titik penerimaan bersifat opsional dan ditambahkan ke alamat tersimpan.
+ // Identitas penerima dan alamat dicatat sebagai snapshot pesanan; tidak membuat relasi Wali-Santri.
 
  const fingerprint=sha256Hex_(JSON.stringify({userId:session.userId,recipient:recipient,selectedCartIds:selectedCartIds.slice().sort(),note:catatan,shippingMethod:metodePengiriman,requestedDestination:tujuan}));
  const lock=LockService.getScriptLock();lock.waitLock(15000);
@@ -1497,7 +1496,7 @@ function getOperationsDashboard(token) {
   });
   const pendingRows=payments.filter(r=>String(r[5]||'').toUpperCase()==='MENUNGGU_VERIFIKASI').sort((a,b)=>new Date(a[8]||0).getTime()-new Date(b[8]||0).getTime());
   const queueLimit=Math.max(1,Number(getSettingValue_('PAYMENT_VERIFICATION_QUEUE_LIMIT'))||50),pendingVerification=pendingRows.length,orderById={};orders.forEach(function(r){orderById[String(r[0])]=r;});
-  const mapPendingPayment=function(p){const o=orderById[String(p[1])]||[],wali=userMap[String(o[2]||'')],child=childMap[String(o[3]||'')];return {orderId:String(p[1]),number:String(o[1]||p[1]),waliName:wali?wali.name:'-',childName:child?child.name:'-',className:child?child.className:'-',total:Number(o[7])||0,createdAt:dateIso_(p[8]),orderCreatedAt:dateIso_(o[10]),status:String(o[8]||''),payment:{id:String(p[0]),method:String(p[2]||''),nominal:Number(p[3])||0,status:String(p[5]||''),buktiUrl:'',createdAt:dateIso_(p[8]),catatan:String(p[12]||'')}};};
+  const mapPendingPayment=function(p){const o=orderById[String(p[1])]||[],wali=userMap[String(o[2]||'')],child=getOrderRecipientSnapshot_(ss,o);return {orderId:String(p[1]),number:String(o[1]||p[1]),waliName:wali?wali.name:'-',childName:child.name||'Santri',className:child.className||'-',total:Number(o[7])||0,createdAt:dateIso_(p[8]),orderCreatedAt:dateIso_(o[10]),status:String(o[8]||''),payment:{id:String(p[0]),method:String(p[2]||''),nominal:Number(p[3])||0,status:String(p[5]||''),buktiUrl:'',createdAt:dateIso_(p[8]),catatan:String(p[12]||'')}};};
   const pendingPayments=pendingRows.slice(0,queueLimit).map(mapPendingPayment);
   const countStatus=st=>orders.filter(r=>String(r[8]||'').toUpperCase()===st).length;
   if(session.role===FMART.ROLES.KASIR){
