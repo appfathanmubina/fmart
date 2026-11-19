@@ -312,7 +312,7 @@ function auditFMartDatabaseIntegrity_() {
   checkReference_('Keranjang', 3, 'Produk', 'ProdukId keranjang', false);
   checkReference_('Keranjang', 4, 'VariasiProduk', 'VariasiId keranjang', true);
   checkReference_('Pesanan', 2, 'Users', 'UserId pesanan', false);
-  checkReference_('Pesanan', 3, 'Santri', 'SantriId pesanan', false);
+  checkReference_('Pesanan', 3, 'Santri', 'SantriId pesanan', true);
   checkReference_('DetailPesanan', 1, 'Pesanan', 'PesananId detail', false);
   checkReference_('DetailPesanan', 2, 'Produk', 'ProdukId detail', false);
   checkReference_('DetailPesanan', 3, 'VariasiProduk', 'VariasiId detail', true);
