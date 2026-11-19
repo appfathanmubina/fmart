@@ -304,6 +304,19 @@ PR #55 telah di-merge ke `main`:
 
 **Batas validasi:** CI dan build tidak menggantikan pemeriksaan visual pada browser/perangkat fisik. Sidebar masih harus diperiksa pada desktop, tablet landscape, tablet portrait, dan tinggi layar pendek saat validasi perangkat Tahap 38.
 
+### Tahap 38.1 — Header dan navigasi (perbaikan awal)
+
+PR #57 telah di-merge ke `main`:
+- PR: https://github.com/appfathanmubina/fmart/pull/57
+- Merge commit: `471b8a6250117947fe78f3030a4ef993c3fb739b`
+- Memperbaiki aksi klik brand/logo FMart yang sebelumnya selalu menuju Beranda Wali.
+- Wali tetap menuju Beranda Wali; semua role staf kembali ke Dashboard Operasional sesuai role aktif.
+- Klik mouse serta keyboard Enter/Space memakai jalur navigasi yang sama.
+- Tidak mengubah backend, izin role, transaksi, maupun data.
+- Regression tests: 68 lulus, 0 gagal; pemeriksaan sintaks dan patch whitespace lulus.
+
+**Status Tahap 38.1:** perbaikan navigasi header ini sudah masuk `main`; audit login, dashboard, dan elemen header lainnya masih berlanjut.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
 1. Audit login, dashboard, header, dan navigasi untuk Wali serta Admin.
