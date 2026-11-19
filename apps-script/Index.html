@@ -4046,7 +4046,29 @@ function resetBuyerCatalogFilters(){$('searchInput').value='';$('productSort').v
   if(buyerHome)buyerHome.click();
 }
 const brandHome=$('brandHome');brandHome.addEventListener('click',navigateHomeFromBrand_);brandHome.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();navigateHomeFromBrand_()}});$('closeWaliLink').addEventListener('click',closeWaliLinkModal);$('waliLinkModal').addEventListener('click',e=>{if(e.target.id==='waliLinkModal')closeWaliLinkModal()});$('waliChildSearchBtn').addEventListener('click',()=>searchWaliChild(false));$('waliChildSearch').addEventListener('keydown',e=>{if(e.key==='Enter')searchWaliChild(false)});$('waliChildSearch').addEventListener('input',()=>{clearTimeout(window._waliChildSearchTimer);window._waliChildSearchTimer=setTimeout(()=>{if($('waliChildSearch').value.trim().length>=2||$('waliClassFilter').value)searchWaliChild(true)},220)});$('waliClassFilter').addEventListener('change',()=>searchWaliChild(true));$('closeChildPicker').addEventListener('click',closeChildPicker);$('childPickerModal').addEventListener('click',e=>{if(e.target.id==='childPickerModal')closeChildPicker()});$('closeProfile').addEventListener('click',closeProfile);$('profileModal').addEventListener('click',e=>{if(e.target.id==='profileModal')closeProfile()});$('closeCart').addEventListener('click',closeCart);$('cartModal').addEventListener('click',e=>{if(e.target.id==='cartModal')closeCart()});$('closeCheckout').addEventListener('click',closeCheckout);$('checkoutModal').addEventListener('click',e=>{if(e.target.id==='checkoutModal')closeCheckout()});$('closeSuccess').addEventListener('click',closeSuccess);$('successModal').addEventListener('click',e=>{if(e.target.id==='successModal')closeSuccess()});$('closeOrder').addEventListener('click',closeOrders);$('orderModal').addEventListener('click',e=>{if(e.target.id==='orderModal')closeOrders()});$('closeOrderDetail').addEventListener('click',closeOrderDetail);$('orderDetailModal').addEventListener('click',e=>{if(e.target.id==='orderDetailModal')closeOrderDetail()});$('closePayment').addEventListener('click',closePayment);$('paymentModal').addEventListener('click',e=>{if(e.target.id==='paymentModal')closePayment()});$('navHome').addEventListener('click',()=>{setCustomerNav('navHome');showBuyerHome();renderCategories(state.data.categories);renderBuyerProductFeed();window.scrollTo({top:0,behavior:'smooth'});});
-$('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');showBuyerHome();resetBuyerCatalogFilters();document.getElementById('buyerCatalog').scrollIntoView({behavior:'smooth',block:'start'});});$('navCart').addEventListener('click',openCart);$('navOrders').addEventListener('click',openOrders);$('navProfile').addEventListener('click',openWaliProfilePage);document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeRegister();closeProfile();closeWaliLinkModal();closeChildPicker();closeProduct();closeCart();closeCheckout();closeSuccess();closeOrders();closeOrderDetail();closePayment();closeOpsModal()}});window.addEventListener('load',boot);
+$('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');showBuyerHome();resetBuyerCatalogFilters();document.getElementById('buyerCatalog').scrollIntoView({behavior:'smooth',block:'start'});});$('navCart').addEventListener('click',openCart);$('navOrders').addEventListener('click',openOrders);$('navProfile').addEventListener('click',openWaliProfilePage);document.addEventListener('keydown',e=>{
+      if(e.key!=='Escape')return;
+      const visible=Array.from(document.querySelectorAll('.modal:not(.hidden)'));
+      const top=visible[visible.length-1];
+      if(!top)return;
+      const closeById={
+        registerModal:closeRegister,
+        profileModal:closeProfile,
+        waliLinkModal:closeWaliLinkModal,
+        childPickerModal:closeChildPicker,
+        productModal:closeProduct,
+        cartModal:closeCart,
+        checkoutModal:closeCheckout,
+        successModal:closeSuccess,
+        orderModal:closeOrders,
+        orderDetailModal:closeOrderDetail,
+        paymentModal:closePayment,
+        changePasswordModal:closeChangePassword,
+        opsModal:closeOpsModal
+      };
+      const close=closeById[top.id];
+      if(close){e.preventDefault();close()}
+    });window.addEventListener('load',boot);
 
     /* Fase 8 — non-invasive interaction enhancements */
     (function enhanceMobileExperience(){
