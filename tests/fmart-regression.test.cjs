@@ -825,3 +825,17 @@ test('Buyer product detail loading errors use the non-blocking app feedback patt
  assert.ok(!fn.includes('alert('),'Product detail failures must not interrupt the page with a blocking browser alert.');
  assert.ok(fn.includes('finally{loading(false)}'),'Loading state must always be dismissed.');
 });
+
+
+test('Wali cart quantity controls are accessible and respect the 10,000-unit limit',()=>{
+ const start=index.indexOf('function renderCart(cart){');
+ const end=index.indexOf('async function changeCartQty',start);
+ assert.ok(start>=0&&end>start,'Cart renderer must exist.');
+ const cart=index.slice(start,end);
+ assert.ok(cart.includes('aria-label="Kurangi jumlah '));
+ assert.ok(cart.includes('aria-label="Jumlah '));
+ assert.ok(cart.includes('max="10000"'));
+ assert.ok(cart.includes('aria-label="Tambah jumlah '));
+ assert.ok(cart.includes("Number(i.qty)>=10000?'disabled':''"),'The increase control must be disabled at the server-side maximum.');
+ assert.ok(cart.includes('aria-label="Hapus '));
+});
