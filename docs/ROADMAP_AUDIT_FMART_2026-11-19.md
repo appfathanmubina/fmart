@@ -721,3 +721,14 @@ Pada commit `5c4805c`, workflow **FMart Regression** pasca-merge berstatus sukse
 - Hak akses yang ada pada handler tidak diubah; pengujian statis membandingkan daftar menu dengan role backend dan jalur portal Admin.
 - Role Supervisor tetap tidak ditambahkan karena belum ada di definisi backend.
 - Pemeriksaan ini bersifat source/regression. Tampilan dan alur klik lintas role tetap menunggu runtime sesuai gerbang Tahap 34–40.
+
+
+## Tahap 39.1 — Audit statis keamanan endpoint bukti pengantaran
+
+**Status: perbaikan source dan regression test disiapkan; menunggu CI dan merge.**
+
+Audit statis endpoint yang dipanggil UI menemukan bahwa `getDeliveryProofImage()` sudah membatasi akses ke role Wali dan memverifikasi kepemilikan pesanan, tetapi belum memverifikasi bahwa file berada di folder khusus `FMART_DELIVERY_PROOF_FOLDER_ID`. Endpoint bukti pembayaran sudah memeriksa folder sumber; jalur bukti pengantaran belum setara.
+
+Perbaikan menambahkan validasi konfigurasi folder, menolak jika folder bukti pengantaran sama dengan folder bukti pembayaran, memeriksa parent folder file sebelum membaca blob, dan menerapkan batas 10 MB serta MIME gambar yang diizinkan. Pemeriksaan kepemilikan pesanan dilakukan sebelum akses file. Jalur upload, struktur sheet, ID file yang tersimpan, dan data transaksi tidak diubah. Jika folder belum dikonfigurasi atau file lama berada di luar folder yang ditetapkan, pratinjau ditolak secara fail-closed; data tidak dipindahkan atau dihapus otomatis.
+
+Regression test mengunci role Wali, ownership pesanan, folder khusus, pemisahan folder pembayaran/pengantaran, ukuran maksimum, dan MIME. Tidak ada runtime Apps Script, Drive, atau data produksi yang diakses/diubah.

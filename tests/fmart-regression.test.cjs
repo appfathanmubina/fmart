@@ -1355,6 +1355,18 @@ test('Custom interactive markup remains keyboard operable and native controls st
  assert.ok(!index.includes('role="combobox"'),'Do not replace native selects with inaccessible custom dropdowns.');
 });
 
+test('Wali delivery proof preview is restricted to owned orders and the private delivery proof folder',()=>{
+ const fn=extractFunction(code,'getDeliveryProofImage');
+ assert.ok(fn.includes('requireRole_(token,[FMART.ROLES.WALI_SANTRI])'),'Only Wali may retrieve delivery proof previews.');
+ assert.ok(fn.includes("String(order.values[2])!==String(session.userId)"),'A Wali may only retrieve proof for their own order.');
+ assert.ok(fn.includes("getProperty('FMART_DELIVERY_PROOF_FOLDER_ID')"),'Preview must use the dedicated delivery proof folder property.');
+ assert.ok(fn.includes("getProperty('FMART_PAYMENT_PROOF_FOLDER_ID')")&&fn.includes('folderId===paymentFolderId'),'Delivery and payment proof folders must remain distinct.');
+ assert.ok(fn.includes('file.getParents()')&&fn.includes('folder.getId()'),'The file must be a child of the configured delivery proof folder.');
+ assert.ok(fn.includes('file.getSize())>10*1024*1024')&&fn.includes('bytes.length>10*1024*1024'),'Preview must enforce the 10 MB upload limit.');
+ assert.ok(fn.includes("['image/jpeg','image/png','image/webp'].indexOf(mime)<0"),'Only supported image formats may be previewed.');
+ assert.ok(fn.indexOf("String(order.values[2])!==String(session.userId)")<fn.indexOf('DriveApp.getFileById'),'Order ownership must be checked before reading a Drive file.');
+});
+
 test('Staff navigation role matrix matches backend portal roles and active state is singular',()=>{
  const navStart=index.indexOf('<nav class="bottom-nav hidden" id="staffNav"');
  const navEnd=index.indexOf('</nav>',navStart);

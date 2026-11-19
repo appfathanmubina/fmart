@@ -1473,10 +1473,20 @@ function getDeliveryProofImage(token,orderId) {
   if(!order||String(order.values[2])!==String(session.userId)) throw new Error('Pesanan tidak ditemukan.');
   const proof=readRows_(ss.getSheetByName('BuktiPengantaran')).filter(x=>String(x[1]||'')===orderId).sort((a,b)=>new Date(b[10]||0)-new Date(a[10]||0))[0];
   if(!proof||!String(proof[3]||'')) throw new Error('Bukti foto pengantaran belum tersedia.');
+  const props=PropertiesService.getScriptProperties();
+  const folderId=String(props.getProperty('FMART_DELIVERY_PROOF_FOLDER_ID')||'').trim();
+  const paymentFolderId=String(props.getProperty('FMART_PAYMENT_PROOF_FOLDER_ID')||'').trim();
+  if(!folderId||folderId===paymentFolderId) throw new Error('Folder bukti pengantaran belum dikonfigurasi dengan benar.');
+  let folder;
+  try{folder=DriveApp.getFolderById(folderId);}catch(e){throw new Error('Folder bukti pengantaran tidak dapat diakses.');}
   const file=DriveApp.getFileById(String(proof[3]));
-  const blob=file.getBlob(),mime=String(blob.getContentType()||proof[6]||'image/jpeg');
-  if(['image/jpeg','image/png','image/webp'].indexOf(mime)<0) throw new Error('Jenis file bukti tidak didukung untuk pratinjau.');
-  return {ok:true,mimeType:mime,data:'data:'+mime+';base64,'+Utilities.base64Encode(blob.getBytes()),fileName:String(proof[5]||'Bukti pengantaran')};
+  if(Number(file.getSize())>10*1024*1024) throw new Error('Ukuran file bukti pengantaran melebihi batas 10 MB.');
+  const parents=file.getParents();let trusted=false;
+  while(parents.hasNext()){if(parents.next().getId()===folder.getId()){trusted=true;break;}}
+  if(!trusted) throw new Error('File bukti pengantaran tidak berada pada folder FMart yang ditetapkan.');
+  const blob=file.getBlob(),mime=String(blob.getContentType()||'').toLowerCase(),bytes=blob.getBytes();
+  if(['image/jpeg','image/png','image/webp'].indexOf(mime)<0||bytes.length>10*1024*1024) throw new Error('File bukti pengantaran tidak memenuhi ketentuan pratinjau.');
+  return {ok:true,mimeType:mime,data:'data:'+mime+';base64,'+Utilities.base64Encode(bytes),fileName:String(proof[5]||'Bukti pengantaran')};
 }
 
 
