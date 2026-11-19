@@ -1638,3 +1638,15 @@ test('Weighted-average HPP and gross profit remain explicit for legacy transacti
  assert.ok(order.includes("captureSaleDetailHpp_(ss,'DetailPesanan'")&&pos.includes("captureSaleDetailHpp_(ss,'DetailPenjualanToko'"));
  assert.ok(report.includes('hppMissingLines')&&report.includes('grossProfit:grossProfit'));
 });
+
+
+test('HPP entry is available on product, variation, receipt and stock-in forms',()=>{
+ const product=extractFunction(index,'openProductForm');
+ const variation=index.slice(index.indexOf('function openVariationForm(item)'),index.indexOf('async function openStockTransferForm'));
+ const receipt=extractFunction(index,'openStockReceiptForm');
+ const adjustment=extractFunction(index,'openStockForm');
+ assert.ok(product.includes('prdHpp')&&product.includes('hpp:$('));
+ assert.ok(variation.includes('varHpp')&&variation.includes('hpp:$('));
+ assert.ok(receipt.includes('receipt-cost')&&receipt.includes('unitCost'));
+ assert.ok(adjustment.includes('stockUnitCost')&&adjustment.includes('unitCost'));
+});
