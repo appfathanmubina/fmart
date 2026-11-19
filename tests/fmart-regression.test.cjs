@@ -374,6 +374,20 @@ test('Wali-Santri relationship limits count distinct active and pending Wali acc
  assert.ok(approve.includes('countDistinctActiveWaliForSantri_'));
 });
 
+test('Self-link and Admin approval enforce the same two active-or-pending Wali limit',()=>{
+ const helper=extractFunction(code,'countDistinctActiveOrPendingWaliForSantri_');
+ assert.ok(helper.includes("['AKTIF','MENUNGGU_VERIFIKASI']"));
+ assert.ok(helper.includes('waliIds[waliId]=true'));
+ assert.ok(helper.includes('Object.keys(waliIds).length'));
+ const self=extractFunction(code,'requestWaliSantriLink');
+ assert.ok(self.includes('countDistinctActiveOrPendingWaliForSantri_(relRows,santriId)'));
+ assert.ok(self.includes('linkedCount-((activePair||pendingPair)?1:0)'));
+ const approve=extractFunction(code,'approveWaliSantriRequest');
+ assert.ok(approve.includes('countDistinctActiveOrPendingWaliForSantri_'));
+ assert.ok(approve.includes('activeOrPendingCount>2'));
+ assert.ok(!approve.includes('activeCount>=2'),'Admin approval must not count active rows while ignoring other pending requests.');
+});
+
 test('Wali self-link auto-activates only on exact phone match and otherwise waits for Admin',()=>{
  const link=extractFunction(code,'requestWaliSantriLink');
  const classes=extractFunction(code,'getSantriClassesForWaliSelf');

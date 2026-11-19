@@ -2317,6 +2317,17 @@ function countDistinctActiveWaliForSantri_(relationRows,santriId){
   return Object.keys(activeWaliIds).length;
 }
 
+function countDistinctActiveOrPendingWaliForSantri_(relationRows,santriId){
+  const waliIds={};
+  (relationRows||[]).forEach(function(row){
+    if(String(row[2]||'')===String(santriId||'')&&['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(row[3]||'').toUpperCase())>=0){
+      const waliId=String(row[1]||'');
+      if(waliId)waliIds[waliId]=true;
+    }
+  });
+  return Object.keys(waliIds).length;
+}
+
 function requestWaliSantriLink(token,santriId,hubungan){
   const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
   santriId=String(santriId||'').trim(); hubungan=String(hubungan||'').trim().toUpperCase();
@@ -2339,11 +2350,8 @@ function requestWaliSantriLink(token,santriId,hubungan){
     const existing=pairRows.length?pairRows[pairRows.length-1].row:null;
     const pendingPair=pairRows.some(function(item){return String(item.row[3]||'').toUpperCase()==='MENUNGGU_VERIFIKASI';});
     if(pendingPair&&!phoneMatched)return {ok:true,status:'MENUNGGU_VERIFIKASI',message:'Pengajuan hubungan Santri Anda sudah menunggu verifikasi Admin.'};
-    const linkedWaliIds={};
-    relRows.forEach(function(row){
-      if(String(row[2]||'')===santriId&&['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(row[3]||'').toUpperCase())>=0&&String(row[1]||''))linkedWaliIds[String(row[1])]=true;
-    });
-    const otherWaliCount=Object.keys(linkedWaliIds).filter(function(id){return id!==String(wali.waliId);}).length;
+    const linkedCount=countDistinctActiveOrPendingWaliForSantri_(relRows,santriId);
+    const otherWaliCount=linkedCount-((activePair||pendingPair)?1:0);
     if(otherWaliCount>=2)throw new Error('Santri ini sudah memiliki maksimal 2 Wali Santri aktif/pengajuan.');
     const now=new Date();
     if(existing){const rowNum=relRows.indexOf(existing)+2;rs.getRange(rowNum,4,1,3).setValues([[nextStatus,now,hubungan]]);}
@@ -2392,8 +2400,8 @@ function approveWaliSantriRequest(token,relasiId){
     const santriSheet=ss.getSheetByName('Santri'),santri=findSantriRowById_(santriSheet,String(row.values[2])),santriMap=getSantriColumnMap_(santriSheet);
     const wali=findRowById_(ss.getSheetByName('WaliSantri'),String(row.values[1]),1);if(!wali||String(wali.values[6]||'').toUpperCase()!=='AKTIF')throw new Error('Akun Wali Santri tidak aktif.');if(!santri||santriRecord_(santri.values,santriMap).status.toUpperCase()!=='AKTIF')throw new Error('Santri tidak aktif.');
     const relationRows=readRows_(rs);
-    const activeCount=countDistinctActiveWaliForSantri_(relationRows,String(row.values[2]||''));
-    if(activeCount>=2) throw new Error('Santri ini sudah memiliki 2 Wali Santri aktif.');
+    const activeOrPendingCount=countDistinctActiveOrPendingWaliForSantri_(relationRows,String(row.values[2]||''));
+    if(activeOrPendingCount>2) throw new Error('Santri ini sudah memiliki lebih dari 2 Wali Santri aktif/pengajuan. Periksa relasi lain sebelum menyetujui.');
     rs.getRange(row.rowNumber,4).setValue('AKTIF');writeAudit_(session.userId,session.role,'APPROVE_WALI_SANTRI_REQUEST','WALI_SANTRI_SANTRI',relasiId,'',JSON.stringify({status:'AKTIF'}),'Menyetujui pengajuan hubungan Wali Santri');SpreadsheetApp.flush();return {ok:true,message:'Pengajuan disetujui.'};
   }finally{lock.releaseLock();}
 }

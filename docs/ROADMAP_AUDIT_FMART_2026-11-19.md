@@ -758,10 +758,21 @@ Perubahan hanya pada regression test dan roadmap. Tidak mengubah endpoint, data,
 
 ## Tahap 39.4 — Pengamanan self-link Wali–Santri berdasarkan nomor wali
 
-**Status: perbaikan source dan regression test disiapkan; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #123 telah di-merge ke `main` melalui commit `81550dd66afe58b698633b31fb73bef8de19ecb8`. Regression CI pada PR lulus; pemeriksaan post-merge sedang berjalan.**
 
 Audit menemukan `requestWaliSantriLink()` sebelumnya mengaktifkan hubungan hanya berdasarkan ID Santri dan status aktif, tanpa membandingkan nomor HP akun Wali dengan kolom master Santri `no_wa_wali`. Pencarian UI juga menyatakan seluruh hubungan langsung aktif tanpa verifikasi. Kondisi ini memungkinkan self-link ke Santri yang nomor walinya tidak cocok.
 
 Perbaikan menerapkan pencocokan nomor yang dinormalisasi dengan `normalizePhone_()`. Nomor cocok mengaktifkan hubungan; nomor tidak cocok/kosong membuat status `MENUNGGU_VERIFIKASI` untuk Admin. Batas maksimum dua relasi mencakup relasi aktif dan pengajuan pending. Daftar pencarian menyembunyikan hubungan aktif maupun pending untuk mencegah pengajuan berulang. UI menjelaskan kedua hasil tersebut. Admin/Superadmin tetap memiliki jalur verifikasi manual.
 
 Regression test mengunci perbandingan nomor, status aktif/pending, audit event, batas relasi, dan copy UI. Tidak ada data relasi lama yang dimigrasi otomatis. Hubungan aktif yang sudah ada tidak dicabut oleh perubahan ini; pengujian runtime dan rekonsiliasi data relasi lama tetap diperlukan pada gerbang runtime.
+
+
+## Tahap 39.5 — Konsistensi batas maksimum dua relasi aktif/pending
+
+**Status: perbaikan source dan regression test disiapkan; menunggu CI dan merge.**
+
+Review lanjutan menemukan jalur persetujuan Admin `approveWaliSantriRequest()` hanya menghitung relasi `AKTIF`, sementara jalur self-link dan penambahan manual memperhitungkan relasi `AKTIF` serta `MENUNGGU_VERIFIKASI`. Pada data lama dengan beberapa pengajuan pending, persetujuan dapat menghasilkan lebih dari dua relasi aktif/pending.
+
+Ditambahkan helper hitung distinct Wali aktif/pending dan digunakan konsisten oleh self-link serta persetujuan Admin. Persetujuan masih diizinkan bila jumlah total relasi aktif/pending tidak melebihi dua; jika data lama sudah melebihi batas, persetujuan ditolak sampai Admin memeriksa relasi lain. Tidak ada relasi yang otomatis dihapus atau diubah.
+
+Regression test mengunci helper dan kedua jalur keputusan. Tidak mengubah struktur sheet atau data produksi; rekonsiliasi data lama tetap menjadi pekerjaan runtime.
