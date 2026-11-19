@@ -844,7 +844,7 @@ Perubahan dibatasi pada markup/handler login, regression test, dan roadmap. Tida
 
 ## Tahap 40.6 — Harga Pokok Rata-rata, biaya perolehan, dan laba kotor
 
-**Status: implementasi source selesai pada PR #135; regression CI lulus pada commit `e6b076e1706c402665dd89d4623cb64ea92499df`. Perubahan lanjutan untuk menjaga HPP stok tetap tercatat sedang diperiksa. Runtime Spreadsheet/Apps Script/PWA belum diuji.**
+**Status: selesai di source `main` melalui PR #135, merge commit `3601c97169249ca779ddc5c97bedfe269b599cc8`. Regression CI pasca-merge dan build/deployment GitHub Pages lulus. Deployment versi Apps Script dan runtime UAT Spreadsheet/PWA belum dilakukan.**
 
 - Menambahkan kolom `HargaPokokRataRata` pada master Produk dan VariasiProduk. Migrasi bersifat append-only; kolom lama dan data transaksi yang sudah ada tidak ditulis ulang.
 - Penerimaan barang dan mutasi stok MASUK meminta biaya perolehan aktual per unit, menyimpan nilai penerimaan, dan memperbarui HPP dengan metode rata-rata tertimbang atas saldo Gudang + Kasir.

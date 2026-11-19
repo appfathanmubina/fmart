@@ -93,4 +93,4 @@ PR #135 menambahkan metode HPP rata-rata tertimbang dan snapshot biaya saat bara
 - Laba kotor belum mengurangi biaya operasional, sehingga bukan laba bersih.
 - Fungsi migrasi eksplisit: `migrateFMartCostingSchema()`. Pemanggilan katalog Gudang/Admin dan laporan juga menjalankan pemeriksaan skema append-only.
 
-Regression CI pada PR #135: lulus. Runtime UAT, uji migrasi pada salinan Spreadsheet, bukti rekonsiliasi pembelian, serta verifikasi Apps Script deployment tetap belum dilakukan. Status produksi tetap **NOT APPROVED** sampai gerbang UAT selesai.
+PR #135 merged ke `main` pada commit `3601c97169249ca779ddc5c97bedfe269b599cc8`. Regression CI pasca-merge, build, dan deployment GitHub Pages lulus. Runtime UAT, uji migrasi pada salinan Spreadsheet, bukti rekonsiliasi pembelian, serta deployment versi Apps Script tetap belum dilakukan. Status produksi tetap **NOT APPROVED** sampai gerbang UAT selesai.
