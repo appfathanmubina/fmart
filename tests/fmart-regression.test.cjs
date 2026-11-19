@@ -1143,3 +1143,31 @@ test('Modal keyboard navigation traps Tab and Shift+Tab inside the topmost visib
  assert.ok(handler.includes("document.activeElement===last"));
  assert.ok(handler.includes("const close=closeById[top.id]"),'Existing Escape close behavior must remain intact.');
 });
+
+
+test('Wali product card, detail, and cart images fall back cleanly when an image URL fails',()=>{
+ const cardStart=index.indexOf('function productCardMarkup(p){');
+ const cardEnd=index.indexOf('function bindBuyerProductFeedObserver',cardStart);
+ assert.ok(cardStart>=0&&cardEnd>cardStart);
+ const card=index.slice(cardStart,cardEnd);
+ assert.ok(card.includes('const photo=safeUrl(p.photoUrl)'));
+ assert.ok(card.includes('data-image-fallback'));
+ assert.ok(card.includes('product-photo-fallback hidden'));
+ const detailStart=index.indexOf('async function openProduct(productId){');
+ const detailEnd=index.indexOf('function getCurrentDetailVariation',detailStart);
+ assert.ok(detailStart>=0&&detailEnd>detailStart);
+ const detail=index.slice(detailStart,detailEnd);
+ assert.ok(detail.includes('data-image-fallback'));
+ assert.ok(detail.includes('detail-photo-placeholder hidden'));
+ const cartStart=index.indexOf('function renderCart(cart){');
+ const cartEnd=index.indexOf('async function changeCartQty',cartStart);
+ assert.ok(cartStart>=0&&cartEnd>cartStart);
+ const cart=index.slice(cartStart,cartEnd);
+ assert.ok(cart.includes('data-image-fallback'));
+ assert.ok(cart.includes('cart-photo-fallback hidden'));
+ assert.ok(index.includes('.cart-photo img{width:100%;height:100%;object-fit:cover;display:block}'));
+ const handler=index.indexOf("document.addEventListener('error',e=>{");
+ assert.ok(handler>=0);
+ assert.ok(index.slice(handler,handler+500).includes("img.hasAttribute('data-image-fallback')"));
+ assert.ok(index.slice(handler,handler+500).includes('img.nextElementSibling'));
+});
