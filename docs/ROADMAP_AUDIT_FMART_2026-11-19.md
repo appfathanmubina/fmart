@@ -501,6 +501,17 @@ PR #84 telah di-merge:
 - Tidak mengubah endpoint, alur penyelesaian komplain, tenggat konfirmasi, atau hak akses.
 - Regression tests: 89 lulus, 0 gagal.
 
+### Tahap 38.18 — Penutupan modal bertumpuk dengan Escape
+
+PR #88 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/88
+- Merge commit: `71bda89d9c3edc0e4215a171e16f883995e2818d`
+- Handler Escape kini menutup hanya modal teratas yang sedang terlihat, bukan semua modal sekaligus.
+- Alur Pembayaran di atas Detail Pesanan dapat kembali ke Detail Pesanan setelah modal pembayaran ditutup.
+- Dukungan Escape tetap berlaku untuk modal Wali dan portal Operasional.
+- Tidak mengubah tombol close, backdrop, isi form, atau alur transaksi.
+- Regression tests: 90 lulus, 0 gagal.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
 1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal header, sidebar, login Admin dua kolom, dan retry Dashboard Operasional sudah masuk `main`.
@@ -510,4 +521,4 @@ PR #84 telah di-merge:
 5. Audit responsivitas HP, tablet portrait/landscape, dan desktop serta regresi lintas role.
 6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
 
-**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.15 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog, pemilih Santri, serta aksesibilitas dan ketahanan refresh POS Kasir. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
+**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.18 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog, pemilih Santri, serta aksesibilitas dan ketahanan refresh POS Kasir. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
