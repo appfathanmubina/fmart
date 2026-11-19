@@ -233,6 +233,21 @@ test('Apps Script editor exposes safe setup and read-only readiness entry points
 });
 
 
+test('Warehouse receiving audit matches manual inbound audit by request key and full mutation payload',()=>{
+ const audit=extractFunction(code,'auditWarehouseReceivingIntegrity_');
+ assert.ok(audit.includes("entityId===requestKey||entityId===pid"));
+ assert.ok(audit.includes("after.productId||'')===pid"));
+ assert.ok(audit.includes('Number(after.stockBefore)===Number(m[5])'));
+ assert.ok(audit.includes('Number(after.stockAfter)===Number(m[6])'));
+ assert.ok(!audit.includes("String(a[5]||'')!==pid"));
+});
+
+test('Operational sync audit flags active non-variant products without canonical warehouse stock rows',()=>{
+ const audit=extractFunction(code,'auditFMartOperationalSync_');
+ assert.ok(audit.includes("status==='AKTIF'&&!productsWithVariations[id]&&!stockByKey[id+'|']"));
+ assert.ok(audit.includes("'PRODUCT_STOCK_ROW_MISSING'"));
+});
+
 test('Cashier POS integrity audit reads the cashier stock ledger, not warehouse mutations',()=>{
  const audit=extractFunction(code,'auditCashierPOSIntegrity_');
  assert.ok(audit.includes("getSheetByName('MutasiStokKasir')"));
