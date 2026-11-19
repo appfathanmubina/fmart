@@ -283,18 +283,34 @@ test('Wali catalog uses authenticated server-side pagination and never sends sto
  assert.ok(index.includes('productLoadSentinel'));
 });
 
-test('Wali Santri relationships are presented and used as saved delivery addresses',()=>{
- const record=extractFunction(code,'santriRecord_');
- const profile=extractFunction(code,'getWaliProfileManagement');
+test('Wali checkout uses manual recipient snapshots and does not create or require a Wali-Santri relation',()=>{
  const checkout=extractFunction(code,'checkoutCart');
- assert.ok(record.includes("asrama: String(santriField_(row, map, 'asrama') || '')"));
- assert.ok(profile.includes('asrama:String(child.asrama || \'\')'));
- assert.ok(checkout.includes('const santriAddress='));
- assert.ok(checkout.includes('child.asrama'));
- assert.ok(index.includes('Alamat Pengiriman Santri'));
- assert.ok(index.includes('checkout-address-card'));
- assert.ok(index.includes('name="checkoutSantriId"'));
- assert.ok(index.includes('Catatan titik penerimaan (opsional)'));
+ const normalize=extractFunction(code,'normalizeOrderRecipient_');
+ const snapshot=extractFunction(code,'getOrderRecipientSnapshot_');
+ const detail=extractFunction(code,'getOrderDetail');
+ assert.ok(checkout.includes('normalizeOrderRecipient_(recipientData,metodePengiriman,tujuan)'));
+ assert.ok(checkout.includes('recipientSnapshot:recipient'));
+ assert.ok(checkout.includes("session.userId,'',subtotal"));
+ assert.ok(!checkout.includes('assertWaliChild_'));
+ assert.ok(normalize.includes('recipient.address'));
+ assert.ok(normalize.includes('Nama Santri/penerima wajib diisi'));
+ assert.ok(snapshot.includes('payload.recipientSnapshot'));
+ assert.ok(snapshot.includes('findSantriRowById_'),'Legacy orders must still resolve from the Santri master.');
+ assert.ok(detail.includes('getOrderRecipientSnapshot_(ss,r)'));
+ assert.ok(!detail.includes('assertWaliChild_'),'Order detail must not depend on an active relation after checkout.');
+ assert.ok(index.includes('checkoutRecipientName'));
+ assert.ok(index.includes('checkoutRecipientAddress'));
+ assert.ok(index.includes('Data ini hanya digunakan sebagai alamat pesanan'));
+ assert.ok(index.includes('runServer(\'checkoutCart\',state.token,recipient,selectedIds'));
+ assert.ok(!index.includes('name="checkoutSantriId"'));
+});
+test('Order recipient snapshots are reused by internal order and delivery workspaces',()=>{
+ assert.ok(extractFunction(code,'getMyOrders').includes('getOrderRecipientSnapshot_(ss,r)'));
+ assert.ok(extractFunction(code,'getOperationsOrderDetail').includes('getOrderRecipientSnapshot_(ss,r)'));
+ assert.ok(extractFunction(code,'getDeliveryAssignmentWorkspace').includes('getOrderRecipientSnapshot_(ss,r)'));
+ assert.ok(extractFunction(code,'getDeliveryDashboard').includes('getOrderRecipientSnapshot_(ss,order)'));
+ assert.ok(extractFunction(code,'getOperationsDashboard').includes('getOrderRecipientSnapshot_(ss,r)'));
+ assert.ok(extractFunction(code,'auditFMartDatabaseIntegrity_').includes('ORDER_RECIPIENT_MISSING'));
 });
 
 
