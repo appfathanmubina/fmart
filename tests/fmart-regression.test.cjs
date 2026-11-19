@@ -1659,6 +1659,6 @@ test('Legacy pending stock receipts can recover without inventing historical acq
  const recovery=extractFunction(code,'recoverLegacyStockReceiptIfPending_');
  const receipt=extractFunction(code,'createStockReceipt');
  assert.ok(receipt.includes('recoverLegacyStockReceiptIfPending_'));
- assert.ok(recovery.includes('legacyFingerprint')&&recovery.includes('legacyCostNotRecorded:true'));
+ assert.ok(recovery.includes('legacyFingerprint')&&recovery.includes('done.legacyCostNotRecorded=true'));
  assert.ok(index.includes('legacyReceiptSignature'));
 });
