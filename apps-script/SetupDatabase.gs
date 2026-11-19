@@ -22,16 +22,16 @@ const FMART_DB = Object.freeze({
     WALI_SANTRI_SANTRI: ['RelasiId','WaliId','SantriId','Status','CreatedAt','Hubungan'],
     KATEGORI: ['KategoriId','NamaKategori','Deskripsi','Urutan','Status','CreatedAt','UpdatedAt'],
     PRODUK: ['ProdukId','KategoriId','SKU','NamaProduk','Deskripsi','Harga','StokMinimum','FotoUrl','Status','CreatedAt','UpdatedAt','HargaPokokRataRata'],
-    VARIASI_PRODUK: ['VariasiId','ProdukId','NamaVariasi','NilaiVariasi','HargaTambahan','Stok','Status','CreatedAt','UpdatedAt','HargaPokokRataRata']
+    VARIASI_PRODUK: ['VariasiId','ProdukId','NamaVariasi','NilaiVariasi','HargaTambahan','Stok','Status','CreatedAt','UpdatedAt','HargaPokokRataRata'],
     STOK: ['StokId','ProdukId','VariasiId','StokSaatIni','StokMinimum','UpdatedAt'],
-    MUTASI_STOK: ['MutasiId','ProdukId','VariasiId','Jenis','Qty','StokSebelum','StokSesudah','ReferensiId','Keterangan','CreatedBy','CreatedAt','BiayaPerUnit','HPPSebelum','HPPSesudah']
+    MUTASI_STOK: ['MutasiId','ProdukId','VariasiId','Jenis','Qty','StokSebelum','StokSesudah','ReferensiId','Keterangan','CreatedBy','CreatedAt','BiayaPerUnit','HPPSebelum','HPPSesudah'],
     STOK_KASIR: ['StokKasirId','ProdukId','VariasiId','StokSaatIni','StokMinimum','UpdatedAt'],
     MUTASI_STOK_KASIR: ['MutasiKasirId','ProdukId','VariasiId','Jenis','Qty','StokSebelum','StokSesudah','ReferensiId','Keterangan','CreatedBy','CreatedAt'],
     PENERIMAAN_BARANG: ['PenerimaanId','NomorPenerimaan','Pemasok','ReferensiDokumen','TanggalTerima','Catatan','JumlahBaris','TotalQty','CreatedBy','CreatedAt','RequestKey','PayloadHash','PayloadJson'],
-    DETAIL_PENERIMAAN_BARANG: ['DetailPenerimaanId','PenerimaanId','ProdukId','VariasiId','Qty','StokSebelum','StokSesudah','Catatan','BiayaPerUnit','TotalBiaya']
+    DETAIL_PENERIMAAN_BARANG: ['DetailPenerimaanId','PenerimaanId','ProdukId','VariasiId','Qty','StokSebelum','StokSesudah','Catatan','BiayaPerUnit','TotalBiaya'],
     KERANJANG: ['KeranjangId','UserId','SantriId','ProdukId','VariasiId','Qty','CreatedAt','UpdatedAt'],
     PESANAN: ['PesananId','NomorPesanan','UserId','SantriId','Subtotal','Ongkir','Diskon','Total','Status','Catatan','CreatedAt','UpdatedAt','CheckoutRequestKey','CheckoutPayloadHash','CheckoutPayloadJson'],
-    DETAIL_PESANAN: ['DetailId','PesananId','ProdukId','VariasiId','SKU','NamaProduk','NamaVariasi','Harga','Qty','Subtotal','HPPUnit','HPPSubtotal','HPPStatus']
+    DETAIL_PESANAN: ['DetailId','PesananId','ProdukId','VariasiId','SKU','NamaProduk','NamaVariasi','Harga','Qty','Subtotal','HPPUnit','HPPSubtotal','HPPStatus'],
     PEMBAYARAN: ['PembayaranId','PesananId','Metode','Nominal','BuktiUrl','Status','VerifiedBy','VerifiedAt','CreatedAt','UpdatedAt','BuktiSumber','SubmittedBy','Catatan','RequestKey','ProofSha256'],
     PENGIRIMAN: ['PengirimanId','PesananId','Metode','Tujuan','Status','DikirimAt','DiterimaAt','UpdatedBy','UpdatedAt'],
     PENGANTARAN: ['PengantaranId','PesananId','PetugasUserId','Status','DitugaskanOleh','DitugaskanAt','DiambilAt','MulaiAt','SelesaiAt','GagalAt','KodeGagal','Catatan','UpdatedAt'],
