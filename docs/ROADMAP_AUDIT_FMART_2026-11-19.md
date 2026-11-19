@@ -833,7 +833,7 @@ Perubahan dibatasi pada markup/handler login, regression test, dan roadmap. Tida
 
 ## Tahap 40.5 — Role Supervisor read-only dan pratinjau QRIS Drive pada PWA
 
-**Status: dikerjakan pada branch `feature/supervisor-readonly-qris-pwa`; menunggu regression CI dan review sebelum merge.**
+**Status: selesai pada repository. PR #133 telah di-merge ke `main` melalui commit `5d939303d29cdbf537db46255274464346ab7c7f`. Regression CI pada PR dan pasca-merge lulus. Uji runtime PWA/Apps Script dan verifikasi izin berbagi QRIS Drive tetap menunggu UAT.**
 
 - Menambahkan role `SUPERVISOR` pada autentikasi portal Admin, pembuatan/pengubahan akun, bootstrap dashboard, katalog, transaksi, dan laporan.
 - Hak akses Supervisor dibatasi untuk pengawasan: dashboard, daftar/rincian pesanan, katalog seluruh produk termasuk stok, dan laporan penjualan. Tidak diberikan endpoint mutasi, POS, verifikasi pembayaran, pengelolaan akun, pengaturan pembayaran, stok, atau pengantaran.
