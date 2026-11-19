@@ -4090,6 +4090,75 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
       const fallback=img.nextElementSibling;
       if(fallback)fallback.classList.remove('hidden');
     },true);
+
+    // Kelola fokus dialog secara terpusat tanpa mengubah alur buka/tutup modal yang ada.
+    (function setupModalFocusLifecycle_(){
+      if(typeof MutationObserver==='undefined'||!document.body)return;
+      const openers=new Map();
+      let lastTopModal=null,restoreTarget=null,scheduled=false;
+      const visibleModals=()=>Array.from(document.querySelectorAll('.modal:not(.hidden)'));
+      const isUsable=el=>!!(el&&el.isConnected&&el.getClientRects().length&&!el.disabled);
+      const focusElement=el=>{
+        if(!el||typeof el.focus!=='function')return false;
+        try{el.focus({preventScroll:true});}catch(_){el.focus();}
+        return document.activeElement===el;
+      };
+      const focusModal=modal=>{
+        if(!modal)return;
+        const preferred=modal.querySelector('[autofocus]:not([disabled]),input:not([type="hidden"]):not([disabled]),select:not([disabled]),textarea:not([disabled]),button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])');
+        if(preferred&&preferred.getClientRects().length){focusElement(preferred);return;}
+        if(!modal.hasAttribute('tabindex'))modal.setAttribute('tabindex','-1');
+        focusElement(modal);
+      };
+      const focusFallback=()=>{
+        const login=document.querySelector('#loginView:not(.hidden) input:not([disabled])');
+        const app=document.querySelector('#appView:not(.hidden) .main');
+        if(isUsable(login)){focusElement(login);return;}
+        if(isUsable(app)){if(!app.hasAttribute('tabindex'))app.setAttribute('tabindex','-1');focusElement(app);}
+      };
+      const schedule=()=>{
+        if(scheduled)return;
+        scheduled=true;
+        const run=()=>{
+          scheduled=false;
+          const visible=visibleModals(),top=visible[visible.length-1]||null;
+          if(top&&top.id!==lastTopModal){
+            focusModal(top);
+            lastTopModal=top.id;
+            restoreTarget=null;
+            return;
+          }
+          if(top&&restoreTarget){
+            const target=restoreTarget;restoreTarget=null;
+            if(top.contains(target)&&isUsable(target))focusElement(target);
+            else focusModal(top);
+            lastTopModal=top.id;
+            return;
+          }
+          if(!top&&lastTopModal){
+            const target=restoreTarget;restoreTarget=null;lastTopModal=null;
+            if(isUsable(target))focusElement(target);else focusFallback();
+          }
+        };
+        if(typeof requestAnimationFrame==='function')requestAnimationFrame(run);else setTimeout(run,0);
+      };
+      const observer=new MutationObserver(records=>{
+        records.forEach(record=>{
+          const modal=record.target;
+          if(!modal||!modal.matches||!modal.matches('.modal'))return;
+          const visibleNow=!modal.classList.contains('hidden');
+          if(visibleNow&&!openers.has(modal.id)){
+            const active=document.activeElement;
+            openers.set(modal.id,active&&active!==modal&&!modal.contains(active)?active:null);
+          }else if(!visibleNow&&openers.has(modal.id)){
+            restoreTarget=openers.get(modal.id);
+            openers.delete(modal.id);
+          }
+        });
+        schedule();
+      });
+      observer.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});
+    })();
     document.addEventListener('keydown',e=>{
       const visible=Array.from(document.querySelectorAll('.modal:not(.hidden)'));
       const top=visible[visible.length-1];
