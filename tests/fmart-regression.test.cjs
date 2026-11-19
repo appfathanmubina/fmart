@@ -1079,3 +1079,29 @@ test('Delivery dashboard search and status filters collapse to one column on nar
  assert.ok(index.includes('@media(max-width:620px){body.admin-portal .delivery-filters{grid-template-columns:minmax(0,1fr);gap:8px}}'));
  assert.ok(renderer.includes('aria-label="Cari tugas pengantaran"')&&renderer.includes('aria-label="Filter status tugas"'));
 });
+
+
+test('Admin, Gudang, and Wali management search/filter controls expose accessible names',()=>{
+ const names={
+  staffSearch:'Cari akun petugas',
+  waliSearch:'Cari akun Wali Santri',
+  catalogSearch:'Cari produk katalog Admin',
+  catalogCategory:'Filter kategori produk',
+  catalogStatus:'Filter status produk',
+  warehouseSearch:'Cari antrean pesanan Gudang',
+  warehouseStatus:'Filter tahapan pesanan Gudang',
+  warehouseReportSearch:'Cari riwayat laporan Gudang',
+  receiptSearch:'Cari riwayat penerimaan barang',
+  stockSearch:'Cari data stok Gudang',
+  stockStatusFilter:'Filter kondisi stok',
+  stockActiveFilter:'Filter status produk'
+ };
+ for(const [id,label] of Object.entries(names)){
+  const start=index.indexOf('id="'+id+'"');
+  assert.ok(start>=0,'Missing filter '+id);
+  const tagStart=index.lastIndexOf('<input',start)>=index.lastIndexOf('<select',start)?index.lastIndexOf('<input',start):index.lastIndexOf('<select',start);
+  const tagEnd=index.indexOf('>',start);
+  const tag=index.slice(tagStart,tagEnd+1);
+  assert.ok(tag.includes('aria-label="'+label+'"'),id+' must have a meaningful accessible name.');
+ }
+});
