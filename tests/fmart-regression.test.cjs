@@ -365,8 +365,8 @@ test('Wali-Santri relationship limits count distinct active and pending Wali acc
  assert.ok(helper.includes('Object.keys(activeWaliIds).length'));
  const self=extractFunction(code,'requestWaliSantriLink');
  assert.ok(self.includes('pairRows.some(function(item){return String(item.row[3]||\'\').toUpperCase()===\'AKTIF\';})'));
- assert.ok(self.includes("['AKTIF','MENUNGGU_VERIFIKASI']"));
- assert.ok(self.includes('linkedWaliIds')&&self.includes('otherWaliCount>=2'));
+ assert.ok(self.includes('countDistinctActiveOrPendingWaliForSantri_(relRows,santriId)'));
+ assert.ok(self.includes('otherWaliCount>=2'));
  const admin=extractFunction(code,'linkWaliSantri');
  assert.ok(admin.includes("String(wali.values[6]||'').toUpperCase()!=='AKTIF'"),'Admin cannot attach relationships to inactive Wali accounts.');
  assert.ok(admin.includes('activeOrPendingWaliIds'));
