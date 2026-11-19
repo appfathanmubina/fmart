@@ -513,11 +513,22 @@ PR #87 telah di-merge:
 - Tidak mengubah pencarian, filter status, alias status, data tugas, atau hak akses.
 - Regression tests: 91 lulus, 0 gagal.
 
+### Tahap 38.20 — Accessible name pencarian dan filter Admin/Gudang
+
+PR #91 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/91
+- Merge commit: `525d08e9435763dc33d77ee9cfeba22cfe089490`
+- Menambahkan accessible name untuk pencarian akun Petugas dan Wali.
+- Menambahkan accessible name untuk pencarian/filter katalog Admin, antrean Gudang, laporan Gudang, riwayat penerimaan, dan kondisi/status stok.
+- Mempertahankan placeholder, nilai filter, ID, handler, dan perilaku pencarian.
+- Tidak mengubah query, endpoint, hak akses, data, atau proses operasional.
+- Regression tests: 92 lulus, 0 gagal.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
 1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal header, sidebar, login Admin dua kolom, dan retry Dashboard Operasional sudah masuk `main`.
 2. Selesaikan audit katalog Wali: pencarian, kategori, gambar, kartu/detail produk, keranjang, dan checkout; perbaikan aksesibilitas kartu/detail dan kuantitas keranjang sudah masuk `main`.
-3. Lanjutkan audit formulir, tabel, filter, laporan, dan modal Admin; asosiasi label form Admin/Gudang, filter/retry laporan, aksesibilitas dialog operasional, pemilih Santri, dan POS Kasir sudah diperbaiki; audit seluruh layar/form dinamis masih berjalan.
+3. Lanjutkan audit formulir, tabel, filter, laporan, dan modal Admin; asosiasi label form Admin/Gudang, accessible name pencarian/filter, filter/retry laporan, aksesibilitas dialog operasional, pemilih Santri, dan POS Kasir sudah diperbaiki; audit seluruh layar/form dinamis masih berjalan.
 4. Lanjutkan audit alur Gudang, Kasir, dan Petugas Pengantar; ringkasan antrean stok Gudang, normalisasi filter status Pengantaran, responsivitas filter mobile, aksesibilitas POS Kasir, serta pemulihan refresh Dashboard/Distribusi/Komplain dan POS sudah diperbaiki.
 5. Lanjutkan audit responsivitas HP, tablet portrait/landscape, dan desktop, terutama sidebar desktop/tablet, modal, tabel lebar, katalog Wali, POS, dan workspace Gudang/Pengantaran; lakukan regresi lintas role.
 6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
