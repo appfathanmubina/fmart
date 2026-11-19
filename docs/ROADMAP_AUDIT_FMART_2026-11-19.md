@@ -667,11 +667,11 @@ Audit statis akan meninjau menu navigasi, dropdown khusus, tombol ikon, dan kont
 
 ### Tahap 38.33 — Audit navigasi menu berdasarkan peran dan konsistensi status aktif
 
-**Status: perbaikan source dan regression test disiapkan; menunggu CI dan merge.**
+**Status: selesai pada repository. PR #119 telah di-merge ke `main` melalui commit `5c4805cd5e5eab3be223dfb62e23e39b0e08c99b`. Regression CI pasca-merge lulus; build/deployment GitHub Pages masih berjalan saat pembaruan ini dibuat.**
 
 Audit menemukan status aktif sebelumnya dikelola dengan pengulangan penghapusan/penambahan class pada masing-masing handler. Pola ini tidak memiliki satu sumber kebenaran dan tidak mengekspos `aria-current`. Ditambahkan helper `setStaffActiveNavigation()` sebagai satu pintu untuk memilih satu menu aktif, menolak target yang tersembunyi, dan menyetel `aria-current="page"` hanya pada menu terpilih. Konfigurasi role menghapus state aktif/aria-current lama lalu mengaktifkan Dashboard hanya jika role memang memiliki akses. Handler menu dipindahkan memakai helper yang sama; pemeriksaan otorisasi handler tetap dipertahankan.
 
-Matriks menu diselaraskan dengan role staf yang benar-benar didefinisikan backend: `SUPERADMIN`, `ADMIN`, `KASIR`, `GUDANG`, dan `PETUGAS_PENGANTAR`. `WALI_SANTRI` tetap memakai navigasi pembeli. `SUPERVISOR` tidak ada di `FMART.ROLES` maupun jalur portal Admin; tidak ditambahkan sebagai role atau diberi hak akses tanpa keputusan eksplisit pemilik proses. Regression test mengunci daftar menu, kesesuaian role backend dan portal, izin tiap handler, serta state aktif tunggal.
+Matriks menu diselaraskan dengan role staf yang benar-benar didefinisikan backend: `SUPERADMIN`, `ADMIN`, `KASIR`, `GUDANG`, dan `PETUGAS_PENGANTAR`. `WALI_SANTRI` tetap memakai navigasi pembeli. `SUPERVISOR` tidak ada di `FMART.ROLES` maupun jalur portal Admin; tidak ditambahkan sebagai role atau diberi hak akses tanpa keputusan eksplisit pemilik proses. Regression test mengunci 14 tombol navigasi, kesesuaian role backend dan portal, izin 13 handler menu, penolakan target tersembunyi, dan state aktif tunggal.
 
 
 ### Tahap 38.34 — Penataan visual sidebar Desktop (prioritas sela atas permintaan pengguna)
@@ -682,12 +682,12 @@ Sidebar Desktop dirapikan untuk menu aktif maupun tidak aktif: lebar responsif, 
 
 Perubahan hanya menyentuh CSS, regression test, dan roadmap. Tidak mengubah daftar menu per role, hak akses, handler navigasi, endpoint, atau data. PR #117 menambahkan pengujian statis untuk ukuran sidebar, active/inactive/hover/focus, scroll, alignment, viewport pendek, dan perlindungan navigasi tablet portrait. Pengujian statis tidak membuktikan hasil visual pada browser nyata.
 
-Tahap audit berikutnya tetap **Tahap 38.33 — navigasi menu berdasarkan peran dan konsistensi status aktif**.
+Audit source navigasi Tahap 38.33 telah selesai. Berikutnya adalah menuntaskan validasi source layar/form dinamis yang tersisa, kemudian menjalankan gerbang validasi perangkat/runtime Tahap 38 sesuai urutan Tahap 34–40.
 
 
 ## Review ulang repository dan sinkronisasi roadmap — 19 November 2026
 
-Pemeriksaan dilakukan terhadap `main` pada commit `196677efd7bbc59ee02911e861bac53af813e483`, perubahan PR #107–#117, source utama `apps-script/Index.html` dan `apps-script/Code.gs`, serta regression suite.
+Pemeriksaan awal dilakukan terhadap `main` pada commit `196677efd7bbc59ee02911e861bac53af813e483`, lalu dilanjutkan dengan Tahap 38.33 dan diverifikasi ulang pada `main` commit `5c4805cd5e5eab3be223dfb62e23e39b0e08c99b`. Perubahan PR #107–#119, source `apps-script/Index.html` dan `apps-script/Code.gs`, serta regression suite diperiksa.
 
 ### Perubahan yang sudah masuk dan konsistensi source
 
@@ -695,21 +695,22 @@ Pemeriksaan dilakukan terhadap `main` pada commit `196677efd7bbc59ee02911e861bac
 - **Tahap 38.30 (PR #114 dan #115):** siklus fokus modal, termasuk fokus awal, pemulihan fokus setelah modal bertumpuk, dan fallback ketika pemicu tidak lagi dapat digunakan. Regression test mengunci interaksi dengan Escape dan focus trap yang sudah ada.
 - **Tahap 38.31:** semantik dan nama aksesibel dialog statis serta judul dialog operasional dinamis telah diaudit dan dikunci melalui regression test.
 - **Tahap 38.32 (PR #116):** kontrol kustom diperiksa; tidak ditemukan inline click handler pada elemen non-interaktif. `brandHome` menggunakan semantik tombol dan aktivasi Enter/Space; dropdown operasional tetap memakai `select` native.
+- **Tahap 38.33 (PR #119):** helper status aktif tunggal, `aria-current`, penolakan menu tersembunyi, dan matriks izin handler sudah masuk `main`; seluruh guard role lama dipertahankan.
 - **Tahap 38.34 (PR #117):** penataan sidebar Desktop telah masuk `main`; tidak mengubah konfigurasi role maupun aksi navigasi.
 
 ### Hasil pemeriksaan otomatis pada main
 
-Pada commit `196677e`, workflow **FMart Regression** dan **pages build and deployment** berstatus sukses. Regression suite saat ini memuat 110 test. Ini membuktikan pemeriksaan statis/build yang tercakup CI lulus, bukan bahwa seluruh alur Apps Script atau tampilan perangkat nyata sudah benar.
+Pada commit `5c4805c`, workflow **FMart Regression** pasca-merge berstatus sukses (111 test). Build/deployment GitHub Pages dipicu pasca-merge dan masih berjalan saat catatan ini diperbarui. Ini membuktikan pemeriksaan statis/regresi yang tercakup CI lulus, bukan bahwa seluruh alur Apps Script atau tampilan perangkat nyata sudah benar.
 
 ### Temuan yang masih perlu ditindaklanjuti
 
-1. **Tahap 38.33 belum dikerjakan:** buat matriks role-menu-section-handler dan regression test untuk seluruh role yang benar-benar didukung. Periksa juga konsistensi satu menu aktif setelah navigasi dan saat dashboard dipanggil kembali.
+1. **Tahap 38.33 selesai pada repository:** matriks role-menu-handler dan status aktif sudah dikunci dalam regression test. Validasi klik dan tampilan lintas role tetap menunggu runtime.
 2. **Ketidaksesuaian definisi Supervisor:** source `Code.gs` mendefinisikan role staf `SUPERADMIN`, `ADMIN`, `KASIR`, `GUDANG`, dan `PETUGAS_PENGANTAR`; `WALI_SANTRI` memakai portal pembeli. Tidak ada `SUPERVISOR` dalam `FMART.ROLES` atau daftar `portalRoleAllowed_`. Karena roadmap lama menyebut Supervisor, status/keperluan role tersebut harus dikonfirmasi sebelum dimasukkan ke matriks atau diberi akses. Jangan menambah role/izin secara otomatis.
 3. **Validasi visual sidebar:** lakukan pemeriksaan khusus Desktop 901–1100 px, Desktop lebar, tinggi layar pendek, tablet landscape, tablet portrait, dan HP. CSS tidak boleh dianggap tervalidasi secara visual hanya dari string assertion.
 4. **Validasi aksesibilitas runtime:** uji Tab/Shift+Tab, fokus awal dan fokus kembali untuk dialog bertumpuk, dialog dinamis, serta kontrol navigasi menggunakan keyboard dan pembaca layar bila tersedia.
 5. **Tahap runtime 34–40:** temuan database, konfigurasi Drive, akun, stok, transaksi, dan perangkat tetap mengikuti gerbang runtime di roadmap. Tidak ada data produksi yang diubah dalam review ini.
 
-**Kesimpulan:** perubahan PR #107–#117 yang diperiksa sudah tercatat di `main` dan CI terbaru lulus. Tahap 38 belum selesai: Tahap 38.33 masih antre, validasi visual/keyboard runtime masih tertunda, dan definisi role Supervisor perlu keputusan pemilik proses. Status produksi tetap belum dinyatakan siap.
+**Kesimpulan:** perubahan PR #107–#119 yang diperiksa sudah tercatat di `main`; regression CI lulus. Tahap 38.33 selesai pada repository. Tahap 38 masih berjalan karena validasi visual/keyboard/runtime belum dilakukan dan definisi Supervisor tetap belum ada pada backend. Status produksi belum dinyatakan siap.
 
 
 ### Hasil Tahap 38.33 — audit navigasi role dan status aktif
@@ -719,4 +720,4 @@ Pada commit `196677e`, workflow **FMart Regression** dan **pages build and deplo
 - Item aktif menampilkan `aria-current="page"`; item lain menghapus atribut tersebut.
 - Hak akses yang ada pada handler tidak diubah; pengujian statis membandingkan daftar menu dengan role backend dan jalur portal Admin.
 - Role Supervisor tetap tidak ditambahkan karena belum ada di definisi backend.
-- Pemeriksaan ini bersifat source/regression. Tampilan dan alur klik lintas role tetap menunggu runtime setelah roadmap audit statis selesai.
+- Pemeriksaan ini bersifat source/regression. Tampilan dan alur klik lintas role tetap menunggu runtime sesuai gerbang Tahap 34–40.
