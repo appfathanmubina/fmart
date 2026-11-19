@@ -71,10 +71,6 @@ function setupFMartDatabase_() {
 }
 
 /** Public editor entry point; Apps Script editor may hide underscore-suffixed functions. */
-function setupFMartDatabase() {
-  return setupFMartDatabase_();
-}
-
 function ensureSheet_(ss, headers, sheetName) {
   let sheet = ss.getSheetByName(sheetName);
   if (!sheet) sheet = ss.insertSheet(sheetName);
