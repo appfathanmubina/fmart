@@ -947,17 +947,17 @@ function completeStockReceipt_(ss,receipt,payload,actor,actorRole){
 }
 
 /** Satu checkout menghasilkan satu pesanan untuk satu santri dan hanya item terpilih. */
-function checkoutCart(token,santriId,selectedCartIds,catatan,metodePengiriman,tujuan,requestKey){
+function checkoutCart(token,recipientData,selectedCartIds,catatan,metodePengiriman,tujuan,requestKey){
  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
- santriId=String(santriId||'').trim();selectedCartIds=Array.isArray(selectedCartIds)?Array.from(new Set(selectedCartIds.map(x=>String(x||'').trim()).filter(Boolean))):[];
+ const recipient=normalizeOrderRecipient_(recipientData,metodePengiriman,tujuan);selectedCartIds=Array.isArray(selectedCartIds)?Array.from(new Set(selectedCartIds.map(x=>String(x||'').trim()).filter(Boolean))):[];
  catatan=String(catatan||'').trim().slice(0,500);metodePengiriman=String(metodePengiriman||'AMBIL_FMART').trim().toUpperCase();tujuan=String(tujuan||'').trim().slice(0,500);requestKey=String(requestKey||'').trim();
  if(!/^[A-Za-z0-9_-]{12,80}$/.test(requestKey))throw new Error('Kunci checkout tidak valid. Muat ulang checkout dan coba kembali.');
- if(!santriId)throw new Error('Santri tujuan belum dipilih.');if(!selectedCartIds.length)throw new Error('Pilih minimal satu barang untuk checkout.');
+ if(!selectedCartIds.length)throw new Error('Pilih minimal satu barang untuk checkout.');
  if(['AMBIL_FMART','ANTAR_PESANTREN'].indexOf(metodePengiriman)<0)throw new Error('Metode pengiriman tidak valid.');
  // Tujuan dasar berasal dari data Santri yang telah diverifikasi sebagai alamat pengiriman.
  // Catatan titik penerimaan bersifat opsional dan ditambahkan ke alamat tersimpan.
 
- const fingerprint=sha256Hex_(JSON.stringify({userId:session.userId,santriId:santriId,selectedCartIds:selectedCartIds.slice().sort(),note:catatan,shippingMethod:metodePengiriman,requestedDestination:tujuan}));
+ const fingerprint=sha256Hex_(JSON.stringify({userId:session.userId,recipient:recipient,selectedCartIds:selectedCartIds.slice().sort(),note:catatan,shippingMethod:metodePengiriman,requestedDestination:tujuan}));
  const lock=LockService.getScriptLock();lock.waitLock(15000);
  try{
   const ss=getSS_(),sheet=ss.getSheetByName('Pesanan'),rows=readRows_(sheet),prior=rows.map((r,i)=>({values:r,rowNumber:i+2})).find(x=>String(x.values[12]||'')===requestKey);
@@ -965,20 +965,20 @@ function checkoutCart(token,santriId,selectedCartIds,catatan,metodePengiriman,tu
    if(String(prior.values[2])!==String(session.userId))throw new Error('Kunci checkout sudah digunakan transaksi lain.');
    if(String(prior.values[13]||'')!==fingerprint)throw new Error('Kunci checkout pernah dipakai untuk rincian berbeda. Muat ulang keranjang.');
    let payload;try{payload=JSON.parse(String(prior.values[14]||'{}'));}catch(e){throw new Error('Payload pemulihan checkout tidak dapat dibaca. Hubungi Admin FMart.');}
-   const child=assertWaliChild_(ss,session.userId,santriId),result=completeCheckoutOrder_(ss,prior,payload,session.userId,session.role);result.child=child;result.recovered=true;return result;
+   const result=completeCheckoutOrder_(ss,prior,payload,session.userId,session.role);result.child=payload.recipientSnapshot||recipient;result.recovered=true;return result;
   }
-  expireStockReservations_(ss,new Date());const child=assertWaliChild_(ss,session.userId,santriId),cart=ss.getSheetByName('Keranjang'),cartRows=readRows_(cart),wanted=Object.create(null),selected=[];
+  expireStockReservations_(ss,new Date());const cart=ss.getSheetByName('Keranjang'),cartRows=readRows_(cart),wanted=Object.create(null),selected=[];
   selectedCartIds.forEach(x=>wanted[x]=true);cartRows.forEach((r,i)=>{if(String(r[1])===session.userId&&wanted[String(r[0])])selected.push(r);});
   if(selected.length!==selectedCartIds.length)throw new Error('Sebagian barang keranjang tidak ditemukan. Muat ulang keranjang.');
   const items=selected.map(r=>{const q=Math.max(0,Math.floor(Number(r[5])||0)),p=getProductSnapshot_(ss,r[3],r[4]);return {productId:String(r[3]),variationId:String(r[4]||''),qty:q,active:!!(p&&p.active),unitPrice:p?p.unitPrice:0,sku:p?p.sku:'',name:p?p.name:'Produk tidak tersedia',variationName:p?p.variationName:''};});
   const invalid=items.find(x=>!x.active||x.qty<1);if(!items.length||invalid)throw new Error(invalid?'Produk "'+invalid.name+'" tidak tersedia. Silakan periksa keranjang.':'Barang yang dipilih tidak ditemukan di keranjang.');
   const subtotal=items.reduce((n,x)=>n+x.unitPrice*x.qty,0),ongkir=0,diskon=0,total=subtotal+ongkir-diskon,now=new Date(),id=makeFMartId_('ORD');
   const number='FM-'+Utilities.formatDate(now,FMART_DB.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Math.floor(1000+Math.random()*9000);
-  const santriAddress=[child.name,child.className?'Kelas '+child.className:'',child.asrama?'Asrama '+child.asrama:''].filter(Boolean).join(' · ');
-  const destination=metodePengiriman==='ANTAR_PESANTREN'?[santriAddress,tujuan?'Catatan penerimaan: '+tujuan:''].filter(Boolean).join(' — '):('Pengambilan langsung di FMart'+(tujuan?' — '+tujuan:''));
-  const payload={userId:session.userId,santriId:santriId,selectedCartIds:selectedCartIds,orderNumber:number,total:total,shippingMethod:metodePengiriman,shippingDestination:destination,requestedDestination:tujuan,createdAt:now.toISOString(),items:items.map(x=>({detailId:makeFMartId_('DTL'),productId:x.productId,variationId:x.variationId,qty:x.qty,unitPrice:x.unitPrice,sku:x.sku,name:x.name,variationName:x.variationName})),shipmentId:makeFMartId_('SHP')};
-  const row=[id,number,session.userId,santriId,subtotal,ongkir,diskon,total,'MENUNGGU_PEMBAYARAN',catatan,now,now,requestKey,fingerprint,JSON.stringify(payload)];
-  sheet.appendRow(row);const result=completeCheckoutOrder_(ss,{values:row,rowNumber:sheet.getLastRow()},payload,session.userId,session.role);result.child=child;return result;
+  const recipientAddress=[recipient.name,recipient.className?'Kelas '+recipient.className:'',recipient.asrama?'Asrama '+recipient.asrama:'',recipient.address].filter(Boolean).join(' · ');
+  const destination=metodePengiriman==='ANTAR_PESANTREN'?[recipientAddress,tujuan?'Catatan titik penerimaan: '+tujuan:''].filter(Boolean).join(' — '):('Pengambilan langsung di FMart'+(tujuan?' — '+tujuan:''));
+  const payload={userId:session.userId,santriId:'',recipientSnapshot:recipient,selectedCartIds:selectedCartIds,orderNumber:number,total:total,shippingMethod:metodePengiriman,shippingDestination:destination,requestedDestination:tujuan,createdAt:now.toISOString(),items:items.map(x=>({detailId:makeFMartId_('DTL'),productId:x.productId,variationId:x.variationId,qty:x.qty,unitPrice:x.unitPrice,sku:x.sku,name:x.name,variationName:x.variationName})),shipmentId:makeFMartId_('SHP')};
+  const row=[id,number,session.userId,'',subtotal,ongkir,diskon,total,'MENUNGGU_PEMBAYARAN',catatan,now,now,requestKey,fingerprint,JSON.stringify(payload)];
+  sheet.appendRow(row);const result=completeCheckoutOrder_(ss,{values:row,rowNumber:sheet.getLastRow()},payload,session.userId,session.role);result.child=recipient;return result;
  }finally{lock.releaseLock();}
 }
 
@@ -1126,9 +1126,9 @@ function getMyOrders(token) {
   const result = orderRows.map(function(r){
     const payment = latestPaymentForOrder_(paymentRows, String(r[0]));
     const shipment = latestShipmentForOrder_(shipmentRows, String(r[0]));
-    const child = santriMap[String(r[3])] || {id:String(r[3]),name:'Anak',className:''};
+    const child = getOrderRecipientSnapshot_(ss,r);
     return {
-      orderId:String(r[0]), number:String(r[1]), santriId:String(r[3]), childName:String(child.name || ''), className:String(child.className || ''),
+      orderId:String(r[0]), number:String(r[1]), santriId:String(r[3]||''), childName:String(child.name || ''), className:String(child.className || ''), recipient:child,
       subtotal:Number(r[4])||0, shipping:Number(r[5])||0, discount:Number(r[6])||0, total:Number(r[7])||0,
       status:sanitizeWaliOrderStatus_(r[8]), note:sanitizeWaliStockNote_(r[9],r[8]), createdAt:dateIso_(r[10]), updatedAt:dateIso_(r[11]),
       payment:payment ? {id:payment.id,method:payment.method,nominal:payment.nominal,status:payment.status,buktiUrl:payment.buktiUrl,buktiSumber:payment.buktiSumber,submittedBy:payment.submittedBy,catatan:sanitizeWaliStockNote_(payment.catatan,''),createdAt:dateIso_(payment.createdAt)} : null,
@@ -1146,7 +1146,7 @@ function getOrderDetail(token, orderId) {
   const orderRow = findRowById_(ss.getSheetByName('Pesanan'), orderId, 1);
   if (!orderRow || String(orderRow.values[2]) !== String(session.userId)) throw new Error('Pesanan tidak ditemukan.');
   const r = orderRow.values;
-  const child = assertWaliChild_(ss, session.userId, String(r[3]));
+  const child = getOrderRecipientSnapshot_(ss,r);
   const details = readRows_(ss.getSheetByName('DetailPesanan')).filter(function(d){ return String(d[1]) === orderId; }).map(function(d){
     return {id:String(d[0]),productId:String(d[2]),variationId:String(d[3]||''),sku:String(d[4]||''),name:String(d[5]||''),variationName:String(d[6]||''),price:Number(d[7])||0,qty:Number(d[8])||0,subtotal:Number(d[9])||0};
   });
@@ -1176,14 +1176,12 @@ function getOperationsOrderDetail(token, orderId) {
   const details = readRows_(ss.getSheetByName('DetailPesanan')).filter(function(d){ return String(d[1]) === orderId; }).map(function(d){
     return {id:String(d[0]),productId:String(d[2]),variationId:String(d[3]||''),sku:String(d[4]||''),name:String(d[5]||''),variationName:String(d[6]||''),price:Number(d[7])||0,qty:Number(d[8])||0,subtotal:Number(d[9])||0};
   });
-  const santriMap = getSantriColumnMap_(ss.getSheetByName('Santri'));
-  const santri = findSantriRowById_(ss.getSheetByName('Santri'), String(r[3]));
-  const santriData = santri ? santriRecord_(santri.values, santriMap) : null;
+  const recipient = getOrderRecipientSnapshot_(ss,r);
   const payments = readRows_(ss.getSheetByName('Pembayaran')).filter(function(p){return String(p[1])===orderId;}).sort(function(a,b){return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime();});
   const payment = payments.length ? {status:String(payments[0][5]||''),method:String(payments[0][2]||''),nominal:Number(payments[0][3])||0,verifiedAt:dateIso_(payments[0][7])} : null;
   const shipments = readRows_(ss.getSheetByName('Pengiriman')).filter(function(sh){return String(sh[1])===orderId;}).sort(function(a,b){return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime();});
   const shipment = shipments.length ? {status:String(shipments[0][4]||''),method:String(shipments[0][2]||''),destination:String(shipments[0][3]||'')} : null;
-  return {ok:true,order:{orderId:String(r[0]),number:String(r[1]),santriId:String(r[3]),childName:santriData?santriData.name:'Anak',className:santriData?santriData.className:'',subtotal:Number(r[4])||0,shipping:Number(r[5])||0,discount:Number(r[6])||0,total:Number(r[7])||0,status:String(r[8]||''),note:String(r[9]||''),createdAt:dateIso_(r[10]),updatedAt:dateIso_(r[11]),payment:payment,shipment:shipment,details:details}};
+  return {ok:true,order:{orderId:String(r[0]),number:String(r[1]),santriId:String(r[3]),childName:recipient.name||'Santri',className:recipient.className||'',recipient:recipient,subtotal:Number(r[4])||0,shipping:Number(r[5])||0,discount:Number(r[6])||0,total:Number(r[7])||0,status:String(r[8]||''),note:String(r[9]||''),createdAt:dateIso_(r[10]),updatedAt:dateIso_(r[11]),payment:payment,shipment:shipment,details:details}};
 }
 
 function submitPayment(token,orderId,method,nominal,fileName,mimeType,base64Data,requestKey){
@@ -2727,6 +2725,25 @@ function buildCartSnapshot_(ss, userId, santriId) {
   return {items:items};
 }
 
+function normalizeOrderRecipient_(data, shippingMethod, note) {
+  data=data&&typeof data==='object'?data:{};
+  const recipient={name:String(data.name||'').trim().replace(/\\s+/g,' ').slice(0,120),className:String(data.className||'').trim().slice(0,80),asrama:String(data.asrama||'').trim().slice(0,100),phone:String(data.phone||'').trim().slice(0,30),address:String(data.address||'').trim().slice(0,300)};
+  if(recipient.name.length<2)throw new Error('Nama Santri/penerima wajib diisi.');
+  if(String(shippingMethod||'').toUpperCase()==='ANTAR_PESANTREN'&&!recipient.address)throw new Error('Alamat atau lokasi pengiriman wajib diisi.');
+  if(recipient.phone&&!/^[0-9+() .-]{8,30}$/.test(recipient.phone))throw new Error('Nomor kontak penerima tidak valid.');
+  return recipient;
+}
+
+function getOrderRecipientSnapshot_(ss, orderRow) {
+  const row=orderRow&&orderRow.values?orderRow.values:orderRow||[];
+  let payload={};try{payload=JSON.parse(String(row[14]||'{}'));}catch(e){}
+  const snap=payload&&payload.recipientSnapshot;
+  if(snap&&String(snap.name||'').trim())return {name:String(snap.name||''),className:String(snap.className||''),asrama:String(snap.asrama||''),phone:String(snap.phone||''),address:String(snap.address||''),legacy:false};
+  const sid=String(row[3]||'');
+  if(sid){const sheet=ss.getSheetByName('Santri'),found=findSantriRowById_(sheet,sid);if(found){const data=santriRecord_(found.values,getSantriColumnMap_(sheet));return {id:data.id,name:data.name,className:data.className,asrama:data.asrama||'',phone:'',address:'',legacy:true};}}
+  return {name:'Santri',className:'',asrama:'',phone:'',address:'',legacy:false};
+}
+
 function assertWaliChild_(ss, userId, santriId) {
   santriId = String(santriId || '').trim();
   if (!santriId) throw new Error('Anak belum dipilih.');
@@ -3534,7 +3551,7 @@ function auditFMartOperationalSync_() {
     if(nis){if(nisKeys[nis])issue('SANTRI_NIS_DUPLICATE','Santri',i+2,'NIS duplikat dengan baris '+nisKeys[nis]+'.');else nisKeys[nis]=i+2;}
   });
   rows('PenjualanToko').forEach(function(r,i){const sid=String(r[4]||'');if(sid&&!santriById[sid])issue('POS_SANTRI_REFERENCE_MISSING','PenjualanToko',i+2,'SantriId pembeli tidak ditemukan pada master Santri.');});
-  rows('Pesanan').forEach(function(r,i){const sid=String(r[3]||'');if(sid&&!santriById[sid])issue('ORDER_SANTRI_REFERENCE_MISSING','Pesanan',i+2,'SantriId pesanan tidak ditemukan pada master Santri.');});
+  rows('Pesanan').forEach(function(r,i){const sid=String(r[3]||'');let payload={};try{payload=JSON.parse(String(r[14]||'{}'));}catch(e){}const hasManualRecipient=!!(payload.recipientSnapshot&&String(payload.recipientSnapshot.name||'').trim());if(sid&&!santriById[sid])issue('ORDER_SANTRI_REFERENCE_MISSING','Pesanan',i+2,'SantriId pesanan tidak ditemukan pada master Santri.');if(!sid&&!hasManualRecipient)issue('ORDER_RECIPIENT_MISSING','Pesanan',i+2,'Pesanan tidak memiliki snapshot penerima maupun referensi Santri.');});
   return {checkedAt:new Date().toISOString(),mode:'READ_ONLY',counts:{products:products.length,variations:variations.length,stockRows:stocks.length,mutations:mutations.length,santri:santriRows.length},issues:issues,issueCount:issues.length,truncated:issues.length>=maxIssues,stockAuthority:'Stok'};
 }
 
