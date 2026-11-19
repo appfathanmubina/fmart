@@ -1220,3 +1220,18 @@ test('Wali product card, detail, and cart images fall back cleanly when an image
  assert.ok(index.slice(handler,handler+500).includes("img.hasAttribute('data-image-fallback')"));
  assert.ok(index.slice(handler,handler+500).includes('img.nextElementSibling'));
 });
+
+test('Required checkout, payment-proof, and password fields expose native required semantics',()=>{
+ const checkout=index.slice(index.indexOf('function openCheckout(){'),index.indexOf('function updateCheckoutFulfillmentUI(){'));
+ assert.ok(checkout.includes('id="checkoutRecipientName" type="text" required'));
+ assert.ok(checkout.includes('id="checkoutRecipientAddress" rows="3" required'));
+ const fulfillment=extractFunction(index,'updateCheckoutFulfillmentUI');
+ assert.ok(fulfillment.includes('address.required=true'));
+ assert.ok(fulfillment.includes('address.required=false'),'Pickup mode must make the delivery address optional.');
+ const payment=extractFunction(index,'openPayment');
+ assert.ok(payment.includes('id="paymentProof" class="file-input" type="file" required'));
+ const password=extractFunction(index,'openChangePassword');
+ assert.ok(password.includes('id="currentPassword" type="password" autocomplete="current-password" required'));
+ assert.ok(password.includes('id="newPassword" type="password" autocomplete="new-password" minlength="10" required'));
+ assert.ok(password.includes('id="confirmPassword" type="password" autocomplete="new-password" minlength="10" required'));
+});

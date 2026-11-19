@@ -575,3 +575,18 @@ PR #101 telah di-merge:
 6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
 
 **Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.23 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog bertumpuk, pemilih Santri, aksesibilitas dan ketahanan refresh POS Kasir, filter Pengantaran responsif. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
+
+
+### Tahap 38.24 — Semantik field wajib checkout, pembayaran, dan keamanan akun
+
+**Status: perbaikan repository disiapkan; menunggu CI dan merge.**
+
+Audit statis menemukan beberapa field yang sudah ditandai wajib secara visual dan divalidasi oleh handler, tetapi belum memiliki atribut semantik `required`:
+- Nama penerima pada checkout.
+- Alamat/lokasi pengiriman (wajib untuk antar pesantren, opsional untuk ambil di FMart).
+- File bukti pembayaran QRIS.
+- Password lama, password baru, dan konfirmasi password pada form ganti password.
+
+Perbaikan mempertahankan validasi server dan handler yang sudah ada. Field alamat tetap mengikuti metode pemenuhan: atribut wajib dilepas saat Wali memilih ambil di FMart dan dipasang kembali saat memilih antar pesantren. Password baru dan konfirmasi diberi batas minimum 10 karakter sesuai petunjuk form yang sudah ada.
+
+Regression test mengunci atribut wajib dan perilaku dinamis alamat. Tidak ada perubahan endpoint, payload, aturan transaksi, role, data, atau tampilan.
