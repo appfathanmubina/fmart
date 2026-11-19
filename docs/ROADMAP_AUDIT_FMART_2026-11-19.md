@@ -101,3 +101,23 @@ Perbaikan Tahap 32:
 - Audit gabungan tetap memanggil pemeriksaan database, runtime, sinkronisasi operasional, stok/POS, penerimaan, dan pemulihan transaksi. Hasil dicatat ke Execution log.
 
 **Batasan:** perubahan ini menyiapkan jalur audit; tidak menjalankan Apps Script, tidak membaca database produksi, tidak mengubah Spreadsheet/Drive, dan tidak menguji akun/perangkat. Operator tetap perlu menjalankan `runFMartReadinessAudit_` di Apps Script Editor dan mengirimkan hasil yang telah disamarkan. Jangan mengirim password, OTP, token, Spreadsheet ID, folder ID, atau data pribadi.
+
+
+## Tahap 33 — Tindak lanjut temuan runtime pertama
+
+**Status: audit runtime pertama diterima; perbaikan audit source ditindaklanjuti. Data produksi belum diubah.**
+
+Temuan aktual dari eksekusi 19 November 2026:
+- Master Santri memiliki tiga baris duplikat ID dan NIS (baris 142–144 merujuk baris pertama 139–141). Perlu verifikasi data sumber dan seluruh referensi sebelum koreksi.
+- Runtime tidak menemukan akun aktif role ADMIN dan PETUGAS_PENGANTAR.
+- Folder Drive bukti pengantaran belum dikonfigurasi; folder bukti pembayaran tersedia dan aksesnya privat.
+- Mutasi stok masuk manual baris 2 tidak ditemukan pasangan AuditLog oleh pemeriksaan saat ini.
+- Pemeriksaan stok/POS dan pemulihan transaksi tidak melaporkan issue.
+- Spreadsheet dan trigger auto-confirm ditemukan.
+
+Perbaikan source yang dibuat pada tindak lanjut Tahap 33:
+1. Memperbaiki pencocokan AuditLog mutasi masuk manual. Kolom EntityId pada `writeAudit_()` berisi request key, bukan ProdukId; payload AuditLog menyimpan ProdukId, variasi, tipe, qty, dan saldo sebelum/sesudah. Pemeriksaan kini mencocokkan request key (dengan kompatibilitas ID produk legacy), payload lengkap, dan timestamp yang sama.
+2. Memperluas audit sinkronisasi agar produk aktif tanpa variasi yang belum memiliki baris saldo kanonis di sheet `Stok` ikut terdeteksi. Pemeriksaan sebelumnya hanya mendeteksi baris stok yang hilang untuk variasi atau item yang sudah memiliki histori mutasi.
+3. Menambahkan regresi untuk kedua kondisi tersebut.
+
+**Batasan:** tidak mengubah data Santri, akun, Script Properties, folder Drive, stok, atau AuditLog produksi. Temuan data/configuration harus ditangani terpisah setelah verifikasi pemilik data.
