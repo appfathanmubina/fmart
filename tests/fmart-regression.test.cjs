@@ -574,7 +574,7 @@ test('Starting delivery can resume interrupted order, shipment, notification and
 test('Reporting delivery failure can resume partial updates without duplicate notifications',()=>{
  const fn=extractFunction(code,'reportDeliveryFailure');
  assert.ok(fn.includes("const recovering=before==='GAGAL'"));
- assert.ok(fn.includes("String(row[11]||'').indexOf('[GAGAL] '+reason)>=0"),'Recovery must be bound to the original failure reason.');
+ assert.ok(fn.includes("String(row[11]||'').indexOf('[GAGAL] '+reason)<0"),'Recovery must be bound to the original failure reason.');
  assert.ok(fn.includes("orderStatus!=='DIANTAR'&&!(recovering&&orderStatus==='DISIAPKAN')"));
  assert.ok(fn.includes("shipmentStatus!=='DIANTAR'&&shipmentStatus!=='DISIAPKAN'"));
  assert.ok(fn.includes("Pengantaran belum berhasil")&&fn.includes("Pengantaran gagal - perlu penugasan ulang"),'Wali and staff notifications must be deduplicated.');
