@@ -652,3 +652,19 @@ test('Manual recipient checkout remains separate from official Wali-Santri linki
  assert.ok(!checkout.includes('requestWaliSantriLink('),'Checkout must not create official Wali-Santri relationships.');
  assert.ok(link.includes("requireRole_(token,[FMART.ROLES.WALI_SANTRI])"));
 });
+
+
+test('Delivery proof storage rejects reuse of the payment proof folder',()=>{
+ const fn=extractFunction(code,'getDeliveryProofFolder_');
+ assert.ok(fn.includes("props.getProperty('FMART_PAYMENT_PROOF_FOLDER_ID')"));
+ assert.ok(fn.includes("id===paymentId"));
+ assert.ok(fn.includes('Folder bukti pengantaran harus berbeda'));
+});
+
+test('Runtime audit detects payment and delivery proof folder ID reuse',()=>{
+ const start=code.indexOf('function auditFMartRuntime_()');
+ const end=code.indexOf('\nfunction ',start+10);
+ const fn=code.slice(start,end>0?end:undefined);
+ assert.ok(fn.includes("code: 'DRIVE_PROOF_FOLDERS_REUSED'"));
+ assert.ok(fn.includes('proofFolderIds.paymentProof === proofFolderIds.deliveryProof'));
+});
