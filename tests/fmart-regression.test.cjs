@@ -1335,13 +1335,13 @@ test('Every static dialog root has modal semantics and a resolvable accessible n
 });
 
 test('Custom interactive markup remains keyboard operable and native controls stay semantic',()=>{
- const inlineClick=/<([a-z][a-z0-9-]*)\\b([^>]*\\bonclick\\s*=\\s*["'][^"']*["'][^>]*)>/gi;
+ const inlineClick=/<([a-z][a-z0-9-]*)\b([^>]*\bonclick\s*=\s*["'][^"']*["'][^>]*)>/gi;
  const nativeTags=new Set(['button','a','input','select','textarea']);
  let match;
  while((match=inlineClick.exec(index))!==null){
   assert.ok(nativeTags.has(match[1].toLowerCase()),'Inline click handler must use a native interactive element, not <'+match[1]+'>.');
  }
- const rolePattern=/<([a-z][a-z0-9-]*)\\b([^>]*\\brole=["'](?:button|menuitem|option|tab)["'][^>]*)>/gi;
+ const rolePattern=/<([a-z][a-z0-9-]*)\b([^>]*\brole=["'](?:button|menuitem|option|tab)["'][^>]*)>/gi;
  const custom=[];
  while((match=rolePattern.exec(index))!==null){
   if(!nativeTags.has(match[1].toLowerCase()))custom.push({tag:match[1],attrs:match[2]});
@@ -1351,6 +1351,6 @@ test('Custom interactive markup remains keyboard operable and native controls st
  assert.equal(brand.tag,'div');
  assert.ok(brand.attrs.includes('id="brandHome"')&&brand.attrs.includes('tabindex="0"'));
  assert.ok(index.includes("brandHome.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')"),'Custom brand button must support Enter and Space.');
- assert.ok((index.match(/<select\\b/g)||[]).length>=5,'Operational dropdowns should remain native select controls.');
+ assert.ok((index.match(/<select\b/g)||[]).length>=5,'Operational dropdowns should remain native select controls.');
  assert.ok(!index.includes('role="combobox"'),'Do not replace native selects with inaccessible custom dropdowns.');
 });
