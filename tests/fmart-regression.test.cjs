@@ -1354,3 +1354,24 @@ test('Custom interactive markup remains keyboard operable and native controls st
  assert.ok((index.match(/<select\b/g)||[]).length>=5,'Operational dropdowns should remain native select controls.');
  assert.ok(!index.includes('role="combobox"'),'Do not replace native selects with inaccessible custom dropdowns.');
 });
+
+test('Desktop staff sidebar has balanced dimensions and clear active, inactive, hover and focus states',()=>{
+ const marker='/* Tahap 38.34 — sidebar Desktop yang rapi, seimbang, dan konsisten. */';
+ const start=index.indexOf(marker);
+ const end=index.indexOf('</style>',start);
+ assert.ok(start>=0&&end>start,'Desktop sidebar visual system must exist in the primary stylesheet.');
+ const desktop=index.slice(start,end);
+ assert.ok(desktop.includes('@media (min-width:901px)'));
+ assert.ok(desktop.includes('--staff-sidebar-width:clamp(194px,17.8vw,244px)'));
+ assert.ok(desktop.includes('background:linear-gradient(180deg,#fff 0%,#fdfafd 100%)'));
+ assert.ok(desktop.includes('.nav-btn:not(.active):hover'),'Inactive items need a clear hover state.');
+ assert.ok(desktop.includes('.nav-btn.active {')&&desktop.includes('background:linear-gradient(115deg,#702078 0%,#58145f 100%)'),'Active item needs a distinct selected state.');
+ assert.ok(desktop.includes('.nav-btn:focus-visible'),'Keyboard focus must remain visible.');
+ assert.ok(desktop.includes('overflow-y:auto')&&desktop.includes('overscroll-behavior-y:contain'),'Long role menus must remain vertically scrollable.');
+ assert.ok(desktop.includes('padding-left:calc(var(--staff-sidebar-width) + 42px)'),'Header must align to the updated sidebar width.');
+ assert.ok(desktop.includes('margin-left:calc(var(--staff-sidebar-width) + 42px)'),'Workspace must align to the updated sidebar width.');
+ assert.ok(desktop.includes('@media (min-width:901px) and (max-height:640px)'),'Short desktop viewports need compact spacing.');
+ const tabletStart=index.indexOf('/* Tahap F — tablet portrait');
+ const tabletEnd=index.indexOf('/* Semua panel petugas',tabletStart);
+ assert.ok(tabletStart>=0&&tabletEnd>tabletStart&&index.slice(tabletStart,tabletEnd).includes('overflow-x:auto'),'Tablet portrait bottom navigation must remain unchanged.');
+});

@@ -2119,6 +2119,153 @@ button:disabled,[role="button"][aria-disabled="true"]{cursor:not-allowed}
       outline:3px solid #a78bfa;
       outline-offset:2px;
     }
+
+    
+    /* Tahap 38.34 — sidebar Desktop yang rapi, seimbang, dan konsisten. */
+    @media (min-width:901px) {
+      body.admin-portal {
+        --staff-sidebar-width:clamp(194px,17.8vw,244px);
+      }
+      body.admin-portal #staffNav.bottom-nav {
+        top:88px;
+        bottom:20px;
+        left:18px;
+        right:auto;
+        width:var(--staff-sidebar-width);
+        height:auto;
+        gap:6px;
+        padding:13px 10px;
+        border:1px solid #eaddec;
+        border-radius:20px;
+        background:linear-gradient(180deg,#fff 0%,#fdfafd 100%);
+        box-shadow:0 12px 34px rgba(45,14,52,.09);
+        overflow-x:hidden;
+        overflow-y:auto;
+        overscroll-behavior-y:contain;
+        scrollbar-width:thin;
+        scrollbar-color:#d8c3df transparent;
+      }
+      body.admin-portal #staffNav .nav-btn {
+        position:relative;
+        box-sizing:border-box;
+        flex:0 0 auto;
+        width:100%;
+        min-width:0;
+        min-height:46px;
+        height:auto;
+        display:flex;
+        flex-direction:row;
+        align-items:center;
+        justify-content:flex-start;
+        gap:10px;
+        padding:8px 11px;
+        border:1px solid transparent;
+        border-radius:12px;
+        background:transparent;
+        color:#66566d;
+        font-size:12.5px;
+        font-weight:650;
+        line-height:1.25;
+        letter-spacing:-.01em;
+        text-align:left;
+        overflow-wrap:anywhere;
+        box-shadow:none;
+        transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+      }
+      body.admin-portal #staffNav .nav-btn .nav-icon {
+        width:32px;
+        height:32px;
+        flex:0 0 32px;
+        display:grid;
+        place-items:center;
+        border-radius:10px;
+        background:#f3edf6;
+        color:#80538a;
+        transition:background .18s ease,color .18s ease,transform .18s ease;
+      }
+      body.admin-portal #staffNav .nav-btn .nav-icon svg {
+        width:18px;
+        height:18px;
+        stroke:currentColor;
+        stroke-width:1.9;
+      }
+      body.admin-portal #staffNav .nav-btn > span:last-child {
+        display:block;
+        min-width:0;
+        flex:1 1 auto;
+        color:inherit;
+        white-space:normal;
+        overflow-wrap:anywhere;
+      }
+      body.admin-portal #staffNav .nav-btn:not(.active):hover {
+        background:#f7f1f8;
+        border-color:#eee3f0;
+        color:#4f2458;
+      }
+      body.admin-portal #staffNav .nav-btn:not(.active):hover .nav-icon {
+        background:#eadced;
+        color:#6f3479;
+      }
+      body.admin-portal #staffNav .nav-btn.active {
+        background:linear-gradient(115deg,#702078 0%,#58145f 100%);
+        border-color:#682070;
+        color:#fff;
+        font-weight:750;
+        box-shadow:0 5px 13px rgba(88,20,95,.17);
+      }
+      body.admin-portal #staffNav .nav-btn.active::before {
+        content:"";
+        position:absolute;
+        left:0;
+        top:10px;
+        bottom:10px;
+        width:3px;
+        height:auto;
+        margin:0;
+        border-radius:0 4px 4px 0;
+        background:#f3c9f2;
+      }
+      body.admin-portal #staffNav .nav-btn.active .nav-icon {
+        background:rgba(255,255,255,.15);
+        color:#fff;
+      }
+      body.admin-portal #staffNav .nav-btn:focus-visible {
+        outline:3px solid #b879c4;
+        outline-offset:2px;
+        z-index:1;
+      }
+      body.admin-portal #staffNav .nav-btn:active {
+        transform:translateY(1px);
+      }
+      body.admin-portal #staffNav .nav-btn:disabled {
+        opacity:.5;
+        cursor:not-allowed;
+      }
+      body.admin-portal .header-inner {
+        padding-left:calc(var(--staff-sidebar-width) + 42px);
+      }
+      body.admin-portal #operationsView {
+        width:calc(100% - var(--staff-sidebar-width) - 42px);
+        margin-left:calc(var(--staff-sidebar-width) + 42px);
+      }
+    }
+    @media (min-width:901px) and (max-height:640px) {
+      body.admin-portal #staffNav.bottom-nav {
+        top:76px;
+        bottom:12px;
+        gap:4px;
+        padding:9px 8px;
+      }
+      body.admin-portal #staffNav .nav-btn {
+        min-height:42px;
+        padding:6px 9px;
+      }
+      body.admin-portal #staffNav .nav-btn .nav-icon {
+        width:29px;
+        height:29px;
+        flex-basis:29px;
+      }
+    }
 </style>
   
 
