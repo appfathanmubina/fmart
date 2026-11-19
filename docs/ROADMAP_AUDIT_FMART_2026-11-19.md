@@ -524,13 +524,24 @@ PR #91 telah di-merge:
 - Tidak mengubah query, endpoint, hak akses, data, atau proses operasional.
 - Regression tests: 92 lulus, 0 gagal.
 
+### Tahap 38.21 — Perbaikan offset Header pada Tablet Portrait
+
+PR #92 telah di-merge:
+- PR: https://github.com/appfathanmubina/fmart/pull/92
+- Merge commit: `de53c919129cdc4b9fd822c3935e3666b573f54b`
+- Pada tablet portrait 761–900 px, navigasi staf berada di bawah layar sehingga header tidak lagi menyisakan offset kiri 228 px untuk sidebar vertikal.
+- Padding kiri/kanan header direset menjadi 20 px pada breakpoint tablet portrait.
+- Layout sidebar Desktop/Tablet landscape tetap menggunakan offset yang sesuai.
+- Tidak mengubah menu, izin role, atau perilaku navigasi.
+- Regression tests: 93 lulus, 0 gagal.
+
 ### Urutan pekerjaan Tahap 38 berikutnya
 
 1. Selesaikan audit login, dashboard, header, dan navigasi lintas role; perbaikan awal header, sidebar, login Admin dua kolom, dan retry Dashboard Operasional sudah masuk `main`.
 2. Selesaikan audit katalog Wali: pencarian, kategori, gambar, kartu/detail produk, keranjang, dan checkout; perbaikan aksesibilitas kartu/detail dan kuantitas keranjang sudah masuk `main`.
 3. Lanjutkan audit formulir, tabel, filter, laporan, dan modal Admin; asosiasi label form Admin/Gudang, accessible name pencarian/filter, filter/retry laporan, aksesibilitas dialog operasional, pemilih Santri, dan POS Kasir sudah diperbaiki; audit seluruh layar/form dinamis masih berjalan.
 4. Lanjutkan audit alur Gudang, Kasir, dan Petugas Pengantar; ringkasan antrean stok Gudang, normalisasi filter status Pengantaran, responsivitas filter mobile, aksesibilitas POS Kasir, serta pemulihan refresh Dashboard/Distribusi/Komplain dan POS sudah diperbaiki.
-5. Lanjutkan audit responsivitas HP, tablet portrait/landscape, dan desktop, terutama sidebar desktop/tablet, modal, tabel lebar, katalog Wali, POS, dan workspace Gudang/Pengantaran; lakukan regresi lintas role.
+5. Lanjutkan audit responsivitas HP, tablet portrait/landscape, dan desktop; offset header tablet portrait sudah diperbaiki, selanjutnya periksa tinggi layar pendek, sidebar desktop/tablet landscape, modal, tabel lebar, katalog Wali, POS, dan workspace Gudang/Pengantaran serta regresi lintas role.
 6. Tutup temuan, jalankan CI penuh, dan lakukan validasi perangkat sebelum Tahap 38 dinyatakan selesai.
 
-**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.19 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog bertumpuk, pemilih Santri, aksesibilitas dan ketahanan refresh POS Kasir, serta filter Pengantaran responsif. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
+**Status keseluruhan Tahap 38: masih berjalan.** Perbaikan repository Tahap 38.1–38.21 telah masuk `main`, termasuk header/sidebar, login Admin, Dashboard Operasional/Gudang/Pengantaran, katalog dan keranjang Wali, formulir, laporan, dialog bertumpuk, pemilih Santri, aksesibilitas dan ketahanan refresh POS Kasir, filter Pengantaran responsif, serta offset header tablet portrait. Audit lengkap seluruh layar/role, regresi responsif, dan validasi visual pada perangkat nyata masih tertunda.
