@@ -35,6 +35,7 @@ Branch produksi sumber: `main`
 | 31 | Audit akhir kode dan kesiapan produksi | Selesai secara statis; produksi belum dinyatakan siap sebelum runtime |
 | 32 | Gerbang audit runtime: entry point aman dan instruksi eksekusi | Selesai pada source/dokumentasi; runtime menunggu eksekusi operator |
 | 40.4 | Perbaikan tombol Masuk yang terblokir input OTP tersembunyi | Selesai pada repository; runtime belum diuji |
+| 40.10 | Audit konsistensi tampilan, navigasi, dan hak akses per role | Selesai pada repository; visual browser/perangkat menunggu Uji Runtime |
 
 ## Ringkasan perbaikan tahap 22–30
 
@@ -917,3 +918,16 @@ Regression CI mencakup guard migrasi append-only, pemetaan header, validasi subt
 5. Jalankan migrasi hanya bila audit struktur menyatakan aman. Jangan mengisi HPP transaksi lama dengan nilai sekarang atau angka nol. Jangan melakukan revaluasi stok melalui edit master.
 
 **Batasan:** regression CI lulus tidak membuktikan kondisi data aktual. Status produksi tetap belum disetujui sampai audit runtime dan rekonsiliasi pada salinan database berhasil.
+
+
+## Tahap 40.10 — Audit konsistensi tampilan, navigasi, dan hak akses per role
+
+**Status: selesai pada source `main` melalui PR #143, squash merge commit `bc5e3e7dfaa272c8024457aaf77a01e7d6df578a`. Regression CI pada PR lulus. Pemeriksaan visual browser/perangkat dan alur akun nyata tetap menunggu Uji Runtime setelah seluruh audit repository selesai.**
+
+Audit statis meninjau matriks navigasi staf, guard handler menu, dan konsistensi petunjuk UI terhadap aturan relasi Wali–Santri. Pemetaan menu per role telah dibandingkan dengan role backend dan guard handler; Supervisor tetap hanya memperoleh Dashboard, Pesanan, Produk, dan Laporan. Akses katalog Supervisor bersifat baca-saja, sedangkan menu Pengguna, POS, Stok, Penerimaan, Pengantaran, dan Pengaturan QRIS tidak diberikan.
+
+Ditemukan dua petunjuk UI lama yang menyatakan seluruh hubungan Wali–Santri langsung aktif. Pernyataan tersebut tidak sesuai dengan aturan backend Tahap 39.4: hubungan aktif otomatis hanya jika nomor HP akun Wali cocok dengan `no_wa_wali`; jika nomor tidak cocok atau belum tersedia, pengajuan berstatus menunggu verifikasi Admin. Kedua petunjuk telah diselaraskan pada halaman manajemen Wali dan profil Wali.
+
+Regression test mengunci konsistensi petunjuk tersebut terhadap aturan backend. Perubahan hanya pada copy UI dan tes; tidak mengubah algoritme relasi, hak akses backend, data, maupun struktur Spreadsheet.
+
+**Batasan:** audit statis dan CI tidak memvalidasi tampilan aktual, ukuran layar, navigasi sentuh, atau akun runtime. Semua itu tetap masuk Uji Runtime setelah backlog audit repository berikutnya selesai.
