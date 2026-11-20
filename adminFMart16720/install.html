@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#800080">
+  <meta name="description" content="Pasang aplikasi FMart Admin di HP atau komputer.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="../icons/fmart-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="../icons/fmart-180.png" sizes="180x180">
+  <title>Install FMart Admin</title>
+  <style>
+    :root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#281d35;background:#f5edf7;font-synthesis:none;text-rendering:optimizeLegibility}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px 16px;background:radial-gradient(circle at 50% 0,#ead6ef 0,transparent 48%),#f7f1f8}
+    main{width:min(100%,480px);padding:clamp(25px,6vw,38px);border:1px solid #eaddec;border-radius:28px;background:#fff;box-shadow:0 24px 70px #3d18451f;text-align:center}
+    .logo{width:66px;height:66px;margin:0 auto 20px;display:grid;place-items:center;border-radius:21px;background:linear-gradient(135deg,#702078,#a64ca6);color:#fff;font-size:22px;font-weight:900;letter-spacing:-.06em;box-shadow:0 10px 24px #70207833}
+    h1{margin:0;color:#4f0054;font-size:clamp(23px,5vw,29px);letter-spacing:-.03em}
+    .lead{margin:12px 0 24px;color:#706477;font-size:14px;line-height:1.7}
+    button,.launch{width:100%;min-height:52px;display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 18px;border:0;border-radius:15px;background:linear-gradient(120deg,#702078,#900090);color:#fff;font:700 15px Inter,system-ui,sans-serif;text-decoration:none;cursor:pointer;box-shadow:0 9px 22px #7020782b}
+    button:disabled{opacity:.55;cursor:default}
+    #message{margin:18px 0 0;padding:13px 15px;border-radius:13px;background:#f7eff9;color:#5c3563;font-size:13px;line-height:1.65;text-align:left}
+    #message[hidden],#manual[hidden],#installed[hidden],.launch[hidden]{display:none}
+    #manual{margin-top:18px;text-align:left;color:#706477;font-size:13px;line-height:1.7}
+    #manual strong{color:#4f0054}
+    #manual ol{padding-left:20px;margin:8px 0}
+    .foot{margin:22px 0 0;color:#93889a;font-size:11px}
+    @media(prefers-reduced-motion:no-preference){main{animation:appear .35s ease-out}@keyframes appear{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="logo" aria-hidden="true">FM</div>
+    <h1>FMart Admin</h1>
+    <p class="lead">Pasang aplikasi FMart Admin di HP atau komputer agar lebih mudah dibuka langsung dari layar utama atau desktop.</p>
+    <button id="installButton" type="button">↓ &nbsp; Install FMart Admin</button>
+    <a id="launchButton" class="launch" href="./?pwa=admin" hidden>Buka FMart Admin</a>
+    <div id="message" role="status" aria-live="polite" hidden></div>
+    <section id="manual" hidden>
+      <strong>Instalasi melalui menu browser</strong>
+      <ol id="steps">
+        <li>Buka menu browser (ikon ⋮ atau Bagikan).</li>
+        <li>Pilih <strong>Install app</strong>, <strong>Instal aplikasi</strong>, atau <strong>Add to Home Screen</strong>.</li>
+        <li>Konfirmasi pemasangan FMart Admin.</li>
+      </ol>
+    </section>
+    <div id="installed" hidden></div>
+    <p class="foot">FMart • Portal Petugas</p>
+  </main>
+  <script>
+    const installButton=document.querySelector('#installButton');
+    const launchButton=document.querySelector('#launchButton');
+    const message=document.querySelector('#message');
+    const manual=document.querySelector('#manual');
+    const steps=document.querySelector('#steps');
+    let installPrompt=null;
+    const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+    function showManual(){
+      manual.hidden=false;
+      if(/iPhone|iPad|iPod/i.test(navigator.userAgent)){
+        steps.innerHTML='<li>Tekan tombol <strong>Bagikan</strong> pada Safari.</li><li>Pilih <strong>Tambahkan ke Layar Utama</strong>.</li><li>Tekan <strong>Tambah</strong> untuk memasang FMart Admin.</li>';
+      }else if(/Android/i.test(navigator.userAgent)){
+        steps.innerHTML='<li>Buka menu browser <strong>⋮</strong>.</li><li>Pilih <strong>Install app</strong> atau <strong>Tambahkan ke layar utama</strong>.</li><li>Konfirmasi pemasangan FMart Admin.</li>';
+      }
+    }
+    function showInstalled(){
+      installButton.hidden=true;
+      launchButton.hidden=false;
+      manual.hidden=true;
+      message.hidden=false;
+      message.textContent='FMart Admin sudah terpasang di perangkat ini. Gunakan tombol di bawah untuk membukanya.';
+    }
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('./service-worker.js',{scope:'./'}).catch(error=>console.warn('FMart Admin service worker registration failed:',error));
+    }
+    if(isStandalone())showInstalled();
+    window.addEventListener('beforeinstallprompt',event=>{
+      event.preventDefault();
+      installPrompt=event;
+      installButton.disabled=false;
+      message.hidden=false;
+      message.textContent='FMart Admin siap dipasang. Tekan tombol Install untuk menampilkan persetujuan dari browser.';
+    });
+    window.addEventListener('appinstalled',()=>{
+      installPrompt=null;
+      showInstalled();
+    });
+    installButton.addEventListener('click',async()=>{
+      if(isStandalone()){showInstalled();return;}
+      if(!installPrompt){
+        message.hidden=false;
+        message.textContent='Browser belum menyediakan dialog instalasi otomatis. Ikuti langkah instalasi melalui menu browser di bawah.';
+        showManual();
+        return;
+      }
+      const prompt=installPrompt;
+      installPrompt=null;
+      installButton.disabled=true;
+      try{
+        await prompt.prompt();
+        const choice=await prompt.userChoice;
+        if(choice&&choice.outcome==='accepted'){
+          message.hidden=false;
+          message.textContent='Persetujuan diterima. FMart Admin sedang dipasang oleh browser.';
+          manual.hidden=true;
+        }else{
+          message.hidden=false;
+          message.textContent='Instalasi belum disetujui. Anda masih dapat memasang aplikasi melalui menu browser.';
+          showManual();
+        }
+      }catch(error){
+        message.hidden=false;
+        message.textContent='Dialog instalasi tidak dapat dibuka. Silakan gunakan menu browser.';
+        showManual();
+      }finally{
+        installButton.disabled=false;
+      }
+    });
+    if(/iPhone|iPad|iPod/i.test(navigator.userAgent)){
+      message.hidden=false;
+      message.textContent='Di iPhone atau iPad, instalasi dilakukan melalui menu Bagikan di Safari.';
+      showManual();
+    }
+  </script>
+</body>
+</html>
