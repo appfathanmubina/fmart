@@ -109,7 +109,7 @@ test('Superadmin can change staff email only through verified OTP flow', () => {
   const list = extractFunction(code, 'getStaffUserManagement');
   const setEmail = extractFunction(code, 'setStaffEmail');
   const verifyEmail = extractFunction(code, 'verifyStaffEmail');
-  assert.ok(list.includes("emailVerified:String(r[11]||'').toUpperCase()==='TRUE'||r[11]===true"));
+  assert.ok(list.includes("if(session.role===FMART.ROLES.SUPERADMIN) user.emailVerified=String(r[11]||'').toUpperCase()==='TRUE'||r[11]===true"));
   assert.ok(list.includes("canManage:session.role==='SUPERADMIN'"));
   assert.ok(setEmail.includes('requireRole_(token,[FMART.ROLES.SUPERADMIN])'));
   assert.ok(setEmail.includes('MailApp.sendEmail'));
