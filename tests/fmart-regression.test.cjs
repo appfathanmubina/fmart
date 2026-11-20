@@ -97,6 +97,27 @@ test('Kasir has limited QRIS proof and verification permission', () => {
   assert.ok(index.includes('staffPaymentVerification'));
 });
 
+test('Superadmin can access Wali payment verification while other role navigation remains unchanged', () => {
+  const nav = extractFunction(index, 'configureStaffNavigation');
+  const superadminStart = nav.indexOf('SUPERADMIN:');
+  const adminStart = nav.indexOf(String.fromCharCode(10) + '    ADMIN:') + 1;
+  const superadminLine = nav.slice(superadminStart, nav.indexOf(String.fromCharCode(10), superadminStart));
+  const adminLine = nav.slice(adminStart, nav.indexOf(String.fromCharCode(10), adminStart));
+  assert.ok(superadminLine.includes("'staffPaymentVerification'"));
+  assert.ok(!adminLine.includes("'staffPaymentVerification'"));
+  const handlerStart = index.indexOf("$('staffPaymentVerification').addEventListener");
+  const handler = index.slice(handlerStart, handlerStart + 500);
+  assert.ok(handler.includes("['KASIR','SUPERADMIN'].includes(state.data.user.role)"));
+  assert.ok(handler.includes('renderOpsPayments()'));
+  const workspace = extractFunction(index, 'renderOpsPayments');
+  assert.ok(workspace.includes("['ADMIN','SUPERADMIN','KASIR'].includes(role)"));
+});
+
+test('Profile shortcuts keep the matching staff sidebar item active', () => {
+  assert.ok(index.includes("async function openReportsFromProfile(){closeProfile();const role=state.data?.user?.role;if(!state.token||!role){showToast('Sesi pengguna belum siap. Silakan masuk kembali ke FMart.','error');return}if(!['ADMIN','SUPERADMIN','SUPERVISOR'].includes(role)){showToast('Menu laporan tidak tersedia untuk role Anda.','error');return}setStaffActiveNavigation('staffReports');"));
+  assert.ok(index.includes("async function openUserManagement(){closeProfile();if(!state.token){showToast('Sesi pengguna belum siap. Silakan masuk kembali ke FMart.','error');return}setStaffActiveNavigation('staffUsers');"));
+});
+
 test('Staff login cannot create a session before email OTP succeeds', () => {
   const login = extractFunction(code, 'login');
   const verifyOtp = extractFunction(code, 'verifyAdminLoginOtp');
