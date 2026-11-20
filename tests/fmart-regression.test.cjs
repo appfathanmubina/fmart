@@ -105,6 +105,27 @@ test('Superadmin QRIS settings explain private Drive access and current QRIS-onl
   assert.ok(!index.includes('tautannya dapat dibuka tanpa login'));
 });
 
+test('Superadmin can change staff email only through verified OTP flow', () => {
+  const list = extractFunction(code, 'getStaffUserManagement');
+  const setEmail = extractFunction(code, 'setStaffEmail');
+  const verifyEmail = extractFunction(code, 'verifyStaffEmail');
+  assert.ok(list.includes("if(session.role===FMART.ROLES.SUPERADMIN) user.emailVerified=String(r[11]||'').toUpperCase()==='TRUE'||r[11]===true"));
+  assert.ok(list.includes("canManage:session.role==='SUPERADMIN'"));
+  assert.ok(setEmail.includes('requireRole_(token,[FMART.ROLES.SUPERADMIN])'));
+  assert.ok(setEmail.includes('MailApp.sendEmail'));
+  assert.ok(setEmail.includes("setValues([[email,false]])"));
+  assert.ok(verifyEmail.includes('requireRole_(token,[FMART.ROLES.SUPERADMIN])'));
+  assert.ok(verifyEmail.includes('ch.attempts>=5'));
+  assert.ok(verifyEmail.includes('setValue(true)'));
+  assert.ok(index.includes('data-staff-action="email"'));
+  assert.ok(index.includes("if(action==='email'){openStaffEmailForm(id);return}"));
+  const emailForm = extractFunction(index, 'openStaffEmailForm');
+  assert.ok(emailForm.includes("runServer('setStaffEmail'"));
+  assert.ok(emailForm.includes("runServer('verifyStaffEmail'"));
+  assert.ok(emailForm.includes("String(user.userId)===String(window._fmartCurrentStaffUserId||'')"));
+  assert.ok(emailForm.includes('maxlength="6"'));
+});
+
 test('Superadmin can access Wali payment verification while other role navigation remains unchanged', () => {
   const nav = extractFunction(index, 'configureStaffNavigation');
   const superadminStart = nav.indexOf('SUPERADMIN:');
