@@ -1,6 +1,6 @@
 # Roadmap Audit, Pengembangan, dan Perbaikan FMart
 
-Tanggal pembaruan: 19 November 2026  
+Tanggal pembaruan: 20 November 2026  
 Repository: https://github.com/appfathanmubina/fmart  
 Branch produksi sumber: `main`
 
@@ -855,3 +855,21 @@ Perubahan dibatasi pada markup/handler login, regression test, dan roadmap. Tida
 - Fungsi publik `migrateFMartCostingSchema()` tersedia untuk menyiapkan kolom secara eksplisit; endpoint katalog, penerimaan, mutasi, dan laporan juga memastikan kolom tersedia secara idempotent.
 
 **Gerbang runtime:** verifikasi migrasi pada salinan Spreadsheet, uji penerimaan dan mutasi stok dengan HPP, transfer Gudang-Kasir, penjualan Wali/POS, transaksi retry, dan rekonsiliasi laba kotor dengan bukti pembelian. Jangan menilai hasil produksi sebelum UAT.
+
+
+## Tahap 40.7 — Pengamanan perubahan HPP master saat stok tersedia
+
+**Status: perbaikan source dan regression test disiapkan pada branch `fix/tahap-40-7-hpp-master-guard`; menunggu CI dan review PR.**
+
+Audit integrasi HPP menemukan Admin dapat mengganti nilai HPP master produk/variasi yang sudah tercatat dan masih memiliki saldo stok. Perubahan tersebut langsung mengubah nilai biaya persediaan yang dipakai untuk penjualan berikutnya, tanpa jurnal revaluasi/penyesuaian.
+
+Perbaikan membatasi perubahan HPP master:
+- HPP awal dari 0 ke nilai positif tetap diperbolehkan untuk menetapkan biaya pembukaan stok lama yang belum dinilai.
+- Menyimpan nilai HPP yang sama tetap diperbolehkan.
+- Mengubah atau mengosongkan HPP yang sudah positif ditolak selama saldo gabungan Gudang + Kasir masih tersedia.
+- Perubahan dapat dilakukan setelah saldo gabungan mencapai nol; perubahan HPP tidak mengubah histori snapshot penjualan.
+- Guard diterapkan pada produk dan variasi di backend, bukan hanya menonaktifkan input UI.
+
+Regression test menguji jalur pembukaan, nilai yang sama, stok nol, perubahan/ pengosongan saat stok masih tersedia, dan pemakaian guard oleh kedua endpoint. Tidak ada perubahan skema, saldo stok, HPP existing, transaksi, atau data produksi.
+
+**Gerbang runtime:** setelah source disinkronkan, uji pada salinan Spreadsheet: pengisian HPP pembukaan, penolakan perubahan HPP ketika stok tersedia, dan perubahan setelah stok nol. Jika diperlukan revaluasi stok yang masih tersedia, proses tersebut harus dirancang sebagai transaksi penyesuaian bernomor dan tercatat; jangan mengubah HPP master secara langsung.
