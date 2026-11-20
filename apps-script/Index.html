@@ -2252,6 +2252,18 @@ button:disabled,[role="button"][aria-disabled="true"]{cursor:not-allowed}
         background:rgba(255,255,255,.15);
         color:#fff;
       }
+
+      /* Pastikan label dan ikon menu aktif tetap putih di atas latar ungu.
+         Selector spesifik + !important mengatasi aturan .bottom-nav global. */
+      body.admin-portal #staffNav .nav-btn.active,
+      body.admin-portal #staffNav .nav-btn.active > span:not(.nav-icon),
+      body.admin-portal #staffNav .nav-btn.active .nav-icon,
+      body.admin-portal #staffNav .nav-btn.active .nav-icon svg {
+        color:#fff!important;
+      }
+      body.admin-portal #staffNav .nav-btn.active .nav-icon svg {
+        stroke:#fff!important;
+      }
       body.admin-portal #staffNav .nav-btn:focus-visible {
         outline:3px solid #b879c4;
         outline-offset:2px;
