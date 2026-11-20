@@ -105,6 +105,6 @@ Perubahan tidak mengubah skema, saldo, transaksi, snapshot HPP, atau data existi
 
 ## Addendum — Tahap 40.8 media PWA dan QRIS Drive (20 November 2026)
 
-Perbaikan source menyediakan endpoint `getQrisImageData(token)` untuk membaca QRIS dari Drive melalui Apps Script, dengan pembatasan role Wali/Superadmin, pemeriksaan file trash, tipe gambar, signature byte, dan batas 5 MB. UI Wali mencoba memakai data gambar dari server dan mempertahankan tautan Drive asli sebagai fallback. Transformasi thumbnail hanya diterapkan untuk URL `drive.google.com`.
+PR #139 telah di-merge ke `main` pada squash commit `2e84967f59d15144e950259040c8aff7dab54b92`; regression CI lulus. Source menyediakan endpoint `getQrisImageData(token)` untuk membaca QRIS dari Drive melalui Apps Script, dengan pembatasan role Wali/Superadmin, pemeriksaan file trash, tipe gambar, signature byte, dan batas 5 MB. UI Wali mencoba memakai data gambar dari server dan mempertahankan tautan Drive asli sebagai fallback. Transformasi thumbnail hanya diterapkan untuk URL `drive.google.com`.
 
 Audit menemukan foto produk menggunakan URL aman dan fallback visual; bukti pengantaran disajikan melalui endpoint yang memeriksa kepemilikan pesanan dan folder Drive; bukti pembayaran melalui endpoint yang membatasi role dan folder bukti pembayaran. Tidak ada perubahan izin Drive atau data produksi. Uji perangkat/PWA dan verifikasi Apps Script aktif tetap wajib sebelum produksi disetujui.
