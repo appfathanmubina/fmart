@@ -1884,3 +1884,10 @@ test('Shared table presentation hides internal ID columns and removes visible st
   assert.ok(index.includes('.audit-entity-id{display:none!important}'));
   assert.ok(!index.includes("'<tr><td><strong>'+escapeHtml(x.name)+'</strong><small class=\"stock-subline\">'+escapeHtml(x.productId)"));
 });
+
+
+test('Warehouse tables do not expose internal stock reference IDs as user-facing columns or fallback text',()=>{
+  assert.ok(!index.includes("escapeHtml(h.note||h.referenceId||'-')"));
+  assert.ok(!index.includes("escapeHtml(x.referenceId||'-')"));
+  assert.ok(index.includes('<th>Tanggal</th><th>Nomor</th><th>Pemasok / Asal</th><th>Referensi</th>'),'Supplier document references remain visible because they are human-readable source references.');
+});
