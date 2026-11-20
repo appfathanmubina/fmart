@@ -859,7 +859,7 @@ Perubahan dibatasi pada markup/handler login, regression test, dan roadmap. Tida
 
 ## Tahap 40.7 — Pengamanan perubahan HPP master saat stok tersedia
 
-**Status: perbaikan source dan regression test disiapkan pada branch `fix/tahap-40-7-hpp-master-guard`; menunggu CI dan review PR.**
+**Status: selesai pada source `main` melalui PR #137, merge commit `442cca6016b9e492fb56516fe0fa5953eab33572`. Regression CI pada PR lulus; pemeriksaan post-merge dan deployment GitHub Pages dipantau terpisah.**
 
 Audit integrasi HPP menemukan Admin dapat mengganti nilai HPP master produk/variasi yang sudah tercatat dan masih memiliki saldo stok. Perubahan tersebut langsung mengubah nilai biaya persediaan yang dipakai untuk penjualan berikutnya, tanpa jurnal revaluasi/penyesuaian.
 
