@@ -131,3 +131,10 @@ PR #143 telah di-merge ke `main` melalui squash commit `bc5e3e7dfaa272c8024457aa
 Dua keterangan UI yang keliru tentang hubungan Wali–Santri telah diperbaiki. UI kini menjelaskan bahwa relasi aktif otomatis hanya jika nomor HP akun Wali cocok dengan nomor Wali pada master Santri; jika tidak cocok/kosong, pengajuan menunggu verifikasi Admin. Regression CI pada PR lulus. Tidak ada perubahan data, skema, atau logika backend.
 
 Status tetap **SOURCE AUDIT IN PROGRESS / RUNTIME UAT NOT RUN / PRODUCTION NOT APPROVED**. Audit visual aktual, akun, perangkat, dan alur transaksi akan dilakukan setelah seluruh tahap audit repository selesai.
+
+
+## Addendum — Tahap 40.11 riwayat POS baca-saja untuk Supervisor (20 November 2026)
+
+PR #145 telah di-merge ke `main` melalui squash commit `5b3ee7fe600ad12f6806b832b7db4a2aa06c6604`. Supervisor kini memiliki menu **Transaksi POS** khusus baca-saja, dengan filter pencarian/tanggal dan rincian item. Endpoint riwayat POS menerima Supervisor tanpa memberi akses ke endpoint pembuatan, pembatalan, atau verifikasi transaksi. Pembatasan Kasir agar hanya melihat transaksi miliknya tetap dipertahankan.
+
+Regression CI pada PR lulus. Tidak ada perubahan data atau skema Spreadsheet. Uji akun dan rekonsiliasi transaksi aktual tetap menjadi gerbang runtime.
