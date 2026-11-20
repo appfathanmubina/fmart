@@ -2407,7 +2407,7 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
       <section id="waliProfilePage" class="hidden" aria-label="Halaman Profil"><div class="section-title"><div><div class="eyebrow">AKUN FMart</div><h2>Profil</h2></div></div><div id="waliProfilePageBody"></div></section>
     </main>
     <section id="operationsView" class="hidden" style="padding:0 16px 100px">
-      <div class="section-title" style="margin-top:18px"><div><div class="eyebrow">Operasional FMart</div><h2 id="opsTitle">Dashboard</h2></div><button class="secondary" id="opsRefresh">↻ Refresh</button></div>
+      <div class="section-title" style="margin:0"><div><h2 id="opsTitle">Dashboard</h2></div><button class="secondary" id="opsRefresh">↻ Refresh</button></div>
       <div id="opsStats" class="products" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:16px"></div>
       <div class="section" id="opsMainSection"><div class="section-title"><h2 id="opsMainTitle">Pesanan</h2></div><div id="opsMainBody"></div></div>
     </section>
@@ -2719,6 +2719,13 @@ async function openWaliProfilePage(){
     btn.classList.toggle('active',active);
     if(active)btn.setAttribute('aria-current','page');else btn.removeAttribute('aria-current');
   });
+  const isDashboard=id==='staffDashboard';
+  const isDeliveryStaff=state.data&&state.data.user&&state.data.user.role==='PETUGAS_PENGANTAR';
+  const titleNode=target.querySelector('span:last-child');
+  const pageTitle=id==='staffDeliveryComplaints'?'Komplain Pengantaran':(titleNode?titleNode.textContent.trim():'FMart');
+  $('opsTitle').textContent=pageTitle;
+  $('opsStats').classList.toggle('hidden',!isDashboard||isDeliveryStaff);
+  $('opsRefresh').classList.toggle('hidden',!isDashboard||isDeliveryStaff);
   return true;
 }
 function configureStaffNavigation(role){
