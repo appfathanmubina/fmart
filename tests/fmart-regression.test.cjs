@@ -84,7 +84,7 @@ test('Private Drive QRIS images are served safely for the Wali PWA',()=>{
  const display=extractFunction(index,'qrisDisplayImageUrl_');
  assert.ok(display.includes('driveImageFileId_'));
  assert.ok(display.includes('drive.google.com/thumbnail'));
- assert.ok(index.includes("runServer('getQrisImageData',state.token)"));
+ assert.ok(index.includes("runServer('getQrisImageData',token)"));
  assert.ok(index.includes('qrisImageFallback')&&index.includes("paymentQrisImage').onerror"));
 });
 
