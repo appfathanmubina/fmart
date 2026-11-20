@@ -1690,3 +1690,33 @@ test('Legacy pending stock receipts can recover without inventing historical acq
  assert.ok(recovery.includes('legacyFingerprint')&&recovery.includes('done.legacyCostNotRecorded=true'));
  assert.ok(index.includes('legacyReceiptSignature'));
 });
+
+
+test('Costing schema migration is append-only, canonical-positioned and fails closed on unknown columns',()=>{
+ const migration=extractFunction(code,'ensureFMartCostingSchema_'),column=extractFunction(code,'getHeaderColumnIndex_');
+ for(const [name,field,col] of [['Produk','HargaPokokRataRata',12],['VariasiProduk','HargaPokokRataRata',10],['MutasiStok','HPPSesudah',14],['DetailPesanan','HPPStatus',13],['DetailPenjualanToko','HPPStatus',13]])assert.ok(migration.includes(name)&&migration.includes(field)&&migration.includes(String(col)));
+ assert.ok(migration.includes('sh.getLastColumn()>=column'),'Migration must stop rather than append HPP after an unknown/custom column.');
+ assert.ok(migration.includes('matches[0]!==column'),'Existing costing columns in unexpected positions must not be silently accepted.');
+ assert.ok(column.includes('matches.length!==1'),'Header lookup must reject missing or duplicate names.');
+ assert.ok(!migration.includes('deleteColumn')&&!migration.includes('deleteRow')&&!migration.includes('clearContents'));
+});
+
+test('HPP master reads, writes and report snapshots resolve named columns instead of fixed offsets',()=>{
+ const admin=extractFunction(code,'getAdminCatalog'),stock=extractFunction(code,'getStockCatalog'),product=extractFunction(code,'saveProduct'),variation=extractFunction(code,'saveVariation'),report=extractFunction(code,'getFMartReports');
+ for(const fn of [admin,stock,product,variation])assert.ok(fn.includes('getHeaderColumnIndex_'),'Master HPP column must be resolved by header name.');
+ assert.ok(report.includes('orderHppUnitIndex')&&report.includes('posHppUnitIndex'));
+ assert.ok(report.includes('cost===unit*q'),'Report must reject a snapshot subtotal that does not equal HPP unit multiplied by quantity.');
+ assert.ok(!admin.includes('Number(r[11])')&&!admin.includes('Number(r[9])'));
+ assert.ok(!stock.includes('Number(p[11])')&&!stock.includes('Number(v[9])'));
+});
+
+test('Costing integrity audit is strictly read-only and reports stock, receipt and sales valuation gaps',()=>{
+ const audit=extractFunction(code,'auditFMartCostingIntegrity_');
+ assert.ok(audit.includes("mode:'READ_ONLY'")&&audit.includes('NO_SCHEMA_MIGRATION_NO_DATA_REPAIR'));
+ assert.ok(audit.includes("addStock(warehouse,'Stok');addStock(cashier,'StokKasir')"));
+ assert.ok(audit.includes('MASTER_HPP_MISSING_WITH_STOCK'));
+ assert.ok(audit.includes('RECEIPT_COST_INVALID'));
+ assert.ok(audit.includes('SALE_HPP_SNAPSHOT_INVALID'));
+ assert.ok(audit.includes('MASTER_HPP_DIFFERS_FROM_LAST_INBOUND'));
+ assert.ok(!/\.appendRow\s*\(|\.setValue\s*\(|\.setValues\s*\(|\.deleteRow\s*\(|\.insertSheet\s*\(|\.insertColumns/.test(audit),'Audit must not mutate spreadsheet data or schema.');
+});
