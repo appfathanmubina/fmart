@@ -101,8 +101,8 @@ test('Superadmin can access Wali payment verification while other role navigatio
   const nav = extractFunction(index, 'configureStaffNavigation');
   const superadminStart = nav.indexOf('SUPERADMIN:');
   const adminStart = nav.indexOf('ADMIN:');
-  const superadminLine = nav.slice(superadminStart, nav.indexOf('\\n', superadminStart));
-  const adminLine = nav.slice(adminStart, nav.indexOf('\\n', adminStart));
+  const superadminLine = nav.slice(superadminStart, nav.indexOf(String.fromCharCode(10), superadminStart));
+  const adminLine = nav.slice(adminStart, nav.indexOf(String.fromCharCode(10), adminStart));
   assert.ok(superadminLine.includes("'staffPaymentVerification'"));
   assert.ok(!adminLine.includes("'staffPaymentVerification'"));
   const handlerStart = index.indexOf("$('staffPaymentVerification').addEventListener");
