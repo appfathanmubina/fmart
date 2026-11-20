@@ -108,3 +108,14 @@ Perubahan tidak mengubah skema, saldo, transaksi, snapshot HPP, atau data existi
 PR #139 telah di-merge ke `main` pada squash commit `2e84967f59d15144e950259040c8aff7dab54b92`; regression CI lulus. Source menyediakan endpoint `getQrisImageData(token)` untuk membaca QRIS dari Drive melalui Apps Script, dengan pembatasan role Wali/Superadmin, pemeriksaan file trash, tipe gambar, signature byte, dan batas 5 MB. UI Wali mencoba memakai data gambar dari server dan mempertahankan tautan Drive asli sebagai fallback. Transformasi thumbnail hanya diterapkan untuk URL `drive.google.com`.
 
 Audit menemukan foto produk menggunakan URL aman dan fallback visual; bukti pengantaran disajikan melalui endpoint yang memeriksa kepemilikan pesanan dan folder Drive; bukti pembayaran melalui endpoint yang membatasi role dan folder bukti pembayaran. Tidak ada perubahan izin Drive atau data produksi. Uji perangkat/PWA dan verifikasi Apps Script aktif tetap wajib sebelum produksi disetujui.
+
+
+## Addendum — Tahap 40.9 audit database, migrasi, dan konsistensi HPP (20 November 2026)
+
+PR #141 menutup celah penggunaan nomor kolom tetap pada pembacaan/penulisan HPP master dan detail laporan. Semua jalur tersebut kini mencari kolom berdasarkan nama header. Migrasi costing memeriksa header dasar dan posisi kanonis; jika ditemukan header dasar yang berubah, kolom costing duplikat/salah posisi, atau kolom tambahan yang menghalangi append-only, migrasi dihentikan tanpa menulis.
+
+Fungsi baru `auditFMartCostingIntegrity_()` bersifat READ_ONLY dan melaporkan konsistensi HPP master terhadap saldo gabungan Gudang+Kasir, saldo ganda/invalid, biaya detail penerimaan, jurnal MASUK, snapshot HPP detail pesanan dan POS, serta perbedaan master terhadap HPP sesudah mutasi MASUK terakhir. Laporan hanya menjumlah COGS dari snapshot `TERCATAT` yang subtotalnya sama dengan HPP unit × qty.
+
+Regression CI menguji migrasi aman, pemetaan header dinamis, perhitungan snapshot, dan sifat read-only audit. Tidak ada migrasi yang dijalankan dan tidak ada perubahan saldo stok, HPP existing, transaksi, atau laporan Spreadsheet produksi.
+
+**UAT wajib:** jalankan audit read-only pada salinan Spreadsheet yang diverifikasi, tinjau issue, lakukan uji penerimaan/mutasi/transfer/penjualan/retry, dan rekonsiliasi laporan dengan dokumen pembelian. Migrasi hanya boleh dilakukan setelah header dan data dinyatakan aman. Data transaksi lama tanpa bukti HPP tetap dibiarkan tidak bernilai; jangan direkonstruksi dari HPP saat ini.
