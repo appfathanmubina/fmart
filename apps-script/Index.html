@@ -3048,7 +3048,7 @@ function closeChildPicker(){$('childPickerModal').classList.add('hidden')}
 function ensureChildSelected(){if(state.data?.user?.role!=='WALI_SANTRI')return true;if(state.selectedChildId)return true;openChildPicker(true);showToast('Pilih anak terlebih dahulu.','error');return false}
 function selectChild(childId){const items=(state.data&&state.data.children)||[];if(!items.some(c=>String(c.id)===String(childId)))return;state.selectedChildId=String(childId);sessionStorage.setItem('fmartSelectedChildId',state.selectedChildId);renderChildren(items);refreshCartCount();closeChildPicker();showToast('Anak aktif: '+(items.find(c=>String(c.id)===String(childId))?.name||''),'success')}
 function safeUrl(v){const u=String(v||'').trim();return /^https?:\/\//i.test(u)?escapeHtml(u):'';}
-function cleanProductDescription(value,categoryId){const category=String(categoryId||'').trim();return String(value||'').split(/\r?\n/).filter(line=>{const text=line.trim();if(/^kategori\\s*id\\s*[:：]/i.test(text))return false;if(category&&text===category)return false;return true}).join('\n').trim();}
+function cleanProductDescription(value,categoryId){const category=String(categoryId||'').trim();return String(value||'').split(/\r?\n/).filter(line=>{const text=line.trim();if(/^kategori\s*id\s*[:：]/i.test(text))return false;if(category&&text===category)return false;return true}).join('\n').trim();}
 async function openProduct(productId){
   loading(true,'Memuat detail produk...');
   try{
