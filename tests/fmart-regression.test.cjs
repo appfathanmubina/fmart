@@ -1874,7 +1874,7 @@ test('Shared summary layout keeps every metric in one row with a matching column
   assert.ok(index.includes('.fmart-one-row-summary{display:grid!important;grid-template-columns:repeat(var(--fmart-summary-count,1),minmax(0,1fr))!important'));
   assert.ok(index.includes('grid-auto-flow:column!important;grid-template-columns:none!important;overflow-x:auto'));
   assert.ok(index.includes("el.style.setProperty('--fmart-summary-count',String(count))"));
-  assert.ok(index.includes("const summarySelector='#opsStats,.catalog-overview,.report-metric-grid"));
+  assert.ok(index.includes("const summarySelector='#opsStats,#deliverySummaryCards,.catalog-overview,.report-metric-grid"));
 });
 
 test('Shared table presentation hides internal ID columns and removes visible stock product IDs',()=>{
