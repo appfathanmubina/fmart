@@ -1875,7 +1875,7 @@ function uploadProductPhoto(token, payload) {
   const match=dataUrl.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=]+)$/i);
   if(!match||String(match[1]).toLowerCase()!==mimeType)throw new Error('Isi foto tidak valid atau formatnya tidak cocok.');
   const bytes=Utilities.base64Decode(match[2]);
-  if(!bytes.length||bytes.length>5*1024*1024)throw new Error('Ukuran foto maksimal 5 MB.');
+  if(!bytes.length||bytes.length>500*1024)throw new Error('Ukuran foto setelah kompresi maksimal 500 KB.');
   const original=String(payload.fileName||'foto-produk').replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,100);
   const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif'})[mimeType];
   const name='FMart-Produk-'+Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyyMMdd-HHmmss')+'-'+original.replace(/\.[^.]+$/,'')+'.'+ext;
