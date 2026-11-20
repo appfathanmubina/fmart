@@ -1576,6 +1576,7 @@ function getOperationsDashboard(token) {
   const stockRows = readRows_(ss.getSheetByName('Stok'));
   const cats = readRows_(ss.getSheetByName('Kategori'));
   const variationRows = readRows_(ss.getSheetByName('VariasiProduk'));
+  const users = readRows_(ss.getSheetByName('Users'));
   const userMap = {}; users.forEach(r => userMap[String(r[0])] = {name:String(r[4]||''),username:String(r[1]||'')});
   const santriMap = getSantriColumnMap_(ss.getSheetByName('Santri'));
   const childMap = {}; santri.forEach(r => { const child = santriRecord_(r,santriMap); if(child.id) childMap[child.id] = {name:child.name,className:child.className}; });
