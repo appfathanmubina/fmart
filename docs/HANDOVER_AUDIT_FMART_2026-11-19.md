@@ -122,3 +122,12 @@ Regression CI menguji migrasi aman, pemetaan header dinamis, perhitungan snapsho
 
 
 **Status merge Tahap 40.9:** PR #141 berhasil di-merge ke `main` pada commit `7c9ad22e3d56768389a8b6a8d11c86d79b8e2718`. Regression CI pada head PR lulus. Source Apps Script aktif belum otomatis diperbarui. Uji audit database dan costing pada salinan Spreadsheet, sinkronisasi Apps Script, serta UAT tetap wajib sebelum migrasi/produksi.
+
+
+## Addendum — Tahap 40.10 konsistensi UI relasi Wali dan navigasi role (20 November 2026)
+
+PR #143 telah di-merge ke `main` melalui squash commit `bc5e3e7dfaa272c8024457aaf77a01e7d6df578a`. Audit statis mencocokkan peta navigasi staf dengan role backend dan guard handler menu. Supervisor tetap memiliki menu pengawasan baca-saja sesuai desain.
+
+Dua keterangan UI yang keliru tentang hubungan Wali–Santri telah diperbaiki. UI kini menjelaskan bahwa relasi aktif otomatis hanya jika nomor HP akun Wali cocok dengan nomor Wali pada master Santri; jika tidak cocok/kosong, pengajuan menunggu verifikasi Admin. Regression CI pada PR lulus. Tidak ada perubahan data, skema, atau logika backend.
+
+Status tetap **SOURCE AUDIT IN PROGRESS / RUNTIME UAT NOT RUN / PRODUCTION NOT APPROVED**. Audit visual aktual, akun, perangkat, dan alur transaksi akan dilakukan setelah seluruh tahap audit repository selesai.
