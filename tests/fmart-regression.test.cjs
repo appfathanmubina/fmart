@@ -97,6 +97,14 @@ test('Kasir has limited QRIS proof and verification permission', () => {
   assert.ok(index.includes('staffPaymentVerification'));
 });
 
+test('Superadmin QRIS settings explain private Drive access and current QRIS-only payment method', () => {
+  assert.ok(index.includes('<strong>Pengaturan QRIS</strong><small class="muted" style="display:block;font-weight:500;margin-top:2px">Gambar QRIS dan WhatsApp Admin</small>'));
+  assert.ok(index.includes('File Google Drive dapat tetap privat selama akun pemilik script memiliki akses.'));
+  assert.ok(index.includes('Untuk file non-Drive, pastikan URL dapat dimuat oleh browser.'));
+  assert.ok(index.includes('FMart hanya menerima pembayaran melalui QRIS.'));
+  assert.ok(!index.includes('tautannya dapat dibuka tanpa login'));
+});
+
 test('Superadmin can access Wali payment verification while other role navigation remains unchanged', () => {
   const nav = extractFunction(index, 'configureStaffNavigation');
   const superadminStart = nav.indexOf('SUPERADMIN:');
