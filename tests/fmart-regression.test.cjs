@@ -1868,3 +1868,18 @@ test('Desktop staff sidebar matches the Admin mobile navbar palette with clear a
  assert.ok(style.includes('background:rgba(255,255,255,.13)'),'Hover state must provide subtle contrast on the purple sidebar.');
  assert.ok(style.includes('@media (min-width:901px)'),'Sidebar palette override must be desktop-only.');
 });
+
+
+test('Shared summary layout keeps every metric in one row with a matching column count',()=>{
+  assert.ok(index.includes('.fmart-one-row-summary{display:grid!important;grid-template-columns:repeat(var(--fmart-summary-count,1),minmax(0,1fr))!important'));
+  assert.ok(index.includes('grid-auto-flow:column!important;grid-template-columns:none!important;overflow-x:auto'));
+  assert.ok(index.includes("el.style.setProperty('--fmart-summary-count',String(count))"));
+  assert.ok(index.includes("const summarySelector='#opsStats,.catalog-overview,.report-metric-grid"));
+});
+
+test('Shared table presentation hides internal ID columns and removes visible stock product IDs',()=>{
+  assert.ok(index.includes('const internalHeader=/^(?:id|uuid|id internal|kode internal|id produk'));
+  assert.ok(index.includes('row.children[i].hidden=true'));
+  assert.ok(index.includes('.audit-entity-id{display:none!important}'));
+  assert.ok(!index.includes("'<tr><td><strong>'+escapeHtml(x.name)+'</strong><small class=\"stock-subline\">'+escapeHtml(x.productId)"));
+});
