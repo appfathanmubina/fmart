@@ -3183,7 +3183,7 @@ function openStaffEmailForm(id){
     $('resendStaffEmailOtpBtn').onclick=sendCode;
   };
   const sendCode=async function(){
-    const button=$('sendStaffEmailOtpBtn');
+    const button=$('sendStaffEmailOtpBtn')||$('resendStaffEmailOtpBtn');
     if(!targetEmail){targetEmail=String($('newStaffEmail')&&$('newStaffEmail').value||'').trim().toLowerCase();}
     if(!targetEmail||!/^\S+@\S+\.\S+$/.test(targetEmail)){showToast('Masukkan alamat email baru yang valid.','error');return}
     if(button)button.disabled=true;loading(true,'Mengirim kode verifikasi email...');
