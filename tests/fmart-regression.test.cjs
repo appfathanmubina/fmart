@@ -1792,3 +1792,15 @@ test('Operational loading and status elements use designed FMart surfaces',()=>{
  assert.ok(index.includes('linear-gradient(145deg,#fff,#fbf6fc)'));
  assert.ok(index.includes('border-radius:999px;background:#f6edf8;color:#68216f'));
 });
+
+
+test('Staff workspace header follows the active menu and hides stale dashboard summaries',()=>{
+ assert.ok(index.includes('<div class="section-title" style="margin:0"><div><h2 id="opsTitle">Dashboard</h2></div>'),'Operational eyebrow is removed without leaving its top margin.');
+ assert.ok(!index.includes('<div class="eyebrow">Operasional FMart</div>'));
+ const navigation=extractFunction(index,'setStaffActiveNavigation');
+ assert.ok(navigation.includes("const isDashboard=id==='staffDashboard'"));
+ assert.ok(navigation.includes("$('opsStats').classList.toggle('hidden',!isDashboard||isDeliveryStaff)"));
+ assert.ok(navigation.includes("$('opsRefresh').classList.toggle('hidden',!isDashboard||isDeliveryStaff)"));
+ assert.ok(navigation.includes("id==='staffDeliveryComplaints'?'Komplain Pengantaran'"));
+ assert.ok(navigation.includes("$('opsTitle').textContent=pageTitle"));
+});
