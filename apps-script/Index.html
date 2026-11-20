@@ -3306,7 +3306,7 @@ async function submitCheckout(){
 function closeCheckout(){$('checkoutModal').classList.add('hidden')}
 function closeSuccess(){$('successModal').classList.add('hidden')}
 
-function closeFmartDialog_(value){const root=$('fmartDialog');if(!root)return;root.classList.remove('is-open');root.setAttribute('aria-hidden','true');document.removeEventListener('keydown',root._keyHandler);const done=root._resolve;root._resolve=null;if(done)done(value)}
+function closeFmartDialog_(value){const root=$('fmartDialog');if(!root)return;root.classList.remove('is-open');root.setAttribute('aria-hidden','true');document.removeEventListener('keydown',root._keyHandler);const done=root._resolve,previous=root._previousFocus;root._resolve=null;root._previousFocus=null;if(done)done(value);if(previous&&previous.isConnected&&typeof previous.focus==='function')previous.focus()}
 function openFmartDialog_(config){
   const root=$('fmartDialog'),card=root&&root.querySelector('.fmart-dialog-card');if(!root||!card)return Promise.resolve(config.mode==='alert'?undefined:null);
   if(root._resolve)closeFmartDialog_(null);
@@ -3329,6 +3329,7 @@ function openFmartDialog_(config){
   cancel.textContent=config.cancelText||'Batal';confirm.textContent=config.confirmText||(config.mode==='alert'?'Mengerti':'Lanjutkan');
   confirm.classList.toggle('is-danger',!!config.danger);
   cancel.style.display=config.mode==='alert'?'none':'';
+  root._previousFocus=document.activeElement;
   root.classList.add('is-open');root.setAttribute('aria-hidden','false');
   return new Promise(resolve=>{
     root._resolve=resolve;
@@ -3336,7 +3337,7 @@ function openFmartDialog_(config){
     cancel.onclick=()=>finish(config.mode==='alert'?undefined:null);
     confirm.onclick=()=>finish(config.mode==='prompt'?field.value:config.mode==='alert'?undefined:true);
     root.onclick=e=>{if(e.target===root&&config.dismissBackdrop!==false)finish(config.mode==='alert'?undefined:null)};
-    root._keyHandler=e=>{if(e.key==='Escape'){e.preventDefault();finish(config.mode==='alert'?undefined:null)}else if(e.key==='Enter'&&config.mode!=='alert'&&(!field||field.tagName!=='TEXTAREA')){e.preventDefault();confirm.click()}};
+    root._keyHandler=e=>{if(e.key==='Escape'){e.preventDefault();finish(config.mode==='alert'?undefined:null);return}if(e.key==='Tab'){const items=Array.from(root.querySelectorAll('button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')).filter(el=>el.offsetParent!==null);if(items.length){const first=items[0],last=items[items.length-1];if(e.shiftKey&&(document.activeElement===first||document.activeElement===root)){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}return}if(e.key==='Enter'&&config.mode!=='alert'&&(!field||field.tagName!=='TEXTAREA')){e.preventDefault();confirm.click()}};
     document.addEventListener('keydown',root._keyHandler);
     setTimeout(()=>{if(field){field.focus();field.select&&field.select()}else confirm.focus()},30);
   });
