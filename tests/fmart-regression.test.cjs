@@ -1774,3 +1774,11 @@ test('FMart replaces native browser dialogs with accessible branded dialogs',()=
  assert.equal((index.match(/\bwindow\.prompt\s*\(/g)||[]).length,0,'Native window.prompt dialogs must not remain.');
  assert.equal((index.match(/\bwindow\.alert\s*\(/g)||[]).length,0,'Native window.alert dialogs must not remain.');
 });
+
+test('Buyer and Admin PWA setup fallbacks use branded responsive surfaces',()=>{
+ for(const source of [index,adminIndex]){
+  assert.ok(source.includes('border-radius:26px'),'PWA setup fallback must use a designed card surface.');
+  assert.ok(source.includes('linear-gradient(135deg,#702078,#a64ca6)'),'PWA setup mark must use FMart brand colors.');
+  assert.ok(source.includes('box-shadow:0 12px 34px'),'PWA status feedback must have intentional elevation.');
+ }
+});
