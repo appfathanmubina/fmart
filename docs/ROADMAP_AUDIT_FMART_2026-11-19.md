@@ -877,7 +877,7 @@ Regression test menguji jalur pembukaan, nilai yang sama, stok nol, perubahan/ p
   
 ## Tahap 40.8 — Audit media PWA dan pratinjau QRIS Drive
 
-**Status: perbaikan source QRIS Drive dan regression test disiapkan pada PR terpisah; runtime PWA tetap perlu diuji setelah sinkronisasi Apps Script.**
+**Status: selesai pada source `main` melalui PR #139, squash merge commit `2e84967f59d15144e950259040c8aff7dab54b92`. Regression CI PR lulus. Runtime PWA tetap perlu diuji setelah sinkronisasi Apps Script.**
 
 Audit media menemukan tautan QRIS Drive ditampilkan langsung melalui endpoint thumbnail Drive. Tautan buka file dapat berfungsi saat diketuk, sementara elemen gambar PWA gagal memuat ketika sesi browser/PWA tidak membawa izin atau cookie Drive yang diperlukan. Jalur foto produk sudah memiliki fallback visual saat URL gambar gagal; bukti pengantaran memakai endpoint server yang memeriksa kepemilikan pesanan dan folder Drive khusus; bukti pembayaran juga diperiksa terhadap folder khusus dan role.
 
