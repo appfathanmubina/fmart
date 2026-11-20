@@ -2415,13 +2415,11 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
 
   
 
-    /* Standar bersama FMart: seluruh ringkasan satu baris, jumlah kolom mengikuti jumlah item. */
-    .fmart-one-row-summary{display:grid!important;grid-template-columns:repeat(var(--fmart-summary-count,1),minmax(0,1fr))!important;gap:12px;min-width:0}
-    .fmart-one-row-summary>*{min-width:0}
-    .audit-entity-id{display:none!important}
-    .data-table th[hidden],.data-table td[hidden]{display:none!important}
-    @media(max-width:1100px){.fmart-one-row-summary{display:grid!important;grid-auto-flow:column!important;grid-auto-columns:minmax(132px,1fr)!important;grid-template-columns:none!important;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding-bottom:5px;-webkit-overflow-scrolling:touch}.fmart-one-row-summary>*{min-width:132px}}
-    @media(max-width:620px){.fmart-one-row-summary{gap:8px}.fmart-one-row-summary>*{min-width:124px}}
+    /* Hanya wadah ringkasan yang memang sudah ada yang dirapikan menjadi satu baris. */
+    .fmart-existing-summary-row{display:grid!important;grid-template-columns:repeat(var(--fmart-existing-summary-count),minmax(0,1fr))!important;grid-auto-flow:column!important;min-width:0;gap:12px}
+    .fmart-existing-summary-row>*{min-width:0}
+    @media(max-width:1100px){.fmart-existing-summary-row{grid-template-columns:none!important;grid-auto-columns:minmax(132px,1fr)!important;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding-bottom:5px;-webkit-overflow-scrolling:touch}.fmart-existing-summary-row>*{min-width:132px}}
+    @media(max-width:620px){.fmart-existing-summary-row{gap:8px}.fmart-existing-summary-row>*{min-width:124px}}
 </style>
   
 
@@ -4671,17 +4669,17 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
       if(close){e.preventDefault();close()}
     });
 
-    /* Komponen bersama untuk ringkasan dan tabel seluruh portal/role. */
-    (function installSharedSummaryAndTableRules(){
-      const summarySelector='#opsStats,#deliverySummaryCards,.catalog-overview,.report-metric-grid,.report-stock-summary,.report-status-grid,.stock-overview,.order-overview-grid,.payment-overview-grid,.fulfillment-metrics,.warehouse-report-metrics,.warehouse-fulfillment-metrics,.wali-metric-grid,.order-history-summary,.receiving-summary,.catalog-product-stats';
+    /* Tata satu baris hanya pada wadah ringkasan yang memang dirender oleh halaman. Tidak membuat ringkasan baru. */
+    (function installExistingSummaryAndTableRules(){
+      const existingSummarySelector='#opsStats,.catalog-overview,.report-metric-grid,.report-stock-summary,.report-status-grid,.stock-overview,.order-overview-grid,.payment-overview-grid,.fulfillment-metrics,.warehouse-report-metrics,.warehouse-fulfillment-metrics,.wali-metric-grid,.order-history-summary,.receiving-summary,.catalog-product-stats';
       const internalHeader=/^(?:id|uuid|id internal|kode internal|id produk|id variasi|id pengguna|id pesanan|id transaksi|id pembayaran|id santri|id wali|id kategori|id barang|id penerimaan|id mutasi)$/i;
-      function applySummary(el){const count=el.children?el.children.length:0;if(!count)return;el.classList.add('fmart-one-row-summary');el.style.setProperty('--fmart-summary-count',String(count));}
+      function applyExistingSummary(el){const count=Array.from(el.children||[]).filter(child=>child.nodeType===1).length;if(!count)return;el.classList.add('fmart-existing-summary-row');el.style.setProperty('--fmart-existing-summary-count',String(count));}
       function refresh(root){
         const scope=root&&root.querySelectorAll?root:document;
-        if(root&&root.matches&&root.matches(summarySelector))applySummary(root);
-        scope.querySelectorAll(summarySelector).forEach(applySummary);
+        if(root&&root.matches&&root.matches(existingSummarySelector))applyExistingSummary(root);
+        scope.querySelectorAll(existingSummarySelector).forEach(applyExistingSummary);
         const tables=[];if(root&&root.matches&&root.matches('table'))tables.push(root);scope.querySelectorAll('table').forEach(table=>tables.push(table));
-        tables.forEach(table=>{const header=table.querySelector('thead tr');if(!header)return;const indexes=[];Array.from(header.children).forEach((cell,i)=>{if(internalHeader.test((cell.textContent||'').trim().replace(/\s+/g,' ')))indexes.push(i)});if(!indexes.length)return;table.querySelectorAll('tr').forEach(row=>indexes.slice().reverse().forEach(i=>{if(row.children[i])row.children[i].hidden=true}));});
+        tables.forEach(table=>{const header=table.querySelector('thead tr');if(!header)return;const indexes=[];Array.from(header.children).forEach((cell,i)=>{if(internalHeader.test((cell.textContent||'').trim().replace(/\\s+/g,' ')))indexes.push(i)});if(!indexes.length)return;table.querySelectorAll('tr').forEach(row=>indexes.slice().reverse().forEach(i=>{if(row.children[i])row.children[i].hidden=true}));});
       }
       let queued=false;const observer=new MutationObserver(records=>{if(queued||!records.some(record=>record.addedNodes&&record.addedNodes.length))return;queued=true;Promise.resolve().then(()=>{queued=false;refresh(document)});});
       refresh(document);if(document.body)observer.observe(document.body,{childList:true,subtree:true});
