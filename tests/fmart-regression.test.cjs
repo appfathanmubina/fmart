@@ -100,7 +100,7 @@ test('Kasir has limited QRIS proof and verification permission', () => {
 test('Superadmin can access Wali payment verification while other role navigation remains unchanged', () => {
   const nav = extractFunction(index, 'configureStaffNavigation');
   const superadminStart = nav.indexOf('SUPERADMIN:');
-  const adminStart = nav.indexOf('ADMIN:');
+  const adminStart = nav.indexOf(String.fromCharCode(10) + '    ADMIN:') + 1;
   const superadminLine = nav.slice(superadminStart, nav.indexOf(String.fromCharCode(10), superadminStart));
   const adminLine = nav.slice(adminStart, nav.indexOf(String.fromCharCode(10), adminStart));
   assert.ok(superadminLine.includes("'staffPaymentVerification'"));
