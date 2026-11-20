@@ -919,9 +919,34 @@ function getOrCreateTransactionProofFile_(folder,name,mime,bytes,marker){
  const file=folder.createFile(Utilities.newBlob(bytes,mime,name));file.setDescription(String(marker));return file;
 }
 
+function getHeaderColumnIndex_(sheet,header){
+ if(!sheet)throw new Error('Sheet untuk kolom '+header+' tidak tersedia.');
+ const width=Math.max(1,sheet.getLastColumn()),headers=sheet.getRange(1,1,1,width).getDisplayValues()[0].map(function(v){return String(v||'').trim();}),matches=[];
+ headers.forEach(function(value,index){if(value===String(header))matches.push(index+1);});
+ if(matches.length!==1)throw new Error('Header '+header+' pada sheet '+sheet.getName()+' '+(matches.length?'terduplikasi':'belum tersedia')+'. Jalankan audit skema sebelum melanjutkan.');
+ return matches[0];
+}
 function ensureFMartCostingSchema_(ss){
- const defs={Produk:['HargaPokokRataRata'],VariasiProduk:['HargaPokokRataRata'],MutasiStok:['BiayaPerUnit','HPPSebelum','HPPSesudah'],DetailPenerimaanBarang:['BiayaPerUnit','TotalBiaya'],DetailPesanan:['HPPUnit','HPPSubtotal','HPPStatus'],DetailPenjualanToko:['HPPUnit','HPPSubtotal','HPPStatus']};
- Object.keys(defs).forEach(function(name){let sh=ss.getSheetByName(name);if(!sh)throw new Error('Sheet '+name+' belum tersedia. Jalankan setupFMartDatabase_().');let headers=sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getDisplayValues()[0].map(String);defs[name].forEach(function(h){if(headers.indexOf(h)<0){sh.getRange(1,headers.length+1).setValue(h);headers.push(h);}});});
+ const defs=[
+  {name:'Produk',fields:[['HargaPokokRataRata',12]]},
+  {name:'VariasiProduk',fields:[['HargaPokokRataRata',10]]},
+  {name:'MutasiStok',fields:[['BiayaPerUnit',12],['HPPSebelum',13],['HPPSesudah',14]]},
+  {name:'DetailPenerimaanBarang',fields:[['BiayaPerUnit',9],['TotalBiaya',10]]},
+  {name:'DetailPesanan',fields:[['HPPUnit',11],['HPPSubtotal',12],['HPPStatus',13]]},
+  {name:'DetailPenjualanToko',fields:[['HPPUnit',11],['HPPSubtotal',12],['HPPStatus',13]]}
+ ];
+ defs.forEach(function(def){
+  const sh=ss.getSheetByName(def.name);if(!sh)throw new Error('Sheet '+def.name+' belum tersedia. Jalankan setupFMartDatabase_().');
+  def.fields.forEach(function(field){
+   const header=field[0],column=field[1],width=Math.max(1,sh.getLastColumn()),headers=sh.getRange(1,1,1,width).getDisplayValues()[0].map(function(v){return String(v||'').trim();}),matches=[];
+   headers.forEach(function(value,index){if(value===header)matches.push(index+1);});
+   if(matches.length>1)throw new Error('Header '+header+' terduplikasi pada '+def.name+'. Migrasi dihentikan tanpa mengubah data.');
+   if(matches.length===1){if(matches[0]!==column)throw new Error('Posisi kolom '+header+' pada '+def.name+' tidak sesuai skema FMart (seharusnya kolom '+column+'). Migrasi dihentikan agar data lain tidak tertimpa.');return;}
+   if(sh.getLastColumn()>=column||String(headers[column-1]||'').trim())throw new Error('Kolom '+def.name+' memiliki struktur tambahan/tidak dikenal sebelum '+header+'. Migrasi otomatis dihentikan; periksa backup dan skema sheet terlebih dahulu.');
+   if(sh.getMaxColumns()<column)sh.insertColumnsAfter(sh.getMaxColumns(),column-sh.getMaxColumns());
+   sh.getRange(1,column).setValue(header);
+  });
+ });
 }
 function migrateFMartCostingSchema(){const lock=LockService.getScriptLock();lock.waitLock(10000);try{const ss=getSS_();ensureFMartCostingSchema_(ss);SpreadsheetApp.flush();return 'Kolom HPP dan biaya perolehan FMart siap. Data transaksi lama tidak diubah.';}finally{lock.releaseLock();}}
 function getItemHpp_(ss,pid,vid){const name=vid?'VariasiProduk':'Produk',row=findRowById_(ss.getSheetByName(name),vid||pid,1);if(!row)return 0;const sh=ss.getSheetByName(name),h=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],c=h.indexOf('HargaPokokRataRata');return c<0?0:Math.max(0,Math.round(Number(row.values[c])||0));}
@@ -1725,8 +1750,9 @@ function getStockCardReport(token, productId, variationId, startDate, endDate) {
 function getFMartReports(token,startDate,endDate){
  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN]),ss=getSS_();ensureFMartCostingSchema_(ss);
  const start=parseReportDate_(startDate,false),end=parseReportDate_(endDate,true);if(end<start)throw new Error('Periode laporan tidak valid.');
- const orders=readRows_(ss.getSheetByName('Pesanan')).filter(r=>inReportRange_(r[10],start,end)),details=readRows_(ss.getSheetByName('DetailPesanan')),allPayments=readRows_(ss.getSheetByName('Pembayaran')),payments=allPayments.filter(r=>inReportRange_(r[8],start,end));
- const posSales=readRows_(ss.getSheetByName('PenjualanToko')).filter(r=>inReportRange_(r[15],start,end)&&String(r[12]||'').toUpperCase()!=='DIBATALKAN'),posDetails=readRows_(ss.getSheetByName('DetailPenjualanToko'));
+ const orderDetailSheet=ss.getSheetByName('DetailPesanan'),posDetailSheet=ss.getSheetByName('DetailPenjualanToko'),orderHppUnitIndex=getHeaderColumnIndex_(orderDetailSheet,'HPPUnit')-1,orderHppSubtotalIndex=getHeaderColumnIndex_(orderDetailSheet,'HPPSubtotal')-1,orderHppStatusIndex=getHeaderColumnIndex_(orderDetailSheet,'HPPStatus')-1,posHppUnitIndex=getHeaderColumnIndex_(posDetailSheet,'HPPUnit')-1,posHppSubtotalIndex=getHeaderColumnIndex_(posDetailSheet,'HPPSubtotal')-1,posHppStatusIndex=getHeaderColumnIndex_(posDetailSheet,'HPPStatus')-1;
+ const orders=readRows_(ss.getSheetByName('Pesanan')).filter(r=>inReportRange_(r[10],start,end)),details=readRows_(orderDetailSheet),allPayments=readRows_(ss.getSheetByName('Pembayaran')),payments=allPayments.filter(r=>inReportRange_(r[8],start,end));
+ const posSales=readRows_(ss.getSheetByName('PenjualanToko')).filter(r=>inReportRange_(r[15],start,end)&&String(r[12]||'').toUpperCase()!=='DIBATALKAN'),posDetails=readRows_(posDetailSheet));
  const products=readRows_(ss.getSheetByName('Produk')),cats=readRows_(ss.getSheetByName('Kategori')),warehouse=readRows_(ss.getSheetByName('MutasiStok')).filter(r=>inReportRange_(r[10],start,end)),cashier=readRows_(ss.getSheetByName('MutasiStokKasir')).filter(r=>inReportRange_(r[10],start,end));
  const pmap=Object.create(null),cmap=Object.create(null),pby=Object.create(null);products.forEach(r=>{pmap[String(r[0])]=String(r[3]||'');pby[String(r[0])]=r;});cats.forEach(r=>cmap[String(r[0])]=String(r[1]||''));
  const paidIds=Object.create(null);allPayments.forEach(r=>{if(String(r[5]||'').toUpperCase()==='TERVERIFIKASI')paidIds[String(r[1])]=true;});
@@ -1735,9 +1761,9 @@ function getFMartReports(token,startDate,endDate){
  const posPaid=posSales.filter(r=>String(r[11]||'').toUpperCase()==='LUNAS'),posGross=posSales.reduce((n,r)=>n+(Number(r[7])||0),0),posPaidTotal=posPaid.reduce((n,r)=>n+(Number(r[7])||0),0);
  const categories=Object.create(null),productSales=Object.create(null),paidOrderIds=Object.create(null);validOrders.filter(r=>paidIds[String(r[0])]).forEach(r=>paidOrderIds[String(r[0])]=true);
  let profitRevenue=0,cogs=0,hppMissingLines=0,hppMissingQty=0,hppCostedLines=0;
- function addDetail(d,include,forProfit){if(!include)return;const q=Math.max(0,Number(d[8])||0),amount=Math.max(0,Number(d[9])||0),pid=String(d[2]||''),p=pby[pid],cat=p?String(p[1]||''):'';const cn=cmap[cat]||'Tanpa Kategori';categories[cn]=(categories[cn]||0)+amount;const name=pmap[pid]||String(d[5]||'Produk');if(!productSales[name])productSales[name]={name:name,qty:0,amount:0};productSales[name].qty+=q;productSales[name].amount+=amount;if(forProfit){profitRevenue+=amount;const hs=String(d[12]||'').toUpperCase(),unit=Number(d[10]),cost=Number(d[11]);if(hs==='TERCATAT'&&Number.isSafeInteger(unit)&&unit>0&&Number.isSafeInteger(cost)&&cost>=0){cogs+=cost;hppCostedLines++;}else{hppMissingLines++;hppMissingQty+=q;}}}
- const orderIds=Object.create(null);validOrders.forEach(r=>orderIds[String(r[0])]=true);details.forEach(d=>addDetail(d,!!orderIds[String(d[1])],!!paidOrderIds[String(d[1])]));
- const posIds=Object.create(null);posPaid.forEach(r=>posIds[String(r[0])]=true);posDetails.forEach(d=>addDetail(d,!!posIds[String(d[1])],!!posIds[String(d[1])]));
+ function addDetail(d,include,forProfit,unitIndex,subtotalIndex,statusIndex){if(!include)return;const q=Math.max(0,Number(d[8])||0),amount=Math.max(0,Number(d[9])||0),pid=String(d[2]||''),p=pby[pid],cat=p?String(p[1]||''):'';const cn=cmap[cat]||'Tanpa Kategori';categories[cn]=(categories[cn]||0)+amount;const name=pmap[pid]||String(d[5]||'Produk');if(!productSales[name])productSales[name]={name:name,qty:0,amount:0};productSales[name].qty+=q;productSales[name].amount+=amount;if(forProfit){profitRevenue+=amount;const hs=String(d[statusIndex]||'').toUpperCase(),unit=Number(d[unitIndex]),cost=Number(d[subtotalIndex]);if(hs==='TERCATAT'&&Number.isSafeInteger(unit)&&unit>0&&Number.isSafeInteger(cost)&&cost===unit*q){cogs+=cost;hppCostedLines++;}else{hppMissingLines++;hppMissingQty+=q;}}}
+ const orderIds=Object.create(null);validOrders.forEach(r=>orderIds[String(r[0])]=true);details.forEach(d=>addDetail(d,!!orderIds[String(d[1])],!!paidOrderIds[String(d[1])],orderHppUnitIndex,orderHppSubtotalIndex,orderHppStatusIndex));
+ const posIds=Object.create(null);posPaid.forEach(r=>posIds[String(r[0])]=true);posDetails.forEach(d=>addDetail(d,!!posIds[String(d[1])],!!posIds[String(d[1])],posHppUnitIndex,posHppSubtotalIndex,posHppStatusIndex));
  const profitDiscount=validOrders.filter(r=>paidIds[String(r[0])]).reduce((n,r)=>n+(Number(r[6])||0),0)+posPaid.reduce((n,r)=>n+(Number(r[6])||0),0);profitRevenue=Math.max(0,profitRevenue-profitDiscount);
  const hppComplete=hppMissingLines===0,grossProfit=hppComplete?profitRevenue-cogs:null,grossMarginPercent=hppComplete&&profitRevenue>0?Math.round(grossProfit/profitRevenue*10000)/100:null;
  const methods=Object.create(null);payments.filter(r=>String(r[5]||'').toUpperCase()==='TERVERIFIKASI').forEach(r=>{const m=String(r[2]||'Lainnya');methods[m]=(methods[m]||0)+(Number(r[3])||0);});posPaid.forEach(r=>{const m=String(r[8]||'Lainnya');methods[m]=(methods[m]||0)+(Number(r[7])||0);});
@@ -1805,10 +1831,11 @@ function getAdminCatalog(token) {
   requireRole_(token, [FMART.ROLES.ADMIN, FMART.ROLES.SUPERVISOR, FMART.ROLES.SUPERADMIN]);
   const ss=getSS_();ensureFMartCostingSchema_(ss);
   const categories=readRows_(ss.getSheetByName('Kategori')).map(r=>({id:String(r[0]),name:String(r[1]||''),description:String(r[2]||''),order:Number(r[3])||0,status:String(r[4]||'')}));
-  const products=readRows_(ss.getSheetByName('Produk')).map(r=>({id:String(r[0]),categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),description:String(r[4]||''),price:Number(r[5])||0,minStock:Number(r[6])||0,photoUrl:String(r[7]||''),status:String(r[8]||''),hpp:Math.max(0,Number(r[11])||0)}));
+  const productSheet=ss.getSheetByName('Produk'),variationSheet=ss.getSheetByName('VariasiProduk'),productHppIndex=getHeaderColumnIndex_(productSheet,'HargaPokokRataRata')-1,variationHppIndex=getHeaderColumnIndex_(variationSheet,'HargaPokokRataRata')-1;
+  const products=readRows_(productSheet).map(r=>({id:String(r[0]),categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),description:String(r[4]||''),price:Number(r[5])||0,minStock:Number(r[6])||0,photoUrl:String(r[7]||''),status:String(r[8]||''),hpp:Math.max(0,Number(r[productHppIndex])||0)}));
   const stockRows=readRows_(ss.getSheetByName('Stok')),stockByKey=Object.create(null);
   stockRows.forEach(function(r){const key=String(r[1]||'')+'|'+String(r[2]||'');if(!Object.prototype.hasOwnProperty.call(stockByKey,key))stockByKey[key]=Math.max(0,Number(r[3])||0);});
-  const variations=readRows_(ss.getSheetByName('VariasiProduk')).map(r=>{const key=String(r[1]||'')+'|'+String(r[0]||'');return {id:String(r[0]),productId:String(r[1]),name:String(r[2]||''),value:String(r[3]||''),priceAddition:Number(r[4])||0,stock:Object.prototype.hasOwnProperty.call(stockByKey,key)?stockByKey[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockByKey,key),status:String(r[6]||''),hpp:Math.max(0,Number(r[9])||0)};});
+  const variations=readRows_(variationSheet).map(r=>{const key=String(r[1]||'')+'|'+String(r[0]||'');return {id:String(r[0]),productId:String(r[1]),name:String(r[2]||''),value:String(r[3]||''),priceAddition:Number(r[4])||0,stock:Object.prototype.hasOwnProperty.call(stockByKey,key)?stockByKey[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockByKey,key),status:String(r[6]||''),hpp:Math.max(0,Number(r[variationHppIndex])||0)};});
   return {ok:true,categories:categories,products:products,variations:variations};
 }
 
@@ -1837,7 +1864,7 @@ function saveProduct(token, data) {
   if(['AKTIF','NONAKTIF'].indexOf(status)<0)throw new Error('Status produk tidak valid.');
   const sheet=ss.getSheetByName('Produk'); const now=new Date();
   const rows=readRows_(sheet); if(rows.some(r=>String(r[2]).toLowerCase()===sku.toLowerCase() && String(r[0])!==id))throw new Error('SKU sudah digunakan.');
-  if(id){const row=findRowById_(sheet,id,1);if(!row)throw new Error('Produk tidak ditemukan.');if(hpp!==null)assertHppChangeAllowed_(getItemHpp_(ss,id,''),hpp,getTotalItemStock_(ss,id,''),'produk');const before=JSON.stringify(row.values);sheet.getRange(row.rowNumber,2,1,9).setValues([[categoryId,sku,name,description,price,minStock,photoUrl,status,now]]);if(hpp!==null)sheet.getRange(row.rowNumber,12).setValue(hpp);writeAudit_(session.userId,session.role,'UPDATE_PRODUCT','PRODUK',id,before,JSON.stringify({categoryId,sku,name,description,price,minStock,photoUrl,status,hpp:getItemHpp_(ss,id,'')}),'Perubahan produk');}
+  if(id){const row=findRowById_(sheet,id,1);if(!row)throw new Error('Produk tidak ditemukan.');if(hpp!==null)assertHppChangeAllowed_(getItemHpp_(ss,id,''),hpp,getTotalItemStock_(ss,id,''),'produk');const before=JSON.stringify(row.values);sheet.getRange(row.rowNumber,2,1,9).setValues([[categoryId,sku,name,description,price,minStock,photoUrl,status,now]]);if(hpp!==null)sheet.getRange(row.rowNumber,getHeaderColumnIndex_(sheet,'HargaPokokRataRata')).setValue(hpp);writeAudit_(session.userId,session.role,'UPDATE_PRODUCT','PRODUK',id,before,JSON.stringify({categoryId,sku,name,description,price,minStock,photoUrl,status,hpp:getItemHpp_(ss,id,'')}),'Perubahan produk');}
   else {const newId=makeFMartId_('PRD');sheet.appendRow([newId,categoryId,sku,name,description,price,minStock,photoUrl,status,now,now,hpp===null?0:hpp]);writeAudit_(session.userId,session.role,'CREATE_PRODUCT','PRODUK',newId,'',JSON.stringify({categoryId,sku,name,description,price,minStock,photoUrl,status,hpp:hpp===null?0:hpp}),'Produk baru');}
   SpreadsheetApp.flush(); return getAdminCatalog(token);
   } finally { lock.releaseLock(); }
@@ -1870,7 +1897,7 @@ function saveVariation(token, data) {
       if(stockRows.some(function(r){return String(r[1])===productId&&String(r[2]||'')===variationId;}))throw new Error('ID variasi bentrok dengan data stok yang sudah ada.');
     }
     // Semua validasi selesai sebelum sheet master atau stok ditulis.
-    if(existingVariation){sheet.getRange(existingVariation.rowNumber,2,1,7).setValues([[productId,name,value,addition,stock,status,now]]);if(hpp!==null)sheet.getRange(existingVariation.rowNumber,10).setValue(hpp);}
+    if(existingVariation){sheet.getRange(existingVariation.rowNumber,2,1,7).setValues([[productId,name,value,addition,stock,status,now]]);if(hpp!==null)sheet.getRange(existingVariation.rowNumber,getHeaderColumnIndex_(sheet,'HargaPokokRataRata')).setValue(hpp);}
     else sheet.appendRow([variationId,productId,name,value,addition,stock,status,now,now,hpp===null?0:hpp]);
     if(!existingVariation)stockSheet.appendRow([makeFMartId_('STK'),productId,variationId,stock,Math.max(0,Number(product.values[6])||0),now]);
     else{
@@ -1971,9 +1998,9 @@ function createStockReceipt(token,payload){
 
 function getStockCatalog(token) {
   requireRole_(token,[FMART.ROLES.GUDANG,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
-  const ss=getSS_();ensureFMartCostingSchema_(ss);const products=readRows_(ss.getSheetByName('Produk')).filter(function(r){return String(r[8]||'').toUpperCase()==='AKTIF';}),vars=readRows_(ss.getSheetByName('VariasiProduk')).filter(function(r){return String(r[6]||'').toUpperCase()==='AKTIF';}),stocks=readRows_(ss.getSheetByName('Stok'));
+  const ss=getSS_();ensureFMartCostingSchema_(ss);const productSheet=ss.getSheetByName('Produk'),variationSheet=ss.getSheetByName('VariasiProduk'),productHppIndex=getHeaderColumnIndex_(productSheet,'HargaPokokRataRata')-1,variationHppIndex=getHeaderColumnIndex_(variationSheet,'HargaPokokRataRata')-1,products=readRows_(productSheet).filter(function(r){return String(r[8]||'').toUpperCase()==='AKTIF';}),vars=readRows_(variationSheet).filter(function(r){return String(r[6]||'').toUpperCase()==='AKTIF';}),stocks=readRows_(ss.getSheetByName('Stok'));
   const stockMap=Object.create(null);stocks.forEach(function(r){const key=String(r[1])+'|'+String(r[2]||'');if(!Object.prototype.hasOwnProperty.call(stockMap,key))stockMap[key]=Math.max(0,Number(r[3])||0);});
-  return {ok:true,products:products.map(function(p){const pid=String(p[0]),vs=vars.filter(function(v){return String(v[1])===pid;}).map(function(v){const key=pid+'|'+String(v[0]);return {id:String(v[0]),name:String(v[2]||''),value:String(v[3]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,key)?stockMap[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,key),hpp:Math.max(0,Number(v[9])||0)};}),baseKey=pid+'|';return {id:pid,name:String(p[3]||''),sku:String(p[2]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,baseKey)?stockMap[baseKey]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,baseKey),hpp:Math.max(0,Number(p[11])||0),variations:vs};})};
+  return {ok:true,products:products.map(function(p){const pid=String(p[0]),vs=vars.filter(function(v){return String(v[1])===pid;}).map(function(v){const key=pid+'|'+String(v[0]);return {id:String(v[0]),name:String(v[2]||''),value:String(v[3]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,key)?stockMap[key]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,key),hpp:Math.max(0,Number(v[variationHppIndex])||0)};}),baseKey=pid+'|';return {id:pid,name:String(p[3]||''),sku:String(p[2]||''),stock:Object.prototype.hasOwnProperty.call(stockMap,baseKey)?stockMap[baseKey]:0,stockRecordMissing:!Object.prototype.hasOwnProperty.call(stockMap,baseKey),hpp:Math.max(0,Number(p[productHppIndex])||0),variations:vs};})};
 }
 
 
@@ -4163,4 +4190,31 @@ function runFMartReadinessAudit_() {
     note:'Audit tidak mengubah data. Tinjau semua issue sebelum menjalankan transaksi atau mengaktifkan fitur keamanan tambahan.'};
   logFMartReadinessAudit_(report);
   return report;
+}
+
+
+/** Audit read-only HPP, biaya penerimaan, dan snapshot penjualan. Tidak melakukan migrasi/perbaikan. */
+function auditFMartCostingIntegrity_(){
+ const ss=getSS_(),issues=[],maxIssues=1000,counts={products:0,variations:0,warehouseStockRows:0,cashierStockRows:0,receiptLines:0,costedReceiptLines:0,legacyUncostedReceiptLines:0,orderLines:0,costedOrderLines:0,legacyUncostedOrderLines:0,posLines:0,costedPosLines:0,legacyUncostedPosLines:0,costedInboundMutations:0,legacyUncostedInboundMutations:0};
+ function issue(code,sheet,row,detail){if(issues.length<maxIssues)issues.push({code:code,sheet:sheet,row:row||'',detail:detail||''});}
+ function sheet(name){return ss.getSheetByName(name);}
+ function rows(name){const sh=sheet(name);return sh?readRows_(sh):[];}
+ function col(name,header){const sh=sheet(name);if(!sh)return -1;const headers=sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getDisplayValues()[0].map(function(v){return String(v||'').trim();}),found=[];headers.forEach(function(v,i){if(v===header)found.push(i);});if(found.length!==1){issue(found.length?'COST_HEADER_DUPLICATE':'COST_HEADER_MISSING',name,1,'Header '+header+' harus tersedia tepat satu kali.');return -1;}return found[0];}
+ const expected=[['Produk','HargaPokokRataRata',11],['VariasiProduk','HargaPokokRataRata',9],['MutasiStok','BiayaPerUnit',11],['MutasiStok','HPPSebelum',12],['MutasiStok','HPPSesudah',13],['DetailPenerimaanBarang','BiayaPerUnit',8],['DetailPenerimaanBarang','TotalBiaya',9],['DetailPesanan','HPPUnit',10],['DetailPesanan','HPPSubtotal',11],['DetailPesanan','HPPStatus',12],['DetailPenjualanToko','HPPUnit',10],['DetailPenjualanToko','HPPSubtotal',11],['DetailPenjualanToko','HPPStatus',12]];
+ expected.forEach(function(x){const idx=col(x[0],x[1]);if(idx>=0&&idx!==x[2])issue('COST_HEADER_POSITION_INVALID',x[0],1,'Header '+x[1]+' berada di kolom '+(idx+1)+', seharusnya '+(x[2]+1)+'.');});
+ const pHpp=col('Produk','HargaPokokRataRata'),vHpp=col('VariasiProduk','HargaPokokRataRata'),inCost=col('MutasiStok','BiayaPerUnit'),inBefore=col('MutasiStok','HPPSebelum'),inAfter=col('MutasiStok','HPPSesudah'),receiptUnit=col('DetailPenerimaanBarang','BiayaPerUnit'),receiptTotal=col('DetailPenerimaanBarang','TotalBiaya'),orderUnit=col('DetailPesanan','HPPUnit'),orderTotal=col('DetailPesanan','HPPSubtotal'),orderStatus=col('DetailPesanan','HPPStatus'),posUnit=col('DetailPenjualanToko','HPPUnit'),posTotal=col('DetailPenjualanToko','HPPSubtotal'),posStatus=col('DetailPenjualanToko','HPPStatus');
+ const products=rows('Produk'),variations=rows('VariasiProduk'),warehouse=rows('Stok'),cashier=rows('StokKasir'),mutations=rows('MutasiStok'),receipts=rows('DetailPenerimaanBarang'),orders=rows('DetailPesanan'),pos=rows('DetailPenjualanToko');
+ counts.products=products.length;counts.variations=variations.length;counts.warehouseStockRows=warehouse.length;counts.cashierStockRows=cashier.length;counts.receiptLines=receipts.length;counts.orderLines=orders.length;counts.posLines=pos.length;
+ const master=Object.create(null),stockTotals=Object.create(null),lastCostedInbound=Object.create(null);
+ products.forEach(function(r){const id=String(r[0]||''),value=pHpp>=0?r[pHpp]:'';if(id)master[id+'|']={hpp:value===''?0:Number(value),sheet:'Produk'};});
+ variations.forEach(function(r){const id=String(r[0]||''),pid=String(r[1]||''),value=vHpp>=0?r[vHpp]:'';if(id)master[pid+'|'+id]={hpp:value===''?0:Number(value),sheet:'VariasiProduk'};});
+ function addStock(list,name){const seen=Object.create(null);list.forEach(function(r,i){const key=String(r[1]||'')+'|'+String(r[2]||''),qty=Number(r[3]);if(seen[key])issue('COST_STOCK_ROW_DUPLICATE',name,i+2,'Ada lebih dari satu baris saldo untuk item yang sama.');seen[key]=true;if(!Number.isSafeInteger(qty)||qty<0){issue('COST_STOCK_QTY_INVALID',name,i+2,'Saldo stok harus bilangan bulat nol atau lebih.');return;}stockTotals[key]=(stockTotals[key]||0)+qty;});}
+ addStock(warehouse,'Stok');addStock(cashier,'StokKasir');
+ Object.keys(master).forEach(function(key){const m=master[key],hpp=m.hpp===''?0:Number(m.hpp),qty=Number(stockTotals[key]||0);if(!Number.isSafeInteger(hpp)||hpp<0)issue('MASTER_HPP_INVALID',m.sheet,key,'HPP master harus bilangan bulat nol atau lebih.');else if(qty>0&&hpp<=0)issue('MASTER_HPP_MISSING_WITH_STOCK',m.sheet,key,'Stok gabungan Gudang + Kasir tersedia tetapi HPP master belum bernilai.');});
+ receipts.forEach(function(r,i){const qty=Number(r[4]),unit=receiptUnit>=0?Number(r[receiptUnit]):0,total=receiptTotal>=0?Number(r[receiptTotal]):0,hasUnit=receiptUnit>=0&&String(r[receiptUnit]||'').trim()!=='',hasTotal=receiptTotal>=0&&String(r[receiptTotal]||'').trim()!=='';if(!hasUnit&&!hasTotal){counts.legacyUncostedReceiptLines++;return;}if(!hasUnit||!hasTotal||!Number.isSafeInteger(qty)||qty<1||!Number.isSafeInteger(unit)||unit<1||!Number.isSafeInteger(total)||total!==qty*unit)issue('RECEIPT_COST_INVALID','DetailPenerimaanBarang',i+2,'Biaya per unit dan total biaya tidak konsisten dengan kuantitas.');else counts.costedReceiptLines++;});
+ mutations.forEach(function(r,i){if(String(r[3]||'').toUpperCase()!=='MASUK')return;const unit=inCost>=0?String(r[inCost]||'').trim():'',before=inBefore>=0?String(r[inBefore]||'').trim():'',after=inAfter>=0?String(r[inAfter]||'').trim():'';if(!unit&&!before&&!after){counts.legacyUncostedInboundMutations++;return;}const u=Number(unit),b=Number(before),a=Number(after);if(!unit||!before||!after||!Number.isSafeInteger(u)||u<1||!Number.isSafeInteger(b)||b<0||!Number.isSafeInteger(a)||a<1)issue('INBOUND_HPP_JOURNAL_INVALID','MutasiStok',i+2,'Jurnal stok masuk memiliki biaya/HPP sebelum/sesudah yang tidak lengkap atau tidak valid.');else{counts.costedInboundMutations++;const key=String(r[1]||'')+'|'+String(r[2]||'');lastCostedInbound[key]={hpp:a,row:i+2};}});
+ function auditSaleLines(list,name,unitIndex,totalIndex,statusIndex,kind){list.forEach(function(r,i){const qty=Number(r[8]),status=statusIndex>=0?String(r[statusIndex]||'').toUpperCase():'',unit=unitIndex>=0?Number(r[unitIndex]):0,total=totalIndex>=0?Number(r[totalIndex]):0,hasUnit=unitIndex>=0&&String(r[unitIndex]||'').trim()!=='',hasTotal=totalIndex>=0&&String(r[totalIndex]||'').trim()!=='';const costed=kind==='ORDER'?function(){counts.costedOrderLines++;}:function(){counts.costedPosLines++;},legacy=kind==='ORDER'?function(){counts.legacyUncostedOrderLines++;}:function(){counts.legacyUncostedPosLines++;};if(status==='TERCATAT'&&hasUnit&&hasTotal&&Number.isSafeInteger(qty)&&qty>0&&Number.isSafeInteger(unit)&&unit>0&&Number.isSafeInteger(total)&&total===qty*unit)costed();else if(!status||status==='BELUM_DICATAT')legacy();else issue('SALE_HPP_SNAPSHOT_INVALID',name,i+2,'Snapshot HPP berstatus TERCATAT tetapi nilai unit/subtotal tidak konsisten, atau status tidak dikenal.');});}
+ auditSaleLines(orders,'DetailPesanan',orderUnit,orderTotal,orderStatus,'ORDER');auditSaleLines(pos,'DetailPenjualanToko',posUnit,posTotal,posStatus,'POS');
+ Object.keys(lastCostedInbound).forEach(function(key){const m=master[key],stock=Number(stockTotals[key]||0);if(m&&stock>0&&Number(m.hpp)!==lastCostedInbound[key].hpp)issue('MASTER_HPP_DIFFERS_FROM_LAST_INBOUND',m.sheet,key,'HPP master berbeda dari HPP sesudah pada mutasi MASUK berbiaya terakhir (baris '+lastCostedInbound[key].row+').');});
+ return {checkedAt:new Date().toISOString(),mode:'READ_ONLY',issueCount:issues.length,issues:issues,truncated:issues.length>=maxIssues,counts:counts,policy:'NO_SCHEMA_MIGRATION_NO_DATA_REPAIR'};
 }
