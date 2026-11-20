@@ -37,6 +37,7 @@ Branch produksi sumber: `main`
 | 40.4 | Perbaikan tombol Masuk yang terblokir input OTP tersembunyi | Selesai pada repository; runtime belum diuji |
 | 40.10 | Audit konsistensi tampilan, navigasi, dan hak akses per role | Selesai pada repository; visual browser/perangkat menunggu Uji Runtime |
 | 40.11 | Akses baca-saja riwayat transaksi POS untuk Supervisor | Selesai pada repository; validasi lintas akun menunggu Uji Runtime |
+| 40.12 | Dashboard pengawasan khusus Supervisor | Selesai pada repository; validasi visual dan akun menunggu Uji Runtime |
 
 ## Ringkasan perbaikan tahap 22–30
 
@@ -951,3 +952,19 @@ Perbaikan:
 Perubahan tidak mengubah data atau skema Spreadsheet, alur POS Kasir, dan hak mutasi Admin/Superadmin.
 
 **Batasan:** uji source dan CI tidak membuktikan akses aktual dengan akun Supervisor, tampilan perangkat, atau kesesuaian data transaksi runtime. Hal tersebut tetap masuk Uji Runtime setelah seluruh audit repository selesai.
+
+
+## Tahap 40.12 — Dashboard pengawasan khusus Supervisor
+
+**Status: selesai pada source `main` melalui PR #147, squash merge commit `9bffd4e5b56b81caac32cc85103523aaa816c4f8`. Regression CI pada PR lulus. Uji visual dan akun Supervisor tetap menunggu Uji Runtime.**
+
+Audit menemukan dispatcher dashboard `renderOps()` sebelumnya mengarahkan Supervisor ke `renderOpsWarehouseDashboard()`. Akibatnya Supervisor menerima judul, ringkasan, dan pintasan operasional Gudang (Stok/Penerimaan) yang tidak sesuai dengan matriks hak aksesnya.
+
+Perbaikan:
+- Menambahkan dashboard pengawasan terpisah untuk Supervisor.
+- Menampilkan ringkasan seluruh pesanan Wali, status pemenuhan, produk aktif, dan pesanan terbaru.
+- Menyediakan pintasan baca-saja ke Pesanan, Transaksi POS, Seluruh Produk, serta Laporan & Pencapaian.
+- Menjaga dashboard Gudang tetap khusus untuk role Gudang/Petugas terkait.
+- Menambahkan regression test agar Supervisor tidak diarahkan ke fungsi stok, penerimaan, atau laporan Gudang.
+
+Tidak ada perubahan data, skema Spreadsheet, endpoint, atau hak mutasi. Uji visual pada ukuran layar dan konfirmasi akun Supervisor tetap menjadi pekerjaan Uji Runtime.
