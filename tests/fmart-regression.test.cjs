@@ -1762,3 +1762,15 @@ test('Costing integrity audit is strictly read-only and reports stock, receipt a
  assert.ok(audit.includes('MASTER_HPP_DIFFERS_FROM_LAST_INBOUND'));
  assert.ok(!/\.appendRow\s*\(|\.setValue\s*\(|\.setValues\s*\(|\.deleteRow\s*\(|\.insertSheet\s*\(|\.insertColumns/.test(audit),'Audit must not mutate spreadsheet data or schema.');
 });
+
+test('FMart replaces native browser dialogs with accessible branded dialogs',()=>{
+ assert.ok(index.includes('id="fmartDialog"'),'The branded dialog root must exist.');
+ assert.ok(index.includes('function showConfirmDialog('),'Confirmation flows must use the branded dialog helper.');
+ assert.ok(index.includes('function showPromptDialog('),'Text input prompts must use the branded dialog helper.');
+ assert.ok(index.includes('function showAppAlert('),'Informational alerts must use the branded dialog helper.');
+ assert.ok(index.includes("if(e.key==='Tab')"),'Dialog keyboard focus must remain trapped while open.');
+ assert.ok(index.includes("if(e.key==='Escape')"),'Dialog must support Escape dismissal.');
+ assert.equal((index.match(/\\bwindow\\.confirm\\s*\\(/g)||[]).length,0,'Native window.confirm dialogs must not remain.');
+ assert.equal((index.match(/\\bwindow\\.prompt\\s*\\(/g)||[]).length,0,'Native window.prompt dialogs must not remain.');
+ assert.equal((index.match(/\\bwindow\\.alert\\s*\\(/g)||[]).length,0,'Native window.alert dialogs must not remain.');
+});
