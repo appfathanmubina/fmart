@@ -99,8 +99,10 @@ test('Kasir has limited QRIS proof and verification permission', () => {
 
 test('Superadmin can access Wali payment verification while other role navigation remains unchanged', () => {
   const nav = extractFunction(index, 'configureStaffNavigation');
-  const superadminLine = nav.match(/SUPERADMIN:\[[^\\]]+\\]/)?.[0] || '';
-  const adminLine = nav.match(/ADMIN:\[[^\\]]+\\]/)?.[0] || '';
+  const superadminStart = nav.indexOf('SUPERADMIN:');
+  const adminStart = nav.indexOf('ADMIN:');
+  const superadminLine = nav.slice(superadminStart, nav.indexOf('\\n', superadminStart));
+  const adminLine = nav.slice(adminStart, nav.indexOf('\\n', adminStart));
   assert.ok(superadminLine.includes("'staffPaymentVerification'"));
   assert.ok(!adminLine.includes("'staffPaymentVerification'"));
   const handlerStart = index.indexOf("$('staffPaymentVerification').addEventListener");
