@@ -1,8 +1,8 @@
 /* Dedicated service worker for the FMart Admin PWA.
  * Its narrower scope takes precedence over the FMart Wali/root worker.
- * It owns only caches with the fmart-admin-pwa- prefix.
+ * It owns only caches with the admin-fmart-pwa- prefix.
  */
-const FMART_ADMIN_CACHE_PREFIX = 'fmart-admin-pwa-';
+const FMART_ADMIN_CACHE_PREFIX = 'admin-fmart-pwa-';
 const FMART_ADMIN_CACHE = FMART_ADMIN_CACHE_PREFIX + 'shell-v1';
 const FMART_ADMIN_SHELL = ['./', './index.html', './manifest.webmanifest'];
 
