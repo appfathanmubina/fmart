@@ -32,6 +32,9 @@ test('Admin worker cache is private to its prefix and never purges Wali caches',
   assert.doesNotMatch(adminWorker, /caches\.delete\([^)]*fmart-/);
   assert.doesNotMatch(adminWorker, /importScripts\(/);
   assert.match(rootWorker, /const CACHE = 'fmart-shell-v16'/);
+  const rootPrefix = (rootWorker.match(/const FMART_CACHE_PREFIX = '([^']+)'/) || [])[1];
+  assert.equal(rootPrefix, 'fmart-');
+  assert.ok(!'admin-fmart-pwa-shell-v1'.startsWith(rootPrefix), 'Root worker cleanup must not delete the Admin cache.');
 });
 
 test('OneSignal continues using the existing shared root worker and scope', () => {
