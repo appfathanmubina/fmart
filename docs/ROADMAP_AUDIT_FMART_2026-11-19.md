@@ -889,3 +889,31 @@ Perbaikan Tahap 40.8:
 - Tidak mengubah URL QRIS di Pengaturan, izin berbagi Drive, foto produk, bukti transaksi, data Spreadsheet, atau konfigurasi produksi.
 
 **Gerbang runtime:** sinkronkan source Apps Script, lalu uji Wali pada PWA Android dan browser desktop dengan file QRIS Drive privat yang dapat dibaca akun pemilik script. Pastikan gambar tampil, tautan buka tetap berfungsi, dan akun tanpa role Wali/Superadmin ditolak endpoint gambar. Uji juga URL eksternal, file Drive tidak dapat diakses, format bukan gambar, serta ukuran di atas 5 MB. Foto produk dan viewer bukti pengantaran/pembayaran tetap perlu diuji pada perangkat nyata; kelulusan source test bukan bukti runtime.
+
+
+## Tahap 40.9 — Audit database, migrasi, dan konsistensi HPP
+
+**Status: perbaikan source dan regression test selesai pada PR #141; menunggu merge. Tidak ada migrasi atau perubahan data Spreadsheet produksi yang dijalankan.**
+
+Temuan audit:
+- Pembacaan/penulisan HPP master pada katalog Admin/Gudang dan form edit menggunakan nomor kolom tetap; laporan juga membaca snapshot HPP berdasarkan offset tetap. Ini berisiko jika posisi kolom berubah.
+- Migrasi costing sebelumnya menambahkan header yang hilang di ujung sheet tanpa memvalidasi susunan header dasar atau posisi kanonis. Pada sheet dengan kolom tambahan/duplikat, migrasi dapat menempatkan header HPP di posisi yang tidak dibaca konsisten oleh kode.
+- Audit database umum memeriksa struktur dan relasi, tetapi belum memberi ringkasan khusus untuk nilai HPP, biaya penerimaan, dan snapshot HPP transaksi.
+
+Perbaikan source:
+- Migrasi costing memvalidasi header dasar setiap sheet dan posisi kolom HPP kanonis. Jika ada header dasar tidak sesuai, header HPP duplikat, posisi kolom salah, atau kolom tambahan menghalangi migrasi, proses berhenti tanpa menulis.
+- Pembacaan/penulisan HPP pada katalog Admin, katalog Gudang, penyimpanan Produk/Variasi, dan laporan memakai pencarian nama header.
+- Perhitungan laporan hanya mengakui snapshot `TERCATAT` bila HPP unit dan subtotal valid serta subtotal sama dengan HPP unit × kuantitas.
+- Menambahkan fungsi read-only `auditFMartCostingIntegrity_()` untuk memeriksa HPP master terhadap stok gabungan Gudang+Kasir, baris stok ganda/invalid, biaya penerimaan, jurnal MASUK, snapshot penjualan Wali/POS, dan kesesuaian HPP master terhadap mutasi MASUK berbiaya terakhir.
+- Audit tidak memanggil migrasi, tidak membuat sheet, dan tidak memperbaiki saldo atau transaksi.
+
+Regression CI mencakup guard migrasi append-only, pemetaan header, validasi subtotal snapshot, serta memastikan audit costing tidak melakukan operasi tulis.
+
+**Gerbang runtime sebelum migrasi/produksi:**
+1. Pastikan target Spreadsheet dari Script Properties benar dan siapkan salinan/backup yang dapat dipulihkan.
+2. Jalankan `auditFMartDatabaseIntegrity_()`, `auditFMartOperationalSync_()`, `auditFMartStockReconciliation_()`, `auditWarehouseReceivingIntegrity_()`, `auditFMartTransactionRecovery_()`, dan `auditFMartCostingIntegrity_()` pada salinan terlebih dahulu.
+3. Tinjau semua issue, terutama stok positif tanpa HPP, duplikasi saldo, jurnal penerimaan tidak cocok, snapshot penjualan tidak lengkap, dan header di luar posisi kanonis.
+4. Uji alur penerimaan, mutasi MASUK/KELUAR, transfer Gudang-Kasir, checkout Wali, penjualan POS, retry/pemulihan, dan laporan. Cocokkan biaya dengan bukti pembelian serta mutasi.
+5. Jalankan migrasi hanya bila audit struktur menyatakan aman. Jangan mengisi HPP transaksi lama dengan nilai sekarang atau angka nol. Jangan melakukan revaluasi stok melalui edit master.
+
+**Batasan:** regression CI lulus tidak membuktikan kondisi data aktual. Status produksi tetap belum disetujui sampai audit runtime dan rekonsiliasi pada salinan database berhasil.
