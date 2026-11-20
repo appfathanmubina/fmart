@@ -1563,7 +1563,7 @@ test('Staff navigation role matrix matches backend portal roles and active state
  assert.ok(navStart>=0&&navEnd>navStart,'Staff navigation root must exist.');
  const nav=index.slice(navStart,navEnd);
  const buttonIds=[...nav.matchAll(/<button\b[^>]*\bid="(staff[A-Za-z0-9]+)"/g)].map(m=>m[1]);
- assert.deepEqual(buttonIds,['staffDashboard','staffOrders','staffPOS','staffPaymentVerification','staffCatalog','staffStock','staffReceiving','staffWarehouseReports','staffDeliveryAssign','staffDelivery','staffDeliveryComplaints','staffUsers','staffReports','staffPaymentSettings']);
+ assert.deepEqual(buttonIds,['staffDashboard','staffOrders','staffSalesHistory','staffPOS','staffPaymentVerification','staffCatalog','staffStock','staffReceiving','staffWarehouseReports','staffDeliveryAssign','staffDelivery','staffDeliveryComplaints','staffUsers','staffReports','staffPaymentSettings']);
  const configure=extractFunction(index,'configureStaffNavigation');
  const permissionBlock=(configure.match(/const permissions=\{([\s\S]*?)\n  \};/)||[])[1];
  assert.ok(permissionBlock,'Role navigation permission map must exist.');
@@ -1590,7 +1590,7 @@ test('Staff navigation role matrix matches backend portal roles and active state
   assert.ok(index.includes("setStaffActiveNavigation('"+id+"')"),'Menu '+id+' must use the shared active-state helper.');
  }
  const handlers={
-  staffPOS:["KASIR","ADMIN","SUPERADMIN"],staffPaymentVerification:["KASIR"],staffOrders:["ADMIN","SUPERADMIN","GUDANG","SUPERVISOR"],
+  staffPOS:["KASIR","ADMIN","SUPERADMIN"],staffPaymentVerification:["KASIR"],staffOrders:["ADMIN","SUPERADMIN","GUDANG","SUPERVISOR"],staffSalesHistory:["SUPERVISOR"],
   staffCatalog:["ADMIN","SUPERADMIN","SUPERVISOR"],staffStock:["ADMIN","GUDANG","SUPERADMIN"],staffReceiving:["ADMIN","GUDANG","SUPERADMIN"],
   staffWarehouseReports:["ADMIN","GUDANG","SUPERADMIN"],staffDeliveryAssign:["ADMIN","GUDANG","SUPERADMIN"],
   staffDelivery:["PETUGAS_PENGANTAR","GUDANG"],staffDeliveryComplaints:["ADMIN","SUPERADMIN"],
@@ -1648,6 +1648,25 @@ test('Wali relationship guidance matches phone-match and pending-verification ru
  assert.ok(index.includes('Hubungan aktif otomatis jika nomor HP akun Wali cocok dengan nomor Wali pada master Santri. Jika tidak cocok atau belum tersedia, pengajuan menunggu verifikasi Admin.'));
  const request=extractFunction(code,'requestWaliSantriLink');
  assert.ok(request.includes("const nextStatus=phoneMatched?'AKTIF':'MENUNGGU_VERIFIKASI'"));
+});
+
+test('Supervisor can read all POS history without receiving POS mutation access',()=>{
+ const history=extractFunction(code,'getCashierSalesHistory');
+ assert.ok(history.includes('FMART.ROLES.SUPERVISOR'));
+ assert.ok(history.includes("session.role===FMART.ROLES.KASIR&&x.cashierUserId!==String(session.userId)"));
+ assert.ok(!/appendRow|setValues|deleteRow|createCashierSale|cancelCashierQrisSale|confirmCashierQrisPayment/.test(history));
+ const configure=extractFunction(index,'configureStaffNavigation');
+ const permissions=(configure.match(/const permissions=\{([\s\S]*?)\n  \};/)||[])[1]||'';
+ assert.match(permissions,/SUPERVISOR:\[[^\]]*'staffSalesHistory'/);
+ for(const role of ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR']){
+  const roleLine=(permissions.match(new RegExp(role+':\\[([^\\]]*)\\]'))||[])[1]||'';
+  assert.ok(!roleLine.includes('staffSalesHistory'),role+' must not receive the Supervisor transaction view.');
+ }
+ const view=extractFunction(index,'renderSupervisorSalesHistory');
+ assert.ok(view.includes("state.data.user.role!=='SUPERVISOR'"));
+ assert.ok(view.includes("runServer('getCashierSalesHistory'"));
+ assert.ok(!/createCashierSale|verifyPayment|cancelCashierQrisSale|confirmCashierQrisPayment/.test(view));
+ assert.ok(view.includes('hanya untuk melihat data'));
 });
 
 test('Supervisor transaction dashboard returns the complete order history',()=>{
