@@ -1770,7 +1770,7 @@ test('FMart replaces native browser dialogs with accessible branded dialogs',()=
  assert.ok(index.includes('function showAppAlert('),'Informational alerts must use the branded dialog helper.');
  assert.ok(index.includes("if(e.key==='Tab')"),'Dialog keyboard focus must remain trapped while open.');
  assert.ok(index.includes("if(e.key==='Escape')"),'Dialog must support Escape dismissal.');
- assert.equal((index.match(/\\bwindow\\.confirm\\s*\\(/g)||[]).length,0,'Native window.confirm dialogs must not remain.');
- assert.equal((index.match(/\\bwindow\\.prompt\\s*\\(/g)||[]).length,0,'Native window.prompt dialogs must not remain.');
- assert.equal((index.match(/\\bwindow\\.alert\\s*\\(/g)||[]).length,0,'Native window.alert dialogs must not remain.');
+ assert.equal((index.match(/\bwindow\.confirm\s*\(/g)||[]).length,0,'Native window.confirm dialogs must not remain.');
+ assert.equal((index.match(/\bwindow\.prompt\s*\(/g)||[]).length,0,'Native window.prompt dialogs must not remain.');
+ assert.equal((index.match(/\bwindow\.alert\s*\(/g)||[]).length,0,'Native window.alert dialogs must not remain.');
 });
