@@ -8,9 +8,9 @@ Branch produksi sumber: `main`
 
 1. Perubahan dilakukan bertahap, terfokus, dan menjaga fitur serta tampilan yang sudah baik.
 2. Perubahan masuk ke `main` setelah pemeriksaan kode, regresi, dan CI berhasil.
-3. Tahap 16–31 adalah penyelesaian audit/pengembangan berbasis repository.
-4. Pengujian runtime Apps Script, akun nyata, perangkat, transaksi nyata, Drive, dan notifikasi nyata dilakukan setelah Tahap 31 selesai.
-5. Tidak mengubah database produksi selama audit berbasis repository.
+3. Tahap 16–31 dan 40.1–40.13 adalah audit/perbaikan berbasis repository dan dokumentasi. Tahap 40.13 menutup audit source sebelum Uji Runtime.
+4. Pengujian runtime Apps Script, akun nyata, perangkat, transaksi, Drive, dan notifikasi dilakukan setelah audit repository selesai; jalankan bertahap pada salinan/lingkungan terisolasi sesuai checklist UAT.
+5. Tidak mengubah database produksi selama audit berbasis repository. Tidak menjalankan migrasi hanya karena source telah di-merge.
 6. Nilai modal persediaan tidak boleh disimpulkan dari harga jual. Fitur valuasi memerlukan data harga perolehan dan metode penilaian biaya yang disepakati.
 
 ## Status tahapan
@@ -34,7 +34,15 @@ Branch produksi sumber: `main`
 | 30 | Audit matriks endpoint dan alur per role | Selesai secara statis/regresi |
 | 31 | Audit akhir kode dan kesiapan produksi | Selesai secara statis; produksi belum dinyatakan siap sebelum runtime |
 | 32 | Gerbang audit runtime: entry point aman dan instruksi eksekusi | Selesai pada source/dokumentasi; runtime menunggu eksekusi operator |
+| 40.1 | Draft SOP Operasional dan serah-terima | Draft repository selesai; persetujuan pemilik proses dan runtime pending |
+| 40.2 | Sinkronisasi checklist UAT dengan pengamanan terbaru | Selesai pada repository; UAT runtime pending |
+| 40.3 | Paket serah-terima audit repository | Selesai pada repository; review pemilik proses/runtime pending |
 | 40.4 | Perbaikan tombol Masuk yang terblokir input OTP tersembunyi | Selesai pada repository; runtime belum diuji |
+| 40.5 | Supervisor read-only dan pratinjau QRIS Drive PWA | Selesai pada source; uji PWA/Drive runtime pending |
+| 40.6 | HPP rata-rata, biaya perolehan, dan laba kotor | Selesai pada source; rekonsiliasi costing runtime pending |
+| 40.7 | Pengamanan perubahan HPP master saat stok tersedia | Selesai pada source; uji guard HPP runtime pending |
+| 40.8 | Audit media PWA dan pratinjau QRIS Drive | Selesai pada source; uji media PWA runtime pending |
+| 40.9 | Audit database, migrasi, dan konsistensi HPP | Selesai pada source; audit data pada salinan Spreadsheet pending |
 | 40.10 | Audit konsistensi tampilan, navigasi, dan hak akses per role | Selesai pada repository; visual browser/perangkat menunggu Uji Runtime |
 | 40.11 | Akses baca-saja riwayat transaksi POS untuk Supervisor | Selesai pada repository; validasi lintas akun menunggu Uji Runtime |
 | 40.12 | Dashboard pengawasan khusus Supervisor | Selesai pada repository; validasi visual dan akun menunggu Uji Runtime |
@@ -926,7 +934,7 @@ Regression CI mencakup guard migrasi append-only, pemetaan header, validasi subt
 
 **Status: selesai pada source `main` melalui PR #143, squash merge commit `bc5e3e7dfaa272c8024457aaf77a01e7d6df578a`. Regression CI pada PR lulus. Pemeriksaan visual browser/perangkat dan alur akun nyata tetap menunggu Uji Runtime setelah seluruh audit repository selesai.**
 
-Audit statis meninjau matriks navigasi staf, guard handler menu, dan konsistensi petunjuk UI terhadap aturan relasi Wali–Santri. Pemetaan menu per role telah dibandingkan dengan role backend dan guard handler; Supervisor tetap hanya memperoleh Dashboard, Pesanan, Produk, dan Laporan. Akses katalog Supervisor bersifat baca-saja, sedangkan menu Pengguna, POS, Stok, Penerimaan, Pengantaran, dan Pengaturan QRIS tidak diberikan.
+Audit statis meninjau matriks navigasi staf, guard handler menu, dan konsistensi petunjuk UI terhadap aturan relasi Wali–Santri. Pemetaan menu per role telah dibandingkan dengan role backend dan guard handler. Pada tahap ini ditemukan bahwa cakupan pengawasan Supervisor belum mencakup riwayat POS rinci dan dashboard masih salah diarahkan; kekurangan tersebut dituntaskan pada Tahap 40.11 dan 40.12. Status menu Supervisor terkini tercatat pada dua tahap tersebut.
 
 Ditemukan dua petunjuk UI lama yang menyatakan seluruh hubungan Wali–Santri langsung aktif. Pernyataan tersebut tidak sesuai dengan aturan backend Tahap 39.4: hubungan aktif otomatis hanya jika nomor HP akun Wali cocok dengan `no_wa_wali`; jika nomor tidak cocok atau belum tersedia, pengajuan berstatus menunggu verifikasi Admin. Kedua petunjuk telah diselaraskan pada halaman manajemen Wali dan profil Wali.
 
@@ -968,3 +976,21 @@ Perbaikan:
 - Menambahkan regression test agar Supervisor tidak diarahkan ke fungsi stok, penerimaan, atau laporan Gudang.
 
 Tidak ada perubahan data, skema Spreadsheet, endpoint, atau hak mutasi. Uji visual pada ukuran layar dan konfirmasi akun Supervisor tetap menjadi pekerjaan Uji Runtime.
+
+
+## Tahap 40.13 — Finalisasi audit repository dan gerbang Uji Runtime
+
+**Status: audit source repository selesai.** Seluruh perubahan Tahap 40.1–40.12 yang diputuskan untuk lingkup repository telah didokumentasikan dan masuk ke `main`. Tidak ada PR terbuka saat penutupan audit ini.
+
+Baseline final yang diperiksa pada 20 November 2026:
+- Branch `main`: `89acaaddfd8349825c5561479f49c8ca174847bd`.
+- Regression CI terbaru pada SHA tersebut: **130/130 tes lulus**, 0 gagal.
+- GitHub Pages build dan deployment pada SHA tersebut: **success**.
+- PR perbaikan Supervisor #143, #145, #147 dan PR dokumentasi #144, #146, #148 telah di-merge.
+- Tidak ada migrasi, penulisan data, rekonsiliasi, atau perubahan Spreadsheet produksi yang dilakukan selama audit source.
+
+Cakupan audit source yang ditutup meliputi konsistensi role/navigasi, petunjuk relasi Wali, akses baca-saja Supervisor atas pesanan/produk/riwayat POS/laporan, dashboard Supervisor, QRIS Drive PWA, HPP dan laba kotor, guard HPP master, integritas skema dan snapshot costing, regression, serta dokumentasi operasional/UAT.
+
+**Gerbang berikutnya adalah Uji Runtime, bukan tahap audit source tambahan.** Uji Runtime belum dimulai dan tidak boleh dianggap lulus dari hasil CI atau deployment GitHub Pages. Jalankan sesuai handover/UAT: pastikan target Script Properties, gunakan salinan Spreadsheet/Drive terisolasi, jalankan audit read-only, verifikasi akun dan role, uji seluruh alur transaksi/stok/HPP/QRIS/PWA/Drive, rekonsiliasi hasil, lalu minta persetujuan pemilik proses sebelum perubahan produksi.
+
+Status produksi: **BELUM DISETUJUI** sampai Uji Runtime dan rekonsiliasi aktual selesai.
