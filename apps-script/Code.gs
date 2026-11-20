@@ -3527,7 +3527,7 @@ function createCashierSale(token,payload) {
 
 
 
-/** Riwayat dan detail ringkas penjualan toko untuk Kasir/Admin/Superadmin. */
+/** Riwayat dan detail ringkas penjualan toko; Supervisor hanya memperoleh akses baca-saja. */
 function getCashierSalesHistory(token,filters) {
   const session=requireRole_(token,[FMART.ROLES.KASIR,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN,FMART.ROLES.SUPERVISOR]);
   filters=filters&&typeof filters==='object'?filters:{};
