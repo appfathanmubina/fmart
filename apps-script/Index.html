@@ -2413,7 +2413,15 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
     }
 
 
-  </style>
+  
+
+    /* Standar bersama FMart: seluruh ringkasan satu baris, jumlah kolom mengikuti jumlah item. */
+    .fmart-one-row-summary{display:grid!important;grid-template-columns:repeat(var(--fmart-summary-count,1),minmax(0,1fr))!important;gap:12px;min-width:0}
+    .fmart-one-row-summary>*{min-width:0}
+    .audit-entity-id{display:none!important}
+    @media(max-width:1100px){.fmart-one-row-summary{display:grid!important;grid-auto-flow:column!important;grid-auto-columns:minmax(132px,1fr)!important;grid-template-columns:none!important;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding-bottom:5px;-webkit-overflow-scrolling:touch}.fmart-one-row-summary>*{min-width:132px}}
+    @media(max-width:620px){.fmart-one-row-summary{gap:8px}.fmart-one-row-summary>*{min-width:124px}}
+</style>
   
 
 
@@ -4315,7 +4323,7 @@ function renderSupervisorDashboard(){
           const q=$('stockSearch').value.trim().toLowerCase(),filter=$('stockStatusFilter').value,activeFilter=$('stockActiveFilter').value;
           const filtered=items.filter(x=>{const st=statusOf(x),active=activeOf(x),hay=[x.name,x.sku,x.categoryName,x.variationName].join(' ').toLowerCase();return(!q||hay.includes(q))&&(filter==='SEMUA'||filter===st)&&(activeFilter==='SEMUA'||(activeFilter==='AKTIF'&&active)||(activeFilter==='NONAKTIF'&&!active));});
           $('stockResultCount').textContent='Menampilkan '+formatMoney(filtered.length)+' dari '+formatMoney(items.length)+' item stok · stok dihitung per produk/variasi';
-          $('stockTableBody').innerHTML=filtered.length?filtered.map(x=>{const st=statusOf(x),active=activeOf(x);return '<tr><td><strong>'+escapeHtml(x.name)+'</strong><small class="stock-subline">'+escapeHtml(x.productId)+'</small></td><td>'+escapeHtml(x.sku||'-')+'</td><td>'+escapeHtml(x.categoryName||'-')+'</td><td>'+escapeHtml(x.variationName||'Produk utama')+'</td><td><strong>'+formatMoney(x.stock)+'</strong>'+(x.stockRecordMissing?'<small class="stock-subline" style="color:#b45309">Saldo utama belum tercatat</small>':'')+'</td><td><strong>'+formatMoney(x.minStock)+'</strong></td><td><span class="stock-status '+statusClass(x)+'">'+st+'</span></td><td><span class="stock-product-state '+(active?'is-active':'is-inactive')+'">'+(active?'AKTIF':'NONAKTIF')+'</span></td><td><div class="stock-row-actions"><button class="secondary stock-row-action" type="button" '+(active?'':'disabled title="Produk atau variasi nonaktif"')+' data-product="'+escapeHtml(x.productId)+'" data-variation="'+escapeHtml(x.variationId)+'">Mutasi</button><button class="stock-min-action" type="button" '+(active?'':'disabled title="Produk atau variasi nonaktif"')+' data-product="'+escapeHtml(x.productId)+'" data-variation="'+escapeHtml(x.variationId)+'" data-min="'+escapeHtml(x.minStock)+'" data-name="'+escapeHtml(x.name+(x.variationName?' · '+x.variationName:''))+'">Atur minimum</button><button class="stock-transfer-action" type="button" '+(active&&Number(x.stock)>0?'':'disabled title="Stok Gudang tidak tersedia"')+' data-product="'+escapeHtml(x.productId)+'" data-variation="'+escapeHtml(x.variationId)+'">Pindah ke Kasir</button></div></td></tr>';}).join(''):'<tr><td colspan="9" class="muted" style="text-align:center;padding:24px">Tidak ada item yang sesuai dengan pencarian atau filter.</td></tr>';
+          $('stockTableBody').innerHTML=filtered.length?filtered.map(x=>{const st=statusOf(x),active=activeOf(x);return '<tr><td><strong>'+escapeHtml(x.name)+'</strong></td><td>'+escapeHtml(x.sku||'-')+'</td><td>'+escapeHtml(x.categoryName||'-')+'</td><td>'+escapeHtml(x.variationName||'Produk utama')+'</td><td><strong>'+formatMoney(x.stock)+'</strong>'+(x.stockRecordMissing?'<small class="stock-subline" style="color:#b45309">Saldo utama belum tercatat</small>':'')+'</td><td><strong>'+formatMoney(x.minStock)+'</strong></td><td><span class="stock-status '+statusClass(x)+'">'+st+'</span></td><td><span class="stock-product-state '+(active?'is-active':'is-inactive')+'">'+(active?'AKTIF':'NONAKTIF')+'</span></td><td><div class="stock-row-actions"><button class="secondary stock-row-action" type="button" '+(active?'':'disabled title="Produk atau variasi nonaktif"')+' data-product="'+escapeHtml(x.productId)+'" data-variation="'+escapeHtml(x.variationId)+'">Mutasi</button><button class="stock-min-action" type="button" '+(active?'':'disabled title="Produk atau variasi nonaktif"')+' data-product="'+escapeHtml(x.productId)+'" data-variation="'+escapeHtml(x.variationId)+'" data-min="'+escapeHtml(x.minStock)+'" data-name="'+escapeHtml(x.name+(x.variationName?' · '+x.variationName:''))+'">Atur minimum</button><button class="stock-transfer-action" type="button" '+(active&&Number(x.stock)>0?'':'disabled title="Stok Gudang tidak tersedia"')+' data-product="'+escapeHtml(x.productId)+'" data-variation="'+escapeHtml(x.variationId)+'">Pindah ke Kasir</button></div></td></tr>';}).join(''):'<tr><td colspan="9" class="muted" style="text-align:center;padding:24px">Tidak ada item yang sesuai dengan pencarian atau filter.</td></tr>';
           document.querySelectorAll('.stock-row-action').forEach(b=>b.onclick=()=>openStockForm(b.dataset.product,b.dataset.variation));
           document.querySelectorAll('.stock-min-action').forEach(b=>b.onclick=()=>openStockMinimumForm(b.dataset.product,b.dataset.variation,b.dataset.min,b.dataset.name));
           document.querySelectorAll('.stock-transfer-action').forEach(b=>b.onclick=()=>openStockTransferForm(b.dataset.product,b.dataset.variation));
@@ -4660,7 +4668,24 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
       };
       const close=closeById[top.id];
       if(close){e.preventDefault();close()}
-    });window.addEventListener('load',boot);
+    });
+
+    /* Komponen bersama untuk ringkasan dan tabel seluruh portal/role. */
+    (function installSharedSummaryAndTableRules(){
+      const summarySelector='#opsStats,.catalog-overview,.report-metric-grid,.report-stock-summary,.stock-overview,.order-overview-grid,.payment-overview-grid,.fulfillment-metrics,.warehouse-report-metrics,.warehouse-fulfillment-metrics,.wali-metric-grid,.order-history-summary,.receiving-summary,.deliverySummaryCards,.catalog-product-stats';
+      const internalHeader=/^(?:id|uuid|id internal|kode internal|id produk|id variasi|id pengguna|id pesanan|id transaksi|id pembayaran|id santri|id wali|id kategori|id barang|id penerimaan|id mutasi)$/i;
+      function applySummary(el){const count=el.children?el.children.length:0;if(!count)return;el.classList.add('fmart-one-row-summary');el.style.setProperty('--fmart-summary-count',String(count));}
+      function refresh(root){
+        const scope=root&&root.querySelectorAll?root:document;
+        if(root&&root.matches&&root.matches(summarySelector))applySummary(root);
+        scope.querySelectorAll(summarySelector).forEach(applySummary);
+        const tables=[];if(root&&root.matches&&root.matches('table'))tables.push(root);scope.querySelectorAll('table').forEach(table=>tables.push(table));
+        tables.forEach(table=>{const header=table.querySelector('thead tr');if(!header)return;const indexes=[];Array.from(header.children).forEach((cell,i)=>{if(internalHeader.test((cell.textContent||'').trim().replace(/\\s+/g,' ')))indexes.push(i)});if(!indexes.length)return;table.querySelectorAll('tr').forEach(row=>indexes.slice().reverse().forEach(i=>{if(row.children[i])row.children[i].hidden=true}));});
+      }
+      let queued=false;const observer=new MutationObserver(records=>{if(queued||!records.some(record=>record.addedNodes&&record.addedNodes.length))return;queued=true;Promise.resolve().then(()=>{queued=false;refresh(document)});});
+      refresh(document);if(document.body)observer.observe(document.body,{childList:true,subtree:true});
+    })();
+window.addEventListener('load',boot);
 
     /* Fase 8 — non-invasive interaction enhancements */
     (function enhanceMobileExperience(){
