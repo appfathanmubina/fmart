@@ -36,6 +36,7 @@ Branch produksi sumber: `main`
 | 32 | Gerbang audit runtime: entry point aman dan instruksi eksekusi | Selesai pada source/dokumentasi; runtime menunggu eksekusi operator |
 | 40.4 | Perbaikan tombol Masuk yang terblokir input OTP tersembunyi | Selesai pada repository; runtime belum diuji |
 | 40.10 | Audit konsistensi tampilan, navigasi, dan hak akses per role | Selesai pada repository; visual browser/perangkat menunggu Uji Runtime |
+| 40.11 | Akses baca-saja riwayat transaksi POS untuk Supervisor | Selesai pada repository; validasi lintas akun menunggu Uji Runtime |
 
 ## Ringkasan perbaikan tahap 22–30
 
@@ -931,3 +932,22 @@ Ditemukan dua petunjuk UI lama yang menyatakan seluruh hubungan Wali–Santri la
 Regression test mengunci konsistensi petunjuk tersebut terhadap aturan backend. Perubahan hanya pada copy UI dan tes; tidak mengubah algoritme relasi, hak akses backend, data, maupun struktur Spreadsheet.
 
 **Batasan:** audit statis dan CI tidak memvalidasi tampilan aktual, ukuran layar, navigasi sentuh, atau akun runtime. Semua itu tetap masuk Uji Runtime setelah backlog audit repository berikutnya selesai.
+
+
+## Tahap 40.11 — Akses baca-saja riwayat transaksi POS untuk Supervisor
+
+**Status: selesai pada source `main` melalui PR #145, squash merge commit `5b3ee7fe600ad12f6806b832b7db4a2aa06c6604`. Regression CI pada PR lulus. Uji akun Supervisor dan verifikasi data transaksi aktual tetap menunggu Uji Runtime.**
+
+Audit menemukan Supervisor telah dapat membaca seluruh pesanan Wali dan ringkasan penjualan POS, tetapi belum memiliki tampilan riwayat transaksi POS terperinci. Endpoint `getCashierSalesHistory()` hanya mengizinkan Kasir, Admin, dan Superadmin.
+
+Perbaikan:
+- Menambahkan menu **Transaksi POS** yang hanya muncul untuk Supervisor.
+- Mengizinkan Supervisor membaca seluruh riwayat transaksi POS melalui endpoint read-only yang sudah ada.
+- Mempertahankan pembatasan Kasir agar hanya dapat membaca transaksi milik akun Kasir tersebut.
+- Menyediakan pencarian, filter tanggal, total, status, nama pembeli/kasir, dan rincian item untuk Supervisor.
+- Tidak menyediakan aksi membuat, mengubah, membatalkan, memverifikasi, atau mencetak transaksi pada tampilan Supervisor.
+- Menambahkan regression test untuk otorisasi, visibilitas menu, cakupan data, dan ketiadaan operasi mutasi.
+
+Perubahan tidak mengubah data atau skema Spreadsheet, alur POS Kasir, dan hak mutasi Admin/Superadmin.
+
+**Batasan:** uji source dan CI tidak membuktikan akses aktual dengan akun Supervisor, tampilan perangkat, atau kesesuaian data transaksi runtime. Hal tersebut tetap masuk Uji Runtime setelah seluruh audit repository selesai.
