@@ -7,6 +7,7 @@ const { createHmac } = require('node:crypto');
 const code = fs.readFileSync('apps-script/Code.gs', 'utf8');
 const setup = fs.readFileSync('apps-script/SetupDatabase.gs', 'utf8');
 const index = fs.readFileSync('apps-script/Index.html', 'utf8');
+const buyerShell = fs.readFileSync('index.html', 'utf8');
 const adminIndex = fs.readFileSync('adminFMart16720/index.html', 'utf8');
 const serviceWorker = fs.readFileSync('service-worker.js', 'utf8');
 const readme = fs.readFileSync('README.md', 'utf8');
@@ -1777,7 +1778,7 @@ test('FMart replaces native browser dialogs with accessible branded dialogs',()=
 });
 
 test('Buyer and Admin PWA setup fallbacks use branded responsive surfaces',()=>{
- for(const source of [index,adminIndex]){
+ for(const source of [buyerShell,adminIndex]){
   assert.ok(source.includes('border-radius:26px'),'PWA setup fallback must use a designed card surface.');
   assert.ok(source.includes('linear-gradient(135deg,#702078,#a64ca6)'),'PWA setup mark must use FMart brand colors.');
   assert.ok(source.includes('box-shadow:0 12px 34px'),'PWA status feedback must have intentional elevation.');
