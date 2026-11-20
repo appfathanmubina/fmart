@@ -1655,6 +1655,18 @@ test('HPP entry is available on product, variation, receipt and stock-in forms',
 });
 
 
+test('Recorded master HPP cannot be silently changed while inventory remains',()=>{
+ const helper=extractFunction(code,'assertHppChangeAllowed_'),product=extractFunction(code,'saveProduct'),variation=extractFunction(code,'saveVariation'),sandbox={};
+ vm.runInNewContext(helper+'\\nthis.guard=assertHppChangeAllowed_;',sandbox);
+ assert.equal(sandbox.guard(0,12500,8,'produk'),true,'opening HPP may be entered for stock that has not yet been valued');
+ assert.equal(sandbox.guard(12500,12500,8,'produk'),true,'saving the same HPP must remain harmless');
+ assert.equal(sandbox.guard(12500,15000,0,'produk'),true,'HPP may be revised after stock reaches zero');
+ assert.throws(()=>sandbox.guard(12500,15000,8,'produk'),/HPP produk sudah menjadi dasar nilai persediaan/);
+ assert.throws(()=>sandbox.guard(12500,0,8,'variasi'),/HPP variasi sudah menjadi dasar nilai persediaan/);
+ assert.ok(product.includes('assertHppChangeAllowed_')&&product.includes('getTotalItemStock_'));
+ assert.ok(variation.includes('assertHppChangeAllowed_')&&variation.includes('getTotalItemStock_'));
+});
+
 test('Legacy pending stock receipts can recover without inventing historical acquisition cost',()=>{
  const recovery=extractFunction(code,'recoverLegacyStockReceiptIfPending_');
  const receipt=extractFunction(code,'createStockReceipt');
