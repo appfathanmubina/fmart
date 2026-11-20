@@ -145,3 +145,10 @@ Regression CI pada PR lulus. Tidak ada perubahan data atau skema Spreadsheet. Uj
 PR #147 telah di-merge ke `main` melalui squash commit `9bffd4e5b56b81caac32cc85103523aaa816c4f8`. Dashboard Supervisor kini terpisah dari Dashboard Gudang dan berisi ringkasan pesanan, status pemenuhan, produk aktif, serta pesanan terbaru. Pintasan hanya menuju Pesanan, Transaksi POS baca-saja, Seluruh Produk baca-saja, dan Laporan & Pencapaian.
 
 Regression CI pada PR lulus. Tidak ada perubahan data, skema, atau endpoint mutasi. Validasi visual dan akses akun nyata tetap menunggu Uji Runtime.
+
+
+## Penutupan Audit Repository — 20 November 2026
+
+Audit source repository Tahap 40.1–40.13 telah ditutup pada `main` SHA `89acaaddfd8349825c5561479f49c8ca174847bd`. Tidak ada PR terbuka. Regression CI pada SHA tersebut lulus **130/130 tes** dan build/deployment GitHub Pages berstatus success. Perbaikan terakhir memastikan Supervisor mempunyai dashboard pengawasan yang tepat serta akses baca-saja ke seluruh riwayat POS, di samping pesanan, produk, dan laporan.
+
+Tidak ada migrasi, penulisan data, atau rekonsiliasi Spreadsheet produksi yang dilakukan selama audit source. **Uji Runtime belum dimulai dan produksi belum disetujui.** Tahap selanjutnya adalah menjalankan checklist UAT secara terisolasi: verifikasi Script Properties dan target, gunakan salinan Spreadsheet/Drive, jalankan seluruh audit read-only, uji akun/role dan alur nyata, rekonsiliasi stok/HPP/laba/transaksi, lalu minta persetujuan pemilik proses.
