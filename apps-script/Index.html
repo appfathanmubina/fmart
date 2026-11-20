@@ -2436,6 +2436,50 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
       body.buyer-portal #products .product-name{font-size:12px;line-height:1.35}
       body.buyer-portal #products .price{font-size:12px}
     }
+
+    /* Login Admin mobile: gunakan alur dokumen normal agar seluruh form dapat digulir utuh. */
+    @media(max-width:760px){
+      body.admin-portal #loginView.login-wrap{
+        display:flex;
+        flex-direction:column;
+        align-items:stretch;
+        justify-content:flex-start;
+        width:100%;
+        min-height:100svh;
+        height:auto;
+        padding:calc(20px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom));
+        overflow-x:hidden;
+        overflow-y:auto;
+        align-content:initial;
+      }
+      body.admin-portal #loginView .login-showcase{display:none}
+      body.admin-portal #loginView .login-panel{
+        display:flex;
+        width:100%;
+        min-width:0;
+        min-height:0;
+        height:auto;
+        margin:0;
+        padding:0;
+        align-items:center;
+        justify-content:center;
+        overflow:visible;
+      }
+      body.admin-portal #loginView .login-stack{
+        width:min(100%,480px);
+        max-width:480px;
+        margin:0 auto;
+      }
+      body.admin-portal #loginView .login-card{
+        width:100%;
+        max-width:none;
+        padding:25px 20px 22px;
+      }
+    }
+    @media(max-width:380px){
+      body.admin-portal #loginView.login-wrap{padding-left:12px;padding-right:12px}
+      body.admin-portal #loginView .login-card{padding:22px 17px 20px}
+    }
 </style>
   
 
