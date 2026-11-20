@@ -115,7 +115,7 @@ test('Superadmin can change staff email only through verified OTP flow', () => {
   assert.ok(setEmail.includes('MailApp.sendEmail'));
   assert.ok(setEmail.includes("setValues([[email,false]])"));
   assert.ok(verifyEmail.includes('requireRole_(token,[FMART.ROLES.SUPERADMIN])'));
-  assert.ok(verifyEmail.includes('challenge.attempts>=5'));
+  assert.ok(verifyEmail.includes('ch.attempts>=5'));
   assert.ok(verifyEmail.includes('setValue(true)'));
   assert.ok(index.includes('data-staff-action="email"'));
   assert.ok(index.includes("if(action==='email'){openStaffEmailForm(id);return}"));
