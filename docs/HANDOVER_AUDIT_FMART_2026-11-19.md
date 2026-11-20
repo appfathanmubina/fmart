@@ -138,3 +138,10 @@ Status tetap **SOURCE AUDIT IN PROGRESS / RUNTIME UAT NOT RUN / PRODUCTION NOT A
 PR #145 telah di-merge ke `main` melalui squash commit `5b3ee7fe600ad12f6806b832b7db4a2aa06c6604`. Supervisor kini memiliki menu **Transaksi POS** khusus baca-saja, dengan filter pencarian/tanggal dan rincian item. Endpoint riwayat POS menerima Supervisor tanpa memberi akses ke endpoint pembuatan, pembatalan, atau verifikasi transaksi. Pembatasan Kasir agar hanya melihat transaksi miliknya tetap dipertahankan.
 
 Regression CI pada PR lulus. Tidak ada perubahan data atau skema Spreadsheet. Uji akun dan rekonsiliasi transaksi aktual tetap menjadi gerbang runtime.
+
+
+## Addendum — Tahap 40.12 dashboard pengawasan Supervisor (20 November 2026)
+
+PR #147 telah di-merge ke `main` melalui squash commit `9bffd4e5b56b81caac32cc85103523aaa816c4f8`. Dashboard Supervisor kini terpisah dari Dashboard Gudang dan berisi ringkasan pesanan, status pemenuhan, produk aktif, serta pesanan terbaru. Pintasan hanya menuju Pesanan, Transaksi POS baca-saja, Seluruh Produk baca-saja, dan Laporan & Pencapaian.
+
+Regression CI pada PR lulus. Tidak ada perubahan data, skema, atau endpoint mutasi. Validasi visual dan akses akun nyata tetap menunggu Uji Runtime.
