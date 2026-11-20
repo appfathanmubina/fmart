@@ -1784,3 +1784,11 @@ test('Buyer and Admin PWA setup fallbacks use branded responsive surfaces',()=>{
   assert.ok(source.includes('box-shadow:0 12px 34px'),'PWA status feedback must have intentional elevation.');
  }
 });
+
+test('Operational loading and status elements use designed FMart surfaces',()=>{
+ for(const selector of ['.panel-loading','.catalog-loading','.stock-loading','.loading-spinner','.status-pill','.product-load-status','.product-load-sentinel']){
+  assert.ok(index.includes(selector),'Missing visual treatment for '+selector);
+ }
+ assert.ok(index.includes('linear-gradient(145deg,#fff,#fbf6fc)'));
+ assert.ok(index.includes('border-radius:999px;background:#f6edf8;color:#68216f'));
+});

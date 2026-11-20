@@ -2333,6 +2333,18 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
 @media(max-width:560px){.fmart-dialog-backdrop{padding:12px;align-items:end}.fmart-dialog-card{width:100%;padding:20px;border-radius:21px 21px 16px 16px;max-height:88svh}.fmart-dialog-actions{display:grid;grid-template-columns:1fr 1fr}.fmart-dialog-actions button{width:100%;min-width:0}}
 @media(prefers-reduced-motion:reduce){.fmart-dialog-backdrop,.fmart-dialog-card,.fmart-dialog-actions button{transition:none!important}}
 
+
+/* FMart status and loading surfaces — consistent feedback across portal views */
+.panel-loading,.catalog-loading,.stock-loading{display:flex;align-items:center;justify-content:center;gap:12px;min-height:104px;margin:10px 0;padding:22px 18px;border:1px dashed #e4d5e9;border-radius:17px;background:linear-gradient(145deg,#fff,#fbf6fc);color:#76667c;font-size:13px;font-weight:650;text-align:center}
+.panel-loading .spinner{width:25px;height:25px;flex:0 0 25px;margin:0;border-width:3px}
+.catalog-loading .loading-spinner,.stock-loading .loading-spinner{width:25px;height:25px;flex:0 0 25px;border:3px solid #eaddec;border-top-color:#800080;border-radius:50%;animation:spin .8s linear infinite}
+.status-pill{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:5px 10px;border:1px solid #e5d2ea;border-radius:999px;background:#f6edf8;color:#68216f;font-size:10px;font-weight:850;letter-spacing:.045em;line-height:1.2;white-space:nowrap}
+.product-load-status{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;min-height:38px;padding:10px 12px;color:#786d80;font-size:12px;font-weight:600;line-height:1.5;text-align:center}
+.product-load-status .spinner{width:18px;height:18px;flex:0 0 18px;margin:0;border-width:2px}
+.product-load-status .secondary{min-height:34px;padding:7px 11px;font-size:11px}
+.product-load-sentinel{height:2px;width:100%;pointer-events:none}
+@media(max-width:600px){.panel-loading,.catalog-loading,.stock-loading{min-height:88px;padding:18px 12px;font-size:12px}.status-pill{font-size:9px;padding:5px 8px}}
+
 </style>
   
 
