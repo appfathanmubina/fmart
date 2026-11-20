@@ -1880,6 +1880,7 @@ test('Shared summary layout keeps every metric in one row with a matching column
 test('Shared table presentation hides internal ID columns and removes visible stock product IDs',()=>{
   assert.ok(index.includes('const internalHeader=/^(?:id|uuid|id internal|kode internal|id produk'));
   assert.ok(index.includes('row.children[i].hidden=true'));
+  assert.ok(index.includes('.data-table th[hidden],.data-table td[hidden]{display:none!important}'));
   assert.ok(index.includes('.audit-entity-id{display:none!important}'));
   assert.ok(!index.includes("'<tr><td><strong>'+escapeHtml(x.name)+'</strong><small class=\"stock-subline\">'+escapeHtml(x.productId)"));
 });
