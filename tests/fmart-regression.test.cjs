@@ -1892,3 +1892,13 @@ test('Warehouse tables do not expose internal stock reference IDs as user-facing
   assert.ok(!index.includes("escapeHtml(x.referenceId||'-')"));
   assert.ok(index.includes('<th>Tanggal</th><th>Nomor</th><th>Pemasok / Asal</th><th>Referensi</th>'),'Supplier document references remain visible because they are human-readable source references.');
 });
+
+
+test('Only genuine page summary containers are formatted; product-level stats keep their original layout',()=>{
+  assert.ok(index.includes("const existingSummarySelector='#opsStats,.catalog-overview,.report-metric-grid"));
+  assert.ok(!index.includes("const existingSummarySelector='#opsStats,.catalog-overview,.report-metric-grid,.report-stock-summary,.report-status-grid,.stock-overview,.order-overview-grid,.payment-overview-grid,.fulfillment-metrics,.warehouse-report-metrics,.warehouse-fulfillment-metrics,.wali-metric-grid,.order-history-summary,.receiving-summary,.catalog-product-stats'"));
+  assert.ok(!index.includes("existingSummarySelector.includes('.catalog-product-stats')"));
+  assert.ok(index.includes('#operationsView>.section-title>div:first-child,#opsMainSection>.section-title{display:none!important}'));
+  assert.ok(index.includes('body.admin-portal .ops-welcome strong{display:none!important}'));
+  assert.ok(index.includes('body.admin-portal .ops-welcome span{margin-top:0!important}'));
+});
