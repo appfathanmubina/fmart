@@ -1855,6 +1855,42 @@ function saveCategory(token, id, name, description, order, status) {
   } finally { lock.releaseLock(); }
 }
 
+
+function getProductPhotoFolder_() {
+  const props=PropertiesService.getScriptProperties(),key='FMART_PRODUCT_PHOTO_FOLDER_ID';
+  const id=props.getProperty(key);
+  if(id) { try { return DriveApp.getFolderById(id); } catch(e) { props.deleteProperty(key); } }
+  const folder=DriveApp.createFolder('FMart - Foto Produk');
+  props.setProperty(key,folder.getId());
+  return folder;
+}
+
+function uploadProductPhoto(token, payload) {
+  const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  if(!payload||typeof payload!=='object')throw new Error('Data foto produk tidak valid.');
+  const mimeType=String(payload.mimeType||'').toLowerCase();
+  const allowed=['image/jpeg','image/png','image/webp','image/gif'];
+  if(allowed.indexOf(mimeType)<0)throw new Error('Format foto harus JPG, PNG, WEBP, atau GIF.');
+  const dataUrl=String(payload.dataUrl||'');
+  const match=dataUrl.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=]+)$/i);
+  if(!match||String(match[1]).toLowerCase()!==mimeType)throw new Error('Isi foto tidak valid atau formatnya tidak cocok.');
+  const bytes=Utilities.base64Decode(match[2]);
+  if(!bytes.length||bytes.length>5*1024*1024)throw new Error('Ukuran foto maksimal 5 MB.');
+  const original=String(payload.fileName||'foto-produk').replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,100);
+  const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif'})[mimeType];
+  const name='FMart-Produk-'+Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyyMMdd-HHmmss')+'-'+original.replace(/\.[^.]+$/,'')+'.'+ext;
+  const folder=getProductPhotoFolder_();
+  const file=folder.createFile(Utilities.newBlob(bytes,mimeType,name));
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);
+  } catch(e) {
+    try { file.setTrashed(true); } catch(ignore) {}
+    throw new Error('Foto tersimpan belum dapat dibagikan untuk ditampilkan di katalog. Periksa kebijakan berbagi Google Drive akun pemilik aplikasi.');
+  }
+  writeAudit_(session.userId,session.role,'UPLOAD_PRODUCT_PHOTO','PRODUK',file.getId(),'','',JSON.stringify({fileName:name,mimeType:mimeType,sizeBytes:bytes.length}),'Mengunggah foto produk');
+  return {fileId:file.getId(),fileName:name,photoUrl:'https://drive.google.com/uc?export=view&id='+file.getId()};
+}
+
 function saveProduct(token, data) {
   const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);const ss=getSS_();
   const lock=LockService.getScriptLock(); lock.waitLock(10000);
