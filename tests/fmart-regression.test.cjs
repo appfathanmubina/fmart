@@ -1655,6 +1655,13 @@ test('Supervisor can read all POS history without receiving POS mutation access'
  assert.ok(history.includes('FMART.ROLES.SUPERVISOR'));
  assert.ok(history.includes("session.role===FMART.ROLES.KASIR&&x.cashierUserId!==String(session.userId)"));
  assert.ok(!/appendRow|setValues|deleteRow|createCashierSale|cancelCashierQrisSale|confirmCashierQrisPayment/.test(history));
+ const configure=extractFunction(index,'configureStaffNavigation');
+ const permissions=(configure.match(/const permissions=\{([\s\S]*?)\n  \};/)||[])[1]||'';
+ assert.match(permissions,/SUPERVISOR:\[[^\]]*'staffSalesHistory'/);
+ for(const role of ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR']){
+  const roleLine=(permissions.match(new RegExp(role+':\\[([^\\]]*)\\]'))||[])[1]||'';
+  assert.ok(!roleLine.includes('staffSalesHistory'),role+' must not receive the Supervisor transaction view.');
+ }
  const view=extractFunction(index,'renderSupervisorSalesHistory');
  assert.ok(view.includes("state.data.user.role!=='SUPERVISOR'"));
  assert.ok(view.includes("runServer('getCashierSalesHistory'"));
