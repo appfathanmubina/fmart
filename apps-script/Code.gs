@@ -910,6 +910,7 @@ function validateUploadedFileSignature_(bytes,mimeType){
  if(mime==='image/jpeg')ok=b.length>=3&&starts([0xff,0xd8,0xff]);
  else if(mime==='image/png')ok=b.length>=8&&starts([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]);
  else if(mime==='image/webp')ok=b.length>=12&&starts([0x52,0x49,0x46,0x46])&&b[8]===0x57&&b[9]===0x45&&b[10]===0x42&&b[11]===0x50;
+ else if(mime==='image/gif')ok=b.length>=6&&(starts([0x47,0x49,0x46,0x38,0x37,0x61])||starts([0x47,0x49,0x46,0x38,0x39,0x61]));
  else if(mime==='application/pdf')ok=b.length>=5&&starts([0x25,0x50,0x44,0x46,0x2d]);
  if(!ok)throw new Error('Isi file tidak sesuai dengan format yang dipilih. Pilih ulang bukti yang valid.');return true;
 }
@@ -1279,8 +1280,8 @@ function submitPayment(token,orderId,method,nominal,fileName,mimeType,base64Data
 /** Resolve a private Drive QRIS image through Apps Script so the PWA does not depend on Drive thumbnail cookies/permissions. */
 function extractQrisDriveFileId_(url){
   const value=String(url||'').trim();
-  if(!/^https:\/\/(?:www\.)?drive\.google\.com\//i.test(value))return '';
-  const match=value.match(/\/file\/d\/([A-Za-z0-9_-]{10,})/i)||value.match(/[?&]id=([A-Za-z0-9_-]{10,})/i);
+  if(!/^https:\/\/(?:(?:www\.)?drive\.google\.com|drive\.usercontent\.google\.com|docs\.google\.com|lh3\.googleusercontent\.com)\//i.test(value))return '';
+  const match=value.match(/\/(?:file\/)?d\/([A-Za-z0-9_-]{10,})/i)||value.match(/[?&]id=([A-Za-z0-9_-]{10,})/i);
   return match?match[1]:'';
 }
 
@@ -1876,19 +1877,32 @@ function uploadProductPhoto(token, payload) {
   if(!match||String(match[1]).toLowerCase()!==mimeType)throw new Error('Isi foto tidak valid atau formatnya tidak cocok.');
   const bytes=Utilities.base64Decode(match[2]);
   if(!bytes.length||bytes.length>500*1024)throw new Error('Ukuran foto setelah kompresi maksimal 500 KB.');
+  validateUploadedFileSignature_(bytes,mimeType);
   const original=String(payload.fileName||'foto-produk').replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,100);
   const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif'})[mimeType];
   const name='FMart-Produk-'+Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyyMMdd-HHmmss')+'-'+original.replace(/\.[^.]+$/,'')+'.'+ext;
   const folder=getProductPhotoFolder_();
   const file=folder.createFile(Utilities.newBlob(bytes,mimeType,name));
-  try {
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);
-  } catch(e) {
-    try { file.setTrashed(true); } catch(ignore) {}
-    throw new Error('Foto tersimpan belum dapat dibagikan untuk ditampilkan di katalog. Periksa kebijakan berbagi Google Drive akun pemilik aplikasi.');
-  }
   writeAudit_(session.userId,session.role,'UPLOAD_PRODUCT_PHOTO','PRODUK',file.getId(),'','',JSON.stringify({fileName:name,mimeType:mimeType,sizeBytes:bytes.length}));
-  return {fileId:file.getId(),fileName:name,photoUrl:'https://drive.google.com/uc?export=view&id='+file.getId()};
+  return {fileId:file.getId(),fileName:name,photoUrl:'https://drive.google.com/thumbnail?id='+encodeURIComponent(file.getId())+'&sz=w1200'};
+}
+
+/** Mengirim foto produk melalui sesi Apps Script jika thumbnail Drive tidak dapat dimuat oleh PWA. */
+function getProductPhotoData(token,fileId){
+  requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.ADMIN,FMART.ROLES.KASIR,FMART.ROLES.GUDANG,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN]);
+  fileId=String(fileId||'').trim();
+  if(!/^[A-Za-z0-9_-]{10,}$/.test(fileId))throw new Error('ID foto produk tidak valid.');
+  const rows=readRows_(getSS_().getSheetByName('Produk'));
+  const referenced=rows.some(function(row){return extractQrisDriveFileId_(row[7])===fileId;});
+  if(!referenced)throw new Error('Foto tidak terdaftar pada katalog FMart.');
+  const folder=getProductPhotoFolder_(),file=DriveApp.getFileById(fileId),parents=file.getParents();
+  let trusted=false;while(parents.hasNext()){if(parents.next().getId()===folder.getId()){trusted=true;break;}}
+  if(!trusted)throw new Error('Foto tidak berada pada folder penyimpanan FMart.');
+  if(file.isTrashed())throw new Error('Foto produk sudah berada di Sampah.');
+  const blob=file.getBlob(),mime=String(blob.getContentType()||'').toLowerCase(),bytes=blob.getBytes();
+  if(['image/jpeg','image/png','image/webp','image/gif'].indexOf(mime)<0||!bytes.length||bytes.length>500*1024)throw new Error('Foto produk tidak memenuhi ketentuan ukuran atau format.');
+  validateUploadedFileSignature_(bytes,mime);
+  return {ok:true,mimeType:mime,dataUrl:'data:'+mime+';base64,'+Utilities.base64Encode(bytes),fileName:file.getName()};
 }
 
 function saveProduct(token, data) {
