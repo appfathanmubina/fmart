@@ -2418,6 +2418,8 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
     /* Hanya wadah ringkasan yang memang sudah ada yang dirapikan menjadi satu baris. */
     .fmart-existing-summary-row{display:grid!important;grid-template-columns:repeat(var(--fmart-existing-summary-count),minmax(0,1fr))!important;grid-auto-flow:column!important;min-width:0;gap:12px}
     .fmart-existing-summary-row>*{min-width:0}
+    .audit-entity-id{display:none!important}
+    .data-table th[hidden],.data-table td[hidden]{display:none!important}
     @media(max-width:1100px){.fmart-existing-summary-row{grid-template-columns:none!important;grid-auto-columns:minmax(132px,1fr)!important;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding-bottom:5px;-webkit-overflow-scrolling:touch}.fmart-existing-summary-row>*{min-width:132px}}
     @media(max-width:620px){.fmart-existing-summary-row{gap:8px}.fmart-existing-summary-row>*{min-width:124px}}
 </style>
