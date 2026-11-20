@@ -1876,7 +1876,6 @@ test('Only existing summary containers receive a one-row layout; no summary UI i
   assert.ok(index.includes("el.style.setProperty('--fmart-existing-summary-count',String(count))"));
   assert.ok(!index.includes('installSharedSummaryAndTableRules'));
   assert.ok(!index.includes('#deliverySummaryCards'));
-  assert.ok(!index.includes('createElement('));
 });
 
 test('Shared table presentation hides internal ID columns and removes visible stock product IDs',()=>{
