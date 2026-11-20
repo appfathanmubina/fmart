@@ -3622,8 +3622,11 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
 }
     function renderOps(){
       if(!opsData)return;
-      $('opsStats').classList.remove('hidden');
-      const role=state.data.user.role, stats=opsData.stats||{};
+      const role=state.data.user.role;
+      /* Statistik global hanya milik halaman Dashboard, bukan seluruh halaman operasional. */
+      const dashboardActive=!!($('staffDashboard')&&$('staffDashboard').classList.contains('active'));
+      $('opsStats').classList.toggle('hidden',!dashboardActive||role==='PETUGAS_PENGANTAR');
+      const stats=opsData.stats||{};
       let cards=[];
       if(role==='ADMIN'||role==='SUPERADMIN'){
         cards=[['Menunggu Verifikasi',stats.pendingVerification,'Pembayaran'],['Menunggu Pembayaran',stats.menungguPembayaran,'Pesanan'],['Dalam Proses',(Number(stats.dibayar)||0)+(Number(stats.diproses)||0)+(Number(stats.disiapkan)||0),'Operasional'],['Produk Aktif',stats.activeProducts,'Katalog'],['Stok Menipis',stats.lowStock,'Persediaan'],['Pesanan Diterima',stats.diterima,'Selesai']];

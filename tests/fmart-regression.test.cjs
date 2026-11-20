@@ -1902,3 +1902,10 @@ test('Only genuine page summary containers are formatted; product-level stats ke
   assert.ok(index.includes('body.admin-portal .ops-welcome strong{display:none!important}'));
   assert.ok(index.includes('body.admin-portal .ops-welcome span{margin-top:0!important}'));
 });
+
+
+test('Global dashboard summary is visible only while the staff dashboard is active',()=>{
+  assert.ok(index.includes("const dashboardActive=!!($('staffDashboard')&&$('staffDashboard').classList.contains('active'));"));
+  assert.ok(index.includes("$('opsStats').classList.toggle('hidden',!dashboardActive||role==='PETUGAS_PENGANTAR');"));
+  assert.ok(!index.includes("$('opsStats').classList.remove('hidden');"));
+});
