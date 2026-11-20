@@ -1657,7 +1657,7 @@ test('HPP entry is available on product, variation, receipt and stock-in forms',
 
 test('Recorded master HPP cannot be silently changed while inventory remains',()=>{
  const helper=extractFunction(code,'assertHppChangeAllowed_'),product=extractFunction(code,'saveProduct'),variation=extractFunction(code,'saveVariation'),sandbox={};
- vm.runInNewContext(helper+'\\nthis.guard=assertHppChangeAllowed_;',sandbox);
+ vm.runInNewContext(helper+'\nthis.guard=assertHppChangeAllowed_;',sandbox);
  assert.equal(sandbox.guard(0,12500,8,'produk'),true,'opening HPP may be entered for stock that has not yet been valued');
  assert.equal(sandbox.guard(12500,12500,8,'produk'),true,'saving the same HPP must remain harmless');
  assert.equal(sandbox.guard(12500,15000,0,'produk'),true,'HPP may be revised after stock reaches zero');
