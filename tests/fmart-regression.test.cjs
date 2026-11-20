@@ -74,6 +74,8 @@ test('Private Drive QRIS images are served safely for the Wali PWA',()=>{
  const sandbox={};vm.runInNewContext(helper+'\nthis.extract=extractQrisDriveFileId_;',sandbox);
  assert.equal(sandbox.extract('https://drive.google.com/file/d/1Abcdefghijklmnop/view?usp=sharing'),'1Abcdefghijklmnop');
  assert.equal(sandbox.extract('https://drive.google.com/uc?export=view&id=1Abcdefghijklmnop'),'1Abcdefghijklmnop');
+ assert.equal(sandbox.extract('https://drive.usercontent.google.com/download?id=1Abcdefghijklmnop&export=view'),'1Abcdefghijklmnop');
+ assert.equal(sandbox.extract('https://lh3.googleusercontent.com/d/1Abcdefghijklmnop'),'1Abcdefghijklmnop');
  assert.equal(sandbox.extract('https://example.com/image.png?id=1Abcdefghijklmnop'),'');
  assert.ok(reader.includes('FMART.ROLES.WALI_SANTRI,FMART.ROLES.SUPERADMIN'));
  assert.ok(reader.includes('file.isTrashed()')&&reader.includes('5*1024*1024'));
@@ -85,6 +87,27 @@ test('Private Drive QRIS images are served safely for the Wali PWA',()=>{
  assert.ok(index.includes('qrisImageFallback')&&index.includes("paymentQrisImage').onerror"));
 });
 
+test('Product photos are served privately through an authenticated, folder-scoped Apps Script proxy',()=>{
+ const upload=extractFunction(code,'uploadProductPhoto'),reader=extractFunction(code,'getProductPhotoData');
+ assert.ok(upload.includes('validateUploadedFileSignature_(bytes,mimeType)'));
+ assert.ok(upload.includes('drive.google.com/thumbnail?id='));
+ assert.ok(!upload.includes('setSharing(DriveApp.Access.ANYONE_WITH_LINK'),'Product images must not depend on public Drive sharing.');
+ assert.ok(reader.includes('FMART.ROLES.WALI_SANTRI')&&reader.includes('FMART.ROLES.SUPERADMIN'));
+ assert.ok(reader.includes("rows.some(function(row){return extractQrisDriveFileId_(row[7])===fileId;})"));
+ assert.ok(reader.includes("parents.next().getId()===folder.getId()"));
+ assert.ok(reader.includes("Utilities.base64Encode(bytes)"));
+ const display=extractFunction(index,'safeUrl');
+ assert.ok(display.includes('driveImageFileId_'));
+ assert.ok(index.includes("runServer('getProductPhotoData',state.token,fileId)"));
+ assert.ok(index.includes('data-drive-file-id'));
+});
+test('Product photo signature validation accepts GIF87a and GIF89a',()=>{
+ const fn=extractFunction(code,'validateUploadedFileSignature_'),sandbox={};
+ vm.runInNewContext(fn+'\nthis.validate=validateUploadedFileSignature_;',sandbox);
+ assert.equal(sandbox.validate([71,73,70,56,55,97],'image/gif'),true);
+ assert.equal(sandbox.validate([71,73,70,56,57,97],'image/gif'),true);
+ assert.throws(()=>sandbox.validate([0,0,0,0,0,0],'image/gif'),/Isi file/);
+});
 test('Kasir has limited QRIS proof and verification permission', () => {
   const verify = extractFunction(code, 'verifyPayment');
   const proof = extractFunction(code, 'getPaymentProofData');
