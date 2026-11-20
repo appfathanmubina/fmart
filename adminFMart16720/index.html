@@ -38,7 +38,7 @@
     if("serviceWorker" in navigator)navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(error=>console.warn("FMart Admin service worker registration failed:",error));
     function isAdminPwaStandalone(){
       const standalone=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
-      const adminPath=window.location.pathname.replace(/\\/+$/,"").endsWith("/adminFMart16720");
+      const adminPath=window.location.pathname.endsWith("/adminFMart16720/")||window.location.pathname.endsWith("/adminFMart16720");
       const adminLaunch=new URLSearchParams(window.location.search).get("pwa")==="admin";
       return standalone&&adminPath&&adminLaunch;
     }
