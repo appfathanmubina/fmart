@@ -4672,7 +4672,7 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
 
     /* Komponen bersama untuk ringkasan dan tabel seluruh portal/role. */
     (function installSharedSummaryAndTableRules(){
-      const summarySelector='#opsStats,.catalog-overview,.report-metric-grid,.report-stock-summary,.stock-overview,.order-overview-grid,.payment-overview-grid,.fulfillment-metrics,.warehouse-report-metrics,.warehouse-fulfillment-metrics,.wali-metric-grid,.order-history-summary,.receiving-summary,.deliverySummaryCards,.catalog-product-stats';
+      const summarySelector='#opsStats,#deliverySummaryCards,.catalog-overview,.report-metric-grid,.report-stock-summary,.report-status-grid,.stock-overview,.order-overview-grid,.payment-overview-grid,.fulfillment-metrics,.warehouse-report-metrics,.warehouse-fulfillment-metrics,.wali-metric-grid,.order-history-summary,.receiving-summary,.catalog-product-stats';
       const internalHeader=/^(?:id|uuid|id internal|kode internal|id produk|id variasi|id pengguna|id pesanan|id transaksi|id pembayaran|id santri|id wali|id kategori|id barang|id penerimaan|id mutasi)$/i;
       function applySummary(el){const count=el.children?el.children.length:0;if(!count)return;el.classList.add('fmart-one-row-summary');el.style.setProperty('--fmart-summary-count',String(count));}
       function refresh(root){
