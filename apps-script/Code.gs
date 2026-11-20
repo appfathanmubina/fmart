@@ -1887,7 +1887,7 @@ function uploadProductPhoto(token, payload) {
     try { file.setTrashed(true); } catch(ignore) {}
     throw new Error('Foto tersimpan belum dapat dibagikan untuk ditampilkan di katalog. Periksa kebijakan berbagi Google Drive akun pemilik aplikasi.');
   }
-  writeAudit_(session.userId,session.role,'UPLOAD_PRODUCT_PHOTO','PRODUK',file.getId(),'','',JSON.stringify({fileName:name,mimeType:mimeType,sizeBytes:bytes.length}),'Mengunggah foto produk');
+  writeAudit_(session.userId,session.role,'UPLOAD_PRODUCT_PHOTO','PRODUK',file.getId(),'','',JSON.stringify({fileName:name,mimeType:mimeType,sizeBytes:bytes.length}));
   return {fileId:file.getId(),fileName:name,photoUrl:'https://drive.google.com/uc?export=view&id='+file.getId()};
 }
 
