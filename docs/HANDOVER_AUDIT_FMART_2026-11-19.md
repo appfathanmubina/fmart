@@ -119,3 +119,6 @@ Fungsi baru `auditFMartCostingIntegrity_()` bersifat READ_ONLY dan melaporkan ko
 Regression CI menguji migrasi aman, pemetaan header dinamis, perhitungan snapshot, dan sifat read-only audit. Tidak ada migrasi yang dijalankan dan tidak ada perubahan saldo stok, HPP existing, transaksi, atau laporan Spreadsheet produksi.
 
 **UAT wajib:** jalankan audit read-only pada salinan Spreadsheet yang diverifikasi, tinjau issue, lakukan uji penerimaan/mutasi/transfer/penjualan/retry, dan rekonsiliasi laporan dengan dokumen pembelian. Migrasi hanya boleh dilakukan setelah header dan data dinyatakan aman. Data transaksi lama tanpa bukti HPP tetap dibiarkan tidak bernilai; jangan direkonstruksi dari HPP saat ini.
+
+
+**Status merge Tahap 40.9:** PR #141 berhasil di-merge ke `main` pada commit `7c9ad22e3d56768389a8b6a8d11c86d79b8e2718`. Regression CI pada head PR lulus. Source Apps Script aktif belum otomatis diperbarui. Uji audit database dan costing pada salinan Spreadsheet, sinkronisasi Apps Script, serta UAT tetap wajib sebelum migrasi/produksi.
