@@ -26,7 +26,7 @@ test('FMart Admin registers its own service worker inside its own scope', () => 
 });
 
 test('Admin worker cache is private to its prefix and never purges Wali caches', () => {
-  assert.match(adminWorker, /fmart-admin-pwa-/);
+  assert.match(adminWorker, /admin-fmart-pwa-/);
   assert.match(adminWorker, /key\.startsWith\(FMART_ADMIN_CACHE_PREFIX\)/);
   assert.match(adminWorker, /requestUrl\.pathname\.startsWith\(scopeUrl\.pathname\)/);
   assert.doesNotMatch(adminWorker, /caches\.delete\([^)]*fmart-/);
