@@ -149,6 +149,6 @@ Regression CI pada PR lulus. Tidak ada perubahan data, skema, atau endpoint muta
 
 ## Penutupan Audit Repository — 20 November 2026
 
-Audit source repository Tahap 40.1–40.13 telah ditutup pada `main` SHA `89acaaddfd8349825c5561479f49c8ca174847bd`. Tidak ada PR terbuka. Regression CI pada SHA tersebut lulus **130/130 tes** dan build/deployment GitHub Pages berstatus success. Perbaikan terakhir memastikan Supervisor mempunyai dashboard pengawasan yang tepat serta akses baca-saja ke seluruh riwayat POS, di samping pesanan, produk, dan laporan.
+Audit source repository Tahap 40.1–40.13 telah ditutup. Baseline source `main` sebelum penutupan dokumentasi adalah `89acaaddfd8349825c5561479f49c8ca174847bd`; PR dokumentasi penutupan #149 di-merge menjadi `77c60d5e953408981dcf3629f5c9bf6f91e5ea84`. Regression CI pada kedua commit lulus **130/130 tes** dan build/deployment GitHub Pages berstatus success. Tidak ada PR terbuka. Perbaikan terakhir memastikan Supervisor mempunyai dashboard pengawasan yang tepat serta akses baca-saja ke seluruh riwayat POS, di samping pesanan, produk, dan laporan.
 
 Tidak ada migrasi, penulisan data, atau rekonsiliasi Spreadsheet produksi yang dilakukan selama audit source. **Uji Runtime belum dimulai dan produksi belum disetujui.** Tahap selanjutnya adalah menjalankan checklist UAT secara terisolasi: verifikasi Script Properties dan target, gunakan salinan Spreadsheet/Drive, jalankan seluruh audit read-only, uji akun/role dan alur nyata, rekonsiliasi stok/HPP/laba/transaksi, lalu minta persetujuan pemilik proses.

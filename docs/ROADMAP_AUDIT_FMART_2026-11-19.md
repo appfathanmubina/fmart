@@ -46,6 +46,7 @@ Branch produksi sumber: `main`
 | 40.10 | Audit konsistensi tampilan, navigasi, dan hak akses per role | Selesai pada repository; visual browser/perangkat menunggu Uji Runtime |
 | 40.11 | Akses baca-saja riwayat transaksi POS untuk Supervisor | Selesai pada repository; validasi lintas akun menunggu Uji Runtime |
 | 40.12 | Dashboard pengawasan khusus Supervisor | Selesai pada repository; validasi visual dan akun menunggu Uji Runtime |
+| 40.13 | Finalisasi audit repository dan gerbang Uji Runtime | Audit source selesai; Uji Runtime menjadi tahap berikutnya |
 
 ## Ringkasan perbaikan tahap 22–30
 
@@ -983,10 +984,10 @@ Tidak ada perubahan data, skema Spreadsheet, endpoint, atau hak mutasi. Uji visu
 **Status: audit source repository selesai.** Seluruh perubahan Tahap 40.1–40.12 yang diputuskan untuk lingkup repository telah didokumentasikan dan masuk ke `main`. Tidak ada PR terbuka saat penutupan audit ini.
 
 Baseline final yang diperiksa pada 20 November 2026:
-- Branch `main`: `89acaaddfd8349825c5561479f49c8ca174847bd`.
-- Regression CI terbaru pada SHA tersebut: **130/130 tes lulus**, 0 gagal.
-- GitHub Pages build dan deployment pada SHA tersebut: **success**.
-- PR perbaikan Supervisor #143, #145, #147 dan PR dokumentasi #144, #146, #148 telah di-merge.
+- Baseline source pada branch `main` sebelum penutupan dokumentasi: `89acaaddfd8349825c5561479f49c8ca174847bd`; PR dokumentasi penutupan #149 di-merge menjadi `77c60d5e953408981dcf3629f5c9bf6f91e5ea84`.
+- Regression CI pada source baseline dan commit penutupan dokumentasi: **130/130 tes lulus**, 0 gagal.
+- GitHub Pages build dan deployment pada kedua commit tersebut: **success**.
+- PR perbaikan Supervisor #143, #145, #147 dan PR dokumentasi #144, #146, #148, #149 telah di-merge.
 - Tidak ada migrasi, penulisan data, rekonsiliasi, atau perubahan Spreadsheet produksi yang dilakukan selama audit source.
 
 Cakupan audit source yang ditutup meliputi konsistensi role/navigasi, petunjuk relasi Wali, akses baca-saja Supervisor atas pesanan/produk/riwayat POS/laporan, dashboard Supervisor, QRIS Drive PWA, HPP dan laba kotor, guard HPP master, integritas skema dan snapshot costing, regression, serta dokumentasi operasional/UAT.
