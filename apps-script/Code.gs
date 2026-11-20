@@ -1249,6 +1249,28 @@ function submitPayment(token,orderId,method,nominal,fileName,mimeType,base64Data
  }finally{lock.releaseLock();}
 }
 
+/** Resolve a private Drive QRIS image through Apps Script so the PWA does not depend on Drive thumbnail cookies/permissions. */
+function extractQrisDriveFileId_(url){
+  const value=String(url||'').trim();
+  if(!/^https:\/\/(?:www\.)?drive\.google\.com\//i.test(value))return '';
+  const match=value.match(/\/file\/d\/([A-Za-z0-9_-]{10,})/i)||value.match(/[?&]id=([A-Za-z0-9_-]{10,})/i);
+  return match?match[1]:'';
+}
+
+/** Wali/Superadmin may read the configured merchant QRIS image; no Drive URL or file ID is exposed. */
+function getQrisImageData(token){
+  requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.SUPERADMIN]);
+  const fileId=extractQrisDriveFileId_(getSettingValue_('PAYMENT_QRIS_IMAGE_URL'));
+  if(!fileId)return {ok:false,reason:'NOT_DRIVE'};
+  let file;try{file=DriveApp.getFileById(fileId);}catch(e){throw new Error('File QRIS di Google Drive tidak dapat diakses oleh aplikasi. Periksa ID file dan izin akun pemilik script.');}
+  if(file.isTrashed())throw new Error('File QRIS di Google Drive sudah berada di Sampah.');
+  if(Number(file.getSize())>5*1024*1024)throw new Error('Ukuran gambar QRIS maksimal 5 MB.');
+  const blob=file.getBlob(),mime=String(blob.getContentType()||'').toLowerCase(),bytes=blob.getBytes();
+  if(['image/jpeg','image/png','image/webp'].indexOf(mime)<0||!bytes.length||bytes.length>5*1024*1024)throw new Error('File QRIS harus berupa gambar JPG, PNG, atau WEBP maksimal 5 MB.');
+  validateUploadedFileSignature_(bytes,mime);
+  return {ok:true,mimeType:mime,dataUrl:'data:'+mime+';base64,'+Utilities.base64Encode(bytes),fileName:file.getName()};
+}
+
 function getPaymentSettings(token) {
   requireRole_(token,[FMART.ROLES.WALI_SANTRI,FMART.ROLES.SUPERADMIN]);
   return {ok:true,bankName:getSettingValue_('PAYMENT_BANK_NAME'),accountNumber:getSettingValue_('PAYMENT_ACCOUNT_NUMBER'),accountName:getSettingValue_('PAYMENT_ACCOUNT_NAME'),adminWhatsapp:getSettingValue_('PAYMENT_ADMIN_WHATSAPP'),qrisImageUrl:getSettingValue_('PAYMENT_QRIS_IMAGE_URL')};
