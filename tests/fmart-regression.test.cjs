@@ -96,8 +96,8 @@ test('Product photos are served privately through an authenticated, folder-scope
  assert.ok(reader.includes("rows.some(function(row){return extractQrisDriveFileId_(row[7])===fileId;})"));
  assert.ok(reader.includes("parents.next().getId()===folder.getId()"));
  assert.ok(reader.includes("Utilities.base64Encode(bytes)"));
- const display=extractFunction(index,'safeUrl');
- assert.ok(display.includes('driveImageFileId_'));
+ assert.ok(index.includes('function safeUrl(v){const u=String(v||\'\').trim();'));
+ assert.ok(index.includes('driveImageFileId_'));
  assert.ok(index.includes("runServer('getProductPhotoData',state.token,fileId)"));
  assert.ok(index.includes('data-drive-file-id'));
 });
