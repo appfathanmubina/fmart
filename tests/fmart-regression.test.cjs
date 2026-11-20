@@ -1650,6 +1650,18 @@ test('Wali relationship guidance matches phone-match and pending-verification ru
  assert.ok(request.includes("const nextStatus=phoneMatched?'AKTIF':'MENUNGGU_VERIFIKASI'"));
 });
 
+test('Supervisor dashboard uses an oversight view and never routes to warehouse actions',()=>{
+ const render=extractFunction(index,'renderOps');
+ assert.ok(render.includes("role==='SUPERVISOR'")&&render.includes('renderSupervisorDashboard()'));
+ const dashboard=extractFunction(index,'renderSupervisorDashboard');
+ for(const id of ['supervisorOpenOrders','supervisorOpenSales','supervisorOpenCatalog','supervisorOpenReports'])assert.ok(dashboard.includes(id));
+ for(const fn of ['renderOpsOrderList','renderSupervisorSalesHistory','renderSupervisorCatalog','renderOpsReports'])assert.ok(dashboard.includes(fn));
+ assert.ok(!dashboard.includes('getStockManagement'));
+ assert.ok(!dashboard.includes('renderOpsStock'));
+ assert.ok(!dashboard.includes('renderOpsReceiving'));
+ assert.ok(!dashboard.includes('renderOpsWarehouseReports'));
+});
+
 test('Supervisor can read all POS history without receiving POS mutation access',()=>{
  const history=extractFunction(code,'getCashierSalesHistory');
  assert.ok(history.includes('FMART.ROLES.SUPERVISOR'));
