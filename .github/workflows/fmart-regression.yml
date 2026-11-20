@@ -28,6 +28,8 @@ jobs:
         run: node --check < apps-script/Code.gs
       - name: Check service worker syntax
         run: node --check service-worker.js
+      - name: Check Admin service worker syntax
+        run: node --check adminFMart16720/service-worker.js
       - name: Run regression tests
         run: node --test tests/fmart-regression.test.cjs tests/fmart-admin-pwa.test.cjs
       - name: Check patch whitespace
