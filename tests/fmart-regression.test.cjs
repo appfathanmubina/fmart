@@ -252,6 +252,7 @@ test('Role-sensitive reports and QRIS settings remain server-gated',()=>{
  assert.ok(reports.includes('FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN'));assert.ok(reports.includes('hppMissingLines'));assert.ok(reports.includes('grossProfit:grossProfit'));
  assert.ok(settings.includes('FMART.ROLES.SUPERADMIN'));
  assert.ok(ops.includes('pendingPayments:waliQrisQueue,products:[],categories:[]'));
+ assert.ok(ops.includes("const users = readRows_(ss.getSheetByName('Users'));")&&ops.indexOf("const users = readRows_(ss.getSheetByName('Users'));")<ops.indexOf('const userMap = {}'),'Operations dashboard must load Users before building the recipient map.');
 });
 
 
