@@ -4680,7 +4680,7 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
         if(root&&root.matches&&root.matches(summarySelector))applySummary(root);
         scope.querySelectorAll(summarySelector).forEach(applySummary);
         const tables=[];if(root&&root.matches&&root.matches('table'))tables.push(root);scope.querySelectorAll('table').forEach(table=>tables.push(table));
-        tables.forEach(table=>{const header=table.querySelector('thead tr');if(!header)return;const indexes=[];Array.from(header.children).forEach((cell,i)=>{if(internalHeader.test((cell.textContent||'').trim().replace(/\\s+/g,' ')))indexes.push(i)});if(!indexes.length)return;table.querySelectorAll('tr').forEach(row=>indexes.slice().reverse().forEach(i=>{if(row.children[i])row.children[i].hidden=true}));});
+        tables.forEach(table=>{const header=table.querySelector('thead tr');if(!header)return;const indexes=[];Array.from(header.children).forEach((cell,i)=>{if(internalHeader.test((cell.textContent||'').trim().replace(/\s+/g,' ')))indexes.push(i)});if(!indexes.length)return;table.querySelectorAll('tr').forEach(row=>indexes.slice().reverse().forEach(i=>{if(row.children[i])row.children[i].hidden=true}));});
       }
       let queued=false;const observer=new MutationObserver(records=>{if(queued||!records.some(record=>record.addedNodes&&record.addedNodes.length))return;queued=true;Promise.resolve().then(()=>{queued=false;refresh(document)});});
       refresh(document);if(document.body)observer.observe(document.body,{childList:true,subtree:true});
