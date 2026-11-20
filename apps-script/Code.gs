@@ -928,15 +928,17 @@ function getHeaderColumnIndex_(sheet,header){
 }
 function ensureFMartCostingSchema_(ss){
  const defs=[
-  {name:'Produk',fields:[['HargaPokokRataRata',12]]},
-  {name:'VariasiProduk',fields:[['HargaPokokRataRata',10]]},
-  {name:'MutasiStok',fields:[['BiayaPerUnit',12],['HPPSebelum',13],['HPPSesudah',14]]},
-  {name:'DetailPenerimaanBarang',fields:[['BiayaPerUnit',9],['TotalBiaya',10]]},
-  {name:'DetailPesanan',fields:[['HPPUnit',11],['HPPSubtotal',12],['HPPStatus',13]]},
-  {name:'DetailPenjualanToko',fields:[['HPPUnit',11],['HPPSubtotal',12],['HPPStatus',13]]}
+  {name:'Produk',base:FMART_DB.SHEETS.PRODUK.slice(0,11),fields:[['HargaPokokRataRata',12]]},
+  {name:'VariasiProduk',base:FMART_DB.SHEETS.VARIASI_PRODUK.slice(0,9),fields:[['HargaPokokRataRata',10]]},
+  {name:'MutasiStok',base:FMART_DB.SHEETS.MUTASI_STOK.slice(0,11),fields:[['BiayaPerUnit',12],['HPPSebelum',13],['HPPSesudah',14]]},
+  {name:'DetailPenerimaanBarang',base:FMART_DB.SHEETS.DETAIL_PENERIMAAN_BARANG.slice(0,8),fields:[['BiayaPerUnit',9],['TotalBiaya',10]]},
+  {name:'DetailPesanan',base:FMART_DB.SHEETS.DETAIL_PESANAN.slice(0,10),fields:[['HPPUnit',11],['HPPSubtotal',12],['HPPStatus',13]]},
+  {name:'DetailPenjualanToko',base:FMART_DB.SHEETS.DETAIL_PENJUALAN_TOKO.slice(0,10),fields:[['HPPUnit',11],['HPPSubtotal',12],['HPPStatus',13]]}
  ];
  defs.forEach(function(def){
   const sh=ss.getSheetByName(def.name);if(!sh)throw new Error('Sheet '+def.name+' belum tersedia. Jalankan setupFMartDatabase_().');
+  const baseActual=sh.getRange(1,1,1,def.base.length).getDisplayValues()[0].map(function(v){return String(v||'').trim();});
+  def.base.forEach(function(header,index){if(baseActual[index]!==header)throw new Error('Header dasar '+def.name+' kolom '+(index+1)+' tidak sesuai skema. Migrasi HPP dihentikan tanpa mengubah data.');});
   def.fields.forEach(function(field){
    const header=field[0],column=field[1],width=Math.max(1,sh.getLastColumn()),headers=sh.getRange(1,1,1,width).getDisplayValues()[0].map(function(v){return String(v||'').trim();}),matches=[];
    headers.forEach(function(value,index){if(value===header)matches.push(index+1);});
