@@ -7,6 +7,8 @@ const { createHmac } = require('node:crypto');
 const code = fs.readFileSync('apps-script/Code.gs', 'utf8');
 const setup = fs.readFileSync('apps-script/SetupDatabase.gs', 'utf8');
 const index = fs.readFileSync('apps-script/Index.html', 'utf8');
+const buyerShell = fs.readFileSync('index.html', 'utf8');
+const adminIndex = fs.readFileSync('adminFMart16720/index.html', 'utf8');
 const serviceWorker = fs.readFileSync('service-worker.js', 'utf8');
 const readme = fs.readFileSync('README.md', 'utf8');
 
@@ -1761,4 +1763,24 @@ test('Costing integrity audit is strictly read-only and reports stock, receipt a
  assert.ok(audit.includes('SALE_HPP_SNAPSHOT_INVALID'));
  assert.ok(audit.includes('MASTER_HPP_DIFFERS_FROM_LAST_INBOUND'));
  assert.ok(!/\.appendRow\s*\(|\.setValue\s*\(|\.setValues\s*\(|\.deleteRow\s*\(|\.insertSheet\s*\(|\.insertColumns/.test(audit),'Audit must not mutate spreadsheet data or schema.');
+});
+
+test('FMart replaces native browser dialogs with accessible branded dialogs',()=>{
+ assert.ok(index.includes('id="fmartDialog"'),'The branded dialog root must exist.');
+ assert.ok(index.includes('function showConfirmDialog('),'Confirmation flows must use the branded dialog helper.');
+ assert.ok(index.includes('function showPromptDialog('),'Text input prompts must use the branded dialog helper.');
+ assert.ok(index.includes('function showAppAlert('),'Informational alerts must use the branded dialog helper.');
+ assert.ok(index.includes("if(e.key==='Tab')"),'Dialog keyboard focus must remain trapped while open.');
+ assert.ok(index.includes("if(e.key==='Escape')"),'Dialog must support Escape dismissal.');
+ assert.equal((index.match(/\bwindow\.confirm\s*\(/g)||[]).length,0,'Native window.confirm dialogs must not remain.');
+ assert.equal((index.match(/\bwindow\.prompt\s*\(/g)||[]).length,0,'Native window.prompt dialogs must not remain.');
+ assert.equal((index.match(/\bwindow\.alert\s*\(/g)||[]).length,0,'Native window.alert dialogs must not remain.');
+});
+
+test('Buyer and Admin PWA setup fallbacks use branded responsive surfaces',()=>{
+ for(const source of [buyerShell,adminIndex]){
+  assert.ok(source.includes('border-radius:26px'),'PWA setup fallback must use a designed card surface.');
+  assert.ok(source.includes('linear-gradient(135deg,#702078,#a64ca6)'),'PWA setup mark must use FMart brand colors.');
+  assert.ok(source.includes('box-shadow:0 12px 34px'),'PWA status feedback must have intentional elevation.');
+ }
 });

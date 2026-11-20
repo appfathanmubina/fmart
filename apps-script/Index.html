@@ -2301,6 +2301,38 @@ button:disabled,[role="button"][aria-disabled="true"]{cursor:not-allowed}
         flex-basis:29px;
       }
     }
+
+/* FMart UI consistency layer — polished native controls and branded dialogs */
+.fmart-dialog-backdrop{position:fixed;inset:0;z-index:220;background:rgba(28,16,36,.54);backdrop-filter:blur(7px);display:grid;place-items:center;padding:18px;opacity:0;visibility:hidden;transition:opacity .18s ease,visibility .18s ease}
+.fmart-dialog-backdrop.is-open{opacity:1;visibility:visible}
+.fmart-dialog-card{width:min(460px,100%);max-height:min(86svh,680px);overflow:auto;background:#fff;border:1px solid #eaddec;border-radius:22px;padding:24px;box-shadow:0 28px 90px rgba(31,12,42,.28);transform:translateY(12px) scale(.985);transition:transform .2s cubic-bezier(.22,1,.36,1)}
+.fmart-dialog-backdrop.is-open .fmart-dialog-card{transform:none}
+.fmart-dialog-eyebrow{display:flex;align-items:center;gap:8px;color:#86518c;font-size:10px;font-weight:850;letter-spacing:.13em;text-transform:uppercase}
+.fmart-dialog-mark{width:34px;height:34px;display:grid;place-items:center;border-radius:12px;background:#f4eaf6;color:#702078;font-size:17px}
+.fmart-dialog-card h3{margin:14px 0 7px;color:#38223f;font-size:19px;line-height:1.3}
+.fmart-dialog-message{margin:0;color:#716477;font-size:13px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.fmart-dialog-input{display:block;width:100%;min-height:46px;margin-top:17px;padding:12px 14px;border:1px solid #e3d5e8;border-radius:13px;background:#fdfbfe;color:#382d40;font:inherit;font-size:14px;outline:none;transition:border-color .18s ease,box-shadow .18s ease}
+.fmart-dialog-input:focus{border-color:#a35aaa;box-shadow:0 0 0 4px rgba(128,0,128,.09);background:#fff}
+.fmart-dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:22px}
+.fmart-dialog-actions button{width:auto;min-width:104px;min-height:43px;padding:10px 16px;border-radius:12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,background .16s ease}
+.fmart-dialog-cancel{border:1px solid #e5d9e9;background:#fff;color:#5f4b65}
+.fmart-dialog-confirm{border:1px solid #702078;background:linear-gradient(120deg,#702078,#8a3b91);color:#fff;box-shadow:0 6px 15px rgba(112,32,120,.18)}
+.fmart-dialog-actions button:hover{transform:translateY(-1px)}
+.fmart-dialog-actions button:focus-visible{outline:3px solid #c9a3d0;outline-offset:3px}
+.fmart-dialog-confirm.is-danger{border-color:#b42318;background:linear-gradient(120deg,#b42318,#d0443c);box-shadow:0 6px 15px rgba(180,35,24,.16)}
+.fmart-dialog-card.is-alert .fmart-dialog-mark{background:#eaf5ee;color:#16834c}
+.fmart-dialog-card.is-alert .fmart-dialog-actions{justify-content:flex-end}
+button:not([class]){min-height:40px;padding:9px 13px;border:1px solid #e3d5e8;border-radius:11px;background:#fff;color:#5b145f;font:inherit;font-weight:700;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease}
+button:not([class]):hover{background:#f8f1fa;border-color:#c9add1}
+button:not([class]):disabled{opacity:.5;cursor:not-allowed}
+input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]):not([type=range]):not([class]),
+select:not([class]),textarea:not([class]){max-width:100%;min-height:42px;padding:10px 12px;border:1px solid #e4d9e9;border-radius:11px;background:#fff;color:#35273c;font:inherit;font-size:14px}
+input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]):not([type=range]):not([class]):focus,
+select:not([class]):focus,textarea:not([class]):focus{border-color:#a35aaa;outline:0;box-shadow:0 0 0 4px rgba(128,0,128,.09)}
+input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;color:#918596!important;cursor:not-allowed}
+@media(max-width:560px){.fmart-dialog-backdrop{padding:12px;align-items:end}.fmart-dialog-card{width:100%;padding:20px;border-radius:21px 21px 16px 16px;max-height:88svh}.fmart-dialog-actions{display:grid;grid-template-columns:1fr 1fr}.fmart-dialog-actions button{width:100%;min-width:0}}
+@media(prefers-reduced-motion:reduce){.fmart-dialog-backdrop,.fmart-dialog-card,.fmart-dialog-actions button{transition:none!important}}
+
 </style>
   
 
@@ -2437,6 +2469,7 @@ button:disabled,[role="button"][aria-disabled="true"]{cursor:not-allowed}
     <div class="modal-card"><div class="modal-head"><div><div class="eyebrow">Pembayaran</div><h2 id="paymentTitle">Ajukan Pembayaran</h2></div><button class="icon-btn" id="closePayment" aria-label="Tutup">×</button></div><div id="paymentBody"></div></div>
   </div>
   <div id="opsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="opsModalTitle"><div class="modal-card"><div class="modal-head"><div><div class="eyebrow">FMart Operasional</div><h2 id="opsModalTitle">Form</h2></div><button type="button" class="icon-btn" id="closeOpsModal" aria-label="Tutup dialog">×</button></div><div id="opsModalBody"></div></div></div>
+  <div id="fmartDialog" class="fmart-dialog-backdrop" aria-hidden="true"><section class="fmart-dialog-card" role="dialog" aria-modal="true" aria-labelledby="fmartDialogTitle" aria-describedby="fmartDialogMessage"><div class="fmart-dialog-eyebrow"><span class="fmart-dialog-mark" id="fmartDialogMark" aria-hidden="true">?</span><span>FMart · Konfirmasi</span></div><h3 id="fmartDialogTitle">Konfirmasi</h3><p class="fmart-dialog-message" id="fmartDialogMessage"></p><div id="fmartDialogInputHost"></div><div class="fmart-dialog-actions"><button type="button" class="fmart-dialog-cancel" id="fmartDialogCancel">Batal</button><button type="button" class="fmart-dialog-confirm" id="fmartDialogConfirm">Lanjutkan</button></div></section></div>
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <div id="loading" class="loading hidden"><div class="loading-card"><div class="spinner"></div><strong id="loadingText">Memproses...</strong></div></div>
@@ -2780,7 +2813,7 @@ async function renderDeliveryComplaintsWorkspace(){
     $('deliveryComplaintList').querySelectorAll('[data-resolve-complaint]').forEach(btn=>btn.addEventListener('click',async function(){
       const id=this.getAttribute('data-resolve-complaint'),resolution=$('complaintResolution_'+id).value.trim(),reopen=$('complaintReopen_'+id).checked;
       if(resolution.length<5){showToast('Catatan penyelesaian minimal 5 karakter.');return;}
-      if(!confirm(reopen?'Selesaikan komplain dan buka kembali masa konfirmasi 7 hari?':'Selesaikan komplain dan lanjutkan sisa tenggat konfirmasi sebelumnya?'))return;
+      if(!await showConfirmDialog(reopen?'Selesaikan komplain dan buka kembali masa konfirmasi 7 hari?':'Selesaikan komplain dan lanjutkan sisa tenggat konfirmasi sebelumnya?'))return;
       this.disabled=true;loading(true,'Menyimpan penyelesaian komplain...');
       try{const result=await runServer('resolveDeliveryComplaint',state.token,id,resolution,reopen);showToast(result.message||'Komplain diselesaikan.','success');await renderDeliveryComplaintsWorkspace();}
       catch(e){showToast(e.message||'Penyelesaian komplain gagal.');this.disabled=false;}
@@ -2853,7 +2886,7 @@ async function renderDeliveryWorkspace(){
       picker.onchange=async function(){
         const file=picker.files&&picker.files[0];if(!file)return;
         if(file.size>10*1024*1024){showToast('Ukuran foto maksimal 10 MB.');return;}
-        const note=window.prompt('Catatan bukti pengantaran (opsional):','')||'';
+        const note=(await showPromptDialog('Catatan bukti pengantaran (opsional)','',{title:'Catatan bukti pengantaran',placeholder:'Tambahkan catatan bila diperlukan',maxLength:500}))||'';
         const reader=new FileReader();
         reader.onload=async function(){
           loading(true,'Mengunggah bukti pengantaran...');
@@ -2869,10 +2902,10 @@ async function renderDeliveryWorkspace(){
     async function handleDeliveryAction(action,assignmentId){
       if(action==='proof'){uploadDeliveryProofFromDevice(assignmentId);return;}
       let reason='';
-      if(action==='reject'||action==='fail'){reason=window.prompt(action==='fail'?'Tuliskan alasan pengantaran gagal:':'Tuliskan alasan penolakan tugas:','');if(reason===null)return;if(reason.trim().length<5){showToast('Alasan minimal 5 karakter wajib diisi.','error');return;}if(action==='fail'&&!window.confirm('Catat pengantaran gagal? Pesanan akan dikembalikan ke antrean Distribusi untuk ditugaskan ulang.'))return;}
-      if(action==='start'&&!window.confirm('Mulai pengantaran sekarang? Status pesanan akan berubah menjadi DIANTAR.'))return;
+      if(action==='reject'||action==='fail'){reason=await showPromptDialog(action==='fail'?'Tuliskan alasan pengantaran gagal:':'Tuliskan alasan penolakan tugas:','',{title:action==='fail'?'Alasan pengantaran gagal':'Alasan penolakan tugas',placeholder:'Jelaskan secara singkat (minimal 5 karakter)',maxLength:500});if(reason===null)return;if(reason.trim().length<5){showToast('Alasan minimal 5 karakter wajib diisi.','error');return;}if(action==='fail'&&!await showConfirmDialog('Catat pengantaran gagal? Pesanan akan dikembalikan ke antrean Distribusi untuk ditugaskan ulang.'))return;}
+      if(action==='start'&&!await showConfirmDialog('Mulai pengantaran sekarang? Status pesanan akan berubah menjadi DIANTAR.'))return;
       let note='';
-      if(action==='progress'){note=window.prompt('Catatan perkembangan perjalanan:','');if(note===null)return;if(!note.trim()){showToast('Catatan wajib diisi.','error');return;}}
+      if(action==='progress'){note=await showPromptDialog('Catatan perkembangan perjalanan:','',{title:'Perkembangan pengantaran',placeholder:'Tuliskan perkembangan terbaru',maxLength:500});if(note===null)return;if(!note.trim()){showToast('Catatan wajib diisi.','error');return;}}
       const endpoint={accept:'respondDeliveryAssignment',reject:'respondDeliveryAssignment',start:'startDeliveryTrip',progress:'updateDeliveryProgress',fail:'reportDeliveryFailure'}[action];
       loading(true,action==='start'?'Memulai pengantaran...':'Menyimpan perubahan tugas...');
       try{
@@ -3034,14 +3067,14 @@ function renderStaffUserManagementHtml(users,canManage,currentUserId){return '<d
 function bindStaffManagementActions(){const add=$('addStaffUser');if(add)add.onclick=openStaffUserForm;$('waliTab').onclick=openWaliUserManagement;const search=$('staffSearch');if(search)search.oninput=()=>{const q=search.value.trim().toLowerCase();document.querySelectorAll('.staff-user-card').forEach(c=>c.classList.toggle('hidden',!c.textContent.toLowerCase().includes(q)))};document.querySelectorAll('[data-staff-action]').forEach(b=>b.onclick=()=>handleUserAction(b.dataset.staffAction,b.dataset.id))}
 
 function renderWaliSantriManagementHtml(walis,canManage,canEditAccount){return '<div class="notice">Satu Santri dapat memiliki lebih dari satu Wali, misalnya Ayah dan Ibu. Hubungan aktif otomatis jika nomor HP akun Wali cocok dengan nomor Wali pada master Santri; jika tidak cocok atau belum tersedia, pengajuan menunggu verifikasi Admin.</div><div class="field"><input id="waliSearch" type="search" placeholder="Cari nama, No. HP, atau email..." autocomplete="off" aria-label="Cari akun Wali Santri"></div><div class="child-list" id="waliList">'+(walis.length?walis.map(w=>'<div class="profile-item"><div style="display:flex;justify-content:space-between;gap:10px"><div><strong>'+escapeHtml(w.nama)+'</strong><div class="muted">'+escapeHtml(w.noHp||'-')+(w.email?' · '+escapeHtml(w.email):'')+'</div></div><span class="status-badge">'+escapeHtml(w.status||'-')+'</span></div><div class="muted" style="margin-top:8px">'+(w.children&&w.children.length?'<strong>Anak terhubung:</strong> '+w.children.map(c=>'<span style="display:inline-flex;align-items:center;gap:4px;margin:2px 4px 2px 0;padding:4px 8px;border-radius:999px;background:#f3efff">'+escapeHtml(c.name)+(c.className?' · '+escapeHtml(c.className):'')+(c.hubungan?' · '+escapeHtml(relationLabelClient(c.hubungan)):'')+' <button type="button" class="icon-btn" style="width:24px;height:24px;font-size:14px" data-unlink-wali="'+escapeHtml(w.waliId)+'" data-unlink-santri="'+escapeHtml(c.id)+'" aria-label="Lepas anak">×</button></span>').join(' '):'Belum ada anak yang terhubung')+'</div>'+(canManage?'<div class="two-btn" style="margin-top:10px"><button class="primary" data-wali-action="children" data-user-id="'+escapeHtml(w.userId)+'" data-wali-id="'+escapeHtml(w.waliId)+'">👨‍👩‍👧 Kelola Anak</button>'+(canEditAccount?'<button class="secondary" data-wali-action="edit" data-user-id="'+escapeHtml(w.userId)+'" data-wali-id="'+escapeHtml(w.waliId)+'">Edit</button><button class="secondary" data-wali-action="toggle" data-user-id="'+escapeHtml(w.userId)+'" data-wali-id="'+escapeHtml(w.waliId)+'">'+(w.status==='AKTIF'?'Nonaktifkan':'Aktifkan')+'</button><button class="secondary" data-wali-action="reset" data-user-id="'+escapeHtml(w.userId)+'" data-wali-id="'+escapeHtml(w.waliId)+'">Reset Password</button>':'')+'</div>':'')+'</div>').join(''):'<div class="empty-box">Belum ada Wali Santri yang terdaftar.</div>')+'</div>';}
-function processWaliRequest(action,relasiId){if(!confirm(action==='approve'?'Setujui pengajuan hubungan ini?':'Tolak pengajuan hubungan ini?'))return;loading(true,action==='approve'?'Menyetujui pengajuan...':'Menolak pengajuan...');const fn=action==='approve'?'approveWaliSantriRequest':'rejectWaliSantriRequest';runServer(fn,state.token,relasiId).then(r=>{showToast(r.message||'Pengajuan berhasil diproses.','success');return openUserManagement()}).catch(e=>showToast(e.message||'Pengajuan gagal diproses.','error')).finally(()=>loading(false))}
+async function processWaliRequest(action,relasiId){if(!await showConfirmDialog(action==='approve'?'Setujui pengajuan hubungan ini?':'Tolak pengajuan hubungan ini?'))return;loading(true,action==='approve'?'Menyetujui pengajuan...':'Menolak pengajuan...');const fn=action==='approve'?'approveWaliSantriRequest':'rejectWaliSantriRequest';runServer(fn,state.token,relasiId).then(r=>{showToast(r.message||'Pengajuan berhasil diproses.','success');return openUserManagement()}).catch(e=>showToast(e.message||'Pengajuan gagal diproses.','error')).finally(()=>loading(false))}
 async function openWaliChildrenManager(waliId){const w=(window._fmartWaliSantri||[]).find(x=>String(x.waliId)===String(waliId));if(!w)return;openOpsModal('Kelola Anak Wali Santri','<div class="notice"><strong>'+escapeHtml(w.nama)+'</strong><br>Pilih Santri yang akan dihubungkan dengan Wali Santri ini.</div><div id="linkedChildrenBox" class="child-list" style="margin-bottom:12px">'+(w.children&&w.children.length?w.children.map(c=>'<div class="profile-item" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><strong>'+escapeHtml(c.name)+'</strong><div class="muted">NIS '+escapeHtml(c.nis)+' · '+escapeHtml(c.className)+'</div></div><button class="secondary" data-modal-unlink="'+escapeHtml(c.id)+'">Lepas</button></div>').join(''):'<div class="empty-box">Belum ada anak yang terhubung.</div>')+'</div><div class="field"><label for="santriSearch">Cari Santri</label><input id="santriSearch" placeholder="Nama, NIS, atau kelas..." autocomplete="off"></div><button class="secondary" id="searchSantriBtn" style="width:100%;margin-bottom:10px">🔎 Cari Santri</button><div id="santriSearchResults"></div>');document.querySelectorAll('[data-modal-unlink]').forEach(b=>b.onclick=()=>confirmUnlinkWali(w.waliId,b.dataset.modalUnlink));$('searchSantriBtn').onclick=()=>searchAndRenderSantri(w.waliId,$('santriSearch').value);$('santriSearch').addEventListener('keydown',e=>{if(e.key==='Enter')searchAndRenderSantri(w.waliId,$('santriSearch').value)});}
 async function searchAndRenderSantri(waliId,query){const box=$('santriSearchResults');box.innerHTML='<div class="muted" style="padding:10px">Mencari Santri...</div>';try{const r=await runServer('searchSantriForWali',state.token,waliId,query);box.innerHTML=r.santri.length?r.santri.map(c=>'<button class="profile-item" style="display:block;width:100%;text-align:left;margin-bottom:8px" data-link-santri="'+escapeHtml(c.id)+'"><strong>'+escapeHtml(c.name)+'</strong><div class="muted">NIS '+escapeHtml(c.nis)+' · '+escapeHtml(c.className)+'</div></button>').join(''):'<div class="empty-box">Santri tidak ditemukan.</div>';document.querySelectorAll('[data-link-santri]').forEach(b=>b.onclick=()=>confirmLinkWali(waliId,b.dataset.linkSantri));}catch(e){box.innerHTML='<div class="empty-box">'+escapeHtml(e.message||'Pencarian Santri gagal.')+'</div>';}}
-async function confirmLinkWali(waliId,santriId){if(!confirm('Hubungkan Santri ini dengan Wali Santri?'))return;loading(true,'Menghubungkan anak...');try{await runServer('linkWaliSantri',state.token,waliId,santriId,'WALI');closeOpsModal();showToast('Anak berhasil dihubungkan.','success');await openUserManagement()}catch(e){showToast(e.message||'Gagal menghubungkan anak.','error')}finally{loading(false)}}
-async function confirmUnlinkWali(waliId,santriId){if(!confirm('Lepaskan hubungan anak ini dari Wali Santri?'))return;loading(true,'Melepas hubungan anak...');try{await runServer('unlinkWaliSantri',state.token,waliId,santriId);closeOpsModal();showToast('Hubungan anak berhasil dilepas.','success');await openUserManagement()}catch(e){showToast(e.message||'Gagal melepas hubungan anak.','error')}finally{loading(false)}}
+async function confirmLinkWali(waliId,santriId){if(!await showConfirmDialog('Hubungkan Santri ini dengan Wali Santri?'))return;loading(true,'Menghubungkan anak...');try{await runServer('linkWaliSantri',state.token,waliId,santriId,'WALI');closeOpsModal();showToast('Anak berhasil dihubungkan.','success');await openUserManagement()}catch(e){showToast(e.message||'Gagal menghubungkan anak.','error')}finally{loading(false)}}
+async function confirmUnlinkWali(waliId,santriId){if(!await showConfirmDialog('Lepaskan hubungan anak ini dari Wali Santri?'))return;loading(true,'Melepas hubungan anak...');try{await runServer('unlinkWaliSantri',state.token,waliId,santriId);closeOpsModal();showToast('Hubungan anak berhasil dilepas.','success');await openUserManagement()}catch(e){showToast(e.message||'Gagal melepas hubungan anak.','error')}finally{loading(false)}}
 async function handleWaliAction(action,userId,waliId){if(action==='children'){openWaliChildrenManager(waliId);return}if(action==='edit'){openEditWaliForm(userId,waliId);return}loading(true,'Memproses Wali Santri...');try{const r=await runServer(action==='toggle'?'toggleFMartUser':'resetFMartUserPassword',state.token,userId);if(action==='reset'){showToast('Password sementara: '+r.tempPassword,'success')}else showToast('Status Wali Santri berhasil diperbarui.','success');await openUserManagement()}catch(e){showToast(e.message||'Tindakan Wali Santri gagal. Silakan coba lagi.','error')}finally{loading(false)}}
 function openEditWaliForm(userId,waliId){const w=(window._fmartWaliSantri||[]).find(x=>String(x.waliId)===String(waliId));if(!w)return;openOpsModal('Edit Wali Santri','<div class="field"><label for="editWaliName">Nama Wali *</label><input id="editWaliName" required value="'+escapeHtml(w.nama)+'"></div><div class="field"><label for="editWaliPhone">No. HP *</label><input id="editWaliPhone" required inputmode="tel" value="'+escapeHtml(w.noHp)+'"></div><div class="field"><label for="editWaliEmail">Email</label><input id="editWaliEmail" type="email" value="'+escapeHtml(w.email)+'"></div><div class="field"><label for="editWaliAddress">Alamat</label><textarea id="editWaliAddress" rows="3">'+escapeHtml(w.alamat)+'</textarea></div><button class="primary" id="saveEditWali">Simpan</button>');$('saveEditWali').onclick=async()=>{loading(true,'Menyimpan Wali Santri...');try{await runServer('updateWaliSantri',state.token,waliId,$('editWaliName').value,$('editWaliPhone').value,$('editWaliEmail').value,$('editWaliAddress').value);closeOpsModal();showToast('Data Wali Santri berhasil diperbarui.','success');await openUserManagement()}catch(e){showToast(e.message||'Gagal menyimpan data Wali Santri.','error')}finally{loading(false)}}}
-async function handleUserAction(action,id){if(action==='edit'){openEditUserForm(id);return}loading(true,'Memproses pengguna...');try{const r=await runServer(action==='toggle'?'toggleFMartUser':'resetFMartUserPassword',state.token,id);if(action==='reset')alert('Password sementara: '+r.tempPassword+'\nSampaikan secara aman kepada pengguna.');await openUserManagement()}catch(e){showToast(e.message||'Tindakan pengguna gagal. Silakan coba lagi.','error')}finally{loading(false)}}
+async function handleUserAction(action,id){if(action==='edit'){openEditUserForm(id);return}loading(true,'Memproses pengguna...');try{const r=await runServer(action==='toggle'?'toggleFMartUser':'resetFMartUserPassword',state.token,id);if(action==='reset')await showAppAlert('Password sementara','Password sementara: '+r.tempPassword+'\n\nSampaikan secara aman kepada pengguna dan jangan membagikannya melalui kanal publik.');await openUserManagement()}catch(e){showToast(e.message||'Tindakan pengguna gagal. Silakan coba lagi.','error')}finally{loading(false)}}
 function openEditUserForm(id){const users=window._fmartStaffUsers||[];const u=users.find(x=>String(x.userId)===String(id));if(!u||u.role==='SUPERADMIN')return;openOpsModal('Edit Akun Petugas','<div class="field"><label for="editUserName">Nama *</label><input id="editUserName" required maxlength="120" value="'+escapeHtml(u.nama)+'"></div><div class="field"><label for="editUserRole">Peran Petugas *</label><select id="editUserRole" required><option>ADMIN</option><option>KASIR</option><option>GUDANG</option><option>PETUGAS_PENGANTAR</option><option>SUPERVISOR</option></select></div><button class="primary" id="saveEditUser">Simpan</button>');$('editUserRole').value=u.role;$('saveEditUser').onclick=async()=>{loading(true,'Menyimpan akun petugas...');try{await runServer('updateFMartUser',state.token,id,$('editUserName').value,$('editUserRole').value);closeOpsModal();await openStaffUserManagement()}catch(e){showToast(e.message||'Gagal menyimpan akun petugas.','error')}finally{loading(false)}}}
 function openOpsModal(title,body){$('opsModalTitle').textContent=title;$('opsModalBody').innerHTML=body;$('opsModal').classList.remove('hidden')}
 function openChangePassword(){
@@ -3146,7 +3179,7 @@ async function saveWaliProfile(event){
   finally{loading(false);const current=$('waliProfileSave');if(current)current.disabled=false}
 }
 async function cancelWaliProfileRequest(relationId){
-  if(!confirm('Batalkan pengajuan hubungan santri ini?'))return;
+  if(!await showConfirmDialog('Batalkan pengajuan hubungan santri ini?'))return;
   loading(true,'Membatalkan pengajuan...');
   try{
     const result=await runServer('cancelMyWaliSantriRequest',state.token,relationId);
@@ -3272,6 +3305,47 @@ async function submitCheckout(){
 }
 function closeCheckout(){$('checkoutModal').classList.add('hidden')}
 function closeSuccess(){$('successModal').classList.add('hidden')}
+
+function closeFmartDialog_(value){const root=$('fmartDialog');if(!root)return;root.classList.remove('is-open');root.setAttribute('aria-hidden','true');document.removeEventListener('keydown',root._keyHandler);const done=root._resolve,previous=root._previousFocus;root._resolve=null;root._previousFocus=null;if(done)done(value);if(previous&&previous.isConnected&&typeof previous.focus==='function')previous.focus()}
+function openFmartDialog_(config){
+  const root=$('fmartDialog'),card=root&&root.querySelector('.fmart-dialog-card');if(!root||!card)return Promise.resolve(config.mode==='alert'?undefined:null);
+  if(root._resolve)closeFmartDialog_(null);
+  $('fmartDialogTitle').textContent=config.title||'Konfirmasi';
+  $('fmartDialogMessage').textContent=config.message||'';
+  $('fmartDialogMark').textContent=config.icon||'？';
+  card.classList.toggle('is-alert',config.mode==='alert');
+  const host=$('fmartDialogInputHost');host.innerHTML='';
+  let field=null;
+  if(config.mode==='prompt'){
+    field=document.createElement(config.multiline?'textarea':'input');
+    if(!config.multiline)field.type='text';
+    field.className='fmart-dialog-input';field.id='fmartDialogValue';field.value=config.value||'';
+    if(config.placeholder)field.placeholder=config.placeholder;
+    if(config.maxLength)field.maxLength=config.maxLength;
+    if(config.multiline){field.rows=4;field.style.resize='vertical'}
+    host.appendChild(field);
+  }
+  const cancel=$('fmartDialogCancel'),confirm=$('fmartDialogConfirm');
+  cancel.textContent=config.cancelText||'Batal';confirm.textContent=config.confirmText||(config.mode==='alert'?'Mengerti':'Lanjutkan');
+  confirm.classList.toggle('is-danger',!!config.danger);
+  cancel.style.display=config.mode==='alert'?'none':'';
+  root._previousFocus=document.activeElement;
+  root.classList.add('is-open');root.setAttribute('aria-hidden','false');
+  return new Promise(resolve=>{
+    root._resolve=resolve;
+    const finish=value=>closeFmartDialog_(value);
+    cancel.onclick=()=>finish(config.mode==='alert'?undefined:null);
+    confirm.onclick=()=>finish(config.mode==='prompt'?field.value:config.mode==='alert'?undefined:true);
+    root.onclick=e=>{if(e.target===root&&config.dismissBackdrop!==false)finish(config.mode==='alert'?undefined:null)};
+    root._keyHandler=e=>{if(e.key==='Escape'){e.preventDefault();finish(config.mode==='alert'?undefined:null);return}if(e.key==='Tab'){const items=Array.from(root.querySelectorAll('button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')).filter(el=>el.offsetParent!==null);if(items.length){const first=items[0],last=items[items.length-1];if(e.shiftKey&&(document.activeElement===first||document.activeElement===root)){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}return}if(e.key==='Enter'&&config.mode!=='alert'&&(!field||field.tagName!=='TEXTAREA')){e.preventDefault();confirm.click()}};
+    document.addEventListener('keydown',root._keyHandler);
+    setTimeout(()=>{if(field){field.focus();field.select&&field.select()}else confirm.focus()},30);
+  });
+}
+function showConfirmDialog(message,options={}){return openFmartDialog_({mode:'confirm',title:options.title||'Perlu konfirmasi',message,icon:options.icon||'?',confirmText:options.confirmText||'Ya, lanjutkan',cancelText:'Batal',danger:!!options.danger})}
+function showPromptDialog(message,value='',options={}){return openFmartDialog_({mode:'prompt',title:options.title||'Tambahkan keterangan',message,icon:'✎',value,placeholder:options.placeholder||'Tulis di sini...',multiline:!!options.multiline,maxLength:options.maxLength||1000,confirmText:options.confirmText||'Simpan',cancelText:'Batal'})}
+function showAppAlert(title,message){return openFmartDialog_({mode:'alert',title,message,icon:'✓',confirmText:'Mengerti'})}
+
 function showToast(text,type='info'){const t=$('toast');const kind=type==='error'?'toast-error':type==='success'?'toast-success':'';const icon=type==='error'?'⚠':type==='success'?'✓':'i';t.setAttribute('role',type==='error'?'alert':'status');t.setAttribute('aria-live',type==='error'?'assertive':'polite');t.className='toast '+kind;t.innerHTML='<span class="toast-icon" aria-hidden="true">'+icon+'</span><span class="toast-text">'+escapeHtml(text||'')+'</span>';t.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>t.classList.remove('show'),4200)}
 
 function statusLabel(s){if(state.data&&state.data.user&&state.data.user.role==='WALI_SANTRI'&&String(s||'').toUpperCase()==='MENUNGGU_STOK')return 'Diproses';const m={MENUNGGU_PEMBAYARAN:'Menunggu Pembayaran',MENUNGGU_STOK:'Menunggu Stok Lengkap',DIBAYAR:'Dibayar',DIPROSES:'Diproses',DISIAPKAN:'Disiapkan',DIANTAR:'Diantar',DITERIMA:'Diterima',SIAP_DIAMBIL:'Siap Diambil',DIBATALKAN:'Dibatalkan'};return m[String(s||'').toUpperCase()]||String(s||'').replace(/_/g,' ')}
@@ -3314,7 +3388,7 @@ function renderOrders(orders){
 }
 async function openOrderDetail(orderId){loading(true,'Memuat detail pesanan...');try{const r=await runServer('getOrderDetail',state.token,orderId);state.currentOrderId=orderId;renderOrderDetail(r.order);$('orderDetailModal').classList.remove('hidden')}catch(e){showToast(e.message||'Gagal memuat detail pesanan.')}finally{loading(false)}}
 async function loadDeliveryProofPreview(orderId,targetId){try{const result=await runServer('getDeliveryProofImage',state.token,orderId);const target=$(targetId);if(target)target.innerHTML='<img src="'+result.data+'" alt="Foto bukti pengantaran" style="display:block;width:100%;max-height:420px;object-fit:contain;border-radius:14px;background:#f5f2f8"><div class="muted" style="margin-top:6px">'+escapeHtml(result.fileName||'Bukti pengantaran')+'</div>';}catch(e){const target=$(targetId);if(target)target.innerHTML='<div class="notice">'+escapeHtml(e.message||'Foto bukti tidak dapat dimuat.')+'</div>';}}
-async function submitDeliveryComplaint(orderId){const type=$('deliveryComplaintType')&&$('deliveryComplaintType').value,description=$('deliveryComplaintDescription')&&$('deliveryComplaintDescription').value.trim();if(!type||description.length<5){showToast('Pilih jenis masalah dan isi keterangan minimal 5 karakter.');return;}if(!confirm('Kirim laporan masalah pengantaran ini?'))return;loading(true,'Mengirim laporan...');try{const result=await runServer('reportDeliveryComplaint',state.token,orderId,type,description);showToast(result.message||'Laporan berhasil dikirim.','success');await openOrderDetail(orderId);await openOrders();}catch(e){showToast(e.message||'Gagal mengirim laporan.')}finally{loading(false)}}
+async function submitDeliveryComplaint(orderId){const type=$('deliveryComplaintType')&&$('deliveryComplaintType').value,description=$('deliveryComplaintDescription')&&$('deliveryComplaintDescription').value.trim();if(!type||description.length<5){showToast('Pilih jenis masalah dan isi keterangan minimal 5 karakter.');return;}if(!await showConfirmDialog('Kirim laporan masalah pengantaran ini?'))return;loading(true,'Mengirim laporan...');try{const result=await runServer('reportDeliveryComplaint',state.token,orderId,type,description);showToast(result.message||'Laporan berhasil dikirim.','success');await openOrderDetail(orderId);await openOrders();}catch(e){showToast(e.message||'Gagal mengirim laporan.')}finally{loading(false)}}
 function renderOrderDetail(o){
   const isPickup=o.shipment&&o.shipment.method==='AMBIL_FMART';
   const trackingSteps=[{key:'MENUNGGU_PEMBAYARAN',label:'Pesanan dibuat',time:o.createdAt},{key:'DIPROSES',label:'Pesanan sedang diproses',time:o.payment&&o.payment.verifiedAt},{key:'DIPROSES',label:'Pesanan diproses',time:''},{key:'DISIAPKAN',label:'Pesanan disiapkan',time:''}].concat(isPickup?[{key:'SIAP_DIAMBIL',label:'Siap diambil di FMart',time:o.shipment&&o.shipment.dikirimAt}]:[{key:'DIANTAR',label:'Dalam pengantaran',time:o.shipment&&o.shipment.dikirimAt}]).concat([{key:'DITERIMA',label:'Pesanan diterima',time:o.shipment&&o.shipment.diterimaAt}]);
@@ -3383,7 +3457,7 @@ async function submitPayment(){
  }catch(e){showToast(e.message||'Pengajuan pembayaran gagal.')}finally{btn.disabled=false;loading(false)}
 }
 
-async function receiveOrder(orderId){if(!confirm('Konfirmasi bahwa pesanan dan barang telah Anda terima?'))return;loading(true,'Memperbarui status pesanan...');try{await runServer('markOrderReceived',state.token,orderId);showToast('Penerimaan pesanan berhasil dikonfirmasi.','success');await openOrders();if(!$('orderDetailModal').classList.contains('hidden'))await openOrderDetail(orderId)}catch(e){showToast(e.message||'Gagal memperbarui pesanan.')}finally{loading(false)}}
+async function receiveOrder(orderId){if(!await showConfirmDialog('Konfirmasi bahwa pesanan dan barang telah Anda terima?'))return;loading(true,'Memperbarui status pesanan...');try{await runServer('markOrderReceived',state.token,orderId);showToast('Penerimaan pesanan berhasil dikonfirmasi.','success');await openOrders();if(!$('orderDetailModal').classList.contains('hidden'))await openOrderDetail(orderId)}catch(e){showToast(e.message||'Gagal memperbarui pesanan.')}finally{loading(false)}}
 function closeOrders(){$('orderModal').classList.add('hidden')}
 function closeOrderDetail(){$('orderDetailModal').classList.add('hidden')}
 function closePayment(){$('paymentModal').classList.add('hidden')}
@@ -3721,7 +3795,7 @@ async function renderSupervisorCatalog(){
       const host=$('cashierQrisQueueBody'),check=host&&host.querySelector('.cashierQrisVerified[data-id="'+saleId+'"]');
       const btn=host&&host.querySelector('.cashier-qris-confirm[data-id="'+saleId+'"]');
       if(!check||!check.checked||!btn||btn.disabled)return;
-      if(!confirm('Pastikan dana transaksi QRIS ini benar-benar sudah masuk pada kanal merchant. Lanjutkan konfirmasi lunas?'))return;
+      if(!await showConfirmDialog('Pastikan dana transaksi QRIS ini benar-benar sudah masuk pada kanal merchant. Lanjutkan konfirmasi lunas?'))return;
       const ref=$('cashierQrisRef_'+saleId),reference=ref?ref.value.trim():'';
       btn.disabled=true;loading(true,'Mengonfirmasi pembayaran QRIS...');
       try{
@@ -3733,7 +3807,7 @@ async function renderSupervisorCatalog(){
       finally{loading(false)}
     }
     async function cancelCashierQrisFromUI_(saleId){
-      if(!confirm('Batalkan transaksi QRIS ini? Reservasi stok akan dilepas dan transaksi tidak dapat dikonfirmasi lagi.'))return;
+      if(!await showConfirmDialog('Batalkan transaksi QRIS ini? Reservasi stok akan dilepas dan transaksi tidak dapat dikonfirmasi lagi.'))return;
       const host=$('cashierQrisQueueBody'),btn=host&&host.querySelector('.cashier-qris-cancel[data-id="'+saleId+'"]');
       if(btn)btn.disabled=true;loading(true,'Membatalkan transaksi QRIS...');
       try{
@@ -3810,7 +3884,7 @@ async function renderSupervisorCatalog(){
       const search=$('cashierPOSSearch');if(search)search.oninput=()=>{pos.search=search.value;clearTimeout(window._cashierPOSSearchTimer);window._cashierPOSSearchTimer=setTimeout(()=>loadCashierPOSData_(pos.search),250)};
       document.querySelectorAll('.cashier-pos-add').forEach(b=>b.onclick=()=>{const p=pos.products.find(x=>(x.productId+'|'+(x.variationId||''))===b.dataset.key);if(!p)return;const found=pos.cart.find(x=>x.key===b.dataset.key);if(found){if(found.qty>=Number(p.available)){showToast('Jumlah melebihi stok tersedia.','error');return}found.qty++}else pos.cart.push({key:b.dataset.key,productId:p.productId,variationId:p.variationId||'',name:p.name,variationName:p.variationName||'',unitPrice:Number(p.unitPrice)||0,qty:1});pos.requestKey='';renderCashierPOSPanel_()});
       document.querySelectorAll('[data-qty]').forEach(b=>b.onclick=()=>{const item=pos.cart.find(x=>x.key===b.dataset.key);if(!item)return;const p=pos.products.find(x=>(x.productId+'|'+(x.variationId||''))===b.dataset.key);item.qty+=Number(b.dataset.qty);if(item.qty<1)pos.cart=pos.cart.filter(x=>x.key!==b.dataset.key);else if(p&&item.qty>Number(p.available)){item.qty=Number(p.available);showToast('Jumlah dibatasi sesuai stok tersedia.','error')}pos.requestKey='';renderCashierPOSPanel_()});
-      const clear=$('cashierPOSClear');if(clear)clear.onclick=()=>{if(!confirm('Kosongkan seluruh keranjang?'))return;pos.cart=[];pos.requestKey='';renderCashierPOSPanel_()};
+      const clear=$('cashierPOSClear');if(clear)clear.onclick=async()=>{if(!await showConfirmDialog('Kosongkan seluruh keranjang?',{title:'Kosongkan keranjang POS',danger:true,confirmText:'Ya, kosongkan'}))return;pos.cart=[];pos.requestKey='';renderCashierPOSPanel_()};
       document.querySelectorAll('input[name="cashierBuyerType"]').forEach(el=>el.onchange=()=>{pos.buyerType=el.value;if(el.value!=='SANTRI'){pos.santriId='';pos.santriLabel='';pos.students=[]}renderCashierPOSPanel_()});
       const buyerName=$('cashierBuyerName');if(buyerName)buyerName.oninput=()=>pos.buyerName=buyerName.value;
       const santriSearch=$('cashierSantriSearch');if(santriSearch)santriSearch.oninput=()=>{pos.santriQuery=santriSearch.value;clearTimeout(window._cashierSantriSearchTimer);window._cashierSantriSearchTimer=setTimeout(async()=>{if(pos.santriQuery.trim().length<2){pos.students=[];renderCashierPOSPanel_();return}try{const r=await runServer('searchCashierSantri',state.token,pos.santriQuery);pos.students=r.students||[];renderCashierPOSPanel_();const el=$('cashierSantriSearch');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}}catch(e){showToast(e.message||'Pencarian santri gagal.','error')}},250)};
@@ -4086,7 +4160,7 @@ function renderSupervisorDashboard(){
         if(rows.some(x=>!x.productId||!Number.isInteger(Number(x.qty))||Number(x.qty)<1||!Number.isSafeInteger(Number(x.unitCost))||Number(x.unitCost)<1)){showToast('Lengkapi produk, jumlah, dan biaya perolehan per unit pada setiap item.','error');return}
         if(rows.some(x=>{const p=products.find(y=>String(y.id)===String(x.productId));return p&&p.variations.length&&!x.variationId})){showToast('Pilih variasi untuk setiap produk yang memilikinya.','error');return}
         const total=rows.reduce((sum,x)=>sum+Number(x.qty),0);
-        if(!window.confirm('Konfirmasi penerimaan '+rows.length+' baris item dengan total '+formatMoney(total)+' unit? Stok akan langsung bertambah.'))return;
+        if(!await showConfirmDialog('Konfirmasi penerimaan '+rows.length+' baris item dengan total '+formatMoney(total)+' unit? Stok akan langsung bertambah.'))return;
         btn.disabled=true;loading(true,'Menyimpan penerimaan dan memperbarui stok...');
         try{const receiptSignature=JSON.stringify(payload),legacyReceiptSignature=JSON.stringify({...payload,items:payload.items.map(({unitCost,...item})=>item)});
         let receiptPending=null;try{receiptPending=JSON.parse(localStorage.getItem('fmart.receipt.pending')||'null')}catch(e){}
