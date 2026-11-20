@@ -2206,6 +2206,29 @@ button:disabled,[role="button"][aria-disabled="true"]{cursor:not-allowed}
         background:#eadced;
         color:#6f3479;
       }
+
+      /* Kontras item nonaktif sidebar desktop: setiap menu memiliki bidang
+         lembut tersendiri agar tetap terbaca pada latar sidebar yang terang. */
+      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled) {
+        background:#f6f0f8;
+        border-color:#eee3f0;
+        color:#594663;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.92);
+      }
+      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled) .nav-icon {
+        background:#eaddec;
+        color:#704078!important;
+      }
+      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled):hover {
+        background:#eee4f2;
+        border-color:#dfcfe5;
+        color:#48234f;
+        box-shadow:0 3px 10px rgba(72,35,79,.07);
+      }
+      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled):hover .nav-icon {
+        background:#dfcce5;
+        color:#5d2868!important;
+      }
       body.admin-portal #staffNav .nav-btn.active {
         background:linear-gradient(115deg,#702078 0%,#58145f 100%);
         border-color:#682070;
