@@ -1870,11 +1870,13 @@ test('Desktop staff sidebar matches the Admin mobile navbar palette with clear a
 });
 
 
-test('Shared summary layout keeps every metric in one row with a matching column count',()=>{
-  assert.ok(index.includes('.fmart-one-row-summary{display:grid!important;grid-template-columns:repeat(var(--fmart-summary-count,1),minmax(0,1fr))!important'));
-  assert.ok(index.includes('grid-auto-flow:column!important;grid-template-columns:none!important;overflow-x:auto'));
-  assert.ok(index.includes("el.style.setProperty('--fmart-summary-count',String(count))"));
-  assert.ok(index.includes("const summarySelector='#opsStats,#deliverySummaryCards,.catalog-overview,.report-metric-grid"));
+test('Only existing summary containers receive a one-row layout; no summary UI is created',()=>{
+  assert.ok(index.includes("const existingSummarySelector='#opsStats,.catalog-overview,.report-metric-grid"));
+  assert.ok(index.includes('grid-template-columns:repeat(var(--fmart-existing-summary-count),minmax(0,1fr))!important'));
+  assert.ok(index.includes("el.style.setProperty('--fmart-existing-summary-count',String(count))"));
+  assert.ok(!index.includes('installSharedSummaryAndTableRules'));
+  assert.ok(!index.includes('#deliverySummaryCards'));
+  assert.ok(!index.includes('createElement('));
 });
 
 test('Shared table presentation hides internal ID columns and removes visible stock product IDs',()=>{
