@@ -346,6 +346,7 @@ body.admin-portal .catalog-toolbar{display:flex;justify-content:space-between;al
 body.admin-portal .catalog-toolbar h2{margin:0;font-size:17px}
 body.admin-portal .catalog-toolbar p{margin:5px 0 0;color:#82758a;font-size:12px}
 body.admin-portal .catalog-category-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+body.admin-portal .catalog-category-toggle{white-space:nowrap;display:inline-flex;align-items:center;gap:7px}body.admin-portal .catalog-category-toggle .toggle-chevron{display:inline-block;transition:transform .2s ease}body.admin-portal .catalog-category-toggle[aria-expanded="false"] .toggle-chevron{transform:rotate(-90deg)}
 body.admin-portal .catalog-category-card,body.admin-portal .catalog-product-card{background:#fff;border:1px solid #eaddec;border-radius:17px;padding:15px;min-width:0}
 body.admin-portal .catalog-category-top{display:flex;justify-content:space-between;gap:8px;align-items:center}
 body.admin-portal .catalog-category-card p{min-height:32px;margin:9px 0;color:#82758a;font-size:12px}
@@ -3887,11 +3888,19 @@ async function renderSupervisorCatalog(){
         const activeCats=categories.filter(c=>c.status==='AKTIF').length;
         $('opsMainBody').innerHTML=
           '<div class="catalog-overview"><div class="catalog-metric"><span>Total Produk</span><strong>'+products.length+'</strong><small>'+activeCount+' produk aktif</small></div><div class="catalog-metric"><span>Kategori</span><strong>'+categories.length+'</strong><small>'+activeCats+' kategori aktif</small></div><div class="catalog-metric"><span>Produk Nonaktif</span><strong>'+(products.length-activeCount)+'</strong><small>Tidak ditampilkan ke pembeli</small></div></div>'+
-          '<div class="catalog-toolbar"><div><h2>Kategori Produk</h2><p>Kelompokkan produk agar mudah ditemukan oleh Wali Santri.</p></div><button class="primary" id="opsAddCategory">+ Tambah Kategori</button></div>'+
-          '<div class="catalog-category-grid">'+(categories.length?categories.map(c=>'<article class="catalog-category-card"><div class="catalog-category-top"><strong>'+escapeHtml(c.name)+'</strong><span class="status-badge '+(c.status==='AKTIF'?'':'status-muted')+'">'+escapeHtml(c.status)+'</span></div><p>'+escapeHtml(c.description||'Belum ada deskripsi')+'</p><div class="catalog-category-bottom"><small>Urutan '+formatMoney(c.order)+' · '+products.filter(p=>String(p.categoryId)===String(c.id)).length+' produk</small><button class="secondary edit-category" data-id="'+escapeHtml(c.id)+'">Edit</button></div></article>').join(''):'<div class="empty-box">Belum ada kategori. Tambahkan kategori pertama untuk mulai mengelompokkan produk.</div>')+'</div>'+
+          '<div class="catalog-toolbar"><div><h2>Kategori Produk</h2><p>Kelompokkan produk agar mudah ditemukan oleh Wali Santri.</p></div><div class="catalog-category-toolbar-actions"><button type="button" class="secondary catalog-category-toggle" id="toggleCatalogCategories" aria-expanded="true" aria-controls="catalogCategoryGrid"><span class="toggle-chevron" aria-hidden="true">⌄</span><span class="toggle-label">Sembunyikan</span></button><button class="primary" id="opsAddCategory">+ Tambah Kategori</button></div></div>'+
+          '<div class="catalog-category-grid" id="catalogCategoryGrid">'+(categories.length?categories.map(c=>'<article class="catalog-category-card"><div class="catalog-category-top"><strong>'+escapeHtml(c.name)+'</strong><span class="status-badge '+(c.status==='AKTIF'?'':'status-muted')+'">'+escapeHtml(c.status)+'</span></div><p>'+escapeHtml(c.description||'Belum ada deskripsi')+'</p><div class="catalog-category-bottom"><small>Urutan '+formatMoney(c.order)+' · '+products.filter(p=>String(p.categoryId)===String(c.id)).length+' produk</small><button class="secondary edit-category" data-id="'+escapeHtml(c.id)+'">Edit</button></div></article>').join(''):'<div class="empty-box">Belum ada kategori. Tambahkan kategori pertama untuk mulai mengelompokkan produk.</div>')+'</div>'+
           '<div class="catalog-toolbar catalog-products-toolbar"><div><h2>Daftar Produk</h2><p>Kelola informasi, harga, status, dan variasi produk.</p></div><button class="primary" id="opsAddProduct" '+(!categories.some(c=>c.status==='AKTIF')?'disabled':'')+'>+ Tambah Produk</button></div>'+
           '<div class="catalog-filters"><input id="catalogSearch" type="search" placeholder="Cari nama produk atau SKU..." autocomplete="off" aria-label="Cari produk katalog Admin"><select id="catalogCategory" aria-label="Filter kategori produk"><option value="">Semua kategori</option>'+categories.map(c=>'<option value="'+escapeHtml(c.id)+'">'+escapeHtml(c.name)+'</option>').join('')+'</select><select id="catalogStatus" aria-label="Filter status produk"><option value="">Semua status</option><option value="AKTIF">Aktif</option><option value="NONAKTIF">Nonaktif</option></select></div>'+
           '<div class="catalog-result-count" id="catalogResultCount"></div><div class="catalog-product-grid" id="catalogProductGrid"></div>';
+        const categoryGrid=$('catalogCategoryGrid'),categoryToggle=$('toggleCatalogCategories');
+        categoryToggle.onclick=()=>{
+          const expanded=categoryToggle.getAttribute('aria-expanded')==='true';
+          categoryToggle.setAttribute('aria-expanded',String(!expanded));
+          categoryGrid.classList.toggle('hidden',expanded);
+          categoryToggle.querySelector('.toggle-label').textContent=expanded?'Tampilkan Kategori':'Sembunyikan';
+          categoryToggle.querySelector('.toggle-chevron').textContent=expanded?'›':'⌄';
+        };
         $('opsAddCategory').onclick=()=>openCategoryForm();
         $('opsAddProduct').onclick=()=>openProductForm();
         document.querySelectorAll('.edit-category').forEach(b=>b.onclick=()=>{const c=categories.find(x=>String(x.id)===String(b.dataset.id));openCategoryForm(c)});
