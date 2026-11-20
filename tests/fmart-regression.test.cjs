@@ -1804,3 +1804,17 @@ test('Staff workspace header follows the active menu and hides stale dashboard s
  assert.ok(navigation.includes("id==='staffDeliveryComplaints'?'Komplain Pengantaran'"));
  assert.ok(navigation.includes("$('opsTitle').textContent=pageTitle"));
 });
+
+
+test('Desktop staff sidebar matches the Admin mobile navbar palette with clear active and inactive contrast',()=>{
+ const start=index.lastIndexOf('/* FMart visual consistency: desktop staff sidebar follows the Admin mobile navbar palette. */');
+ const style=index.slice(start,index.indexOf('</style>',start));
+ assert.ok(start>=0,'Desktop sidebar palette override must exist.');
+ assert.ok(style.includes('background:linear-gradient(110deg,#350038 0%,#650069 60%,#800080 100%)'),'Sidebar background must match the Admin mobile navbar gradient.');
+ assert.ok(style.includes('background:#f5f0ff'),'Active menu must use a light lavender surface.');
+ assert.ok(style.includes('color:#800080!important'),'Active menu label and icon must use Amethyst purple.');
+ assert.ok(style.includes('color:#f1dff3'),'Inactive menu labels must remain legible in light lilac.');
+ assert.ok(style.includes('color:#f4dff5!important'),'Inactive menu icons must remain legible in light lilac.');
+ assert.ok(style.includes('background:rgba(255,255,255,.13)'),'Hover state must provide subtle contrast on the purple sidebar.');
+ assert.ok(style.includes('@media (min-width:901px)'),'Sidebar palette override must be desktop-only.');
+});
