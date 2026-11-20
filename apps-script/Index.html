@@ -3383,12 +3383,15 @@ function closePayment(){$('paymentModal').classList.add('hidden')}
         cards=[['Menunggu Verifikasi',stats.pendingVerification,'Pembayaran'],['Menunggu Pembayaran',stats.menungguPembayaran,'Pesanan'],['Dalam Proses',(Number(stats.dibayar)||0)+(Number(stats.diproses)||0)+(Number(stats.disiapkan)||0),'Operasional'],['Produk Aktif',stats.activeProducts,'Katalog'],['Stok Menipis',stats.lowStock,'Persediaan'],['Pesanan Diterima',stats.diterima,'Selesai']];
       }else if(role==='KASIR'){
         cards=[['Antrean QRIS',stats.cashierPendingQris||0,'Transaksi milik akun ini'],['Transaksi Hari Ini',stats.cashierSalesToday||0,'Penjualan kasir'],['Lunas Hari Ini',stats.cashierPaidToday||0,'Pembayaran selesai']];
+      }else if(role==='SUPERVISOR'){
+        cards=[['Total Pesanan',(opsData.orders||[]).length,'Seluruh pesanan Wali'],['Produk Aktif',stats.activeProducts||0,'Katalog FMart'],['Menunggu Pembayaran',stats.menungguPembayaran||0,'Perlu dipantau'],['Dalam Pengantaran',stats.diantar||0,'Sedang berjalan']];
       }else{
         cards=[['Pesanan Dibayar',stats.dibayar,'Antrean gudang'],['Sedang Diproses',stats.diproses,'Operasional'],['Sedang Disiapkan',stats.disiapkan,'Pengemasan'],['Dalam Pengantaran',stats.diantar,'Menunggu konfirmasi'],['Stok Menipis',stats.lowStock,'Perlu perhatian']];
       }
       $('opsStats').innerHTML=cards.map(x=>'<div class="profile-item ops-stat-card"><small>'+escapeHtml(x[0])+'</small><strong>'+formatMoney(x[1])+'</strong><span>'+escapeHtml(x[2])+'</span></div>').join('');
       if(role==='ADMIN'||role==='SUPERADMIN'){$('opsMainTitle').textContent='Ringkasan Operasional';renderOpsOrders();}
       else if(role==='KASIR'){renderOpsCashier();}
+      else if(role==='SUPERVISOR'){renderSupervisorDashboard();}
       else {renderOpsWarehouseDashboard();}
     }
     async function renderOpsReports(){
@@ -3829,6 +3832,23 @@ async function renderSupervisorCatalog(){
       document.querySelectorAll('.cashier-verify').forEach(b=>b.onclick=()=>openVerifyPayment(b.dataset.id,'TERIMA'));document.querySelectorAll('.payment-proof-view').forEach(b=>b.onclick=()=>openPaymentProof(b.dataset.id));
       document.querySelectorAll('.cashier-detail').forEach(b=>b.onclick=()=>openOpsOrderDetail(b.dataset.id));loadCashierPOSData_(state.cashierPOS.search);
     }
+function renderSupervisorDashboard(){
+  const stats=opsData&&opsData.stats?opsData.stats:{},orders=opsData&&Array.isArray(opsData.orders)?opsData.orders:[];
+  const recent=orders.slice(0,6);
+  $('opsMainTitle').textContent='Dashboard Pengawasan';
+  $('opsMainBody').innerHTML=opsWelcomeMarkup('Dashboard Pengawasan','Pantau seluruh pesanan Wali, transaksi toko, katalog, dan hasil penjualan FMart dari satu tempat.','▤')+
+    '<div class="warehouse-home-actions"><button type="button" class="primary" id="supervisorOpenOrders">Seluruh Pesanan</button><button type="button" class="secondary" id="supervisorOpenSales">Transaksi POS</button><button type="button" class="secondary" id="supervisorOpenCatalog">Seluruh Produk</button><button type="button" class="secondary" id="supervisorOpenReports">Laporan & Pencapaian</button></div>'+
+    '<div class="order-overview-grid">'+[['Menunggu Pembayaran',stats.menungguPembayaran||0],['Menunggu Stok',stats.menungguStok||0],['Dalam Proses',(Number(stats.dibayar)||0)+(Number(stats.diproses)||0)+(Number(stats.disiapkan)||0)],['Dalam Pengantaran',stats.diantar||0],['Pesanan Selesai',stats.diterima||0],['Produk Aktif',stats.activeProducts||0]].map(x=>'<div class="order-overview-card"><span>'+escapeHtml(x[0])+'</span><strong>'+formatMoney(x[1])+'</strong></div>').join('')+'</div>'+
+    '<section class="section order-management-panel"><div class="section-title"><div><h2>Pesanan terbaru</h2><span class="muted">Ringkasan seluruh pesanan Wali · '+orders.length+' pesanan</span></div><button type="button" class="text-button" id="supervisorSeeAllOrders">Lihat semua</button></div>'+
+    (recent.length?'<div class="table-wrap" tabindex="0" role="region" aria-label="Tabel data FMart; geser secara horizontal untuk melihat kolom lainnya"><table class="data-table"><thead><tr><th>Nomor / Tanggal</th><th>Wali / Santri</th><th>Total</th><th>Status</th><th>Detail</th></tr></thead><tbody>'+recent.map(o=>'<tr><td><strong>'+escapeHtml(o.number)+'</strong><small class="fulfillment-subline">'+escapeHtml(formatDate(o.createdAt))+'</small></td><td>'+escapeHtml(o.waliName||'-')+'<br><strong>'+escapeHtml(o.childName||'-')+'</strong></td><td>Rp '+formatMoney(o.total)+'</td><td><span class="status-badge">'+escapeHtml(statusLabel(o.status))+'</span></td><td><button type="button" class="secondary supervisor-order-detail" data-id="'+escapeHtml(o.orderId)+'">Lihat</button></td></tr>').join('')+'</tbody></table></div>':'<div class="empty-box">Belum ada pesanan.</div>')+'</section>';
+  const openOrders=()=>{setStaffActiveNavigation('staffOrders');renderOpsOrderList()};
+  $('supervisorOpenOrders').onclick=openOrders;$('supervisorSeeAllOrders').onclick=openOrders;
+  $('supervisorOpenSales').onclick=()=>{setStaffActiveNavigation('staffSalesHistory');renderSupervisorSalesHistory()};
+  $('supervisorOpenCatalog').onclick=()=>{setStaffActiveNavigation('staffCatalog');renderSupervisorCatalog()};
+  $('supervisorOpenReports').onclick=()=>{setStaffActiveNavigation('staffReports');renderOpsReports()};
+  document.querySelectorAll('.supervisor-order-detail').forEach(b=>b.onclick=()=>openOpsOrderDetail(b.dataset.id));
+}
+
     async function renderOpsWarehouseDashboard(){
       const stats=opsData&&opsData.stats?opsData.stats:{};
       const rows=(opsData&&opsData.orders?opsData.orders:[]).filter(o=>['MENUNGGU_STOK','DIBAYAR','DIPROSES','DISIAPKAN','SIAP_DIAMBIL','DIANTAR'].includes(o.status));
