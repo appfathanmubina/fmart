@@ -3,8 +3,8 @@
  * It owns only caches with the admin-fmart-pwa- prefix.
  */
 const FMART_ADMIN_CACHE_PREFIX = 'admin-fmart-pwa-';
-const FMART_ADMIN_CACHE = FMART_ADMIN_CACHE_PREFIX + 'shell-v1';
-const FMART_ADMIN_SHELL = ['./', './index.html', './manifest.webmanifest'];
+const FMART_ADMIN_CACHE = FMART_ADMIN_CACHE_PREFIX + 'shell-v2';
+const FMART_ADMIN_SHELL = ['./', './index.html', './install.html', './manifest.webmanifest'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
