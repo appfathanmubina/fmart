@@ -3529,7 +3529,7 @@ function createCashierSale(token,payload) {
 
 /** Riwayat dan detail ringkas penjualan toko untuk Kasir/Admin/Superadmin. */
 function getCashierSalesHistory(token,filters) {
-  const session=requireRole_(token,[FMART.ROLES.KASIR,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);
+  const session=requireRole_(token,[FMART.ROLES.KASIR,FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN,FMART.ROLES.SUPERVISOR]);
   filters=filters&&typeof filters==='object'?filters:{};
   const query=String(filters.query||'').trim().toLowerCase().slice(0,100);
   const from=String(filters.from||'').trim(),to=String(filters.to||'').trim();
