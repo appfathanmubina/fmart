@@ -94,3 +94,10 @@ PR #135 menambahkan metode HPP rata-rata tertimbang dan snapshot biaya saat bara
 - Fungsi migrasi eksplisit: `migrateFMartCostingSchema()`. Pemanggilan katalog Gudang/Admin dan laporan juga menjalankan pemeriksaan skema append-only.
 
 PR #135 merged ke `main` pada commit `3601c97169249ca779ddc5c97bedfe269b599cc8`. Regression CI pasca-merge, build, dan deployment GitHub Pages lulus. Runtime UAT, uji migrasi pada salinan Spreadsheet, bukti rekonsiliasi pembelian, serta deployment versi Apps Script tetap belum dilakukan. Status produksi tetap **NOT APPROVED** sampai gerbang UAT selesai.
+
+
+## Addendum — Tahap 40.7 Pengamanan HPP master (20 November 2026)
+
+Audit source menemukan endpoint Admin `saveProduct()` dan `saveVariation()` sebelumnya mengizinkan perubahan HPP positif ketika saldo stok masih tersedia. Guard backend baru mempertahankan jalur penetapan HPP pembukaan dari 0 ke nilai positif, tetapi menolak perubahan/pengosongan HPP yang sudah tercatat selama saldo gabungan Gudang + Kasir lebih dari nol. Nilai yang sama tetap dapat disimpan; setelah saldo nol, koreksi HPP master diperbolehkan.
+
+Perubahan tidak mengubah skema, saldo, transaksi, snapshot HPP, atau data existing. Regression test menguji kondisi yang diizinkan/ditolak dan memastikan kedua endpoint memanggil guard. PR dan hasil CI dicatat setelah pemeriksaan GitHub selesai. Runtime UAT tetap diperlukan; revaluasi stok berjalan harus menggunakan jurnal penyesuaian terpisah.
