@@ -873,3 +873,19 @@ Perbaikan membatasi perubahan HPP master:
 Regression test menguji jalur pembukaan, nilai yang sama, stok nol, perubahan/ pengosongan saat stok masih tersedia, dan pemakaian guard oleh kedua endpoint. Tidak ada perubahan skema, saldo stok, HPP existing, transaksi, atau data produksi.
 
 **Gerbang runtime:** setelah source disinkronkan, uji pada salinan Spreadsheet: pengisian HPP pembukaan, penolakan perubahan HPP ketika stok tersedia, dan perubahan setelah stok nol. Jika diperlukan revaluasi stok yang masih tersedia, proses tersebut harus dirancang sebagai transaksi penyesuaian bernomor dan tercatat; jangan mengubah HPP master secara langsung.
+
+  
+## Tahap 40.8 — Audit media PWA dan pratinjau QRIS Drive
+
+**Status: perbaikan source QRIS Drive dan regression test disiapkan pada PR terpisah; runtime PWA tetap perlu diuji setelah sinkronisasi Apps Script.**
+
+Audit media menemukan tautan QRIS Drive ditampilkan langsung melalui endpoint thumbnail Drive. Tautan buka file dapat berfungsi saat diketuk, sementara elemen gambar PWA gagal memuat ketika sesi browser/PWA tidak membawa izin atau cookie Drive yang diperlukan. Jalur foto produk sudah memiliki fallback visual saat URL gambar gagal; bukti pengantaran memakai endpoint server yang memeriksa kepemilikan pesanan dan folder Drive khusus; bukti pembayaran juga diperiksa terhadap folder khusus dan role.
+
+Perbaikan Tahap 40.8:
+- Menyediakan pembacaan gambar QRIS Drive melalui Apps Script untuk role Wali Santri dan Superadmin, sehingga pratinjau tidak bergantung pada akses langsung browser ke thumbnail Drive.
+- Memvalidasi host Drive, ID file, status file, MIME gambar, signature byte, dan ukuran maksimal 5 MB. Respons hanya mengirim data gambar; ID file dan URL Drive tidak dikembalikan oleh endpoint baru.
+- Mempertahankan tautan asli Buka/Unduh QRIS sebagai jalur cadangan, termasuk jika file bukan berada di Drive.
+- Membatasi transformasi URL thumbnail hanya pada domain Google Drive dan menampilkan pesan cadangan bila gambar tetap gagal dimuat.
+- Tidak mengubah URL QRIS di Pengaturan, izin berbagi Drive, foto produk, bukti transaksi, data Spreadsheet, atau konfigurasi produksi.
+
+**Gerbang runtime:** sinkronkan source Apps Script, lalu uji Wali pada PWA Android dan browser desktop dengan file QRIS Drive privat yang dapat dibaca akun pemilik script. Pastikan gambar tampil, tautan buka tetap berfungsi, dan akun tanpa role Wali/Superadmin ditolak endpoint gambar. Uji juga URL eksternal, file Drive tidak dapat diakses, format bukan gambar, serta ukuran di atas 5 MB. Foto produk dan viewer bukti pengantaran/pembayaran tetap perlu diuji pada perangkat nyata; kelulusan source test bukan bukti runtime.

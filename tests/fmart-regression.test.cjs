@@ -67,6 +67,22 @@ test('QRIS approval validator accepts only matching order, owner, method and exa
   assert.throws(() => sandbox.validate(payment.slice(0, 1).concat(['ORD-LAIN'], payment.slice(2)), order), /Identitas pesanan/);
 });
 
+test('Private Drive QRIS images are served safely for the Wali PWA',()=>{
+ const helper=extractFunction(code,'extractQrisDriveFileId_'),reader=extractFunction(code,'getQrisImageData');
+ const sandbox={};vm.runInNewContext(helper+'\nthis.extract=extractQrisDriveFileId_;',sandbox);
+ assert.equal(sandbox.extract('https://drive.google.com/file/d/1Abcdefghijklmnop/view?usp=sharing'),'1Abcdefghijklmnop');
+ assert.equal(sandbox.extract('https://drive.google.com/uc?export=view&id=1Abcdefghijklmnop'),'1Abcdefghijklmnop');
+ assert.equal(sandbox.extract('https://example.com/image.png?id=1Abcdefghijklmnop'),'');
+ assert.ok(reader.includes('FMART.ROLES.WALI_SANTRI,FMART.ROLES.SUPERADMIN'));
+ assert.ok(reader.includes('file.isTrashed()')&&reader.includes('5*1024*1024'));
+ assert.ok(reader.includes('validateUploadedFileSignature_(bytes,mime)'));
+ assert.ok(reader.includes("'data:'+mime+';base64,'"));
+ const display=extractFunction(index,'qrisDisplayImageUrl_');
+ assert.ok(display.includes('drive\\.google\\.com'));
+ assert.ok(index.includes("runServer('getQrisImageData',state.token)"));
+ assert.ok(index.includes('qrisImageFallback')&&index.includes("paymentQrisImage').onerror"));
+});
+
 test('Kasir has limited QRIS proof and verification permission', () => {
   const verify = extractFunction(code, 'verifyPayment');
   const proof = extractFunction(code, 'getPaymentProofData');

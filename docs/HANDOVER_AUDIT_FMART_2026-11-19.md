@@ -101,3 +101,10 @@ PR #135 merged ke `main` pada commit `3601c97169249ca779ddc5c97bedfe269b599cc8`.
 Audit source menemukan endpoint Admin `saveProduct()` dan `saveVariation()` sebelumnya mengizinkan perubahan HPP positif ketika saldo stok masih tersedia. Guard backend baru mempertahankan jalur penetapan HPP pembukaan dari 0 ke nilai positif, tetapi menolak perubahan/pengosongan HPP yang sudah tercatat selama saldo gabungan Gudang + Kasir lebih dari nol. Nilai yang sama tetap dapat disimpan; setelah saldo nol, koreksi HPP master diperbolehkan.
 
 Perubahan tidak mengubah skema, saldo, transaksi, snapshot HPP, atau data existing. Regression test menguji kondisi yang diizinkan/ditolak dan memastikan kedua endpoint memanggil guard. PR #137 telah di-merge ke `main` pada commit `442cca6016b9e492fb56516fe0fa5953eab33572`; regression CI PR lulus. Pemeriksaan post-merge dan deployment GitHub Pages tetap dipantau terpisah. Runtime UAT tetap diperlukan; revaluasi stok berjalan harus menggunakan jurnal penyesuaian terpisah.
+
+
+## Addendum — Tahap 40.8 media PWA dan QRIS Drive (20 November 2026)
+
+Perbaikan source menyediakan endpoint `getQrisImageData(token)` untuk membaca QRIS dari Drive melalui Apps Script, dengan pembatasan role Wali/Superadmin, pemeriksaan file trash, tipe gambar, signature byte, dan batas 5 MB. UI Wali mencoba memakai data gambar dari server dan mempertahankan tautan Drive asli sebagai fallback. Transformasi thumbnail hanya diterapkan untuk URL `drive.google.com`.
+
+Audit menemukan foto produk menggunakan URL aman dan fallback visual; bukti pengantaran disajikan melalui endpoint yang memeriksa kepemilikan pesanan dan folder Drive; bukti pembayaran melalui endpoint yang membatasi role dan folder bukti pembayaran. Tidak ada perubahan izin Drive atau data produksi. Uji perangkat/PWA dan verifikasi Apps Script aktif tetap wajib sebelum produksi disetujui.
