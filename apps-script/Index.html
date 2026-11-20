@@ -2345,7 +2345,75 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
 .product-load-sentinel{height:2px;width:100%;pointer-events:none}
 @media(max-width:600px){.panel-loading,.catalog-loading,.stock-loading{min-height:88px;padding:18px 12px;font-size:12px}.status-pill{font-size:9px;padding:5px 8px}}
 
-</style>
+/* FMart visual consistency: desktop staff sidebar follows the Admin mobile navbar palette. */
+    @media (min-width:901px) {
+      body.admin-portal #staffNav.bottom-nav {
+        background:linear-gradient(110deg,#350038 0%,#650069 60%,#800080 100%);
+        border:1px solid rgba(255,255,255,.22);
+        box-shadow:0 14px 36px rgba(53,0,56,.30);
+        scrollbar-color:rgba(255,255,255,.34) transparent;
+      }
+      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled) {
+        background:transparent;
+        border-color:transparent;
+        color:#f1dff3;
+        box-shadow:none;
+      }
+      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled) > span:last-child {
+        color:#f1dff3!important;
+      }
+      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled) .nav-icon {
+        background:rgba(255,255,255,.10);
+        color:#f4dff5!important;
+        box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+      }
+      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled):hover {
+        background:rgba(255,255,255,.13);
+        border-color:rgba(255,255,255,.16);
+        color:#fff;
+        box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);
+      }
+      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled):hover > span:last-child {
+        color:#fff!important;
+      }
+      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled):hover .nav-icon {
+        background:rgba(255,255,255,.20);
+        color:#fff!important;
+      }
+      body.admin-portal #staffNav .nav-btn.active {
+        background:#f5f0ff;
+        border-color:rgba(255,255,255,.72);
+        color:#800080!important;
+        font-weight:800;
+        box-shadow:0 5px 16px rgba(28,0,31,.22),inset 0 1px 0 rgba(255,255,255,.9);
+      }
+      body.admin-portal #staffNav .nav-btn.active::before {
+        background:#c98bd4;
+      }
+      body.admin-portal #staffNav .nav-btn.active > span:last-child,
+      body.admin-portal #staffNav .nav-btn.active .nav-icon,
+      body.admin-portal #staffNav .nav-btn.active .nav-icon svg {
+        color:#800080!important;
+      }
+      body.admin-portal #staffNav .nav-btn.active .nav-icon {
+        background:#fff!important;
+        box-shadow:0 3px 9px rgba(75,0,80,.12),inset 0 0 0 1px rgba(128,0,128,.08);
+      }
+      body.admin-portal #staffNav .nav-btn.active .nav-icon svg {
+        stroke:#800080!important;
+      }
+      body.admin-portal #staffNav .nav-btn:focus-visible {
+        outline-color:#f0c8f4;
+        outline-offset:3px;
+      }
+      body.admin-portal #staffNav .nav-btn:disabled {
+        color:rgba(241,223,243,.48)!important;
+        opacity:.58;
+      }
+    }
+
+
+  </style>
   
 
 
@@ -3870,74 +3938,7 @@ async function renderSupervisorCatalog(){
       const w=window.open('','_blank','width=420,height=720');if(!w){showToast('Izinkan pop-up browser untuk mencetak struk.','error');return}
       const lines=(s.items||[]).map(it=>'<tr><td>'+escapeHtml(it.name)+(it.variationName?'<br>'+escapeHtml(it.variationName):'')+'<br><small>'+formatMoney(it.qty)+' × '+formatMoney(it.unitPrice)+'</small></td><td style="text-align:right">Rp '+formatMoney(it.subtotal)+'</td></tr>').join('');
       const html='<!doctype html><html><head><meta charset="utf-8"><title>Struk '+escapeHtml(s.number)+'</title><style>body{font:12px Arial,sans-serif;color:#111;width:300px;margin:18px auto}h2,p{text-align:center;margin:4px 0}h2{font-size:17px}.line{border-top:1px dashed #555;margin:10px 0}table{width:100%;border-collapse:collapse}td{padding:5px 0;vertical-align:top}.total{font-weight:bold;font-size:14px}.right{text-align:right}.muted{color:#555}@media print{body{margin:0 auto}}
-    /* FMart visual consistency: desktop staff sidebar follows the Admin mobile navbar palette. */
-    @media (min-width:901px) {
-      body.admin-portal #staffNav.bottom-nav {
-        background:linear-gradient(110deg,#350038 0%,#650069 60%,#800080 100%);
-        border:1px solid rgba(255,255,255,.22);
-        box-shadow:0 14px 36px rgba(53,0,56,.30);
-        scrollbar-color:rgba(255,255,255,.34) transparent;
-      }
-      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled) {
-        background:transparent;
-        border-color:transparent;
-        color:#f1dff3;
-        box-shadow:none;
-      }
-      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled) > span:last-child {
-        color:#f1dff3!important;
-      }
-      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled) .nav-icon {
-        background:rgba(255,255,255,.10);
-        color:#f4dff5!important;
-        box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
-      }
-      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled):hover {
-        background:rgba(255,255,255,.13);
-        border-color:rgba(255,255,255,.16);
-        color:#fff;
-        box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);
-      }
-      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled):hover > span:last-child {
-        color:#fff!important;
-      }
-      body.admin-portal #staffNav .nav-btn:not(.active):not(:disabled):hover .nav-icon {
-        background:rgba(255,255,255,.20);
-        color:#fff!important;
-      }
-      body.admin-portal #staffNav .nav-btn.active {
-        background:#f5f0ff;
-        border-color:rgba(255,255,255,.72);
-        color:#800080!important;
-        font-weight:800;
-        box-shadow:0 5px 16px rgba(28,0,31,.22),inset 0 1px 0 rgba(255,255,255,.9);
-      }
-      body.admin-portal #staffNav .nav-btn.active::before {
-        background:#c98bd4;
-      }
-      body.admin-portal #staffNav .nav-btn.active > span:last-child,
-      body.admin-portal #staffNav .nav-btn.active .nav-icon,
-      body.admin-portal #staffNav .nav-btn.active .nav-icon svg {
-        color:#800080!important;
-      }
-      body.admin-portal #staffNav .nav-btn.active .nav-icon {
-        background:#fff!important;
-        box-shadow:0 3px 9px rgba(75,0,80,.12),inset 0 0 0 1px rgba(128,0,128,.08);
-      }
-      body.admin-portal #staffNav .nav-btn.active .nav-icon svg {
-        stroke:#800080!important;
-      }
-      body.admin-portal #staffNav .nav-btn:focus-visible {
-        outline-color:#f0c8f4;
-        outline-offset:3px;
-      }
-      body.admin-portal #staffNav .nav-btn:disabled {
-        color:rgba(241,223,243,.48)!important;
-        opacity:.58;
-      }
-    }
-
-  </style></head><body onload="window.print()"><h2>FMART FATHAN MUBINA</h2><p>Struk Penjualan Toko</p><div class="line"></div><div>No: '+escapeHtml(s.number)+'</div><div>Tanggal: '+escapeHtml(formatDate(s.createdAt))+'</div><div>Kasir: '+escapeHtml(s.cashierName)+'</div><div>Pembeli: '+escapeHtml(s.buyerName||'Umum')+'</div><div class="line"></div><table>'+lines+'</table><div class="line"></div><table><tr><td>Subtotal</td><td class="right">Rp '+formatMoney(s.subtotal)+'</td></tr><tr><td>Diskon</td><td class="right">Rp '+formatMoney(s.discount)+'</td></tr><tr class="total"><td>TOTAL</td><td class="right">Rp '+formatMoney(s.total)+'</td></tr>'+(s.paymentMethod==='TUNAI'?'<tr><td>Tunai</td><td class="right">Rp '+formatMoney(s.amountReceived)+'</td></tr><tr><td>Kembalian</td><td class="right">Rp '+formatMoney(s.change)+'</td></tr>':'')+'</table><div class="line"></div><p>Pembayaran: '+escapeHtml(s.paymentMethod)+' · LUNAS</p>'+(s.paymentReference?'<p>Referensi: '+escapeHtml(s.paymentReference)+'</p>':'')+'<div class="line"></div><p>Terima kasih telah berbelanja</p><p class="muted">Pesantren Fathan Mubina</p></body></html>';
+      </style></head><body onload="window.print()"><h2>FMART FATHAN MUBINA</h2><p>Struk Penjualan Toko</p><div class="line"></div><div>No: '+escapeHtml(s.number)+'</div><div>Tanggal: '+escapeHtml(formatDate(s.createdAt))+'</div><div>Kasir: '+escapeHtml(s.cashierName)+'</div><div>Pembeli: '+escapeHtml(s.buyerName||'Umum')+'</div><div class="line"></div><table>'+lines+'</table><div class="line"></div><table><tr><td>Subtotal</td><td class="right">Rp '+formatMoney(s.subtotal)+'</td></tr><tr><td>Diskon</td><td class="right">Rp '+formatMoney(s.discount)+'</td></tr><tr class="total"><td>TOTAL</td><td class="right">Rp '+formatMoney(s.total)+'</td></tr>'+(s.paymentMethod==='TUNAI'?'<tr><td>Tunai</td><td class="right">Rp '+formatMoney(s.amountReceived)+'</td></tr><tr><td>Kembalian</td><td class="right">Rp '+formatMoney(s.change)+'</td></tr>':'')+'</table><div class="line"></div><p>Pembayaran: '+escapeHtml(s.paymentMethod)+' · LUNAS</p>'+(s.paymentReference?'<p>Referensi: '+escapeHtml(s.paymentReference)+'</p>':'')+'<div class="line"></div><p>Terima kasih telah berbelanja</p><p class="muted">Pesantren Fathan Mubina</p></body></html>';
       w.document.open();w.document.write(html);w.document.close();
     }
     function cashierPOSCartTotal_(){return (state.cashierPOS.cart||[]).reduce((sum,x)=>sum+(Number(x.unitPrice)||0)*(Number(x.qty)||0),0)}
