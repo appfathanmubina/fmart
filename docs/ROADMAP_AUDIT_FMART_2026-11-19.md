@@ -893,7 +893,7 @@ Perbaikan Tahap 40.8:
 
 ## Tahap 40.9 — Audit database, migrasi, dan konsistensi HPP
 
-**Status: perbaikan source dan regression test selesai pada PR #141; menunggu merge. Tidak ada migrasi atau perubahan data Spreadsheet produksi yang dijalankan.**
+**Status: selesai pada source `main` melalui PR #141, squash merge commit `7c9ad22e3d56768389a8b6a8d11c86d79b8e2718`. Regression CI pada PR lulus. Tidak ada migrasi atau perubahan data Spreadsheet produksi yang dijalankan.**
 
 Temuan audit:
 - Pembacaan/penulisan HPP master pada katalog Admin/Gudang dan form edit menggunakan nomor kolom tetap; laporan juga membaca snapshot HPP berdasarkan offset tetap. Ini berisiko jika posisi kolom berubah.
