@@ -7,6 +7,7 @@ const { createHmac } = require('node:crypto');
 const code = fs.readFileSync('apps-script/Code.gs', 'utf8');
 const setup = fs.readFileSync('apps-script/SetupDatabase.gs', 'utf8');
 const index = fs.readFileSync('apps-script/Index.html', 'utf8');
+const adminIndex = fs.readFileSync('adminFMart16720/index.html', 'utf8');
 const serviceWorker = fs.readFileSync('service-worker.js', 'utf8');
 const readme = fs.readFileSync('README.md', 'utf8');
 
