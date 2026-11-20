@@ -97,6 +97,20 @@ test('Kasir has limited QRIS proof and verification permission', () => {
   assert.ok(index.includes('staffPaymentVerification'));
 });
 
+test('Superadmin can access Wali payment verification while other role navigation remains unchanged', () => {
+  const nav = extractFunction(index, 'configureStaffNavigation');
+  const superadminLine = nav.match(/SUPERADMIN:\[[^\\]]+\\]/)?.[0] || '';
+  const adminLine = nav.match(/ADMIN:\[[^\\]]+\\]/)?.[0] || '';
+  assert.ok(superadminLine.includes("'staffPaymentVerification'"));
+  assert.ok(!adminLine.includes("'staffPaymentVerification'"));
+  const handlerStart = index.indexOf("$('staffPaymentVerification').addEventListener");
+  const handler = index.slice(handlerStart, handlerStart + 500);
+  assert.ok(handler.includes("['KASIR','SUPERADMIN'].includes(state.data.user.role)"));
+  assert.ok(handler.includes('renderOpsPayments()'));
+  const workspace = extractFunction(index, 'renderOpsPayments');
+  assert.ok(workspace.includes("['ADMIN','SUPERADMIN','KASIR'].includes(role)"));
+});
+
 test('Staff login cannot create a session before email OTP succeeds', () => {
   const login = extractFunction(code, 'login');
   const verifyOtp = extractFunction(code, 'verifyAdminLoginOtp');
