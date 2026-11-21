@@ -1718,11 +1718,11 @@ test('Supervisor catalog is read-only and Drive QRIS uses an embeddable thumbnai
  assert.ok(paymentUi.includes('qrisImageSrc')&&paymentUi.includes('paymentQrisImage'));
 });
 
-test('Wali saved order address guidance is separate from Admin-managed formal relationships',()=>{
+test('Wali saved order address guidance clearly separates order addresses from formal Admin-approved relationships',()=>{
  const adminView=extractFunction(index,'renderWaliSantriManagementHtml');
- assert.ok(adminView.includes('nomor HP akun Wali cocok dengan nomor Wali pada master Santri'));
- assert.ok(adminView.includes('pengajuan menunggu verifikasi Admin'));
- assert.ok(!adminView.includes('langsung aktif tanpa persetujuan Admin'));
+ assert.ok(adminView.includes('Relasi resmi Santri hanya aktif setelah disetujui Admin'));
+ assert.ok(adminView.includes('Alamat Pemesanan'));
+ assert.ok(!adminView.includes('Hubungan aktif otomatis jika nomor HP akun Wali'));
  assert.ok(index.includes('Pilih Santri dari data master untuk disimpan sebagai alamat pemesanan.'));
  const request=extractFunction(code,'requestWaliSantriLink');
  assert.ok(request.includes("'ALAMAT_PESANAN'"));
@@ -2097,14 +2097,15 @@ test('Wali login, registration and reset UI use native credential autofill and c
 });
 
 
-test('Wali profile updates normalize email and reject duplicate Wali identity before writing',()=>{
- const fn=extractFunction(code,'updateMyWaliProfile');
+test('Wali profile changes validate the account and synchronize email through verification',()=>{
+ const fn=extractFunction(code,'updateMyWaliProfile'),helper=extractFunction(code,'sendWaliEmailVerification_');
  assert.ok(fn.includes('normalizeEmail_(email)'));
  assert.ok(fn.includes('isValidStaffEmail_(email)'));
- assert.ok(fn.includes('duplicateWali')&&fn.includes('duplicateUser'));
- assert.ok(fn.includes('Email sudah digunakan oleh akun Wali Santri lain.'));
- assert.ok(fn.indexOf('findRowById_(usersSheet, session.userId, 1)')<fn.indexOf('waliSheet.getRange(waliRowNumber,3).setValue(nama)'),'Validate the account row before mutating either profile sheet.');
- assert.ok(fn.includes("String(userRow.values[5] || '').toUpperCase() !== 'WALI_SANTRI'"));
+ assert.ok(fn.includes('findRowById_(usersSheet,session.userId,1)'));
+ assert.ok(fn.includes("String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI'"));
+ assert.ok(fn.includes('sendWaliEmailVerification_(session.userId,email)'));
+ assert.ok(helper.includes('normalizeEmail_(r[10])===email'));
+ assert.ok(helper.includes('normalizeEmail_(r[4])===email'));
 });
 
 test('Wali shopping screens avoid redundant instructional copy while preserving functional labels',()=>{
