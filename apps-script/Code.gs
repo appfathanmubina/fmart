@@ -2033,9 +2033,10 @@ function getProductPhotoData(token,fileId){
   const rows=readRows_(getSS_().getSheetByName('Produk'));
   const referenced=rows.some(function(row){return extractQrisDriveFileId_(row[7])===fileId;});
   if(!referenced)throw new Error('Foto tidak terdaftar pada katalog FMart.');
-  const folder=getProductPhotoFolder_(),file=DriveApp.getFileById(fileId),parents=file.getParents();
-  let trusted=false;while(parents.hasNext()){if(parents.next().getId()===folder.getId()){trusted=true;break;}}
-  if(!trusted)throw new Error('Foto tidak berada pada folder penyimpanan FMart.');
+  // Keterkaitan file dengan kolom Foto pada sheet Produk menjadi otorisasi akses.
+  // Jangan mengunci pembacaan pada satu folder aktif: file lama tetap sah bila folder
+  // konfigurasi pernah berubah, selama file masih direferensikan oleh produk FMart.
+  const file=DriveApp.getFileById(fileId);
   if(file.isTrashed())throw new Error('Foto produk sudah berada di Sampah.');
   const blob=file.getBlob(),mime=String(blob.getContentType()||'').toLowerCase(),bytes=blob.getBytes();
   if(['image/jpeg','image/png','image/webp','image/gif'].indexOf(mime)<0||!bytes.length||bytes.length>500*1024)throw new Error('Foto produk tidak memenuhi ketentuan ukuran atau format.');

@@ -88,14 +88,27 @@ test('Private Drive QRIS images are served safely for the Wali PWA',()=>{
  assert.ok(index.includes('qrisImageFallback')&&index.includes("paymentQrisImage').onerror"));
 });
 
-test('Product photos are served privately through an authenticated, folder-scoped Apps Script proxy',()=>{
+
+test('Desktop pages clip horizontal overflow while preserving horizontal scrolling inside data tables',()=>{
+ assert.ok(index.includes('@media(min-width:761px){\n      html,body{width:100%;max-width:100%;overflow-x:clip}'));
+ assert.ok(index.includes('body.admin-portal #operationsView,body.admin-portal #opsMainSection,body.admin-portal #opsMainBody{min-width:0;max-width:100%}'));
+ assert.ok(index.includes('.table-wrap{width:100%;overflow-x:auto'));
+});
+test('Admin dashboard quick actions share one responsive desktop row and the global Refresh button is removed',()=>{
+ assert.ok(index.includes('two-btn dashboard-quick-actions'));
+ assert.ok(index.includes('body.admin-portal .dashboard-quick-actions{grid-template-columns:repeat(auto-fit,minmax(0,1fr))'));
+ assert.ok(!index.includes('id="opsRefresh"'));
+ assert.ok(!index.includes("$('opsRefresh')"));
+});
+test('Product photos use an authenticated proxy authorized by product-sheet references, including legacy Drive folders',()=>{
  const upload=extractFunction(code,'uploadProductPhoto'),reader=extractFunction(code,'getProductPhotoData');
  assert.ok(upload.includes('validateUploadedFileSignature_(bytes,mimeType)'));
  assert.ok(upload.includes('drive.google.com/thumbnail?id='));
  assert.ok(!upload.includes('setSharing(DriveApp.Access.ANYONE_WITH_LINK'),'Product images must not depend on public Drive sharing.');
  assert.ok(reader.includes('FMART.ROLES.WALI_SANTRI')&&reader.includes('FMART.ROLES.SUPERADMIN'));
  assert.ok(reader.includes("rows.some(function(row){return extractQrisDriveFileId_(row[7])===fileId;})"));
- assert.ok(reader.includes("parents.next().getId()===folder.getId()"));
+ assert.ok(!reader.includes('getProductPhotoFolder_'),'Existing referenced photos must not fail when the configured upload folder changes.');
+ assert.ok(reader.includes("file.isTrashed()"));
  assert.ok(reader.includes("Utilities.base64Encode(bytes)"));
  assert.ok(index.includes("function safeUrl(v){const u=String(v||'').trim();"));
  assert.ok(index.includes('driveImageFileId_'));
@@ -1925,7 +1938,7 @@ test('Staff workspace header follows the active menu and hides stale dashboard s
  const navigation=extractFunction(index,'setStaffActiveNavigation');
  assert.ok(navigation.includes("const isDashboard=id==='staffDashboard'"));
  assert.ok(navigation.includes("opsStatsNode.classList.toggle('hidden',!isDashboard||isDeliveryStaff)"));
- assert.ok(navigation.includes("$('opsRefresh').classList.toggle('hidden',!isDashboard||isDeliveryStaff)"));
+ assert.ok(!navigation.includes('opsRefresh'),'The global dashboard Refresh control has been removed.');
  assert.ok(navigation.includes("id==='staffDeliveryComplaints'?'Komplain Pengantaran'"));
  assert.ok(navigation.includes("$('opsTitle').textContent=pageTitle"));
 });
