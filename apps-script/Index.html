@@ -2518,7 +2518,34 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
       body.admin-portal #loginView .login-panel{padding-left:12px;padding-right:12px}
       body.admin-portal #loginView .login-card{padding:22px 17px 20px}
     }
-</style>
+/* Penyempurnaan khusus portal Wali — menjaga layout role petugas tetap terpisah. */
+    body.buyer-portal #loginIntro,body.buyer-portal #usernameHint{display:none!important}
+    body.buyer-portal .password-toggle{top:50%;bottom:auto;right:10px;transform:translateY(-50%);width:38px;height:38px;padding:8px}
+    body.buyer-portal .password-toggle svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    body.buyer-portal .password-toggle.is-visible svg{color:var(--purple)}
+    body.buyer-portal .login-account-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:10px}
+    body.buyer-portal .login-account-actions button{width:100%;min-width:0;margin:0!important;padding:11px 8px;font-size:13px;white-space:normal}
+    body.buyer-portal .cart-page-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;padding:4px 0}
+    body.buyer-portal .cart-page-toolbar h2{margin:0;font-size:19px}
+    body.buyer-portal .cart-add-more-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:auto;min-height:40px;padding:8px 12px;white-space:nowrap}
+    body.buyer-portal .cart-add-more-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    body.buyer-portal .order-status-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 1px 9px;margin:10px 0 4px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+    body.buyer-portal .order-status-tab{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);padding:9px 13px;font-family:inherit;font-size:12px;font-weight:600;white-space:nowrap}
+    body.buyer-portal .order-status-tab span{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#f2edf7;color:inherit;font-size:10px}
+    body.buyer-portal .order-status-tab.active{border-color:var(--purple);background:var(--purple);color:#fff}
+    body.buyer-portal .order-status-tab.active span{background:#ffffff2b;color:#fff}
+    body.buyer-portal .order-card-compact{padding:13px 14px;margin-bottom:10px;border-radius:16px}
+    body.buyer-portal .order-card-compact .order-top{gap:10px;align-items:flex-start}
+    body.buyer-portal .order-card-compact .order-number{font-size:13px;line-height:1.4}
+    body.buyer-portal .order-card-compact .order-meta{font-size:11px;line-height:1.5;margin-top:3px}
+    body.buyer-portal .order-card-compact .order-total{font-size:17px;margin:9px 0 5px}
+    body.buyer-portal .order-card-compact .order-actions{margin-top:10px;gap:8px}
+    body.buyer-portal .wali-profile-quick-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    body.buyer-portal .wali-profile-quick-actions button{width:100%;min-width:0;margin:0;padding:10px 6px;font-size:12px;white-space:normal}
+    body.buyer-portal .wali-profile-quick-actions .wali-logout-action{color:#b42318;border-color:#f1c7c4;background:#fff}
+    @media(max-width:380px){body.buyer-portal .login-account-actions{gap:6px}body.buyer-portal .login-account-actions button{font-size:12px;padding:10px 5px}body.buyer-portal .wali-profile-quick-actions{gap:5px}body.buyer-portal .wali-profile-quick-actions button{font-size:11px;padding:9px 3px}}
+
+    </style>
   
 
 
@@ -4071,33 +4098,7 @@ async function renderSupervisorCatalog(){
       const w=window.open('','_blank','width=420,height=720');if(!w){showToast('Izinkan pop-up browser untuk mencetak struk.','error');return}
       const lines=(s.items||[]).map(it=>'<tr><td>'+escapeHtml(it.name)+(it.variationName?'<br>'+escapeHtml(it.variationName):'')+'<br><small>'+formatMoney(it.qty)+' × '+formatMoney(it.unitPrice)+'</small></td><td style="text-align:right">Rp '+formatMoney(it.subtotal)+'</td></tr>').join('');
       const html='<!doctype html><html><head><meta charset="utf-8"><title>Struk '+escapeHtml(s.number)+'</title><style>body{font:12px Arial,sans-serif;color:#111;width:300px;margin:18px auto}h2,p{text-align:center;margin:4px 0}h2{font-size:17px}.line{border-top:1px dashed #555;margin:10px 0}table{width:100%;border-collapse:collapse}td{padding:5px 0;vertical-align:top}.total{font-weight:bold;font-size:14px}.right{text-align:right}.muted{color:#555}@media print{body{margin:0 auto}}
-    /* Penyempurnaan khusus portal Wali — menjaga layout role petugas tetap terpisah. */
-    body.buyer-portal #loginIntro,body.buyer-portal #usernameHint{display:none!important}
-    body.buyer-portal .password-toggle{top:50%;bottom:auto;right:10px;transform:translateY(-50%);width:38px;height:38px;padding:8px}
-    body.buyer-portal .password-toggle svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-    body.buyer-portal .password-toggle.is-visible svg{color:var(--purple)}
-    body.buyer-portal .login-account-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:10px}
-    body.buyer-portal .login-account-actions button{width:100%;min-width:0;margin:0!important;padding:11px 8px;font-size:13px;white-space:normal}
-    body.buyer-portal .cart-page-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;padding:4px 0}
-    body.buyer-portal .cart-page-toolbar h2{margin:0;font-size:19px}
-    body.buyer-portal .cart-add-more-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:auto;min-height:40px;padding:8px 12px;white-space:nowrap}
-    body.buyer-portal .cart-add-more-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-    body.buyer-portal .order-status-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 1px 9px;margin:10px 0 4px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
-    body.buyer-portal .order-status-tab{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);padding:9px 13px;font-family:inherit;font-size:12px;font-weight:600;white-space:nowrap}
-    body.buyer-portal .order-status-tab span{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#f2edf7;color:inherit;font-size:10px}
-    body.buyer-portal .order-status-tab.active{border-color:var(--purple);background:var(--purple);color:#fff}
-    body.buyer-portal .order-status-tab.active span{background:#ffffff2b;color:#fff}
-    body.buyer-portal .order-card-compact{padding:13px 14px;margin-bottom:10px;border-radius:16px}
-    body.buyer-portal .order-card-compact .order-top{gap:10px;align-items:flex-start}
-    body.buyer-portal .order-card-compact .order-number{font-size:13px;line-height:1.4}
-    body.buyer-portal .order-card-compact .order-meta{font-size:11px;line-height:1.5;margin-top:3px}
-    body.buyer-portal .order-card-compact .order-total{font-size:17px;margin:9px 0 5px}
-    body.buyer-portal .order-card-compact .order-actions{margin-top:10px;gap:8px}
-    body.buyer-portal .wali-profile-quick-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    body.buyer-portal .wali-profile-quick-actions button{width:100%;min-width:0;margin:0;padding:10px 6px;font-size:12px;white-space:normal}
-    body.buyer-portal .wali-profile-quick-actions .wali-logout-action{color:#b42318;border-color:#f1c7c4;background:#fff}
-    @media(max-width:380px){body.buyer-portal .login-account-actions{gap:6px}body.buyer-portal .login-account-actions button{font-size:12px;padding:10px 5px}body.buyer-portal .wali-profile-quick-actions{gap:5px}body.buyer-portal .wali-profile-quick-actions button{font-size:11px;padding:9px 3px}}
-</style></head><body onload="window.print()"><h2>FMART FATHAN MUBINA</h2><p>Struk Penjualan Toko</p><div class="line"></div><div>No: '+escapeHtml(s.number)+'</div><div>Tanggal: '+escapeHtml(formatDate(s.createdAt))+'</div><div>Kasir: '+escapeHtml(s.cashierName)+'</div><div>Pembeli: '+escapeHtml(s.buyerName||'Umum')+'</div><div class="line"></div><table>'+lines+'</table><div class="line"></div><table><tr><td>Subtotal</td><td class="right">Rp '+formatMoney(s.subtotal)+'</td></tr><tr><td>Diskon</td><td class="right">Rp '+formatMoney(s.discount)+'</td></tr><tr class="total"><td>TOTAL</td><td class="right">Rp '+formatMoney(s.total)+'</td></tr>'+(s.paymentMethod==='TUNAI'?'<tr><td>Tunai</td><td class="right">Rp '+formatMoney(s.amountReceived)+'</td></tr><tr><td>Kembalian</td><td class="right">Rp '+formatMoney(s.change)+'</td></tr>':'')+'</table><div class="line"></div><p>Pembayaran: '+escapeHtml(s.paymentMethod)+' · LUNAS</p>'+(s.paymentReference?'<p>Referensi: '+escapeHtml(s.paymentReference)+'</p>':'')+'<div class="line"></div><p>Terima kasih telah berbelanja</p><p class="muted">Pesantren Fathan Mubina</p></body></html>';
+    </style></head><body onload="window.print()"><h2>FMART FATHAN MUBINA</h2><p>Struk Penjualan Toko</p><div class="line"></div><div>No: '+escapeHtml(s.number)+'</div><div>Tanggal: '+escapeHtml(formatDate(s.createdAt))+'</div><div>Kasir: '+escapeHtml(s.cashierName)+'</div><div>Pembeli: '+escapeHtml(s.buyerName||'Umum')+'</div><div class="line"></div><table>'+lines+'</table><div class="line"></div><table><tr><td>Subtotal</td><td class="right">Rp '+formatMoney(s.subtotal)+'</td></tr><tr><td>Diskon</td><td class="right">Rp '+formatMoney(s.discount)+'</td></tr><tr class="total"><td>TOTAL</td><td class="right">Rp '+formatMoney(s.total)+'</td></tr>'+(s.paymentMethod==='TUNAI'?'<tr><td>Tunai</td><td class="right">Rp '+formatMoney(s.amountReceived)+'</td></tr><tr><td>Kembalian</td><td class="right">Rp '+formatMoney(s.change)+'</td></tr>':'')+'</table><div class="line"></div><p>Pembayaran: '+escapeHtml(s.paymentMethod)+' · LUNAS</p>'+(s.paymentReference?'<p>Referensi: '+escapeHtml(s.paymentReference)+'</p>':'')+'<div class="line"></div><p>Terima kasih telah berbelanja</p><p class="muted">Pesantren Fathan Mubina</p></body></html>';
       w.document.open();w.document.write(html);w.document.close();
     }
     function cashierPOSCartTotal_(){return (state.cashierPOS.cart||[]).reduce((sum,x)=>sum+(Number(x.unitPrice)||0)*(Number(x.qty)||0),0)}
