@@ -1165,3 +1165,14 @@ Urutan:
 
 ### Catatan keputusan alur penerima checkout
 Source saat ini masih memakai formulir penerima manual dan menyimpan snapshot penerima pada pesanan. Hal ini berbeda dari pola penerima tersimpan berbasis relasi Wali–Santri aktif yang pernah menjadi arah kebutuhan: memilih anak yang sudah terhubung sebagai penerima, menolak relasi pending, dan memvalidasi kepemilikan relasi di backend. Tahap 44 tidak mengubah kontrak checkout ini karena perubahan akan memengaruhi perilaku transaksi dan kompatibilitas pesanan lama. Perlu keputusan pemilik proses sebelum mengubah checkout dari penerima manual menjadi daftar penerima terverifikasi.
+
+
+### Perubahan keputusan penerima — daftar alamat mandiri Wali
+Pemilik proses menetapkan bahwa Wali boleh menyimpan beberapa Santri aktif dari master Santri sebagai alamat pemesanan tanpa menunggu verifikasi Admin. Implementasi menggunakan status relasi khusus `ALAMAT_PESANAN` di sheet `WaliSantriSantri`, terpisah dari status relasi formal `AKTIF`.
+- Wali mencari dan menyimpan Santri aktif; data relasi berasal dari sesi Wali, bukan WaliId dari browser.
+- Wali dapat menyimpan beberapa alamat dan menghapus alamat yang berstatus ALAMAT_PESANAN.
+- Checkout hanya menerima santriId yang memiliki relasi AKTIF atau ALAMAT_PESANAN untuk Wali yang sedang login; server memeriksa ulang keberadaan dan status aktif pada master Santri.
+- Alamat tersimpan tidak memberi akses dashboard anak atau data akademik: `getChildrenForWali_` tetap hanya mengembalikan relasi AKTIF.
+- Order menyimpan santriId dan snapshot penerima sehingga riwayat lama tetap terbaca.
+- Relasi resmi pending yang sudah ada tidak otomatis menjadi alamat; Wali dapat membatalkannya lalu menyimpan alamat melalui alur baru.
+- UAT runtime dan pemeriksaan data aktual masih diperlukan sebelum deployment.
