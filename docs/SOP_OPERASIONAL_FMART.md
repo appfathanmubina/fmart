@@ -23,18 +23,19 @@ Dokumen ini melengkapi [Checklist UAT Tahap 4](UAT-TAHAP-4-FMART.md). SOP menjel
 | KASIR | POS dan antrean verifikasi QRIS Wali | Hanya memverifikasi pembayaran QRIS Wali; transaksi POS yang dikelola Kasir dibatasi ke akun pembuat |
 | GUDANG | Stok Gudang, penerimaan, pemenuhan pesanan, laporan Gudang, penugasan/pengantaran | Tidak dapat membatalkan pesanan; hanya memproses pesanan dengan pembayaran terverifikasi |
 | PETUGAS_PENGANTAR | Menerima tugas, memulai perjalanan, memperbarui progres, melaporkan kegagalan, mengunggah bukti | Hanya dapat mengelola penugasan milik akun sendiri |
+| SUPERVISOR | Dashboard pengawasan, seluruh pesanan, seluruh riwayat POS, katalog produk, dan laporan secara baca-saja | Tidak boleh membuat/mengubah/membatalkan transaksi, memverifikasi pembayaran, mengubah katalog/stok, menugaskan pengantaran, mengelola akun, mengubah QRIS, atau membuka Audit Activity |
 | WALI_SANTRI | Katalog, keranjang, checkout, pembayaran, pesanan, relasi Santri, konfirmasi pengantaran | Tidak melihat jumlah stok internal dan tidak dapat membaca pesanan Wali lain |
 
-**Supervisor bukan role aktif yang didefinisikan backend saat ini.** Jangan membuat akun atau memberikan akses Supervisor sampai role tersebut disetujui dan didefinisikan secara eksplisit.
+**Supervisor adalah role aktif pada source saat ini.** Aksesnya khusus pengawasan baca-saja: Dashboard, Pesanan, Transaksi POS, Produk, dan Laporan. Menu dan endpoint mutasi tidak boleh diberikan. Status akun Supervisor yang benar-benar aktif tetap harus diverifikasi pada runtime; keberadaan role di source tidak membuktikan akun sudah dibuat.
 
 ## 3. Akun dan akses awal
 
 1. Superadmin memastikan akun staf dibuat untuk petugas yang benar dan role sesuai tugas.
-2. Buat akun ADMIN, KASIR, GUDANG, dan PETUGAS_PENGANTAR hanya ketika petugas sudah ditetapkan. Pembuatan akun staf melalui menu yang dibatasi untuk Superadmin.
+2. Buat akun ADMIN, KASIR, GUDANG, PETUGAS_PENGANTAR, dan SUPERVISOR hanya ketika petugas sudah ditetapkan. Pembuatan akun staf melalui menu yang dibatasi untuk Superadmin.
 3. Pastikan status akun AKTIF dan email/username benar. Jangan menulis password awal ke dokumen, chat, atau AuditLog.
 4. Pemilik akun melakukan login sendiri dan mengganti password sesuai kebijakan lembaga.
 5. Uji akses setiap role secara terpisah. Menu yang tersembunyi bukan satu-satunya pengaman; backend juga harus menolak endpoint yang tidak diizinkan.
-6. Akun ADMIN dan PETUGAS_PENGANTAR yang belum dibuat merupakan prasyarat operasional sebelum alur role tersebut dapat diuji.
+6. Ketersediaan dan status akun setiap role harus diverifikasi pada runtime sebelum UAT; jangan menyimpulkan akun tersedia hanya karena role sudah didukung source.
 
 ## 4. Master produk dan katalog
 
@@ -42,7 +43,7 @@ Dokumen ini melengkapi [Checklist UAT Tahap 4](UAT-TAHAP-4-FMART.md). SOP menjel
 2. Produk nonaktif tidak boleh dijual atau dimutasi stok.
 3. Wali hanya melihat produk aktif dan informasi yang diperlukan untuk belanja. Jumlah stok Gudang dan ambang stok internal tidak ditampilkan.
 4. Perubahan harga atau variasi dilakukan melalui menu pengelolaan produk, bukan mengedit sheet secara langsung.
-5. Fitur unggah foto langsung dari perangkat belum menjadi bagian SOP ini; pengembangan foto produk direncanakan setelah gerbang audit runtime.
+5. Foto produk dapat diunggah dari perangkat melalui form Tambah/Edit Produk. Sistem mengompres foto yang didukung dan membatasi hasil maksimal 500 KB; GIF animasi dipertahankan dan ditolak jika melebihi batas. Foto disimpan pada folder Drive produk dan ditampilkan melalui jalur yang memvalidasi akses sesi.
 
 ## 5. Stok Gudang dan penerimaan barang
 
@@ -93,7 +94,8 @@ Dokumen ini melengkapi [Checklist UAT Tahap 4](UAT-TAHAP-4-FMART.md). SOP menjel
 2. Pilih jenis pembeli, item, jumlah, dan metode pembayaran dengan benar.
 3. Transaksi tunai diselesaikan berdasarkan uang diterima dan kembalian yang dihitung sistem.
 4. Transaksi QRIS berstatus menunggu konfirmasi sampai pembayaran benar-benar diterima. Jangan menyerahkan barang atau menganggap lunas hanya dari screenshot.
-5. Kasir hanya dapat membatalkan/mengonfirmasi transaksi QRIS yang dibuat oleh akunnya sendiri. Minta bantuan Admin jika transaksi dibuat akun lain.
+5. Kasir hanya dapat membatalkan/mengonfirmasi transaksi QRIS yang dibuat oleh akunnya sendiri. Minta bantuan Admin/Superadmin jika transaksi dibuat akun lain.
+6. Pada source saat ini, endpoint verifikasi pembayaran pesanan Wali (`verifyPayment`) mengizinkan ADMIN, SUPERADMIN, dan KASIR, tetapi menu UI Verifikasi QRIS Wali hanya ditampilkan untuk SUPERADMIN dan KASIR. Admin tidak mendapat menu tersebut. Ketidaksesuaian UI/backend ini adalah temuan audit yang harus diputuskan pada Tahap 41.2; jangan menggunakan pemanggilan endpoint langsung sebagai pengganti prosedur kerja sebelum keputusan pemilik proses.
 6. Jika transaksi ganda atau stok tidak sesuai, hentikan transaksi terkait dan minta Admin/Superadmin memeriksa AuditLog serta ledger stok.
 
 ## 10. Backup, pemulihan, dan insiden
@@ -145,7 +147,7 @@ SOP ini baru dapat disahkan setelah:
 - akun ADMIN dan PETUGAS_PENGANTAR tersedia dan diuji oleh pemiliknya;
 - konfigurasi Spreadsheet, Script Properties, folder Drive, dan trigger terverifikasi pada runtime;
 - saldo awal seluruh produk Gudang diinput berdasarkan bukti fisik/dokumen dan direkonsiliasi;
-- alur Wali, Kasir, Gudang, Admin, Superadmin, dan Petugas Pengantar lulus UAT pada lingkungan terkontrol;
+- alur Wali, Kasir, Gudang, Admin, Superadmin, Supervisor, dan Petugas Pengantar lulus UAT pada lingkungan terkontrol;
 - prosedur backup/restore diuji pada salinan terpisah;
 - pemilik proses menyetujui tanggung jawab, eskalasi, dan batas kewenangan setiap role.
 
