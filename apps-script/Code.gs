@@ -353,8 +353,7 @@ function sendWaliEmailVerification_(userId,email){
   if(!isValidStaffEmail_(email)||email.length>160)throw new Error('Alamat email tidak valid.');
   const ss=getSS_(),users=ss.getSheetByName('Users'),waliSheet=ss.getSheetByName('WaliSantri'),user=findRowById_(users,String(userId),1);
   if(!user||String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI')throw new Error('Akun Wali Santri tidak ditemukan.');
-  const wali=findWaliByUserId_(ss,String(userId));if(!wali)throw new Error('Data Wali Santri tidak ditemukan.');
-  const rows=readRows_(users),walis=readRows_(waliSheet);
+  const rows=readRows_(users),walis=readRows_(waliSheet),waliRecord=walis.find(function(r){return String(r[1]||'')===String(userId);});if(!waliRecord)throw new Error('Data Wali Santri tidak ditemukan.');
   if(rows.some(r=>String(r[0]||'')!==String(userId)&&String(r[5]||'').toUpperCase()==='WALI_SANTRI'&&normalizeEmail_(r[10])===email)||
      walis.some(r=>String(r[1]||'')!==String(userId)&&normalizeEmail_(r[4])===email))throw new Error('Email sudah digunakan akun Wali Santri lain.');
   const challengeId=Utilities.getUuid()+Utilities.getUuid(),code=String(100000+(parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16)%900000));
@@ -367,7 +366,7 @@ function sendWaliEmailVerification_(userId,email){
   catch(err){cache.remove(key);cache.remove(rateKey+'_COOLDOWN');console.error('Pengiriman OTP Wali gagal:',err);throw new Error('Email verifikasi belum dapat dikirim. Data email akun tidak diubah.');}
   users.getRange(user.rowNumber,11,1,2).setValues([[email,false]]);
   users.getRange(user.rowNumber,9).setValue(new Date());
-  const waliRow=findRowById_(waliSheet,String(wali.waliId),1);
+  const waliRow=findRowById_(waliSheet,String(waliRecord[0]),1);
   if(waliRow)waliSheet.getRange(waliRow.rowNumber,5).setValue(email);
   SpreadsheetApp.flush();
   return {ok:true,challengeId:challengeId,maskedEmail:maskEmail_(email),message:'Kode verifikasi telah dikirim. Email baru aktif setelah kode diverifikasi.'};
@@ -660,7 +659,7 @@ function updateMyWaliProfile(token,nama,email,alamat){
     if(index<0)throw new Error('Data Wali Santri tidak ditemukan atau tidak aktif.');
     const user=findRowById_(usersSheet,session.userId,1);if(!user||String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI')throw new Error('Data akun pengguna tidak ditemukan.');
     const oldEmail=normalizeEmail_(user.values[10]);let verification=null;
-    if(email!==oldEmail||normalizeEmail_(waliRows[index][4])!==email){if(!email)throw new Error('Email tidak boleh dikosongkan.');verification=sendWaliEmailVerification_(session.userId,email);}
+    if(email!==oldEmail||normalizeEmail_(waliRows[index][4])!==email||!(String(user.values[11]||'').toUpperCase()==='TRUE'||user.values[11]===true)){if(!email)throw new Error('Email tidak boleh dikosongkan.');verification=sendWaliEmailVerification_(session.userId,email);}
     const rowNumber=index+2,before={nama:String(waliRows[index][2]||''),email:String(waliRows[index][4]||''),alamat:String(waliRows[index][5]||'')},now=new Date();
     waliSheet.getRange(rowNumber,3).setValue(nama);waliSheet.getRange(rowNumber,6).setValue(alamat);waliSheet.getRange(rowNumber,9).setValue(now);usersSheet.getRange(user.rowNumber,5).setValue(nama);
     writeAudit_(session.userId,session.role,'UPDATE_MY_WALI_PROFILE','WALI_SANTRI',String(waliRows[index][0]||''),JSON.stringify(before),JSON.stringify({nama:nama,email:email,alamat:alamat}),'Wali memperbarui profil pribadi');
@@ -2666,7 +2665,7 @@ function updateWaliSantri(token,waliId,nama,noHp,email,alamat){
     const userId=String(row.values[1]||''),user=findRowById_(us,userId,1);if(!user||String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI')throw new Error('Akun pengguna Wali Santri tidak ditemukan.');
     const walis=readRows_(ws);if(walis.some(r=>String(r[0]||'')!==waliId&&phoneEquals_(r[3],noHp)))throw new Error('No. HP sudah digunakan oleh Wali Santri lain.');
     const allUsers=readRows_(us);if(allUsers.some(u=>String(u[0]||'')!==userId&&(String(u[1]||'').trim()===noHp||normalizePhone_(u[1])===noHp)))throw new Error('Nomor HP sudah digunakan sebagai username akun lain.');
-    let verification=null;if(email!==normalizeEmail_(user.values[10])||normalizeEmail_(row.values[4])!==email){if(!email)throw new Error('Email tidak boleh dikosongkan.');verification=sendWaliEmailVerification_(userId,email);}
+    let verification=null;if(email!==normalizeEmail_(user.values[10])||normalizeEmail_(row.values[4])!==email||!(String(user.values[11]||'').toUpperCase()==='TRUE'||user.values[11]===true)){if(!email)throw new Error('Email tidak boleh dikosongkan.');verification=sendWaliEmailVerification_(userId,email);}
     const now=new Date();ws.getRange(row.rowNumber,3).setValue(nama);ws.getRange(row.rowNumber,4).setNumberFormat('@');ws.getRange(row.rowNumber,4).setValue(noHp);ws.getRange(row.rowNumber,6,1,4).setValues([[alamat,String(row.values[6]||'AKTIF'),row.values[7]||now,now]]);
     us.getRange(user.rowNumber,2).setNumberFormat('@');us.getRange(user.rowNumber,2).setValue(noHp);us.getRange(user.rowNumber,5).setValue(nama);us.getRange(user.rowNumber,9).setValue(now);
     writeAudit_(session.userId,session.role,'UPDATE_WALI_SANTRI','WALI_SANTRI',waliId,JSON.stringify({nama:String(row.values[2]||''),noHp:String(row.values[3]||''),email:String(row.values[4]||''),alamat:String(row.values[5]||'')}),JSON.stringify({nama:nama,noHp:noHp,username:noHp,email:email,alamat:alamat}),'Memperbarui data Wali Santri');
