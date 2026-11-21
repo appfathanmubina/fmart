@@ -2234,3 +2234,20 @@ test('Desktop workspace uses a centered 1360px shell while existing tablet/mobil
   assert.ok(index.includes('body.buyer-portal #products.products{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}'),'Existing three-column mobile catalogue must remain unchanged.');
   assert.ok(index.includes('body.admin-portal #staffNav{overflow-x:auto'),'Existing mobile staff navigation behavior must remain in place.');
 });
+
+test('Admin PWA header background spans the viewport while brand and actions stay in the centered desktop shell',()=>{
+ const marker='/* FMart Admin PWA header — full-bleed background with centered desktop contents. */';
+ const start=index.indexOf(marker);
+ assert.ok(start>=0,'Admin header alignment override must be present.');
+ const end=index.indexOf('</style>',start);
+ const css=index.slice(start,end);
+ assert.ok(css.includes('@media (min-width:1101px)'));
+ assert.ok(css.includes('width:100vw'));
+ assert.ok(css.includes('margin-left:calc(50% - 50vw)'));
+ assert.ok(css.includes('width:min(1360px,calc(100% - 48px))'));
+ assert.ok(css.includes('max-width:1360px'));
+ assert.ok(css.includes('margin-inline:auto'));
+ assert.ok(css.includes('justify-content:space-between'));
+ assert.ok(css.includes('min-height:80px'));
+ assert.ok(index.includes('@media(max-width:760px)'),'Mobile header rules must remain unchanged.');
+});
