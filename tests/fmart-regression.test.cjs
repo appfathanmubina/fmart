@@ -104,7 +104,7 @@ test('Product photos are served privately through an authenticated, folder-scope
 });
 test('Product photo upload accepts Android files with missing or nonstandard MIME metadata',()=>{
  const fn=extractFunction(index,'productPhotoMimeType_'),sandbox={};
- vm.runInNewContext(fn+'\\nthis.detect=productPhotoMimeType_;',sandbox);
+ vm.runInNewContext(fn+'\nthis.detect=productPhotoMimeType_;',sandbox);
  assert.equal(sandbox.detect({type:'image/jpeg',name:'photo.jpg'}),'image/jpeg');
  assert.equal(sandbox.detect({type:'',name:'IMG_20261121.JPG'}),'image/jpeg');
  assert.equal(sandbox.detect({type:'image/jpg',name:'photo.jpg'}),'image/jpeg');
