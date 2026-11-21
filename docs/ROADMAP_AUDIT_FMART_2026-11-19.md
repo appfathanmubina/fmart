@@ -1100,7 +1100,7 @@ Perbedaan jalur UI ini tidak otomatis merupakan bug. Uji akses dan lingkup data 
 
 ## Tahap 42 — Autentikasi Wali dengan email dan pemulihan password (21 November 2026)
 
-**Status:** implementasi source disiapkan pada branch `audit/tahap-42-wali-email-login-reset`; menunggu regression CI dan review PR. **Runtime Apps Script:** NOT RUN. **Produksi:** tidak berubah.
+**Status:** selesai dan merged ke `main` melalui PR #194, squash commit `4710a348f0b5a0c7374c6c802e9b245232399c8a`. Regression CI pasca-merge run #903: **165/165 PASS**. Build/deployment GitHub Pages run #572 masih berjalan saat catatan ini dibuat. **Runtime Apps Script:** NOT RUN. **Produksi:** tidak berubah.
 
 Keputusan pemilik proses:
 - Wali login dengan nomor HP atau email terdaftar menggunakan password yang sama.
@@ -1116,3 +1116,22 @@ Keputusan pemilik proses:
 **Catatan data lama:** akun Wali yang sudah ada tetapi belum memiliki email tetap dapat login dengan nomor HP. Fitur lupa password baru dapat digunakan setelah email yang valid ditambahkan ke akun Wali tersebut.
 
 **Batas pemeriksaan:** source dan regression CI tidak membuktikan pengiriman email aktual, kuota MailApp, URL deployment Apps Script, tampilan browser, atau proses reset pada akun nyata. Uji tersebut harus dilakukan pada runtime yang benar sebelum produksi.
+
+
+## Tahap 43 — UAT autentikasi Wali dan gerbang Uji Runtime (21 November 2026)
+
+**Status:** persiapan checklist source selesai; eksekusi runtime **BLOCKED / NOT RUN** sampai tersedia deployment Apps Script uji, akun Wali uji dengan email yang dapat diakses, dan persetujuan penggunaan MailApp. Tahap ini tidak mengubah data produksi.
+
+Urutan:
+1. Verifikasi source/deployment Apps Script yang diuji sama dengan commit `4710a348f0b5a0c7374c6c802e9b245232399c8a`.
+2. Gunakan akun Wali uji dan alamat email milik operator; jangan gunakan akun Wali nyata atau mengirim tautan reset ke pihak lain.
+3. Jalankan skenario autentikasi baru pada `docs/UAT-TAHAP-4-FMART.md` bagian 10.
+4. Pastikan login nomor HP dan email sama-sama berhasil dengan password yang sama; pastikan Admin tetap login dengan email/password/OTP seperti sebelumnya.
+5. Uji lupa password: email terdaftar, email tidak terdaftar (respons generik), cooldown/rate limit, tautan valid, tautan kedaluwarsa, token sekali pakai, password tidak cocok, dan sesi lama setelah reset.
+6. Uji browser autocomplete/password manager di desktop dan HP. Jangan menyimpan password plaintext dalam localStorage/sessionStorage.
+7. Simpan screenshot dan Apps Script Execution ID yang sudah disamarkan. Catat status PASS/FAIL/BLOCKED/NOT RUN; jangan menilai CI sebagai bukti email terkirim.
+8. Setelah autentikasi lulus, lanjutkan UAT Wali untuk profil, relasi Wali–Santri, penerima checkout, keranjang, checkout, pembayaran, status pesanan, notifikasi, dan bukti pengantaran sesuai checklist yang ada.
+
+**Kriteria lulus:** seluruh skenario bagian 10 memiliki bukti aktual; email reset benar-benar diterima; token hanya sekali pakai dan tidak dapat dipakai setelah kedaluwarsa; sesi lama ditolak setelah reset; login Admin/OTP tidak terganggu. Jika deployment/runtime belum tersedia, tetap BLOCKED dan jangan menyatakan siap produksi.
+
+**Batasan:** ChatGPT tidak memiliki akses ke project Apps Script, akun Gmail, Script Properties, Spreadsheet, atau Drive produksi dari repository GitHub. Jangan melakukan deployment atau mengubah Script Properties produksi sebagai bagian tahap ini.
