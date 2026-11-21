@@ -2251,3 +2251,24 @@ test('Admin PWA header background spans the viewport while brand and actions sta
  assert.ok(css.includes('min-height:80px'));
  assert.ok(index.includes('@media(max-width:760px)'),'Mobile header rules must remain unchanged.');
 });
+
+ 
+test('Admin PWA mobile keeps app and header full width while desktop centering remains separately scoped',()=>{
+ const marker='/* Admin PWA mobile — pulihkan lebar penuh tanpa mengubah layout desktop/tablet. */';
+ const start=index.indexOf(marker);
+ assert.ok(start>=0,'A dedicated Admin mobile full-width override must be present.');
+ const end=index.indexOf('</style>',start);
+ const css=index.slice(start,end);
+ assert.ok(css.includes('@media (max-width:760px)'),'The override must be limited to the existing phone breakpoint.');
+ assert.ok(css.includes('body.admin-portal #appView.app'));
+ assert.ok(css.includes('body.admin-portal .header'));
+ assert.ok(css.includes('body.admin-portal .header-inner'));
+ assert.ok(css.includes('width:100%!important'));
+ assert.ok(css.includes('max-width:none!important'));
+ assert.ok(css.includes('margin-left:0!important'));
+ assert.ok(css.includes('padding:9px 12px!important'));
+ const desktopMarker='/* FMart Admin PWA header — full-bleed background with centered desktop contents. */';
+ const desktopStart=index.indexOf(desktopMarker);
+ assert.ok(desktopStart>=0 && desktopStart<start,'Desktop header rules must remain present and separately scoped.');
+ assert.ok(index.slice(desktopStart,start).includes('@media (min-width:1101px)'),'Desktop centering must remain restricted to desktop widths.');
+});
