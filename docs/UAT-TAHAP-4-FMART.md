@@ -82,6 +82,8 @@ Untuk setiap role:
 
 ### 4.1.1 Uji khusus Supervisor
 - Login sebagai Supervisor dan pastikan hanya menu Dashboard, Pesanan, Transaksi POS, Produk, dan Laporan yang tersedia.
+- Pastikan halaman Produk dan Laporan Supervisor tidak menjalankan migrasi skema HPP; jika kolom HPP belum tersedia, Admin/Superadmin harus menyiapkan skema sebelum UAT Supervisor.
+- Pada detail pesanan Supervisor, pastikan nomor kontak dan alamat pribadi penerima tidak dikirim sebagai field recipient; informasi tujuan pengantaran yang memang diperlukan untuk pengawasan tetap tersedia.
 - Baca detail pesanan, seluruh riwayat POS, katalog lengkap, dan laporan.
 - Uji endpoint mutasi POS, verifikasi pembayaran, edit/tambah produk/kategori, mutasi/penerimaan stok, penugasan pengantaran, manajemen akun, pengaturan QRIS, dan Audit Activity; server harus menolak.
 - Pastikan Supervisor tidak dapat mengakses data Wali yang tidak relevan atau data rahasia akun.
