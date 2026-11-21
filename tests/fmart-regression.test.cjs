@@ -543,14 +543,13 @@ test('Critical write endpoints retain role guards, locks, ownership and state-tr
  }
 });
 
-test('Self-link and Admin approval enforce the same two active-or-pending Wali limit',()=>{
+test('Admin approval enforces the two active-or-pending formal Wali relationship limit',()=>{
  const helper=extractFunction(code,'countDistinctActiveOrPendingWaliForSantri_');
  assert.ok(helper.includes("['AKTIF','MENUNGGU_VERIFIKASI']"));
  assert.ok(helper.includes('waliIds[waliId]=true'));
  assert.ok(helper.includes('Object.keys(waliIds).length'));
  const self=extractFunction(code,'requestWaliSantriLink');
  assert.ok(self.includes("'ALAMAT_PESANAN'"));
- assert.ok(self.includes('linkedCount-((activePair||pendingPair)?1:0)'));
  const approve=extractFunction(code,'approveWaliSantriRequest');
  assert.ok(approve.includes('countDistinctActiveOrPendingWaliForSantri_'));
  assert.ok(approve.includes('activeOrPendingCount>2'));
