@@ -2504,7 +2504,7 @@ function getSantriClassesForWaliSelf(token){
   if(!wali) throw new Error('Data Wali Santri tidak ditemukan.');
   const relRows=readRows_(ss.getSheetByName('WaliSantriSantri'));
   const blocked={};
-  relRows.forEach(function(r){if(String(r[1]||'')===String(wali.waliId) && ['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(r[3]||'').toUpperCase())>=0) blocked[String(r[2]||'')]=true;});
+  relRows.forEach(function(r){if(String(r[1]||'')===String(wali.waliId) && ['AKTIF','ALAMAT_PESANAN','MENUNGGU_VERIFIKASI'].indexOf(String(r[3]||'').toUpperCase())>=0) blocked[String(r[2]||'')]=true;});
   const santriSheet=ss.getSheetByName('Santri'), santriMap=getSantriColumnMap_(santriSheet), rows=readSantriRows_(santriSheet), classes={};
   rows.forEach(function(r){const child=santriRecord_(r,santriMap),id=child.id,cls=child.className.trim();if(!id||!cls||child.status.toUpperCase()!=='AKTIF'||blocked[id])return;classes[cls]=true;});
   return {ok:true,classes:Object.keys(classes).sort(function(a,b){return a.localeCompare(b,'id',{numeric:true,sensitivity:'base'});})};
