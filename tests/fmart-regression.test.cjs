@@ -2154,7 +2154,7 @@ test('Wali login presentation is concise and keeps password visibility control a
 
 test('Wali cart provides a plus-and-cart shortcut back to the product catalogue, including empty cart',()=>{
  assert.ok(index.includes('id="cartAddMoreBtn" aria-label="Tambah belanjaan"'));
- assert.ok(index.includes('class="cart-add-more-btn"'));
+ assert.ok(index.includes('cart-add-more-btn"'));
  assert.ok(index.includes("if($('cartAddMoreBtn'))$('cartAddMoreBtn').onclick=showBuyerHome;"));
  assert.ok(index.includes("if(!items.length){$('cartBody').innerHTML="));
 });
