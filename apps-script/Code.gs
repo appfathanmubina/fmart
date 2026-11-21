@@ -518,6 +518,7 @@ function resetWaliPassword(token, newPassword, confirmPassword) {
     const row = findRowById_(sheet, payload.userId, 1);
     if (!row || String(row.values[5] || '').toUpperCase() !== 'WALI_SANTRI' ||
         String(row.values[6] || '').toUpperCase() !== 'AKTIF' ||
+        !(String(row.values[11] || '').toUpperCase() === 'TRUE' || row.values[11] === true) ||
         normalizeEmail_(row.values[10]) !== normalizeEmail_(payload.email)) {
       cache.remove(key);
       throw new Error('Tautan reset tidak valid atau sudah kedaluwarsa.');
