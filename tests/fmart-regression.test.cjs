@@ -2214,3 +2214,23 @@ test('Wali profile has exactly three quick actions and reuses the existing logou
  assert.ok(index.includes('grid-template-columns:repeat(3,minmax(0,1fr))'));
  assert.ok(index.includes('async function logoutCurrentSession_()'));
 });
+
+
+test('Desktop workspace uses a centered 1360px shell while existing tablet/mobile breakpoints remain separately scoped',()=>{
+  const marker='/* FMart Desktop Layout — centered workspace; mobile/tablet rules remain untouched. */';
+  const start=index.indexOf(marker);
+  assert.ok(start>=0,'The shared desktop layout layer must be present.');
+  const end=index.indexOf('</style>',start);
+  const desktopCss=index.slice(start,end);
+  assert.ok(desktopCss.includes('@media (min-width:1201px)'));
+  assert.ok(desktopCss.includes('width:min(1360px,calc(100% - 48px))'));
+  assert.ok(desktopCss.includes('max-width:1360px'));
+  assert.ok(desktopCss.includes('min-height:80px'));
+  assert.ok(desktopCss.includes('width:250px'));
+  assert.ok(desktopCss.includes('padding:28px 28px 120px!important'));
+  assert.ok(desktopCss.includes('grid-template-columns:repeat(6,minmax(0,1fr))'));
+  assert.ok(desktopCss.includes('overflow-x:auto'));
+  assert.ok(index.includes('@media(max-width:760px)'),'Existing mobile-specific layout rules must remain in place.');
+  assert.ok(index.includes('body.buyer-portal #products.products{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}'),'Existing three-column mobile catalogue must remain unchanged.');
+  assert.ok(index.includes('body.admin-portal #staffNav{overflow-x:auto'),'Existing mobile staff navigation behavior must remain in place.');
+});
