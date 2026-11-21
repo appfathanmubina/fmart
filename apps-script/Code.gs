@@ -73,7 +73,9 @@ function login(username, password, portalMode) {
     const loginValue = portalMode === 'ADMINFMART16720' || isWaliEmailLogin
       ? normalizeEmail_(rows[i][10])
       : normalizeUsername_(rows[i][1]);
-    if (loginValue === username && (portalMode !== 'ADMINFMART16720' || ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR'].indexOf(rowRole) >= 0)) {
+    if (loginValue === username && (portalMode === 'ADMINFMART16720'
+      ? ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR'].indexOf(rowRole) >= 0
+      : rowRole === 'WALI_SANTRI')) {
       if (targetIndex !== -1) {
         recordLoginFailure_(rate);
         return {ok:false,message:'Email atau password tidak valid.'};
