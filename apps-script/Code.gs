@@ -433,7 +433,7 @@ function registerWaliSantri(nama,noHp,password,email,alamat){
     const userRows=readRows_(users),waliRows=readRows_(waliSheet);
     if(waliRows.some(r=>phoneEquals_(r[3],noHp)))throw new Error('Nomor HP sudah terdaftar. Silakan gunakan nomor lain atau login.');
     if(userRows.some(r=>String(r[1]||'').trim()===noHp))throw new Error('Nomor HP sudah digunakan sebagai akun.');
-    if(waliRows.some(r=>normalizeEmail_(r[4])===email)||userRows.some(r=>String(r[5]||'').toUpperCase()==='WALI_SANTRI'&&normalizeEmail_(r[10])===email))throw new Error('Email sudah digunakan oleh akun Wali Santri lain.');
+    if(waliRows.some(r=>normalizeEmail_(r[4])===email)||userRows.some(r=>normalizeEmail_(r[10])===email))throw new Error('Email sudah digunakan oleh akun Wali Santri lain.');
     const salt=Utilities.getUuid().replace(/-/g,''),hash=hashPassword_(password,salt),challengeId=Utilities.getUuid()+Utilities.getUuid();
     const code=String(100000+(parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16)%900000)),key=waliEmailOtpKey_('REGISTER_'+challengeId),cache=CacheService.getScriptCache(),rateKey='FMART_WALI_REGISTER_RATE_'+Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,email+'|'+noHp)).slice(0,36);
     if(cache.get(rateKey+'_COOLDOWN'))throw new Error('Kode OTP baru saja dikirim. Tunggu satu menit sebelum meminta kode lagi.');const rateCount=Number(cache.get(rateKey)||0);if(rateCount>=3)throw new Error('Batas pengiriman OTP tercapai. Coba kembali satu jam lagi.');cache.put(rateKey,String(rateCount+1),3600);cache.put(rateKey+'_COOLDOWN','1',60);
