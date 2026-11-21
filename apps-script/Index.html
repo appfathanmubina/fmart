@@ -2554,13 +2554,24 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
         margin-inline:auto;
       }
       .header {
+        position:sticky;
+        top:0;
         width:100%;
         max-width:100%;
         margin-left:0;
         margin-right:0;
         box-sizing:border-box;
-        box-shadow:0 0 0 100vmax rgba(255,255,255,.94);
+        isolation:isolate;
+        box-shadow:none;
         clip-path:inset(0 -100vmax);
+      }
+      .header::before {
+        content:"";
+        position:absolute;
+        z-index:-1;
+        inset:0 -100vmax;
+        background:inherit;
+        pointer-events:none;
       }
       .header-inner {
         width:100%;
