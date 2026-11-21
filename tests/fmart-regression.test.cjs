@@ -1938,7 +1938,7 @@ test('Staff workspace header follows the active menu and hides stale dashboard s
  const navigation=extractFunction(index,'setStaffActiveNavigation');
  assert.ok(navigation.includes("const isDashboard=id==='staffDashboard'"));
  assert.ok(navigation.includes("opsStatsNode.classList.toggle('hidden',!isDashboard||isDeliveryStaff)"));
- assert.ok(navigation.includes("$('opsRefresh').classList.toggle('hidden',!isDashboard||isDeliveryStaff)"));
+ assert.ok(!navigation.includes('opsRefresh'),'The global dashboard Refresh control has been removed.');
  assert.ok(navigation.includes("id==='staffDeliveryComplaints'?'Komplain Pengantaran'"));
  assert.ok(navigation.includes("$('opsTitle').textContent=pageTitle"));
 });
