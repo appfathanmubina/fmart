@@ -1067,3 +1067,5 @@ Perbedaan jalur UI ini tidak otomatis merupakan bug. Uji akses dan lingkup data 
 - PR #190 (Gudang): FMart Regression berhasil; pemeriksaan sintaks dan patch whitespace berhasil.
 - PR #192 (Supervisor): menunggu hasil CI setelah pembaruan branch.
 - CI lulus bukan bukti runtime lulus. Seluruh role tetap memerlukan akun nyata, pengujian endpoint langsung, Drive/Spreadsheet, dan perangkat HP/Desktop.
+
+**Pemetaan urutan role Tahap 41:** 41.2 Superadmin (PR #189); 41.3 Admin; 41.4 Kasir; 41.5 Gudang (PR #190); 41.6 Petugas Pengantar; 41.7 Supervisor (PR #192). Tahap 41.8 berikutnya adalah audit visual lintas perangkat, bukan audit role.
