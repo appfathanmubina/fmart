@@ -177,3 +177,5 @@ Audit source untuk Admin, Kasir, Gudang, Petugas Pengantar, dan Supervisor telah
 PR #189 (Superadmin) dan PR #190 (Gudang) telah melewati workflow FMart Regression. PR #192 masih menunggu workflow. Source/CI tidak membuktikan runtime; uji akun, browser, Drive, Spreadsheet, kamera/upload, dan transaksi nyata tetap NOT RUN. Tidak ada data produksi yang diubah oleh audit ini.
 
 **Status:** source review enam role selesai; PR #189/#190 merged; PR #192 menunggu CI/merge; runtime seluruh role NOT RUN; produksi NOT APPROVED.
+
+**Pemetaan urutan role Tahap 41:** 41.2 Superadmin (PR #189); 41.3 Admin; 41.4 Kasir; 41.5 Gudang (PR #190); 41.6 Petugas Pengantar; 41.7 Supervisor (PR #192). Tahap 41.8 berikutnya adalah audit visual lintas perangkat, bukan audit role.
