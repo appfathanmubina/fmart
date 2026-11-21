@@ -1161,3 +1161,7 @@ Urutan:
 - Semua temuan di atas adalah hasil pembacaan source; tes otomatis hanya mengunci kontrak source.
 - Tidak membuktikan pengiriman email, akses Spreadsheet/Drive, QRIS merchant, tampilan browser/perangkat, atau transaksi runtime.
 - Tidak ada perubahan database, akun, Script Properties, Drive, atau deployment Apps Script.
+
+
+### Catatan keputusan alur penerima checkout
+Source saat ini masih memakai formulir penerima manual dan menyimpan snapshot penerima pada pesanan. Hal ini berbeda dari pola penerima tersimpan berbasis relasi Wali–Santri aktif yang pernah menjadi arah kebutuhan: memilih anak yang sudah terhubung sebagai penerima, menolak relasi pending, dan memvalidasi kepemilikan relasi di backend. Tahap 44 tidak mengubah kontrak checkout ini karena perubahan akan memengaruhi perilaku transaksi dan kompatibilitas pesanan lama. Perlu keputusan pemilik proses sebelum mengubah checkout dari penerima manual menjadi daftar penerima terverifikasi.
