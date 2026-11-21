@@ -1994,15 +1994,72 @@ test('Wali can authenticate with either registered phone or email while Admin po
  assert.ok(login.includes('issueAdminLoginOtp_'),'Admin login must continue to require email OTP.');
 });
 
-test('New Wali registration requires a unique email and stores it in the existing Users schema',()=>{
- const registration=extractFunction(code,'registerWaliSantri');
- assert.ok(registration.includes('email = normalizeEmail_(email)'));
+test('New Wali registration requires email OTP before creating the account',()=>{
+ const registration=extractFunction(code,'registerWaliSantri'),verify=extractFunction(code,'verifyWaliRegistrationOtp');
+ assert.ok(registration.includes('email=normalizeEmail_(email)'));
  assert.ok(registration.includes('isValidStaffEmail_(email)'));
  assert.ok(registration.includes('Email wajib diisi'));
  assert.ok(registration.includes('normalizeEmail_(r[4])===email'));
  assert.ok(registration.includes('normalizeEmail_(r[10])===email'));
- assert.ok(registration.includes('getRange(users.getLastRow()+1,1,1,12)'));
- assert.ok(registration.includes("'WALI_SANTRI','AKTIF',now,now,'',email,false"));
+ assert.ok(registration.includes('MailApp.sendEmail'));
+ assert.ok(registration.includes('requiresOtp:true'));
+ assert.ok(!registration.includes("users.getRange(users.getLastRow()+1"));
+ assert.ok(verify.includes('constantTimeEqual_'));
+ assert.ok(verify.includes('attempts>=5'));
+ assert.ok(verify.includes("ch.email,true"));
+ assert.ok(verify.includes('cache.remove(key)'));
+});
+
+
+test('Wali email changes synchronize Users and WaliSantri but remain unverified until OTP succeeds',()=>{
+ const helper=extractFunction(code,'sendWaliEmailVerification_'),verify=extractFunction(code,'verifyWaliEmail');
+ const profile=extractFunction(code,'updateMyWaliProfile'),adminEdit=extractFunction(code,'updateWaliSantri');
+ assert.ok(helper.includes("users.getRange(user.rowNumber,11,1,2).setValues([[email,false]])"));
+ assert.ok(helper.includes("waliSheet.getRange(waliRow.rowNumber,5).setValue(email)"));
+ assert.ok(helper.includes('MailApp.sendEmail'));
+ assert.ok(verify.includes('constantTimeEqual_')&&verify.includes('attempts>=5'));
+ assert.ok(verify.includes('users.getRange(user.rowNumber,12).setValue(true)'));
+ assert.ok(profile.includes('sendWaliEmailVerification_(session.userId,email)'));
+ assert.ok(adminEdit.includes('sendWaliEmailVerification_(userId,email)'));
+ assert.ok(adminEdit.includes('requireRole_(token,[FMART.ROLES.SUPERADMIN])'));
+});
+
+test('Wali login remains password-only while password recovery requires a verified email',()=>{
+ const login=extractFunction(code,'login'),reset=extractFunction(code,'requestWaliPasswordReset');
+ assert.ok(login.includes("rowRole === 'WALI_SANTRI'"));
+ assert.ok(!login.includes('emailVerified')&&!login.includes('verifyWaliEmail'));
+ assert.ok(reset.includes("row[11] || '').toUpperCase() === 'TRUE'")||reset.includes('row[11] === true'));
+});
+
+test('Admin distinguishes formal active links, pending requests and order-only saved addresses',()=>{
+ const admin=extractFunction(code,'getUserManagement');
+ assert.ok(admin.includes("==='AKTIF'"));
+ assert.ok(admin.includes("==='MENUNGGU_VERIFIKASI'"));
+ assert.ok(admin.includes("==='ALAMAT_PESANAN'"));
+ assert.ok(admin.includes('savedAddresses:savedAddresses'));
+ assert.ok(admin.includes('emailVerified:!!u.emailVerified'));
+ assert.ok(index.includes('Relasi resmi · Aktif:'));
+ assert.ok(index.includes('Menunggu verifikasi Admin'));
+ assert.ok(index.includes('Alamat Pemesanan'));
+ assert.ok(index.includes('data-wali-request="approve"'));
+ assert.ok(index.includes('data-wali-request="reject"'));
+ assert.ok(!index.includes('Hubungan aktif otomatis jika nomor HP akun Wali'));
+});
+
+test('Only Admin and Superadmin can approve formal Wali-Santri relationships',()=>{
+ const approve=extractFunction(code,'approveWaliSantriRequest'),reject=extractFunction(code,'rejectWaliSantriRequest'),link=extractFunction(code,'linkWaliSantri');
+ for(const fn of [approve,reject,link])assert.ok(fn.includes('requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN])'));
+ assert.ok(approve.includes("setValue('AKTIF')"));
+ assert.ok(reject.includes("setValue('NONAKTIF')"));
+});
+
+test('Wali registration and profile interfaces provide OTP verification without requiring OTP at login',()=>{
+ assert.ok(index.includes('verifyWaliRegistrationOtp'));
+ assert.ok(index.includes('verifyWaliEmail'));
+ assert.ok(index.includes('Verifikasi Email Pendaftaran'));
+ assert.ok(index.includes('Verifikasi Email Wali'));
+ assert.ok(index.includes('async function saveWaliProfile(event)'));
+ assert.ok(index.includes('autocomplete="current-password"'));
 });
 
 test('Wali password recovery uses a rate-limited, expiring, one-time email link without revealing account existence',()=>{
