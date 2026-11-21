@@ -1123,6 +1123,15 @@ test('Admin report, audit, and integration loading failures have retryable recov
 });
 
 
+test('Warehouse and Supervisor dashboards do not receive Wali payment queue details',()=>{
+ const dashboard=extractFunction(code,'getOperationsDashboard');
+ assert.ok(dashboard.includes("const canViewWaliPaymentQueue=[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN].indexOf(session.role)>=0;"));
+ assert.ok(dashboard.includes('const pendingPayments=canViewWaliPaymentQueue?pendingRows.slice(0,queueLimit).map(mapPendingPayment):[];'));
+ const cashier=dashboard.slice(dashboard.indexOf('if(session.role===FMART.ROLES.KASIR){'),dashboard.indexOf('return {ok:true,user:',dashboard.indexOf('if(session.role===FMART.ROLES.KASIR){')));
+ assert.ok(cashier.includes('pendingPayments:waliQrisQueue'),'Kasir must retain its authorized Wali QRIS queue.');
+ assert.ok(dashboard.includes('pendingPayments:pendingPayments'),'Admin/Superadmin payment workspace must retain the full authorized queue.');
+});
+
 test('Gudang dashboard exposes the internal waiting-stock queue as a filterable stage',()=>{
  const start=index.indexOf('function renderOpsWarehouseDashboard(){');
  const end=index.indexOf('function renderOpsWarehouse(){',start);
