@@ -102,6 +102,15 @@ test('Product photos are served privately through an authenticated, folder-scope
  assert.ok(index.includes("runServer('getProductPhotoData',state.token,fileId)"));
  assert.ok(index.includes('data-drive-file-id'));
 });
+test('Product photo preview ignores stale async compression results after the Admin modal is replaced',()=>{
+ const handler=index.slice(index.indexOf("const productPhotoInput=$('prdPhotoFile')"),index.indexOf("$('savePrd').onclick"));
+ assert.ok(handler.includes("const productPhotoInput=$('prdPhotoFile'),productPhotoPreview=$('prdPhotoPreview'),productPhotoPreviewWrap=$('prdPhotoPreviewWrap'),productPhotoInfo=$('prdPhotoCompressionInfo')"));
+ assert.ok(handler.includes("if(requestId!==photoCompressionRequest||$('prdPhotoFile')!==productPhotoInput)return"),'A completed compression must not write into a replaced or closed modal.');
+ assert.ok(handler.includes('if(!productPhotoPreview||!productPhotoPreviewWrap||!productPhotoInfo)return'),'Preview updates must verify all expected elements before assigning src.');
+ assert.ok(handler.includes('productPhotoPreview.src=compressedProductPhoto.dataUrl'));
+ assert.ok(!handler.includes("$('prdPhotoPreview').src="),'The async callback must not re-query an element that may no longer exist.');
+});
+
 test('Product photo upload accepts Android files with missing or nonstandard MIME metadata',()=>{
  const fn=index.match(/    function productPhotoMimeType_\(file\)\{[\s\S]*?\n    \}/)[0].trim(),sandbox={};
  vm.runInNewContext(fn+'\nthis.detect=productPhotoMimeType_;',sandbox);
