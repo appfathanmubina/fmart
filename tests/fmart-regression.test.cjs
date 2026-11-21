@@ -2141,3 +2141,41 @@ test('Wali saved address selection and management stay independent from formal c
  assert.ok(index.includes('removeMyWaliSavedAddress'));
  assert.ok(index.includes('Simpan Alamat Pemesanan'));
 });
+
+test('Wali login presentation is concise and keeps password visibility control accessible',()=>{
+ assert.ok(index.includes('<p id="loginIntro" aria-hidden="true"></p>'));
+ assert.ok(index.includes('id="usernameHint" aria-hidden="true"'));
+ assert.ok(index.includes('class="password-toggle" id="togglePassword"'));
+ assert.ok(index.includes('<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'));
+ assert.ok(index.includes('class="login-account-actions"'));
+ assert.ok(index.includes('id="forgotPasswordBtn"')&&index.includes('id="registerBtn"'));
+ assert.ok(index.includes('top:50%;bottom:auto;right:10px;transform:translateY(-50%)'));
+});
+
+test('Wali cart provides a plus-and-cart shortcut back to the product catalogue, including empty cart',()=>{
+ assert.ok(index.includes('id="cartAddMoreBtn" aria-label="Tambah belanjaan"'));
+ assert.ok(index.includes('class="cart-add-more-btn"'));
+ assert.ok(index.includes("if($('cartAddMoreBtn'))$('cartAddMoreBtn').onclick=showBuyerHome;"));
+ assert.ok(index.includes("if(!items.length){$('cartBody').innerHTML="));
+});
+
+test('Wali order history uses horizontal status tabs and removes secondary dropdown filters',()=>{
+ assert.ok(index.includes('class="order-status-tabs"'));
+ assert.ok(index.includes('data-order-status='));
+ assert.ok(index.includes("document.querySelectorAll('[data-order-status]')"));
+ assert.ok(!index.includes('id="orderHistoryChild"'));
+ assert.ok(!index.includes('id="orderHistoryPayment"'));
+ assert.ok(index.includes('order-card-compact'));
+});
+
+test('Wali profile has exactly three quick actions and reuses the existing logout flow',()=>{
+ const profile=extractFunction(index,'renderWaliProfileManagement');
+ assert.ok(profile.includes('id="waliEnablePush"'));
+ assert.ok(profile.includes('id="waliChangePassword"'));
+ assert.ok(profile.includes('id="waliProfileLogout"'));
+ assert.ok(profile.includes('logoutCurrentSession_'));
+ assert.ok(!profile.includes('id="waliOpenNotifications"'));
+ assert.ok(!profile.includes('id="waliOpenHelp"'));
+ assert.ok(index.includes('grid-template-columns:repeat(3,minmax(0,1fr))'));
+ assert.ok(index.includes('async function logoutCurrentSession_()'));
+});
