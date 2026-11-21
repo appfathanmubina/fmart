@@ -1135,3 +1135,52 @@ Urutan:
 **Kriteria lulus:** seluruh skenario bagian 10 memiliki bukti aktual; email reset benar-benar diterima; token hanya sekali pakai dan tidak dapat dipakai setelah kedaluwarsa; sesi lama ditolak setelah reset; login Admin/OTP tidak terganggu. Jika deployment/runtime belum tersedia, tetap BLOCKED dan jangan menyatakan siap produksi.
 
 **Batasan:** ChatGPT tidak memiliki akses ke project Apps Script, akun Gmail, Script Properties, Spreadsheet, atau Drive produksi dari repository GitHub. Jangan melakukan deployment atau mengubah Script Properties produksi sebagai bagian tahap ini.
+
+
+## Tahap 44 — Audit final portal Wali dan penyederhanaan pengalaman belanja (21 November 2026)
+
+**Status:** perubahan source disiapkan pada branch `audit/tahap-44-wali-portal-final`; menunggu PR review dan CI. Runtime Apps Script tetap NOT RUN karena tidak tersedia deployment pengujian.
+
+### Audit endpoint dan kepemilikan data
+- Login Wali memakai nomor HP/email dan password yang sama; reset password tetap melalui email. Admin OTP tidak diubah.
+- Profil: `getMyProfile` terikat pada sesi; `getWaliProfileManagement` dan `updateMyWaliProfile` khusus role WALI_SANTRI. Perbaikan Tahap 44 menormalisasi email dan menolak email yang sudah dipakai akun Wali lain sebelum menulis data. Baris akun Wali juga divalidasi sebelum perubahan profil.
+- Relasi: pencarian/pengajuan dilakukan dari sesi Wali; daftar anak aktif diambil dari relasi aktif; pengajuan pending tidak masuk daftar anak aktif. Endpoint persetujuan/perubahan relasi tetap dibatasi Admin/Superadmin.
+- Keranjang: baca dibatasi pada userId sesi; update/hapus memeriksa pemilik baris keranjang.
+- Checkout: role Wali, baris keranjang harus dimiliki akun aktif, selectedCartIds harus cocok seluruhnya, request key/fingerprint mencegah replay dengan payload berbeda. Checkout memilih Santri dari daftar alamat tersimpan milik Wali. Backend memvalidasi status relasi AKTIF/ALAMAT_PESANAN, kepemilikan Wali, dan status aktif pada master Santri; pesanan menyimpan santriId serta snapshot penerima.
+- Pembayaran: pengajuan QRIS memeriksa pemilik pesanan, status MENUNGGU_PEMBAYARAN, nominal total, signature/ukuran/jenis bukti, folder bukti, dan request key. Detail pesanan serta bukti pengantaran memeriksa pemilik order.
+- Status/notifikasi: daftar pesanan dibatasi pemilik; notifikasi dibatasi userId dan tandai baca memeriksa kepemilikan notifikasi. Komplain dan konfirmasi diterima memeriksa pemilik serta state transition.
+- Bukti pengantaran: endpoint Wali hanya mengembalikan bukti dari pesanan milik Wali dan folder khusus yang berbeda dari folder bukti pembayaran, termasuk validasi parent folder dan tipe/ukuran file.
+
+### Penyederhanaan UI Wali
+- Menghapus petunjuk berulang pada Keranjang, pemilihan anak, dan checkout.
+- Mempertahankan nama field, pilihan metode, rincian barang, total tagihan, status pesanan, dan pesan validasi yang dibutuhkan untuk transaksi.
+- Tidak mengubah katalog produk, pembayaran QRIS, atau navigasi. Checkout kini memilih penerima dari alamat Santri tersimpan.
+- Menambahkan regression test untuk copy ringkas dan validasi email profil.
+
+### Batas validasi
+- Semua temuan di atas adalah hasil pembacaan source; tes otomatis hanya mengunci kontrak source.
+- Tidak membuktikan pengiriman email, akses Spreadsheet/Drive, QRIS merchant, tampilan browser/perangkat, atau transaksi runtime.
+- Tidak ada perubahan database, akun, Script Properties, Drive, atau deployment Apps Script.
+
+
+### Catatan keputusan alur penerima checkout
+Source saat ini masih memakai formulir penerima manual dan menyimpan snapshot penerima pada pesanan. Hal ini berbeda dari pola penerima tersimpan berbasis relasi Wali–Santri aktif yang pernah menjadi arah kebutuhan: memilih anak yang sudah terhubung sebagai penerima, menolak relasi pending, dan memvalidasi kepemilikan relasi di backend. Tahap 44 tidak mengubah kontrak checkout ini karena perubahan akan memengaruhi perilaku transaksi dan kompatibilitas pesanan lama. Perlu keputusan pemilik proses sebelum mengubah checkout dari penerima manual menjadi daftar penerima terverifikasi.
+
+
+### Perubahan keputusan penerima — daftar alamat mandiri Wali
+Pemilik proses menetapkan bahwa Wali boleh menyimpan beberapa Santri aktif dari master Santri sebagai alamat pemesanan tanpa menunggu verifikasi Admin. Implementasi menggunakan status relasi khusus `ALAMAT_PESANAN` di sheet `WaliSantriSantri`, terpisah dari status relasi formal `AKTIF`.
+- Wali mencari dan menyimpan Santri aktif; data relasi berasal dari sesi Wali, bukan WaliId dari browser.
+- Wali dapat menyimpan beberapa alamat dan menghapus alamat yang berstatus ALAMAT_PESANAN.
+- Checkout hanya menerima santriId yang memiliki relasi AKTIF atau ALAMAT_PESANAN untuk Wali yang sedang login; server memeriksa ulang keberadaan dan status aktif pada master Santri.
+- Alamat tersimpan tidak memberi akses dashboard anak atau data akademik: `getChildrenForWali_` tetap hanya mengembalikan relasi AKTIF.
+- Order menyimpan santriId dan snapshot penerima sehingga riwayat lama tetap terbaca.
+- Relasi resmi pending yang sudah ada tidak otomatis menjadi alamat; Wali dapat membatalkannya lalu menyimpan alamat melalui alur baru.
+- UAT runtime dan pemeriksaan data aktual masih diperlukan sebelum deployment.
+
+
+### Tahap 44 — Alamat pemesanan mandiri Wali
+- Wali dapat mencari dan menyimpan beberapa Santri aktif dari master sebagai alamat pemesanan tanpa verifikasi Admin.
+- Alamat baru berstatus ALAMAT_PESANAN, tidak mengubah relasi resmi, dan tidak membuka akses dashboard akademik.
+- Wali dapat menghapus alamat pemesanan yang disimpan sendiri; relasi resmi AKTIF tidak dapat dihapus dari UI Wali.
+- Checkout memilih dari daftar alamat tersimpan. Backend memeriksa user session, kepemilikan relasi, keberadaan Santri, dan status aktif sebelum membuat pesanan.
+- UAT runtime belum dilakukan. Tidak ada perubahan Spreadsheet/Drive produksi atau deployment.
