@@ -2018,3 +2018,60 @@ test('Admin responsive source defines desktop sidebar, tablet layout, mobile scr
   assert.ok(index.includes('body.admin-portal #opsMainBody .table-wrap{width:100%;max-width:100%;min-width:0;overflow-x:auto'));
   assert.ok(index.includes('body.admin-portal .modal-card{max-height:min(88vh,900px)'));
 });
+
+
+test('Wali can authenticate with either registered phone or email while Admin portal login remains isolated',()=>{
+ const login=extractFunction(code,'login');
+ assert.ok(login.includes('isWaliEmailLogin'));
+ assert.ok(login.includes('normalizeEmail_(rows[i][10])'));
+ assert.ok(login.includes('normalizeEmail_(r[4])'));
+ assert.ok(login.includes("rowRole === 'WALI_SANTRI'"),'Buyer portal lookup must be limited to Wali accounts.');
+ assert.ok(login.includes('LOGIN_MAX_FAILURES')&&login.includes('recordLoginFailure_')&&login.includes('verifyPassword_'));
+ assert.ok(login.includes("portalMode === 'ADMINFMART16720'"),'Staff login must retain its separate portal path.');
+ assert.ok(login.includes('issueAdminLoginOtp_'),'Admin login must continue to require email OTP.');
+});
+
+test('New Wali registration requires a unique email and stores it in the existing Users schema',()=>{
+ const registration=extractFunction(code,'registerWaliSantri');
+ assert.ok(registration.includes('email = normalizeEmail_(email)'));
+ assert.ok(registration.includes('isValidStaffEmail_(email)'));
+ assert.ok(registration.includes('Email wajib diisi'));
+ assert.ok(registration.includes('normalizeEmail_(r[4])===email'));
+ assert.ok(registration.includes('normalizeEmail_(r[10])===email'));
+ assert.ok(registration.includes('getRange(users.getLastRow()+1,1,1,12)'));
+ assert.ok(registration.includes("'WALI_SANTRI','AKTIF',now,now,'',email,false"));
+});
+
+test('Wali password recovery uses a rate-limited, expiring, one-time email link without revealing account existence',()=>{
+ const request=extractFunction(code,'requestWaliPasswordReset');
+ const reset=extractFunction(code,'resetWaliPassword');
+ const key=extractFunction(code,'waliPasswordResetTokenKey_');
+ assert.ok(request.includes('const generic = {ok:true'));
+ assert.ok(request.includes('attempts >= 3')&&request.includes("cache.put(cooldownKey, '1', 60)"));
+ assert.ok(request.includes('matches.length !== 1'));
+ assert.ok(request.includes("row[5] || '').toUpperCase() === 'WALI_SANTRI'"));
+ assert.ok(request.includes('cache.put(tokenKey, cachePayload, 1800)'));
+ assert.ok(request.includes('MailApp.sendEmail'));
+ assert.ok(reset.includes('payload.userId'));
+ assert.ok(reset.includes("row.values[5] || '').toUpperCase() !== 'WALI_SANTRI'"));
+ assert.ok(reset.includes('row.values[6] || '').toUpperCase() !== 'AKTIF'));
+ assert.ok(reset.includes('cache.remove(key)'));
+ assert.ok(reset.includes('sheet.getRange(row.rowNumber, 9).setValue(now)'),'Password reset must invalidate old sessions through the auth timestamp.');
+ assert.ok(reset.includes('sheet.getRange(row.rowNumber, 12).setValue(true)'),'Successful email reset proves the account email.');
+ assert.ok(key.includes('DigestAlgorithm.SHA_256'));
+});
+
+test('Wali login, registration and reset UI use native credential autofill and concise email recovery',()=>{
+ assert.ok(index.includes('autocomplete="username"'));
+ assert.ok(index.includes('autocomplete="current-password"'));
+ assert.ok(index.includes('autocomplete="new-password"'));
+ assert.ok(index.includes('storeRememberedLoginCredential'));
+ assert.ok(index.includes('restoreRememberedLoginCredential'));
+ assert.ok(index.includes('id="usernameLabel" for="username">Nomor HP / Email'));
+ assert.ok(index.includes('id="regEmail" type="email" autocomplete="email"')&&index.includes('maxlength="160" required'));
+ assert.ok(index.includes('id="forgotPasswordBtn"'));
+ assert.ok(index.includes("runServer('requestWaliPasswordReset',email)"));
+ assert.ok(index.includes("runServer('resetWaliPassword',token,pw,confirm)"));
+ assert.ok(index.includes("new URLSearchParams(window.location.search).get('reset')"));
+ assert.ok(index.includes('id="loginOtpPanel"'),'Existing Admin OTP UI must remain intact.');
+});
