@@ -1420,31 +1420,38 @@ test('Modal keyboard navigation traps Tab and Shift+Tab inside the topmost visib
 });
 
 
-test('Wali product card, detail, and cart images fall back cleanly when an image URL fails',()=>{
+test('Product catalog keeps the catalog icon visible until each uploaded photo loads successfully',()=>{
  const cardStart=index.indexOf('function productCardMarkup(p){');
  const cardEnd=index.indexOf('function bindBuyerProductFeedObserver',cardStart);
  assert.ok(cardStart>=0&&cardEnd>cardStart);
  const card=index.slice(cardStart,cardEnd);
  assert.ok(card.includes('const photo=safeUrl(p.photoUrl)'));
  assert.ok(card.includes('data-image-fallback'));
- assert.ok(card.includes('product-photo-fallback hidden'));
+ assert.ok(card.includes('img class="hidden"'));
+ assert.ok(card.includes('product-photo-fallback'));
+ assert.ok(card.includes('productCatalogIconMarkup_'));
  const detailStart=index.indexOf('async function openProduct(productId){');
  const detailEnd=index.indexOf('function getCurrentDetailVariation',detailStart);
  assert.ok(detailStart>=0&&detailEnd>detailStart);
  const detail=index.slice(detailStart,detailEnd);
  assert.ok(detail.includes('data-image-fallback'));
- assert.ok(detail.includes('detail-photo-placeholder hidden'));
+ assert.ok(detail.includes('detail-photo-placeholder'));
  const cartStart=index.indexOf('function renderCart(cart){');
  const cartEnd=index.indexOf('async function changeCartQty',cartStart);
  assert.ok(cartStart>=0&&cartEnd>cartStart);
  const cart=index.slice(cartStart,cartEnd);
  assert.ok(cart.includes('data-image-fallback'));
- assert.ok(cart.includes('cart-photo-fallback hidden'));
+ assert.ok(cart.includes('cart-photo-fallback'));
+ assert.ok(index.includes("document.addEventListener('load',e=>"));
  assert.ok(index.includes('.cart-photo img{width:100%;height:100%;object-fit:cover;display:block}'));
  const handler=index.indexOf("document.addEventListener('error',e=>{");
  assert.ok(handler>=0);
  assert.ok(index.slice(handler,handler+500).includes("img.hasAttribute('data-image-fallback')"));
  assert.ok(index.slice(handler,handler+500).includes('img.nextElementSibling'));
+ const adminCatalog=index.indexOf("$('catalogProductGrid').innerHTML");
+ const supervisorCatalog=index.indexOf("$('supervisorCatalogGrid').innerHTML");
+ assert.ok(adminCatalog>=0&&index.slice(adminCatalog,adminCatalog+1400).includes('catalog-product-photo-fallback'));
+ assert.ok(supervisorCatalog>=0&&index.slice(supervisorCatalog,supervisorCatalog+1400).includes('catalog-product-photo-fallback'));
 });
 
 test('Saved recipient, payment-proof, and password fields expose native required semantics',()=>{
