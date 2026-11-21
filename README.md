@@ -93,7 +93,7 @@ Pembatasan menu di sidebar hanya untuk pengalaman pengguna; setiap endpoint back
 
 Matriks enam role petugas di atas mengikuti navigasi `configureStaffNavigation()` dan daftar role backend pada `apps-script/Code.gs`. Supervisor telah terdaftar pada source, form akun, navigasi, dan regression test. Catatan historis README yang menyebut Supervisor belum tersedia adalah kondisi saat catatan itu dibuat dan telah digantikan oleh dokumentasi Tahap 40.5–40.12 serta addendum Tahap 41.1.
 
-**Temuan untuk audit hak akses Tahap 41.2 (belum diubah pada Tahap 41.1):** endpoint backend `verifyPayment()` mengizinkan `ADMIN`, `SUPERADMIN`, dan `KASIR`, tetapi menu `staffPaymentVerification` pada UI hanya tersedia untuk `SUPERADMIN` dan `KASIR`. Endpoint `getCashierSalesHistory()` juga mengizinkan Admin membaca seluruh riwayat POS, sementara menu `staffSalesHistory` pada UI hanya diberikan kepada Supervisor. Perbedaan UI/backend dicatat untuk keputusan dan pengujian lanjutan, bukan diubah pada Tahap 41.1.
+**Temuan untuk audit hak akses Tahap 41.2 (belum diubah pada Tahap 41.1):** endpoint backend `verifyPayment()` mengizinkan `ADMIN`, `SUPERADMIN`, dan `KASIR`. Admin tidak memiliki tombol navigasi terpisah `staffPaymentVerification`, tetapi antrean dan aksi verifikasi pembayaran Wali tersedia di dalam workspace POS Admin. Demikian pula `getCashierSalesHistory()` mendukung riwayat sesuai role: Kasir melihat transaksi sendiri, Admin/Superadmin dapat melihat riwayat melalui workspace POS, dan Supervisor memiliki halaman riwayat lintas kasir yang khusus baca-saja. Karena itu, perbedaan tombol navigasi bukan bukti ketidaksesuaian hak akses; seluruh jalur tetap perlu diuji pada runtime.
 
 ## Migrasi hash password (bertahap)
 
