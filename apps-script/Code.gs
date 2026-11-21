@@ -347,29 +347,96 @@ function phoneEquals_(a, b) {
   return !!na && !!nb && na === nb;
 }
 
+function waliEmailOtpKey_(id){return 'FMART_WALI_EMAIL_OTP_'+Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(id))).slice(0,40);}
+function sendWaliEmailVerification_(userId,email){
+  email=normalizeEmail_(email);
+  if(!isValidStaffEmail_(email)||email.length>160)throw new Error('Alamat email tidak valid.');
+  const ss=getSS_(),users=ss.getSheetByName('Users'),waliSheet=ss.getSheetByName('WaliSantri'),user=findRowById_(users,String(userId),1);
+  if(!user||String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI')throw new Error('Akun Wali Santri tidak ditemukan.');
+  const wali=findWaliByUserId_(ss,String(userId));if(!wali)throw new Error('Data Wali Santri tidak ditemukan.');
+  const rows=readRows_(users),walis=readRows_(waliSheet);
+  if(rows.some(r=>String(r[0]||'')!==String(userId)&&String(r[5]||'').toUpperCase()==='WALI_SANTRI'&&normalizeEmail_(r[10])===email)||
+     walis.some(r=>String(r[1]||'')!==String(userId)&&normalizeEmail_(r[4])===email))throw new Error('Email sudah digunakan akun Wali Santri lain.');
+  const challengeId=Utilities.getUuid()+Utilities.getUuid(),code=String(100000+(parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16)%900000));
+  const cache=CacheService.getScriptCache(),key=waliEmailOtpKey_(challengeId);
+  cache.put(key,JSON.stringify({userId:String(userId),email:email,hash:adminOtpHash_(challengeId,code),createdAt:Date.now(),attempts:0}),600);
+  try{MailApp.sendEmail({to:email,subject:'Verifikasi Email FMart',body:'Kode verifikasi email FMart Anda: '+code+'\\n\\nKode berlaku 10 menit dan hanya dapat digunakan satu kali. Jangan berikan kode ini kepada siapa pun.',name:'FMart'});}
+  catch(err){cache.remove(key);console.error('Pengiriman OTP Wali gagal:',err);throw new Error('Email verifikasi belum dapat dikirim. Data email akun tidak diubah.');}
+  users.getRange(user.rowNumber,11,1,2).setValues([[email,false]]);
+  users.getRange(user.rowNumber,9).setValue(new Date());
+  const waliRow=findRowById_(waliSheet,String(wali.waliId),1);
+  if(waliRow)waliSheet.getRange(waliRow.rowNumber,5).setValue(email);
+  SpreadsheetApp.flush();
+  return {ok:true,challengeId:challengeId,maskedEmail:maskEmail_(email),message:'Kode verifikasi telah dikirim. Email baru aktif setelah kode diverifikasi.'};
+}
+function verifyWaliEmail(challengeId,code){
+  challengeId=String(challengeId||'').trim();code=String(code||'').trim();
+  if(!challengeId||!/^[0-9]{6}$/.test(code))throw new Error('Kode verifikasi tidak valid.');
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{
+    const cache=CacheService.getScriptCache(),key=waliEmailOtpKey_(challengeId),raw=cache.get(key);
+    if(!raw)throw new Error('Kode verifikasi kedaluwarsa atau sudah digunakan.');
+    const ch=JSON.parse(raw);
+    if(ch.attempts>=5){cache.remove(key);throw new Error('Batas percobaan tercapai.');}
+    if(!constantTimeEqual_(adminOtpHash_(challengeId,code),ch.hash)){
+      ch.attempts++;if(ch.attempts>=5)cache.remove(key);else cache.put(key,JSON.stringify(ch),Math.max(1,600-Math.floor((Date.now()-ch.createdAt)/1000)));
+      throw new Error('Kode verifikasi salah. Sisa percobaan: '+Math.max(0,5-ch.attempts)+'.');
+    }
+    const ss=getSS_(),users=ss.getSheetByName('Users'),user=findRowById_(users,ch.userId,1);
+    if(!user||String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI'||String(user.values[6]||'').toUpperCase()!=='AKTIF'||normalizeEmail_(user.values[10])!==ch.email)throw new Error('Data akun berubah. Silakan minta kode baru.');
+    users.getRange(user.rowNumber,12).setValue(true);cache.remove(key);
+    writeAudit_(ch.userId,'WALI_SANTRI','VERIFY_WALI_EMAIL','USER',ch.userId,'',JSON.stringify({email:maskEmail_(ch.email)}),'Email Wali Santri berhasil diverifikasi');
+    SpreadsheetApp.flush();return {ok:true,message:'Email berhasil diverifikasi.'};
+  }finally{lock.releaseLock();}
+}
+function verifyWaliRegistrationOtp(challengeId,code){
+  challengeId=String(challengeId||'').trim();code=String(code||'').trim();
+  if(!challengeId||!/^[0-9]{6}$/.test(code))throw new Error('Kode OTP tidak valid.');
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{
+    const cache=CacheService.getScriptCache(),key=waliEmailOtpKey_('REGISTER_'+challengeId),raw=cache.get(key);
+    if(!raw)throw new Error('Kode OTP kedaluwarsa atau sudah digunakan. Silakan daftar kembali.');
+    const ch=JSON.parse(raw);
+    if(ch.attempts>=5){cache.remove(key);throw new Error('Batas percobaan OTP tercapai. Silakan daftar kembali.');}
+    if(!constantTimeEqual_(adminOtpHash_(challengeId,code),ch.hash)){
+      ch.attempts++;if(ch.attempts>=5)cache.remove(key);else cache.put(key,JSON.stringify(ch),Math.max(1,600-Math.floor((Date.now()-ch.createdAt)/1000)));
+      throw new Error('Kode OTP salah. Sisa percobaan: '+Math.max(0,5-ch.attempts)+'.');
+    }
+    const ss=getSS_(),users=ss.getSheetByName('Users'),waliSheet=ss.getSheetByName('WaliSantri'),userRows=readRows_(users),waliRows=readRows_(waliSheet);
+    if(waliRows.some(r=>phoneEquals_(r[3],ch.noHp))||userRows.some(r=>String(r[1]||'').trim()===ch.noHp))throw new Error('Nomor HP sudah terdaftar. Silakan login atau gunakan nomor lain.');
+    if(waliRows.some(r=>normalizeEmail_(r[4])===ch.email)||userRows.some(r=>String(r[5]||'').toUpperCase()==='WALI_SANTRI'&&normalizeEmail_(r[10])===ch.email))throw new Error('Email sudah digunakan akun Wali Santri lain.');
+    const now=new Date(),userId=makeFMartId_('USR'),waliId=makeFMartId_('WAL');
+    users.getRange(users.getLastRow()+1,1,1,12).setValues([[userId,ch.noHp,ch.hash,ch.salt,ch.nama,'WALI_SANTRI','AKTIF',now,now,'',ch.email,true]]);
+    waliSheet.getRange(waliSheet.getLastRow()+1,1,1,9).setValues([[waliId,userId,ch.nama,ch.noHp,ch.email,ch.alamat,'AKTIF',now,now]]);
+    users.getRange(users.getLastRow(),2).setNumberFormat('@');waliSheet.getRange(waliSheet.getLastRow(),4).setNumberFormat('@');
+    cache.remove(key);SpreadsheetApp.flush();
+    writeAudit_('','SYSTEM','REGISTER_WALI_SANTRI','USER',userId,'',JSON.stringify({username:ch.noHp,role:'WALI_SANTRI'}),'Pendaftaran Wali Santri selesai setelah OTP email');
+    return {ok:true,userId:userId,waliId:waliId,message:'Email terverifikasi dan pendaftaran berhasil. Silakan login menggunakan nomor HP atau email.'};
+  }finally{lock.releaseLock();}
+}
+
 /** Pendaftaran mandiri Wali Santri. Akun langsung AKTIF, tanpa relasi anak sampai ditambahkan. */
-function registerWaliSantri(nama, noHp, password, email, alamat) {
-  const lock = LockService.getScriptLock(); lock.waitLock(10000);
-  try {
-    nama = String(nama || '').trim(); noHp = normalizePhone_(noHp); password = String(password || '');
-    email = normalizeEmail_(email); alamat = String(alamat || '').trim();
-    if (!nama) throw new Error('Nama wajib diisi.');
-    if (!noHp) throw new Error('Nomor HP tidak valid. Gunakan format 08xxxxxxxxxx.');
-    if (password.length < FMART.PASSWORD_MIN_LENGTH) throw new Error('Password minimal ' + FMART.PASSWORD_MIN_LENGTH + ' karakter.');
-    if (!email || email.length > 160 || !isValidStaffEmail_(email)) throw new Error('Email wajib diisi dengan format yang valid.');
-    const ss=getSS_(), users=ss.getSheetByName('Users'), waliSheet=ss.getSheetByName('WaliSantri');
-    if(!users||!waliSheet) throw new Error('Database FMart belum siap.');
-    const userRows=readRows_(users), waliRows=readRows_(waliSheet);
-    if(waliRows.some(r=>phoneEquals_(r[3],noHp))) throw new Error('Nomor HP sudah terdaftar. Silakan gunakan nomor lain atau login.');
-    if(userRows.some(r=>String(r[1]||'').trim()===noHp)) throw new Error('Nomor HP sudah digunakan sebagai akun.');
-    if(waliRows.some(r=>normalizeEmail_(r[4])===email) || userRows.some(r=>String(r[5]||'').toUpperCase()==='WALI_SANTRI' && normalizeEmail_(r[10])===email)) throw new Error('Email sudah digunakan oleh akun Wali Santri lain.');
-    const userId=makeFMartId_('USR'), waliId=makeFMartId_('WAL'), salt=Utilities.getUuid().replace(/-/g,''), hash=hashPassword_(password,salt), now=new Date();
-    users.getRange(users.getLastRow()+1,1,1,12).setValues([[userId,noHp,hash,salt,nama,'WALI_SANTRI','AKTIF',now,now,'',email,false]]);
-    waliSheet.getRange(waliSheet.getLastRow()+1,1,1,9).setValues([[waliId,userId,nama,noHp,email,alamat,'AKTIF',now,now]]);
-    users.getRange(users.getLastRow(),2).setNumberFormat('@'); waliSheet.getRange(waliSheet.getLastRow(),4).setNumberFormat('@');
-    SpreadsheetApp.flush(); writeAudit_('', 'SYSTEM', 'REGISTER_WALI_SANTRI', 'USER', userId, '', JSON.stringify({username:noHp,role:'WALI_SANTRI'}), 'Pendaftaran mandiri Wali Santri');
-    return {ok:true,userId:userId,waliId:waliId,message:'Pendaftaran berhasil. Silakan login menggunakan nomor HP atau email.'};
-  } finally { lock.releaseLock(); }
+function registerWaliSantri(nama,noHp,password,email,alamat){
+  nama=String(nama||'').trim();noHp=normalizePhone_(noHp);password=String(password||'');email=normalizeEmail_(email);alamat=String(alamat||'').trim();
+  if(!nama)throw new Error('Nama wajib diisi.');
+  if(!noHp)throw new Error('Nomor HP tidak valid. Gunakan format 08xxxxxxxxxx.');
+  if(password.length<FMART.PASSWORD_MIN_LENGTH)throw new Error('Password minimal '+FMART.PASSWORD_MIN_LENGTH+' karakter.');
+  if(!email||email.length>160||!isValidStaffEmail_(email))throw new Error('Email wajib diisi dengan format yang valid.');
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{
+    const ss=getSS_(),users=ss.getSheetByName('Users'),waliSheet=ss.getSheetByName('WaliSantri');
+    if(!users||!waliSheet)throw new Error('Database FMart belum siap.');
+    const userRows=readRows_(users),waliRows=readRows_(waliSheet);
+    if(waliRows.some(r=>phoneEquals_(r[3],noHp)))throw new Error('Nomor HP sudah terdaftar. Silakan gunakan nomor lain atau login.');
+    if(userRows.some(r=>String(r[1]||'').trim()===noHp))throw new Error('Nomor HP sudah digunakan sebagai akun.');
+    if(waliRows.some(r=>normalizeEmail_(r[4])===email)||userRows.some(r=>String(r[5]||'').toUpperCase()==='WALI_SANTRI'&&normalizeEmail_(r[10])===email))throw new Error('Email sudah digunakan oleh akun Wali Santri lain.');
+    const salt=Utilities.getUuid().replace(/-/g,''),hash=hashPassword_(password,salt),challengeId=Utilities.getUuid()+Utilities.getUuid();
+    const code=String(100000+(parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16)%900000)),key=waliEmailOtpKey_('REGISTER_'+challengeId);
+    CacheService.getScriptCache().put(key,JSON.stringify({nama:nama,noHp:noHp,email:email,alamat:alamat,salt:salt,hash:hash,otpHash:adminOtpHash_(challengeId,code),attempts:0,createdAt:Date.now()}),600);
+    try{MailApp.sendEmail({to:email,subject:'Verifikasi Pendaftaran FMart',body:'Kode OTP pendaftaran FMart Anda: '+code+'\\n\\nKode berlaku 10 menit. Masukkan kode ini untuk menyelesaikan pendaftaran.',name:'FMart'});}
+    catch(err){CacheService.getScriptCache().remove(key);console.error('OTP pendaftaran Wali gagal:',err);throw new Error('Email OTP belum dapat dikirim. Pendaftaran belum disimpan. Periksa email atau coba kembali.');}
+    return {ok:true,requiresOtp:true,challengeId:challengeId,maskedEmail:maskEmail_(email),message:'Kode OTP telah dikirim. Masukkan kode untuk menyelesaikan pendaftaran.'};
+  }finally{lock.releaseLock();}
 }
 
 
@@ -578,49 +645,22 @@ function getWaliProfileManagement(token){
 }
 
 /** Wali hanya dapat mengubah data kontak non-login miliknya sendiri. */
-function updateMyWaliProfile(token, nama, email, alamat) {
-  const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
-  nama = String(nama || '').trim().slice(0,120);
-  email = normalizeEmail_(email).slice(0,160);
-  alamat = String(alamat || '').trim().slice(0,500);
-  if (!nama) throw new Error('Nama wajib diisi.');
-  if (email && !isValidStaffEmail_(email)) throw new Error('Format email tidak valid.');
-  const lock = LockService.getScriptLock();
-  lock.waitLock(10000);
-  try {
-    const ss = getSS_();
-    const waliSheet = ss.getSheetByName('WaliSantri');
-    const usersSheet = ss.getSheetByName('Users');
-    const waliRows = readRows_(waliSheet);
-    const waliIndex = waliRows.findIndex(function(row) {
-      return String(row[1] || '') === String(session.userId) && String(row[6] || '').toUpperCase() === 'AKTIF';
-    });
-    if (waliIndex < 0) throw new Error('Data Wali Santri tidak ditemukan atau tidak aktif.');
-    const userRow = findRowById_(usersSheet, session.userId, 1);
-    if (!userRow || String(userRow.values[5] || '').toUpperCase() !== 'WALI_SANTRI') throw new Error('Data akun pengguna tidak ditemukan.');
-    if (email) {
-      const duplicateWali = waliRows.some(function(row) {
-        return String(row[1] || '') !== String(session.userId) && normalizeEmail_(row[4]) === email;
-      });
-      const duplicateUser = readRows_(usersSheet).some(function(row) {
-        return String(row[0] || '') !== String(session.userId) &&
-          String(row[5] || '').toUpperCase() === 'WALI_SANTRI' && normalizeEmail_(row[10]) === email;
-      });
-      if (duplicateWali || duplicateUser) throw new Error('Email sudah digunakan oleh akun Wali Santri lain.');
-    }
-    const waliRowNumber = waliIndex + 2;
-    const before = {nama:String(waliRows[waliIndex][2] || ''),email:String(waliRows[waliIndex][4] || ''),alamat:String(waliRows[waliIndex][5] || '')};
-    const now = new Date();
-    waliSheet.getRange(waliRowNumber,3).setValue(nama);
-    waliSheet.getRange(waliRowNumber,5,1,2).setValues([[email,alamat]]);
-    waliSheet.getRange(waliRowNumber,9).setValue(now);
-    usersSheet.getRange(userRow.rowNumber,5).setValue(nama);
-    writeAudit_(session.userId,session.role,'UPDATE_MY_WALI_PROFILE','WALI_SANTRI',String(waliRows[waliIndex][0] || ''),JSON.stringify(before),JSON.stringify({nama:nama,email:email,alamat:alamat}),'Wali memperbarui profil pribadi');
-    SpreadsheetApp.flush();
-    return {ok:true,message:'Profil berhasil diperbarui.',profile:{nama:nama,noHp:String(waliRows[waliIndex][3] || ''),email:email,alamat:alamat,status:'AKTIF',username:String(userRow.values[1] || '')}};
-  } finally {
-    lock.releaseLock();
-  }
+function updateMyWaliProfile(token,nama,email,alamat){
+  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);nama=String(nama||'').trim().slice(0,120);email=normalizeEmail_(email).slice(0,160);alamat=String(alamat||'').trim().slice(0,500);
+  if(!nama)throw new Error('Nama wajib diisi.');if(email&&!isValidStaffEmail_(email))throw new Error('Format email tidak valid.');
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{
+    const ss=getSS_(),waliSheet=ss.getSheetByName('WaliSantri'),usersSheet=ss.getSheetByName('Users'),waliRows=readRows_(waliSheet);
+    const index=waliRows.findIndex(r=>String(r[1]||'')===String(session.userId)&&String(r[6]||'').toUpperCase()==='AKTIF');
+    if(index<0)throw new Error('Data Wali Santri tidak ditemukan atau tidak aktif.');
+    const user=findRowById_(usersSheet,session.userId,1);if(!user||String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI')throw new Error('Data akun pengguna tidak ditemukan.');
+    const oldEmail=normalizeEmail_(user.values[10]);let verification=null;
+    if(email!==oldEmail){if(!email)throw new Error('Email tidak boleh dikosongkan.');verification=sendWaliEmailVerification_(session.userId,email);}
+    const rowNumber=index+2,before={nama:String(waliRows[index][2]||''),email:String(waliRows[index][4]||''),alamat:String(waliRows[index][5]||'')},now=new Date();
+    waliSheet.getRange(rowNumber,3).setValue(nama);waliSheet.getRange(rowNumber,6).setValue(alamat);waliSheet.getRange(rowNumber,9).setValue(now);usersSheet.getRange(user.rowNumber,5).setValue(nama);
+    writeAudit_(session.userId,session.role,'UPDATE_MY_WALI_PROFILE','WALI_SANTRI',String(waliRows[index][0]||''),JSON.stringify(before),JSON.stringify({nama:nama,email:email,alamat:alamat}),'Wali memperbarui profil pribadi');
+    SpreadsheetApp.flush();return {ok:true,requiresEmailOtp:!!verification,challengeId:verification&&verification.challengeId,maskedEmail:verification&&verification.maskedEmail,message:verification?verification.message:'Profil berhasil diperbarui.',profile:{nama:nama,noHp:String(waliRows[index][3]||''),email:email,alamat:alamat,status:'AKTIF',username:String(user.values[1]||'')}};
+  }finally{lock.releaseLock();}
 }
 function cancelMyWaliSantriRequest(token, relationId) {
   const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
@@ -2488,8 +2528,8 @@ function getUserManagement(token) {
     const waliId=String(r[0]||''), userId=String(r[1]||''), u=userMap[userId]||{};
     const own=relRows.filter(function(x){return String(x[1]||'')===waliId;});
     const children=own.filter(function(x){return String(x[3]||'').toUpperCase()==='AKTIF';}).map(function(x){const c=santriMap[String(x[2]||'')];return c?{id:c.id,nis:c.nis,name:c.name,className:c.className,hubungan:String(x[5]||'')} : null;}).filter(Boolean);
-    const pendingRequests=own.filter(function(x){return String(x[3]||'').toUpperCase()==='MENUNGGU_VERIFIKASI';}).map(function(x){const c=santriMap[String(x[2]||'')];return c?{relasiId:String(x[0]||''),id:c.id,nis:c.nis,name:c.name,className:c.className,hubungan:String(x[5]||'')} : null;}).filter(Boolean);
-    return {waliId:waliId,userId:userId,username:String(u.username||''),nama:String(r[2]||u.nama||''),noHp:String(r[3]||''),email:String(r[4]||''),alamat:String(r[5]||''),status:String(r[6]||u.status||''),createdAt:dateIso_(r[7]),updatedAt:dateIso_(r[8]),lastLoginAt:dateIso_(u.lastLoginAt),children:children,pendingRequests:pendingRequests};
+    const pendingRequests=own.filter(function(x){return String(x[3]||'').toUpperCase()==='MENUNGGU_VERIFIKASI';}).map(function(x){const c=santriMap[String(x[2]||'')];return c?{relasiId:String(x[0]||''),id:c.id,nis:c.nis,name:c.name,className:c.className,hubungan:String(x[5]||'')} : null;}).filter(Boolean);\n    const savedAddresses=own.filter(function(x){return String(x[3]||'').toUpperCase()==='ALAMAT_PESANAN';}).map(function(x){const c=santriMap[String(x[2]||'')];return c?{relasiId:String(x[0]||''),id:c.id,nis:c.nis,name:c.name,className:c.className,hubungan:String(x[5]||'')} : null;}).filter(Boolean);
+    return {waliId:waliId,userId:userId,username:String(u.username||''),nama:String(r[2]||u.nama||''),noHp:String(r[3]||''),email:String(r[4]||''),alamat:String(r[5]||''),status:String(r[6]||u.status||''),createdAt:dateIso_(r[7]),updatedAt:dateIso_(r[8]),lastLoginAt:dateIso_(u.lastLoginAt),children:children,pendingRequests:pendingRequests,savedAddresses:savedAddresses};
   }).filter(function(w){return w.waliId;});
   return {ok:true,waliSantri:waliSantri,canManage:['ADMIN','SUPERADMIN'].indexOf(session.role)!==-1,canEditAccount:session.role==='SUPERADMIN'};
 }
@@ -2613,32 +2653,21 @@ function unlinkWaliSantri(token,waliId,santriId){
   const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN]);waliId=String(waliId||'').trim();santriId=String(santriId||'').trim();if(!waliId||!santriId)throw new Error('Relasi tidak valid.');const lock=LockService.getScriptLock();lock.waitLock(10000);try{const rs=getSS_().getSheetByName('WaliSantriSantri');if(!rs)throw new Error('Sheet WaliSantriSantri tidak ditemukan.');const rows=readRows_(rs),index=rows.findIndex(function(r){return String(r[1]||'')===waliId&&String(r[2]||'')===santriId&&String(r[3]||'').toUpperCase()==='AKTIF';});if(index<0)throw new Error('Relasi Wali Santri dan Santri tidak ditemukan.');rs.getRange(index+2,4).setValue('NONAKTIF');writeAudit_(session.userId,session.role,'UNLINK_WALI_SANTRI','WALI_SANTRI_SANTRI',waliId,'',JSON.stringify({waliId:waliId,santriId:santriId,status:'NONAKTIF'}),'Melepas hubungan Wali Santri dengan Santri');SpreadsheetApp.flush();return {ok:true};}finally{lock.releaseLock();}}
 
 function updateWaliSantri(token,waliId,nama,noHp,email,alamat){
-  const session=requireRole_(token,[FMART.ROLES.SUPERADMIN]);
-  waliId=String(waliId||'').trim(); nama=String(nama||'').trim().slice(0,120); noHp=normalizePhone_(noHp); email=String(email||'').trim().slice(0,160); alamat=String(alamat||'').trim().slice(0,300);
-  if(!waliId) throw new Error('Wali Santri tidak valid.');
-  if(!nama) throw new Error('Nama wajib diisi.');
-  if(!noHp) throw new Error('No. HP tidak valid. Gunakan format 08xxxxxxxxxx.');
-  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) throw new Error('Format email tidak valid.');
+  const session=requireRole_(token,[FMART.ROLES.SUPERADMIN]);waliId=String(waliId||'').trim();nama=String(nama||'').trim().slice(0,120);noHp=normalizePhone_(noHp);email=normalizeEmail_(email).slice(0,160);alamat=String(alamat||'').trim().slice(0,300);
+  if(!waliId)throw new Error('Wali Santri tidak valid.');if(!nama)throw new Error('Nama wajib diisi.');if(!noHp)throw new Error('No. HP tidak valid.');if(email&&!isValidStaffEmail_(email))throw new Error('Format email tidak valid.');
   const lock=LockService.getScriptLock();lock.waitLock(10000);
   try{
-    const ss=getSS_(), ws=ss.getSheetByName('WaliSantri'), us=ss.getSheetByName('Users');
-    const row=findRowById_(ws,waliId,1); if(!row) throw new Error('Data Wali Santri tidak ditemukan.');
-    const userId=String(row.values[1]||'');
-    const waliRows=readRows_(ws);
-    if(waliRows.some(function(r){return String(r[0]||'')!==waliId && phoneEquals_(r[3],noHp);})){throw new Error('No. HP sudah digunakan oleh Wali Santri lain.');}
-    const userRow=findRowById_(us,userId,1); if(!userRow) throw new Error('Akun pengguna Wali Santri tidak ditemukan.');
-    const allUsers=readRows_(us);
-    if(allUsers.some(function(u){const other=String(u[1]||'').trim();return String(u[0]||'')!==userId&&(other===noHp||normalizePhone_(other)===noHp);}))throw new Error('Nomor HP sudah digunakan sebagai username akun lain.');
-    const now=new Date();
-    ws.getRange(row.rowNumber,3,1,7).setValues([[nama,noHp,email,alamat,String(row.values[6]||'AKTIF'),row.values[7]||now,now]]);
-    ws.getRange(row.rowNumber,4).setNumberFormat('@');
-    us.getRange(userRow.rowNumber,2).setNumberFormat('@');us.getRange(userRow.rowNumber,2).setValue(noHp);
-    us.getRange(userRow.rowNumber,5).setValue(nama);us.getRange(userRow.rowNumber,9).setValue(now);
+    const ss=getSS_(),ws=ss.getSheetByName('WaliSantri'),us=ss.getSheetByName('Users'),row=findRowById_(ws,waliId,1);if(!row)throw new Error('Data Wali Santri tidak ditemukan.');
+    const userId=String(row.values[1]||''),user=findRowById_(us,userId,1);if(!user||String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI')throw new Error('Akun pengguna Wali Santri tidak ditemukan.');
+    const walis=readRows_(ws);if(walis.some(r=>String(r[0]||'')!==waliId&&phoneEquals_(r[3],noHp)))throw new Error('No. HP sudah digunakan oleh Wali Santri lain.');
+    const allUsers=readRows_(us);if(allUsers.some(u=>String(u[0]||'')!==userId&&(String(u[1]||'').trim()===noHp||normalizePhone_(u[1])===noHp)))throw new Error('Nomor HP sudah digunakan sebagai username akun lain.');
+    let verification=null;if(email!==normalizeEmail_(user.values[10])){if(!email)throw new Error('Email tidak boleh dikosongkan.');verification=sendWaliEmailVerification_(userId,email);}
+    const now=new Date();ws.getRange(row.rowNumber,3).setValue(nama);ws.getRange(row.rowNumber,4).setNumberFormat('@');ws.getRange(row.rowNumber,4).setValue(noHp);ws.getRange(row.rowNumber,6,1,4).setValues([[alamat,String(row.values[6]||'AKTIF'),row.values[7]||now,now]]);
+    us.getRange(user.rowNumber,2).setNumberFormat('@');us.getRange(user.rowNumber,2).setValue(noHp);us.getRange(user.rowNumber,5).setValue(nama);us.getRange(user.rowNumber,9).setValue(now);
     writeAudit_(session.userId,session.role,'UPDATE_WALI_SANTRI','WALI_SANTRI',waliId,JSON.stringify({nama:String(row.values[2]||''),noHp:String(row.values[3]||''),email:String(row.values[4]||''),alamat:String(row.values[5]||'')}),JSON.stringify({nama:nama,noHp:noHp,username:noHp,email:email,alamat:alamat}),'Memperbarui data Wali Santri');
-    SpreadsheetApp.flush(); return {ok:true};
+    SpreadsheetApp.flush();return {ok:true,requiresEmailOtp:!!verification,challengeId:verification&&verification.challengeId,maskedEmail:verification&&verification.maskedEmail,message:verification?verification.message:'Data Wali Santri berhasil diperbarui.'};
   }finally{lock.releaseLock();}
 }
-
 function toggleFMartUser(token,userId){
   const session=requireRole_(token,[FMART.ROLES.SUPERADMIN]);
   const lock=LockService.getScriptLock();lock.waitLock(10000);
