@@ -2414,6 +2414,10 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
     body.admin-portal #opsStats.fmart-existing-summary-row{grid-template-columns:repeat(var(--fmart-existing-summary-count),minmax(0,1fr))!important}
     /* Hilangkan judul halaman operasional tanpa menyisakan ruang; tombol refresh tetap tersedia. */
     #operationsView>.section-title>div:first-child,#opsMainSection>.section-title{display:none!important}
+    /* Sembunyikan hanya judul utama halaman Wali; judul bagian dan isi tetap dipertahankan. */
+    body.buyer-portal #waliProfilePage>.section-title,
+    body.buyer-portal #waliCartPage>.section-title,
+    body.buyer-portal #waliOrdersPage>.section-title{display:none!important}
     body.admin-portal .ops-welcome strong{display:none!important}
     body.admin-portal .ops-welcome span{margin-top:0!important}
     .audit-entity-id{display:none!important}
