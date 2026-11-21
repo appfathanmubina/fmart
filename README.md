@@ -796,6 +796,8 @@ Tahap ini mempertegas pembatasan menu dan otorisasi server. Pemeriksaan role di 
 
 ### Matriks akses operasional
 
+> **Catatan versi:** matriks di bawah ini adalah snapshot historis Tahap 9. Setelah pengembangan berikutnya (termasuk role Supervisor, dashboard pengawasan, dan akses baca-saja riwayat POS), gunakan matriks terkini pada bagian **Navigasi sidebar berdasarkan role** di awal README serta addendum Tahap 41.1. Jika uraian historis bertentangan dengan source saat ini, source dan matriks terkini menjadi acuan audit; perbedaan endpoint/UI tetap dicatat untuk diputuskan, bukan diasumsikan.
+
 | Fitur | Kasir | Admin | Superadmin |
 |---|---|---|---|
 | Dashboard | Ringkasan POS milik sendiri | Ringkasan operasional | Ringkasan operasional |
