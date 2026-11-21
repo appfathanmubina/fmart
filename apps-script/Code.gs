@@ -55,7 +55,7 @@ function login(username, password, portalMode) {
   if (!username || typeof password !== 'string' || !password) return {ok:false, message:portalMode === 'ADMINFMART16720' ? 'Email atau password tidak valid.' : 'Nomor HP atau password tidak valid.'};
   const phoneKeyForRate = normalizePhone_(rawLogin);
   const isWaliEmailLogin = portalMode !== 'ADMINFMART16720' && rawLogin.indexOf('@') >= 0;
-  const rate = loginRateKey_(phoneKeyForRate || username);
+  const rate = loginRateKey_(isWaliEmailLogin ? username : (phoneKeyForRate || username));
   const cache = CacheService.getScriptCache();
   const failures = Number(cache.get(rate) || 0);
   if (failures >= FMART.LOGIN_MAX_FAILURES) return {ok:false, message:'Terlalu banyak percobaan login. Silakan coba lagi beberapa menit kemudian.'};
@@ -356,7 +356,7 @@ function registerWaliSantri(nama, noHp, password, email, alamat) {
     if (!nama) throw new Error('Nama wajib diisi.');
     if (!noHp) throw new Error('Nomor HP tidak valid. Gunakan format 08xxxxxxxxxx.');
     if (password.length < FMART.PASSWORD_MIN_LENGTH) throw new Error('Password minimal ' + FMART.PASSWORD_MIN_LENGTH + ' karakter.');
-    if (!isValidStaffEmail_(email)) throw new Error('Email wajib diisi dengan format yang valid.');
+    if (!email || email.length > 160 || !isValidStaffEmail_(email)) throw new Error('Email wajib diisi dengan format yang valid.');
     const ss=getSS_(), users=ss.getSheetByName('Users'), waliSheet=ss.getSheetByName('WaliSantri');
     if(!users||!waliSheet) throw new Error('Database FMart belum siap.');
     const userRows=readRows_(users), waliRows=readRows_(waliSheet);
