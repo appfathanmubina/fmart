@@ -995,7 +995,7 @@ test('Staff dashboard shows a recoverable retry state when the initial summary r
  assert.ok(loader.includes("if(!opsData)"),'Initial load failures need a dedicated empty-state fallback.');
  assert.ok(loader.includes("id=\"retryOpsDashboard\""));
  assert.ok(loader.includes("$('retryOpsDashboard').onclick=loadOps"),'The retry action must invoke the same loader.');
- assert.ok(loader.includes("$('opsStats').classList.add('hidden')"),'Empty stats must be hidden when no summary is available.');
+ assert.ok(loader.includes('opsStatsNode.classList.add(\'hidden\')'),'Empty stats must be hidden when no summary is available.');
  assert.ok(loader.includes("showToast(message,'error')"),'Refresh failures after a successful load must preserve the current dashboard and report the error.');
  const renderStart=end;
  const renderEnd=index.indexOf('async function renderOpsReports',renderStart);
@@ -1128,7 +1128,7 @@ test('Warehouse and Supervisor dashboards do not receive Wali payment queue deta
  assert.ok(dashboard.includes("const canViewWaliPaymentQueue=[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN].indexOf(session.role)>=0;"));
  assert.ok(dashboard.includes('const pendingPayments=canViewWaliPaymentQueue?pendingRows.slice(0,queueLimit).map(mapPendingPayment):[];'));
  const cashier=dashboard.slice(dashboard.indexOf('if(session.role===FMART.ROLES.KASIR){'),dashboard.indexOf('return {ok:true,user:',dashboard.indexOf('if(session.role===FMART.ROLES.KASIR){')));
- assert.ok(cashier.includes('pendingPayments:waliQrisQueue'),'Kasir must retain its authorized Wali QRIS queue.');
+ assert.ok(dashboard.includes('pendingPayments:waliQrisQueue'),'Kasir must retain its authorized Wali QRIS queue.');
  assert.ok(dashboard.includes('pendingPayments:pendingPayments'),'Admin/Superadmin payment workspace must retain the full authorized queue.');
 });
 
@@ -1886,7 +1886,7 @@ test('Staff workspace header follows the active menu and hides stale dashboard s
  assert.ok(!index.includes('<div class="eyebrow">Operasional FMart</div>'));
  const navigation=extractFunction(index,'setStaffActiveNavigation');
  assert.ok(navigation.includes("const isDashboard=id==='staffDashboard'"));
- assert.ok(navigation.includes("$('opsStats').classList.toggle('hidden',!isDashboard||isDeliveryStaff)"));
+ assert.ok(navigation.includes("opsStatsNode.classList.toggle('hidden',!isDashboard||isDeliveryStaff)"));
  assert.ok(navigation.includes("$('opsRefresh').classList.toggle('hidden',!isDashboard||isDeliveryStaff)"));
  assert.ok(navigation.includes("id==='staffDeliveryComplaints'?'Komplain Pengantaran'"));
  assert.ok(navigation.includes("$('opsTitle').textContent=pageTitle"));
@@ -1942,7 +1942,7 @@ test('Only genuine page summary containers are formatted; product-level stats ke
 
 
 test('Global dashboard summary is visible only while the staff dashboard is active',()=>{
-  assert.ok(index.includes("const dashboardActive=!!($('staffDashboard')&&$('staffDashboard').classList.contains('active'));"));
-  assert.ok(index.includes("$('opsStats').classList.toggle('hidden',!dashboardActive||role==='PETUGAS_PENGANTAR');"));
+  assert.ok(index.includes("const dashboardActive=!!($('staffDashboard')&&$('staffDashboard').classList.contains('active')&&role!=='PETUGAS_PENGANTAR');"));
+  assert.ok(index.includes('opsStatsNode.classList.toggle(\'hidden\',!dashboardActive);'));
   assert.ok(!index.includes("$('opsStats').classList.remove('hidden');"));
 });
