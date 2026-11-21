@@ -1601,7 +1601,8 @@ function getOperationsDashboard(token) {
   const pendingRows=payments.filter(r=>String(r[5]||'').toUpperCase()==='MENUNGGU_VERIFIKASI').sort((a,b)=>new Date(a[8]||0).getTime()-new Date(b[8]||0).getTime());
   const queueLimit=Math.max(1,Number(getSettingValue_('PAYMENT_VERIFICATION_QUEUE_LIMIT'))||50),pendingVerification=pendingRows.length,orderById={};orders.forEach(function(r){orderById[String(r[0])]=r;});
   const mapPendingPayment=function(p){const o=orderById[String(p[1])]||[],wali=userMap[String(o[2]||'')],child=getOrderRecipientSnapshot_(ss,o);return {orderId:String(p[1]),number:String(o[1]||p[1]),waliName:wali?wali.name:'-',childName:child.name||'Santri',className:child.className||'-',total:Number(o[7])||0,createdAt:dateIso_(p[8]),orderCreatedAt:dateIso_(o[10]),status:String(o[8]||''),payment:{id:String(p[0]),method:String(p[2]||''),nominal:Number(p[3])||0,status:String(p[5]||''),buktiUrl:'',createdAt:dateIso_(p[8]),catatan:String(p[12]||'')}};};
-  const pendingPayments=pendingRows.slice(0,queueLimit).map(mapPendingPayment);
+  const canViewWaliPaymentQueue=[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN].indexOf(session.role)>=0;
+  const pendingPayments=canViewWaliPaymentQueue?pendingRows.slice(0,queueLimit).map(mapPendingPayment):[];
   const countStatus=st=>orders.filter(r=>String(r[8]||'').toUpperCase()===st).length;
   if(session.role===FMART.ROLES.KASIR){
     const ownSales=readRows_(ss.getSheetByName('PenjualanToko')).filter(function(r){return String(r[13]||'')===String(session.userId);});
