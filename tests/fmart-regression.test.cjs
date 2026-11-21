@@ -1183,8 +1183,8 @@ test('Operations modal has an accessible close name and supports Escape dismissa
 });
 
 
-test('Santri search, class filter, and relationship labels are explicitly associated with their controls',()=>{
- for(const id of ['waliChildSearch','waliClassFilter','pickerSantriSearch','pickerClassFilter','santriSearch','waliHubungan']){
+test('Santri search, class filter, saved recipient selection, and labels are associated with their controls',()=>{
+ for(const id of ['waliChildSearch','waliClassFilter','pickerSantriSearch','pickerClassFilter','santriSearch','checkoutSavedRecipient']){
   assert.ok(index.includes('label for="'+id+'"'),'Missing associated label for '+id);
   assert.ok(index.includes('id="'+id+'"'),'Missing control '+id);
  }
