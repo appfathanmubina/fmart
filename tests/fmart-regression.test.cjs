@@ -166,6 +166,13 @@ test('Superadmin can access Wali payment verification while other role navigatio
   assert.ok(workspace.includes("['ADMIN','SUPERADMIN','KASIR'].includes(role)"));
 });
 
+test('Costing schema migration is private to the Apps Script editor, not a public PWA endpoint',()=>{
+ assert.ok(code.includes('function migrateFMartCostingSchema_()'));
+ assert.ok(!code.includes('function migrateFMartCostingSchema()'));
+ const migration=extractFunction(code,'migrateFMartCostingSchema_');
+ assert.ok(migration.includes('ensureFMartCostingSchema_'));
+});
+
 test('Superadmin account controls are server-only and cannot mutate the Superadmin account itself',()=>{
  const create=extractFunction(code,'createStaffUser'),toggle=extractFunction(code,'toggleFMartUser'),reset=extractFunction(code,'resetFMartUserPassword'),update=extractFunction(code,'updateFMartUser');
  for(const fn of [create,toggle,reset,update])assert.ok(fn.includes('FMART.ROLES.SUPERADMIN'),'Only Superadmin may invoke the account mutation endpoint.');
