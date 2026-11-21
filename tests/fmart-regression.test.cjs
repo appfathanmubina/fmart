@@ -1718,14 +1718,15 @@ test('Supervisor catalog is read-only and Drive QRIS uses an embeddable thumbnai
  assert.ok(paymentUi.includes('qrisImageSrc')&&paymentUi.includes('paymentQrisImage'));
 });
 
-test('Wali relationship guidance matches phone-match and pending-verification rules',()=>{
+test('Wali saved order address guidance is separate from Admin-managed formal relationships',()=>{
  const adminView=extractFunction(index,'renderWaliSantriManagementHtml');
  assert.ok(adminView.includes('nomor HP akun Wali cocok dengan nomor Wali pada master Santri'));
  assert.ok(adminView.includes('pengajuan menunggu verifikasi Admin'));
  assert.ok(!adminView.includes('langsung aktif tanpa persetujuan Admin'));
- assert.ok(index.includes('Hubungan aktif otomatis jika nomor HP akun Wali cocok dengan nomor Wali pada master Santri. Jika tidak cocok atau belum tersedia, pengajuan menunggu verifikasi Admin.'));
+ assert.ok(index.includes('Pilih Santri dari data master untuk disimpan sebagai alamat pemesanan.'));
  const request=extractFunction(code,'requestWaliSantriLink');
- assert.ok(request.includes("const nextStatus=phoneMatched?'AKTIF':'MENUNGGU_VERIFIKASI'"));
+ assert.ok(request.includes("'ALAMAT_PESANAN'"));
+ assert.ok(!request.includes('phoneMatched'));
 });
 
 test('Supervisor dashboard uses an oversight view and never routes to warehouse actions',()=>{
