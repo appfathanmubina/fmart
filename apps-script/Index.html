@@ -346,7 +346,7 @@ body.admin-portal .catalog-toolbar{display:flex;justify-content:space-between;al
 body.admin-portal .catalog-toolbar h2{margin:0;font-size:17px}
 body.admin-portal .catalog-toolbar p{margin:5px 0 0;color:#82758a;font-size:12px}
 body.admin-portal .catalog-category-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
-body.admin-portal .catalog-category-toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-shrink:0}body.admin-portal .catalog-category-toolbar-actions button{width:auto!important}body.admin-portal .catalog-category-toggle{width:38px!important;min-width:38px;height:38px;padding:7px!important;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}body.admin-portal .catalog-category-toggle .toggle-chevron{display:inline-block;font-size:19px;line-height:1;transition:transform .2s ease}body.admin-portal .catalog-category-toggle[aria-expanded="false"] .toggle-chevron{transform:rotate(-90deg)}
+body.admin-portal .catalog-category-toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-shrink:0}body.admin-portal .catalog-category-toolbar-actions button{width:auto!important}body.admin-portal .catalog-category-toggle{width:38px!important;min-width:38px;height:38px;padding:7px!important;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}body.admin-portal .catalog-category-toggle .toggle-chevron{display:inline-block;font-size:19px;line-height:1;transition:transform .2s ease}body.admin-portal .catalog-category-toggle[aria-expanded="false"] .toggle-chevron{transform:none}
 body.admin-portal .catalog-category-card,body.admin-portal .catalog-product-card{background:#fff;border:1px solid #eaddec;border-radius:17px;padding:15px;min-width:0}
 body.admin-portal .catalog-category-top{display:flex;justify-content:space-between;gap:8px;align-items:center}
 body.admin-portal .catalog-category-card p{min-height:32px;margin:9px 0;color:#82758a;font-size:12px}
@@ -1193,15 +1193,11 @@ body.admin-portal #opsMainSection{
 }
 
 /* Pop-up header Wali: panel ringkas di kanan atas, bukan modal tengah layar. */
-body.buyer-portal #cartModal,
-body.buyer-portal #orderModal,
 body.buyer-portal #profileModal{
   display:block;
   padding:0;
   background:rgba(25,12,32,.08);
 }
-body.buyer-portal #cartModal .modal-card,
-body.buyer-portal #orderModal .modal-card,
 body.buyer-portal #profileModal .modal-card{
   position:absolute;
   top:76px;
@@ -1221,11 +1217,7 @@ body.buyer-portal #profileModal .modal-card{
   to{opacity:1;transform:translateY(0) scale(1)}
 }
 @media(max-width:760px){
-  body.buyer-portal #cartModal,
-  body.buyer-portal #orderModal,
   body.buyer-portal #profileModal{padding:0}
-  body.buyer-portal #cartModal .modal-card,
-  body.buyer-portal #orderModal .modal-card,
   body.buyer-portal #profileModal .modal-card{
     top:68px;
     right:8px;
@@ -2583,6 +2575,8 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
         <div class="section-title dashboard-products-head buyer-results-heading"><div><h3 id="buyerResultsTitle">Semua Produk</h3><span id="productCount" class="muted"></span></div><button type="button" class="secondary" id="viewAllProducts">Lihat semua</button></div><div id="searchSummary" class="buyer-search-summary" aria-live="polite"></div><div id="products" class="products"></div><div id="productLoadStatus" class="product-load-status" role="status" aria-live="polite"></div><div id="productLoadSentinel" class="product-load-sentinel" aria-hidden="true"></div>
       </section>
       <section id="waliProfilePage" class="hidden" aria-label="Halaman Profil"><div class="section-title"><div><div class="eyebrow">AKUN FMart</div><h2>Profil</h2></div></div><div id="waliProfilePageBody"></div></section>
+      <section id="waliCartPage" class="hidden section" aria-label="Halaman Keranjang"><div class="section-title"><div><div class="eyebrow">BELANJA</div><h2>Keranjang</h2><p class="muted">Periksa barang yang dipilih sebelum checkout.</p></div></div><div id="cartBody"></div></section>
+      <section id="waliOrdersPage" class="hidden section" aria-label="Halaman Pesanan"><div class="section-title"><div><div class="eyebrow">RIWAYAT BELANJA</div><h2>Pesanan Saya</h2><p class="muted">Pantau status pesanan dan pembayaran Anda.</p></div></div><div id="orderBody"></div></section>
     </main>
     <section id="operationsView" class="hidden" style="padding:0 16px 100px">
       <div class="section-title" style="margin:0"><div><h2 id="opsTitle">Dashboard</h2></div><button class="secondary" id="opsRefresh">↻ Refresh</button></div>
@@ -2639,17 +2633,11 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
       <div id="changePasswordBody"></div>
     </div>
   </div>
-  <div id="cartModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
-    <div class="modal-card"><div class="modal-head"><div><div class="eyebrow">Belanja</div><h2 id="cartTitle">Keranjang</h2></div><button class="icon-btn" id="closeCart" aria-label="Tutup">×</button></div><div id="cartBody"></div></div>
-  </div>
   <div id="checkoutModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="checkoutTitle">
     <div class="modal-card"><div class="modal-head"><div><div class="eyebrow">Checkout</div><h2 id="checkoutTitle">Konfirmasi Pesanan</h2></div><button class="icon-btn" id="closeCheckout" aria-label="Tutup">×</button></div><div id="checkoutBody"></div></div>
   </div>
   <div id="successModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="successTitle">
     <div class="modal-card"><div class="modal-head"><div><div class="eyebrow">Pesanan berhasil</div><h2 id="successTitle">Pesanan dibuat</h2></div><button class="icon-btn" id="closeSuccess" aria-label="Tutup">×</button></div><div id="successBody"></div></div>
-  </div>
-  <div id="orderModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="orderTitle">
-    <div class="modal-card"><div class="modal-head"><div><div class="eyebrow">Riwayat</div><h2 id="orderTitle">Pesanan Saya</h2></div><button class="icon-btn" id="closeOrder" aria-label="Tutup">×</button></div><div id="orderBody"></div></div>
   </div>
   <div id="orderDetailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="orderDetailTitle">
     <div class="modal-card"><div class="modal-head"><div><div class="eyebrow">Detail Pesanan</div><h2 id="orderDetailTitle">Pesanan</h2></div><button class="icon-btn" id="closeOrderDetail" aria-label="Tutup">×</button></div><div id="orderDetailBody"></div></div>
@@ -2866,9 +2854,15 @@ async function loadNextBuyerProductBatch(){
 function renderProducts(items,homeMode){const all=items||[];const list=homeMode?all.slice(0,12):all;$('productCount').textContent=homeMode?all.length+' produk tersedia':all.length+' produk ditemukan';$('products').classList.toggle('home-product-limit',!!homeMode);$('products').innerHTML=list.map(productCardMarkup).join('');document.querySelectorAll('[data-open-product]').forEach(b=>b.onclick=()=>openProduct(b.dataset.openProduct))}
     function showCustomerApp(){$('customerNav').classList.remove('hidden');$('staffNav').classList.add('hidden');$('operationsView').classList.add('hidden');$('appView').querySelector('.main').classList.remove('hidden')}
 function setCustomerNav(id){document.querySelectorAll('#customerNav .nav-btn').forEach(x=>x.classList.remove('active'));if($(id))$(id).classList.add('active')}
-function showBuyerHome(){$('waliProfilePage').classList.add('hidden');$('buyerCatalog').classList.remove('hidden');document.querySelector('.hero').classList.remove('hidden')}
+function showBuyerPage_(pageId,navId){
+  ['buyerCatalog','waliProfilePage','waliCartPage','waliOrdersPage'].forEach(id=>$(id).classList.toggle('hidden',id!==pageId));
+  document.querySelector('.hero').classList.toggle('hidden',pageId!=='buyerCatalog');
+  setCustomerNav(navId);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function showBuyerHome(){showBuyerPage_('buyerCatalog','navHome')}
 async function openWaliProfilePage(){
-  setCustomerNav('navProfile');closeProfile();$('buyerCatalog').classList.add('hidden');document.querySelector('.hero').classList.add('hidden');$('waliProfilePage').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});
+  closeProfile();closeCart();closeOrders();showBuyerPage_('waliProfilePage','navProfile');
   const cached=state.waliProfileManagement;
   if(cached&&cached.ok){renderWaliProfileManagement(cached);return}
   const preview=state.profile||{};
@@ -3447,8 +3441,7 @@ async function refreshCartCount(){
 function updateCartBadge(n){['cartBadge','headerCartBadge'].forEach(id=>{const b=$(id);if(!b)return;b.textContent=String(n||0);b.classList.toggle('hidden',!n)})}
 async function openCart(){
   if(!state.data||state.data.user.role!=='WALI_SANTRI')return;
-  closeOrders();
-  $('cartModal').classList.remove('hidden');
+  closeOrders();closeProfile();showBuyerPage_('waliCartPage','navCart');
   $('cartBody').innerHTML='<div class="panel-loading"><span class="spinner"></span><span>Memuat keranjang...</span></div>';
   try{
     const r=await runServer('getCart',state.token);
@@ -3497,7 +3490,7 @@ async function setCartQty(cartId,qty){
   }catch(e){showToast(e.message||'Gagal memperbarui keranjang.')}
   finally{loading(false)}
 }
-function closeCart(){$('cartModal').classList.add('hidden')}
+function closeCart(){$('waliCartPage').classList.add('hidden')}
 function openCheckout(){
   const selected=getSelectedCartItems();
   if(!selected.length){showToast('Pilih barang yang akan di-checkout.');return}
@@ -3595,8 +3588,7 @@ function paymentStatusLabel(s){const m={MENUNGGU_VERIFIKASI:'Menunggu Verifikasi
 function formatDate(v){if(!v)return '-';try{return new Date(v).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}catch(e){return '-'}}
 async function openOrders(){
   if(!state.data||state.data.user.role!=='WALI_SANTRI')return;
-  closeCart();
-  $('orderModal').classList.remove('hidden');
+  closeCart();closeProfile();showBuyerPage_('waliOrdersPage','navOrders');
   $('orderBody').innerHTML='<div class="panel-loading"><span class="spinner"></span><span>Memuat riwayat pesanan...</span></div>';
   try{
     const r=await runServer('getMyOrders',state.token);
@@ -3706,7 +3698,7 @@ async function submitPayment(){
 }
 
 async function receiveOrder(orderId){if(!await showConfirmDialog('Konfirmasi bahwa pesanan dan barang telah Anda terima?'))return;loading(true,'Memperbarui status pesanan...');try{await runServer('markOrderReceived',state.token,orderId);showToast('Penerimaan pesanan berhasil dikonfirmasi.','success');await openOrders();if(!$('orderDetailModal').classList.contains('hidden'))await openOrderDetail(orderId)}catch(e){showToast(e.message||'Gagal memperbarui pesanan.')}finally{loading(false)}}
-function closeOrders(){$('orderModal').classList.add('hidden')}
+function closeOrders(){$('waliOrdersPage').classList.add('hidden')}
 function closeOrderDetail(){$('orderDetailModal').classList.add('hidden')}
 function closePayment(){$('paymentModal').classList.add('hidden')}
 
@@ -3896,9 +3888,9 @@ async function renderSupervisorCatalog(){
         const activeCats=categories.filter(c=>c.status==='AKTIF').length;
         $('opsMainBody').innerHTML=
           '<div class="catalog-overview"><div class="catalog-metric"><span>Total Produk</span><strong>'+products.length+'</strong><small>'+activeCount+' produk aktif</small></div><div class="catalog-metric"><span>Kategori</span><strong>'+categories.length+'</strong><small>'+activeCats+' kategori aktif</small></div><div class="catalog-metric"><span>Produk Nonaktif</span><strong>'+(products.length-activeCount)+'</strong><small>Tidak ditampilkan ke pembeli</small></div></div>'+
-          '<div class="catalog-toolbar"><div><h2>Kategori Produk</h2><p>Kelompokkan produk agar mudah ditemukan oleh Wali Santri.</p></div><div class="catalog-category-toolbar-actions"><button type="button" class="secondary catalog-category-toggle" id="toggleCatalogCategories" aria-label="Sembunyikan kategori" title="Sembunyikan kategori" aria-expanded="true" aria-controls="catalogCategoryGrid"><span class="toggle-chevron" aria-hidden="true">⌄</span></button><button class="primary" id="opsAddCategory">+ Tambah Kategori</button></div></div>'+
+          '<div class="catalog-toolbar"><div><h2>Kategori Produk</h2><p>Kelompokkan produk agar mudah ditemukan oleh Wali Santri.</p></div><div class="catalog-category-toolbar-actions"><button class="primary" id="opsAddCategory">+ Kategori</button><button type="button" class="secondary catalog-category-toggle" id="toggleCatalogCategories" aria-label="Sembunyikan kategori" title="Sembunyikan kategori" aria-expanded="true" aria-controls="catalogCategoryGrid"><span class="toggle-chevron" aria-hidden="true">⌃</span></button></div></div>'+
           '<div class="catalog-category-grid" id="catalogCategoryGrid">'+(categories.length?categories.map(c=>'<article class="catalog-category-card"><div class="catalog-category-top"><strong>'+escapeHtml(c.name)+'</strong><span class="status-badge '+(c.status==='AKTIF'?'':'status-muted')+'">'+escapeHtml(c.status)+'</span></div><p>'+escapeHtml(c.description||'Belum ada deskripsi')+'</p><div class="catalog-category-bottom"><small>Urutan '+formatMoney(c.order)+' · '+products.filter(p=>String(p.categoryId)===String(c.id)).length+' produk</small><button class="secondary edit-category" data-id="'+escapeHtml(c.id)+'">Edit</button></div></article>').join(''):'<div class="empty-box">Belum ada kategori. Tambahkan kategori pertama untuk mulai mengelompokkan produk.</div>')+'</div>'+
-          '<div class="catalog-toolbar catalog-products-toolbar"><div><h2>Daftar Produk</h2><p>Kelola informasi, harga, status, dan variasi produk.</p></div><button class="primary" id="opsAddProduct" '+(!categories.some(c=>c.status==='AKTIF')?'disabled':'')+'>+ Tambah Produk</button></div>'+
+          '<div class="catalog-toolbar catalog-products-toolbar"><div><h2>Daftar Produk</h2><p>Kelola informasi, harga, status, dan variasi produk.</p></div><button class="primary" id="opsAddProduct" '+(!categories.some(c=>c.status==='AKTIF')?'disabled':'')+'>+ Produk</button></div>'+
           '<div class="catalog-filters"><input id="catalogSearch" type="search" placeholder="Cari nama produk atau SKU..." autocomplete="off" aria-label="Cari produk katalog Admin"><select id="catalogCategory" aria-label="Filter kategori produk"><option value="">Semua kategori</option>'+categories.map(c=>'<option value="'+escapeHtml(c.id)+'">'+escapeHtml(c.name)+'</option>').join('')+'</select><select id="catalogStatus" aria-label="Filter status produk"><option value="">Semua status</option><option value="AKTIF">Aktif</option><option value="NONAKTIF">Nonaktif</option></select></div>'+
           '<div class="catalog-result-count" id="catalogResultCount"></div><div class="catalog-product-grid" id="catalogProductGrid"></div>';
         const categoryGrid=$('catalogCategoryGrid'),categoryToggle=$('toggleCatalogCategories');
@@ -3908,7 +3900,7 @@ async function renderSupervisorCatalog(){
           categoryGrid.classList.toggle('hidden',expanded);
           categoryToggle.setAttribute('aria-label',expanded?'Tampilkan kategori':'Sembunyikan kategori');
           categoryToggle.title=expanded?'Tampilkan kategori':'Sembunyikan kategori';
-          categoryToggle.querySelector('.toggle-chevron').textContent=expanded?'›':'⌄';
+          categoryToggle.querySelector('.toggle-chevron').textContent=expanded?'⌄':'⌃';
         };
         $('opsAddCategory').onclick=()=>openCategoryForm();
         $('opsAddProduct').onclick=()=>openProductForm();
@@ -4728,7 +4720,7 @@ function resetBuyerCatalogFilters(){$('searchInput').value='';$('productSort').v
   const buyerHome=$('navHome');
   if(buyerHome)buyerHome.click();
 }
-const brandHome=$('brandHome');brandHome.addEventListener('click',navigateHomeFromBrand_);brandHome.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();navigateHomeFromBrand_()}});$('closeWaliLink').addEventListener('click',closeWaliLinkModal);$('waliLinkModal').addEventListener('click',e=>{if(e.target.id==='waliLinkModal')closeWaliLinkModal()});$('waliChildSearchBtn').addEventListener('click',()=>searchWaliChild(false));$('waliChildSearch').addEventListener('keydown',e=>{if(e.key==='Enter')searchWaliChild(false)});$('waliChildSearch').addEventListener('input',()=>{clearTimeout(window._waliChildSearchTimer);window._waliChildSearchTimer=setTimeout(()=>{if($('waliChildSearch').value.trim().length>=2||$('waliClassFilter').value)searchWaliChild(true)},220)});$('waliClassFilter').addEventListener('change',()=>searchWaliChild(true));$('closeChildPicker').addEventListener('click',closeChildPicker);$('childPickerModal').addEventListener('click',e=>{if(e.target.id==='childPickerModal')closeChildPicker()});$('closeProfile').addEventListener('click',closeProfile);$('profileModal').addEventListener('click',e=>{if(e.target.id==='profileModal')closeProfile()});$('closeCart').addEventListener('click',closeCart);$('cartModal').addEventListener('click',e=>{if(e.target.id==='cartModal')closeCart()});$('closeCheckout').addEventListener('click',closeCheckout);$('checkoutModal').addEventListener('click',e=>{if(e.target.id==='checkoutModal')closeCheckout()});$('closeSuccess').addEventListener('click',closeSuccess);$('successModal').addEventListener('click',e=>{if(e.target.id==='successModal')closeSuccess()});$('closeOrder').addEventListener('click',closeOrders);$('orderModal').addEventListener('click',e=>{if(e.target.id==='orderModal')closeOrders()});$('closeOrderDetail').addEventListener('click',closeOrderDetail);$('orderDetailModal').addEventListener('click',e=>{if(e.target.id==='orderDetailModal')closeOrderDetail()});$('closePayment').addEventListener('click',closePayment);$('paymentModal').addEventListener('click',e=>{if(e.target.id==='paymentModal')closePayment()});$('navHome').addEventListener('click',()=>{setCustomerNav('navHome');showBuyerHome();renderCategories(state.data.categories);renderBuyerProductFeed();window.scrollTo({top:0,behavior:'smooth'});});
+const brandHome=$('brandHome');brandHome.addEventListener('click',navigateHomeFromBrand_);brandHome.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();navigateHomeFromBrand_()}});$('closeWaliLink').addEventListener('click',closeWaliLinkModal);$('waliLinkModal').addEventListener('click',e=>{if(e.target.id==='waliLinkModal')closeWaliLinkModal()});$('waliChildSearchBtn').addEventListener('click',()=>searchWaliChild(false));$('waliChildSearch').addEventListener('keydown',e=>{if(e.key==='Enter')searchWaliChild(false)});$('waliChildSearch').addEventListener('input',()=>{clearTimeout(window._waliChildSearchTimer);window._waliChildSearchTimer=setTimeout(()=>{if($('waliChildSearch').value.trim().length>=2||$('waliClassFilter').value)searchWaliChild(true)},220)});$('waliClassFilter').addEventListener('change',()=>searchWaliChild(true));$('closeChildPicker').addEventListener('click',closeChildPicker);$('childPickerModal').addEventListener('click',e=>{if(e.target.id==='childPickerModal')closeChildPicker()});$('closeProfile').addEventListener('click',closeProfile);$('profileModal').addEventListener('click',e=>{if(e.target.id==='profileModal')closeProfile()});$('closeCheckout').addEventListener('click',closeCheckout);$('checkoutModal').addEventListener('click',e=>{if(e.target.id==='checkoutModal')closeCheckout()});$('closeSuccess').addEventListener('click',closeSuccess);$('successModal').addEventListener('click',e=>{if(e.target.id==='successModal')closeSuccess()});$('closeOrderDetail').addEventListener('click',closeOrderDetail);$('orderDetailModal').addEventListener('click',e=>{if(e.target.id==='orderDetailModal')closeOrderDetail()});$('closePayment').addEventListener('click',closePayment);$('paymentModal').addEventListener('click',e=>{if(e.target.id==='paymentModal')closePayment()});$('navHome').addEventListener('click',()=>{setCustomerNav('navHome');showBuyerHome();renderCategories(state.data.categories);renderBuyerProductFeed();window.scrollTo({top:0,behavior:'smooth'});});
 $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');showBuyerHome();resetBuyerCatalogFilters();document.getElementById('buyerCatalog').scrollIntoView({behavior:'smooth',block:'start'});});$('navCart').addEventListener('click',openCart);$('navOrders').addEventListener('click',openOrders);$('navProfile').addEventListener('click',openWaliProfilePage);document.addEventListener('error',e=>{
       const img=e.target;
       if(!img||img.tagName!=='IMG'||!img.hasAttribute('data-image-fallback'))return;
@@ -4836,10 +4828,8 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
         waliLinkModal:closeWaliLinkModal,
         childPickerModal:closeChildPicker,
         productModal:closeProduct,
-        cartModal:closeCart,
         checkoutModal:closeCheckout,
         successModal:closeSuccess,
-        orderModal:closeOrders,
         orderDetailModal:closeOrderDetail,
         paymentModal:closePayment,
         changePasswordModal:closeChangePassword,

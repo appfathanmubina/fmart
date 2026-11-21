@@ -1515,7 +1515,11 @@ test('Every static dialog root has modal semantics and a resolvable accessible n
  const re=/<div\b(?=[^>]*\bid="([^"]+Modal)")(?=[^>]*\bclass="[^"]*\bmodal\b)([^>]*)>/g;
  const roots=[];let match;
  while((match=re.exec(index))!==null)roots.push({id:match[1],attrs:match[2]});
- assert.ok(roots.length>=12,'Expected the full set of customer and operational dialogs.');
+ assert.ok(roots.length>=11,'Expected the full set of customer and operational dialogs.');
+ assert.ok(index.includes('<section id="waliCartPage"'),'Wali cart must be rendered as a normal content page.');
+ assert.ok(index.includes('<section id="waliOrdersPage"'),'Wali order history must be rendered as a normal content page.');
+ assert.ok(!index.includes('id="cartModal"'),'Wali cart must not regress to a modal.');
+ assert.ok(!index.includes('id="orderModal"'),'Wali order history must not regress to a modal.');
  for(const root of roots){
   assert.match(root.attrs,/\brole="dialog"/,'Dialog '+root.id+' must expose dialog role.');
   assert.match(root.attrs,/\baria-modal="true"/,'Dialog '+root.id+' must be announced as modal.');
