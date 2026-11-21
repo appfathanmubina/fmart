@@ -2161,6 +2161,7 @@ test('Wali cart provides a plus-and-cart shortcut back to the product catalogue,
 
 test('Wali order history uses horizontal status tabs and removes secondary dropdown filters',()=>{
  assert.ok(index.includes('class="order-status-tabs"'));
+ assert.ok(index.includes("class=\"order-status-tab'+(s===''?' active':'')+'\""));
  assert.ok(index.includes('data-order-status='));
  assert.ok(index.includes("document.querySelectorAll('[data-order-status]')"));
  assert.ok(!index.includes('id="orderHistoryChild"'));
