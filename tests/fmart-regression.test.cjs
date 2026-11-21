@@ -435,26 +435,17 @@ test('Wali catalog uses authenticated server-side pagination and never sends sto
  assert.ok(index.includes('productLoadSentinel'));
 });
 
-test('Wali checkout uses manual recipient snapshots and does not create or require a Wali-Santri relation',()=>{
- const checkout=extractFunction(code,'checkoutCart');
- const normalize=extractFunction(code,'normalizeOrderRecipient_');
- const snapshot=extractFunction(code,'getOrderRecipientSnapshot_');
- const detail=extractFunction(code,'getOrderDetail');
- assert.ok(checkout.includes('normalizeOrderRecipient_(recipientData,metodePengiriman,tujuan)'));
+test('Wali checkout persists saved Santri recipient snapshots and keeps legacy order detail readable',()=>{
+ const checkout=extractFunction(code,'checkoutCart'),guard=extractFunction(code,'assertWaliSavedRecipient_'),snapshot=extractFunction(code,'getOrderRecipientSnapshot_'),detail=extractFunction(code,'getOrderDetail');
  assert.ok(checkout.includes('recipientSnapshot:recipient'));
- assert.ok(checkout.includes("session.userId,'',subtotal"));
- assert.ok(!checkout.includes('assertWaliChild_'));
- assert.ok(normalize.includes('recipient.address'));
- assert.ok(normalize.includes('Nama Santri/penerima wajib diisi'));
+ assert.ok(checkout.includes('santriId:santriId'));
+ assert.ok(guard.includes('ALAMAT_PESANAN'));
  assert.ok(snapshot.includes('payload.recipientSnapshot'));
- assert.ok(snapshot.includes('findSantriRowById_'),'Legacy orders must still resolve from the Santri master.');
+ assert.ok(snapshot.includes('findSantriRowById_'));
  assert.ok(detail.includes('getOrderRecipientSnapshot_(ss,r)'));
- assert.ok(!detail.includes('assertWaliChild_'),'Order detail must not depend on an active relation after checkout.');
- assert.ok(index.includes('checkoutRecipientName'));
- assert.ok(index.includes('checkoutRecipientAddress'));
- assert.ok(!index.includes('Data ini hanya digunakan sebagai alamat pesanan'));
- assert.ok(index.includes('runServer(\'checkoutCart\',state.token,recipient,selectedIds'));
- assert.ok(!index.includes('name="checkoutSantriId"'));
+ assert.ok(!index.includes('checkoutRecipientName'));
+ assert.ok(index.includes('checkoutSavedRecipient'));
+ assert.ok(index.includes("runServer('checkoutCart',state.token,recipient,ids"));
 });
 test('Order recipient snapshots are reused by internal order and delivery workspaces',()=>{
  assert.ok(extractFunction(code,'getMyOrders').includes('getOrderRecipientSnapshot_(ss,r)'));
@@ -567,24 +558,30 @@ test('Self-link and Admin approval enforce the same two active-or-pending Wali l
  assert.ok(!approve.includes('activeCount>=2'),'Admin approval must not count active rows while ignoring other pending requests.');
 });
 
-test('Wali self-link auto-activates only on exact phone match and otherwise waits for Admin',()=>{
- const link=extractFunction(code,'requestWaliSantriLink');
- const classes=extractFunction(code,'getSantriClassesForWaliSelf');
- const search=extractFunction(code,'searchSantriForWaliSelf');
+test('Wali can save active Santri as an order recipient without Admin approval',()=>{
+ const link=extractFunction(code,'requestWaliSantriLink'),search=extractFunction(code,'searchSantriForWaliSelf'),profile=extractFunction(code,'getWaliProfileManagement');
  assert.ok(link.includes("requireRole_(token,[FMART.ROLES.WALI_SANTRI])"));
- assert.ok(link.includes("santriField_(santri.values,santriMap,'no_wa_wali')"));
- assert.ok(link.includes('guardianPhone===waliPhone'));
- assert.ok(link.includes("phoneMatched?'AKTIF':'MENUNGGU_VERIFIKASI'"));
- assert.ok(link.includes('REQUEST_WALI_SANTRI_SELF'));
- assert.ok(classes.includes("['AKTIF','MENUNGGU_VERIFIKASI']"));
- assert.ok(search.includes("['AKTIF','MENUNGGU_VERIFIKASI']"));
- assert.ok(index.includes('Hubungan aktif otomatis jika nomor HP Wali cocok dengan no_wa_wali'));
- assert.ok(index.includes('pengajuan menunggu verifikasi Admin'));
- assert.ok(index.includes('Proses Penghubungan'));
- assert.ok(!index.includes('Hubungan langsung aktif tanpa persetujuan Admin.'));
+ assert.ok(link.includes("'ALAMAT_PESANAN'"));
+ assert.ok(link.includes("santriRecord_(found.values,getSantriColumnMap_(sheet)).status.toUpperCase()!=='AKTIF'"));
+ assert.ok(!link.includes('guardianPhone')&&!link.includes('MENUNGGU_VERIFIKASI'));
+ assert.ok(search.includes("'ALAMAT_PESANAN'"));
+ assert.ok(profile.includes("['AKTIF','ALAMAT_PESANAN','MENUNGGU_VERIFIKASI']"));
+ assert.ok(extractFunction(code,'removeMyWaliSavedAddress').includes("String(row.values[1]||'')!==String(wali.waliId)"));
 });
-
-
+test('Wali checkout requires an owned saved recipient and revalidates the Santri master on the server',()=>{
+ const checkout=extractFunction(code,'checkoutCart'),guard=extractFunction(code,'assertWaliSavedRecipient_'),snapshot=extractFunction(code,'getOrderRecipientSnapshot_');
+ assert.ok(checkout.includes('assertWaliSavedRecipient_(getSS_(),session.userId,santriId)'));
+ assert.ok(checkout.includes('recipientSnapshot:recipient'));
+ assert.ok(checkout.includes('santriId:santriId'));
+ assert.ok(guard.includes("String(r[1]||'')===String(wali.waliId)"));
+ assert.ok(guard.includes("['AKTIF','ALAMAT_PESANAN']"));
+ assert.ok(guard.includes("child.status.toUpperCase()!=='AKTIF'"));
+ assert.ok(snapshot.includes('payload.recipientSnapshot'));
+ assert.ok(index.includes('checkoutSavedRecipient'));
+ assert.ok(index.includes('loadCheckoutSavedRecipients'));
+ assert.ok(index.includes('Simpan Alamat Pemesanan'));
+ assert.ok(!index.includes('checkoutRecipientName'));
+});
 test('Buyer and staff inline application JavaScript parses after Apps Script template substitution',()=>{
  const match=index.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
  assert.ok(match,'Inline application script must exist.');
@@ -2100,4 +2097,11 @@ test('Wali shopping screens avoid redundant instructional copy while preserving 
  assert.ok(index.includes('Nama Santri / penerima'));
  assert.ok(index.includes('Metode pemenuhan'));
  assert.ok(index.includes('Konfirmasi dan buat pesanan'));
+});
+
+
+test('Saved order address status never grants access to the formal Wali-Santri child dashboard',()=>{
+ const children=extractFunction(code,'getChildrenForWali_');
+ assert.ok(children.includes("String(r[3]).toUpperCase()==='AKTIF'"));
+ assert.ok(!children.includes('ALAMAT_PESANAN'));
 });
