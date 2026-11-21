@@ -2099,6 +2099,14 @@ test('Wali login, registration and reset UI use native credential autofill and c
 });
 
 
+test('Wali profile client email validation accepts normal addresses and rejects malformed values',()=>{
+ const fn=extractFunction(index,'saveWaliProfile');
+ assert.ok(fn.includes("if(email&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))"),'Client validation must use real whitespace and dot escapes, not literal backslash matching.');
+ const emailPattern=/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+ for(const email of ['wali@gmail.com','nama.keluarga+fmart@example.co.id',' wali@example.org '.trim()])assert.equal(emailPattern.test(email),true,email);
+ for(const email of ['wali@','wali.example.com','wali @example.com','wali@example','@example.com'])assert.equal(emailPattern.test(email),false,email);
+});
+
 test('Wali profile changes validate the account and synchronize email through verification',()=>{
  const fn=extractFunction(code,'updateMyWaliProfile'),helper=extractFunction(code,'sendWaliEmailVerification_');
  assert.ok(fn.includes('normalizeEmail_(email)'));
