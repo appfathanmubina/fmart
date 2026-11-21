@@ -1780,7 +1780,10 @@ test('Supervisor dashboard uses an oversight view and never routes to warehouse 
 
 test('Supervisor read-only catalog and reports do not run costing schema migration',()=>{
  const catalog=extractFunction(code,'getAdminCatalog'),reports=extractFunction(code,'getFMartReports');
- for(const fn of [catalog,reports])assert.ok(fn.includes('if(session.role!==FMART.ROLES.SUPERVISOR)ensureFMartCostingSchema_(ss);'),'Supervisor read-only endpoints must not mutate sheet schema.');
+ for(const fn of [catalog,reports]){
+  assert.ok(fn.includes('if(session.role!==FMART.ROLES.SUPERVISOR)ensureFMartCostingSchema_(ss);'),'Supervisor read-only endpoints must not mutate sheet schema.');
+  assert.ok(fn.includes('FMART.ROLES.ADMIN')&&fn.includes('FMART.ROLES.SUPERADMIN'),'Admin/Superadmin must retain the established HPP schema preparation path.');
+ }
 });
 
 test('Supervisor order detail omits recipient contact data and raw Santri ID',()=>{
