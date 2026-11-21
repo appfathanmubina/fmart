@@ -2058,7 +2058,7 @@ test('Wali password recovery uses a rate-limited, expiring, one-time email link 
  assert.ok(request.includes('MailApp.sendEmail'));
  assert.ok(reset.includes('payload.userId'));
  assert.ok(reset.includes("row.values[5] || '').toUpperCase() !== 'WALI_SANTRI'"));
- assert.ok(reset.includes('row.values[6] || '').toUpperCase() !== 'AKTIF'));
+ assert.ok(reset.includes("row.values[6] || '').toUpperCase() !== 'AKTIF"));
  assert.ok(reset.includes('cache.remove(key)'));
  assert.ok(reset.includes('sheet.getRange(row.rowNumber, 9).setValue(now)'),'Password reset must invalidate old sessions through the auth timestamp.');
  assert.ok(reset.includes('sheet.getRange(row.rowNumber, 12).setValue(true)'),'Successful email reset proves the account email.');
