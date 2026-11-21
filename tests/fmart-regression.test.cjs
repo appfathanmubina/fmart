@@ -1638,13 +1638,17 @@ test('All UI server endpoints resolve and have server-side authorization or expl
   assert.ok(start>=0,'UI endpoint '+name+' must resolve to a backend function.');
   const end=code.indexOf('\nfunction ',start+10);
   const body=code.slice(start,end<0?code.length:end);
-  if(['login','registerWaliSantri','verifyAdminLoginOtp'].includes(name))continue;
+  if(['login','registerWaliSantri','verifyAdminLoginOtp','requestWaliPasswordReset','resetWaliPassword'].includes(name))continue;
   assert.ok(body.includes('requireSession_(')||body.includes('requireRole_('),'Endpoint '+name+' must validate a server-side session or role.');
  }
  const login=extractFunction(code,'login');
  assert.ok(login.includes('LOGIN_MAX_FAILURES')&&login.includes('recordLoginFailure_')&&login.includes('verifyPassword_')&&login.includes('portalRoleAllowed_'),'Public login must retain rate limiting, password verification and portal-role checks.');
  const registration=extractFunction(code,'registerWaliSantri');
  assert.ok(registration.includes('LockService.getScriptLock()')&&registration.includes('PASSWORD_MIN_LENGTH')&&registration.includes('normalizePhone_'),'Public Wali registration must retain locking and input validation.');
+ const resetRequest=extractFunction(code,'requestWaliPasswordReset');
+ const resetPassword=extractFunction(code,'resetWaliPassword');
+ assert.ok(resetRequest.includes('attempts >= 3')&&resetRequest.includes('cache.put(tokenKey, cachePayload, 1800)'),'Public reset request must be rate-limited and issue expiring tokens.');
+ assert.ok(resetPassword.includes('waliPasswordResetTokenKey_')&&resetPassword.includes("row.values[5] || '').toUpperCase() !== 'WALI_SANTRI'")&&resetPassword.includes('cache.remove(key)'),'Public reset endpoint must validate one-time tokens and Wali ownership.');
  const otp=extractFunction(code,'verifyAdminLoginOtp');
  assert.ok(otp.includes("portalMode || '') !== 'ADMINFMART16720'")&&otp.includes('challenge.attempts>=5')&&otp.includes('constantTimeEqual_')&&otp.includes('cache.remove(key)'),'Pre-auth OTP must remain portal-bound, one-time and attempt-limited.');
  for(const name of dynamicNames){
