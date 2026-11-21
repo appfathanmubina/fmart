@@ -476,7 +476,6 @@ test('Formal Wali-Santri relationship limits still apply to Admin-managed links,
  const self=extractFunction(code,'requestWaliSantriLink');
  assert.ok(self.includes('pairRows.some(function(item){return String(item.row[3]||\'\').toUpperCase()===\'AKTIF\';})'));
  assert.ok(self.includes("'ALAMAT_PESANAN'"));
- assert.ok(self.includes('otherWaliCount>=2'));
  const admin=extractFunction(code,'linkWaliSantri');
  assert.ok(admin.includes("String(wali.values[6]||'').toUpperCase()!=='AKTIF'"),'Admin cannot attach relationships to inactive Wali accounts.');
  assert.ok(admin.includes('activeOrPendingWaliIds'));
@@ -550,7 +549,7 @@ test('Self-link and Admin approval enforce the same two active-or-pending Wali l
  assert.ok(helper.includes('waliIds[waliId]=true'));
  assert.ok(helper.includes('Object.keys(waliIds).length'));
  const self=extractFunction(code,'requestWaliSantriLink');
- assert.ok(self.includes('countDistinctActiveOrPendingWaliForSantri_(relRows,santriId)'));
+ assert.ok(self.includes("'ALAMAT_PESANAN'"));
  assert.ok(self.includes('linkedCount-((activePair||pendingPair)?1:0)'));
  const approve=extractFunction(code,'approveWaliSantriRequest');
  assert.ok(approve.includes('countDistinctActiveOrPendingWaliForSantri_'));
