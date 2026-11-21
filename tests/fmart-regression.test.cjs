@@ -1421,13 +1421,9 @@ test('Wali product card, detail, and cart images fall back cleanly when an image
  assert.ok(index.slice(handler,handler+500).includes('img.nextElementSibling'));
 });
 
-test('Required checkout, payment-proof, and password fields expose native required semantics',()=>{
- const checkout=index.slice(index.indexOf('function openCheckout(){'),index.indexOf('function updateCheckoutFulfillmentUI(){'));
- assert.ok(checkout.includes('id="checkoutRecipientName" type="text" required'));
- assert.ok(checkout.includes('id="checkoutRecipientAddress" rows="3" required'));
- const fulfillment=extractFunction(index,'updateCheckoutFulfillmentUI');
- assert.ok(fulfillment.includes('address.required=true'));
- assert.ok(fulfillment.includes('address.required=false'),'Pickup mode must make the delivery address optional.');
+test('Saved recipient, payment-proof, and password fields expose native required semantics',()=>{
+ const checkout=index.slice(index.indexOf('function openCheckout(){'),index.indexOf('async function loadCheckoutSavedRecipients'));
+ assert.ok(checkout.includes('id="checkoutSavedRecipient" required'));
  const payment=extractFunction(index,'openPayment');
  assert.ok(payment.includes('id="paymentProof" class="file-input" type="file" required'));
  const password=extractFunction(index,'openChangePassword');
@@ -1435,61 +1431,28 @@ test('Required checkout, payment-proof, and password fields expose native requir
  assert.ok(password.includes('id="newPassword" type="password" autocomplete="new-password" minlength="10" required'));
  assert.ok(password.includes('id="confirmPassword" type="password" autocomplete="new-password" minlength="10" required'));
 });
-
-test('Wali self-link activates only on exact normalized guardian phone match',()=>{
- const helper=extractFunction(code,'normalizePhone_');
- assert.ok(helper.includes("s.indexOf('+62') === 0")&&helper.includes("s.indexOf('62') === 0")&&helper.includes("s.charAt(0) === '8'"),'Phone comparison must normalize Indonesian formats.');
+test('Wali self-service saved address does not rely on guardian phone verification',()=>{
  const request=extractFunction(code,'requestWaliSantriLink');
- assert.ok(request.includes("santriField_(santri.values,santriMap,'no_wa_wali')"),'The server must read the guardian phone from the Santri master record.');
- assert.ok(request.includes('normalizePhone_(wali.noHp)')&&request.includes('normalizePhone_(santriField_'), 'Both account and Santri guardian phones must be normalized.');
- assert.ok(request.includes('guardianPhone===waliPhone'),'Automatic linking requires exact normalized phone equality.');
- assert.ok(request.includes("phoneMatched?'AKTIF':'MENUNGGU_VERIFIKASI'"),'Mismatch or missing phone must become an Admin-verification request.');
- assert.ok(request.includes("phoneMatched?'LINK_WALI_SANTRI_SELF':'REQUEST_WALI_SANTRI_SELF'"),'Audit events must distinguish direct link from pending request.');
- assert.ok(request.includes("status:'MENUNGGU_VERIFIKASI'")&&request.includes('Pengajuan dikirim ke Admin untuk verifikasi.'));
- assert.ok(request.includes('countDistinctActiveOrPendingWaliForSantri_(relRows,santriId)')&&request.includes('otherWaliCount>=2'),'The maximum two Wali limit must include pending requests.');
+ assert.ok(request.includes("'ALAMAT_PESANAN'"));
+ assert.ok(!request.includes('guardianPhone')&&!request.includes('phoneMatched'));
+ assert.ok(request.includes("requireRole_(token,[FMART.ROLES.WALI_SANTRI])"));
  for(const name of ['getSantriClassesForWaliSelf','searchSantriForWaliSelf']){
-  const fn=extractFunction(code,name);
-  assert.ok(fn.includes("['AKTIF','MENUNGGU_VERIFIKASI']"),name+' must hide both already linked and pending Santri from duplicate requests.');
+  const fn=extractFunction(code,name);assert.ok(fn.includes("'ALAMAT_PESANAN'"),name+' must hide already saved addresses.');
  }
 });
-
-test('Wali self-link copy explains automatic phone match and Admin verification fallback',()=>{
- const start=index.indexOf('<div id="waliLinkModal"');
- const end=index.indexOf('<div id="changePasswordModal"',start);
- assert.ok(start>=0&&end>start,'Wali link modal must exist.');
- const modal=index.slice(start,end);
- assert.ok(modal.includes('Hubungan aktif otomatis jika nomor HP Wali cocok dengan no_wa_wali'));
- assert.ok(modal.includes('pengajuan menunggu verifikasi Admin'));
- const submitStart=index.indexOf('function openWaliRequestForm(');
- const submitEnd=index.indexOf('function closeProfile(',submitStart);
- assert.ok(submitStart>=0&&submitEnd>submitStart,'Wali self-link action must exist.');
- const submit=index.slice(submitStart,submitEnd);
- assert.ok(submit.includes('Nomor HP Wali akan dicocokkan dengan no_wa_wali'));
- assert.ok(submit.includes("runServer('requestWaliSantriLink'"));
- assert.ok(submit.includes('Proses Penghubungan'));
+test('Wali saved-address modal uses concise copy and saves without Admin approval',()=>{
+ const start=index.indexOf('<div id="waliLinkModal"'),end=index.indexOf('<div id="changePasswordModal"',start),modal=index.slice(start,end);
+ assert.ok(start>=0&&end>start);assert.ok(modal.includes('Pilih Santri dari data master untuk disimpan sebagai alamat pemesanan.'));
+ const submit=extractFunction(index,'openWaliRequestForm');
+ assert.ok(submit.includes("runServer('requestWaliSantriLink'"));assert.ok(submit.includes('Simpan Alamat Pemesanan'));
+ assert.ok(!modal.includes('verifikasi Admin'));
 });
-
-test('Payment rejection note is semantically required only for rejection',()=>{
- const fn=extractFunction(index,'openVerifyPayment');
- assert.ok(fn.includes("maxlength=\"300\"'+(accepting?'':' required')+' placeholder=\"'+(accepting?'Catatan pemeriksaan (opsional)':'Jelaskan alasan penolakan')+'\""));
- assert.ok(fn.includes("if(!accepting&&!note)"),'Existing rejection validation must remain.');
- assert.ok(fn.includes("accepting?'Catatan pemeriksaan (opsional)':'Jelaskan alasan penolakan'"));
+test('Empty Wali child picker points to the saved-address flow',()=>{
+ const start=index.indexOf('function renderEmptyChildPicker(){'),end=index.indexOf('let childPickerSearchTimer',start),empty=index.slice(start,end);
+ assert.ok(start>=0&&end>start);assert.ok(empty.includes('disimpan sebagai alamat pemesanan'));
+ const searchStart=index.indexOf('async function searchChildPickerDirectory('),searchEnd=index.indexOf('function ',searchStart+10),search=index.slice(searchStart,searchEnd>0?searchEnd:undefined);
+ assert.ok(index.includes('data-picker-request'));assert.ok(search.includes('openWaliLinkModal(c)'));
 });
-
-test('Empty Wali child picker explains phone match and Admin verification fallback',()=>{
- const start=index.indexOf('function renderEmptyChildPicker(){');
- const end=index.indexOf('let childPickerSearchTimer',start);
- assert.ok(start>=0&&end>start,'Empty child picker renderer must exist.');
- const empty=index.slice(start,end);
- assert.ok(empty.includes('Hubungan otomatis aktif jika nomor HP cocok'));
- assert.ok(empty.includes('pengajuan dikirim ke Admin untuk verifikasi'));
- const searchStart=index.indexOf('async function searchChildPickerDirectory(');
- const searchEnd=index.indexOf('function ',searchStart+10);
- const search=index.slice(searchStart,searchEnd>0?searchEnd:undefined);
- assert.ok(index.includes("data-picker-request=\"'+escapeHtml(c.id)+'\">Hubungkan</button>"));
- assert.ok(search.includes('openWaliLinkModal(c)'),'Selecting a Santri must continue to use the conditional self-link flow.');
-});
-
 test('Login form is not blocked by the hidden OTP field before staff OTP is requested',()=>{
  const start=index.indexOf('id="loginOtpCode"');
  const inputStart=index.lastIndexOf('<input',start);
