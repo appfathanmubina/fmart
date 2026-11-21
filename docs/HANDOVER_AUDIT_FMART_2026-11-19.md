@@ -169,3 +169,11 @@ Audit source Superadmin dilakukan pada apps-script/Code.gs, apps-script/Index.ht
 CI/check PR #189 belum melaporkan status yang dapat diverifikasi; jangan menyatakan regression lulus sebelum workflow benar-benar selesai. Uji runtime dengan akun Superadmin dan role pembanding belum dilakukan. Jalankan runFMartReadinessAudit_() serta auditFMartCostingIntegrity_() secara terpisah; audit costing belum termasuk dalam fungsi readiness gabungan. Tidak ada perubahan data produksi.
 
 **Status:** source review selesai; perubahan menunggu CI/review/merge; runtime NOT RUN; produksi NOT APPROVED.
+
+## Addendum — Tahap 41.3–41.8 Audit role lanjutan (21 November 2026)
+
+Audit source untuk Admin, Kasir, Gudang, Petugas Pengantar, dan Supervisor telah dilakukan berurutan setelah Tahap 41.2. Admin, Kasir, dan Petugas Pengantar tidak memerlukan perubahan kode pada review source. Gudang memiliki kebocoran minimisasi data dashboard yang diperbaiki melalui PR #190. Supervisor memiliki dua temuan read-only/privacy yang disiapkan pada PR #192: mencegah migrasi HPP dari endpoint baca Supervisor dan menghilangkan nomor kontak/alamat/ID Santri dari detail pesanan Supervisor.
+
+PR #189 (Superadmin) dan PR #190 (Gudang) telah melewati workflow FMart Regression. PR #192 masih menunggu workflow. Source/CI tidak membuktikan runtime; uji akun, browser, Drive, Spreadsheet, kamera/upload, dan transaksi nyata tetap NOT RUN. Tidak ada data produksi yang diubah oleh audit ini.
+
+**Status:** source review enam role selesai; PR #189/#190 merged; PR #192 menunggu CI/merge; runtime seluruh role NOT RUN; produksi NOT APPROVED.
