@@ -1026,7 +1026,7 @@ test('Staff dashboard shows a recoverable retry state when the initial summary r
  const renderStart=end;
  const renderEnd=index.indexOf('async function renderOpsReports',renderStart);
  const renderer=index.slice(renderStart,renderEnd);
- assert.ok(renderer.includes("$('opsStats').classList.remove('hidden')"),'Successful dashboard rendering must restore the stats panel.');
+ assert.ok(renderer.includes('opsStatsNode.classList.toggle(\'hidden\',!dashboardActive)'),'Successful dashboard rendering must restore the stats panel.');
 });
 
 test('Buyer product-card action label matches its actual detail-opening behavior',()=>{
