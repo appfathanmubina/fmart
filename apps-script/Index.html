@@ -2645,6 +2645,38 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
         box-sizing:border-box;
       }
     }
+
+    
+    /* Admin PWA mobile — pulihkan lebar penuh tanpa mengubah layout desktop/tablet. */
+    @media (max-width:760px) {
+      body.admin-portal #appView.app {
+        width:100%!important;
+        max-width:none!important;
+        min-width:0!important;
+        margin-left:0!important;
+        margin-right:0!important;
+      }
+      body.admin-portal .header {
+        position:sticky;
+        left:0;
+        right:0;
+        width:100%!important;
+        max-width:none!important;
+        margin-left:0!important;
+        margin-right:0!important;
+        box-sizing:border-box;
+      }
+      body.admin-portal .header-inner {
+        width:100%!important;
+        max-width:none!important;
+        min-width:0!important;
+        min-height:60px;
+        margin-left:0!important;
+        margin-right:0!important;
+        padding:9px 12px!important;
+        box-sizing:border-box;
+      }
+    }
 </style>
   
 
