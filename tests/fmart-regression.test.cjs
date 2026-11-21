@@ -452,7 +452,7 @@ test('Wali checkout uses manual recipient snapshots and does not create or requi
  assert.ok(!detail.includes('assertWaliChild_'),'Order detail must not depend on an active relation after checkout.');
  assert.ok(index.includes('checkoutRecipientName'));
  assert.ok(index.includes('checkoutRecipientAddress'));
- assert.ok(index.includes('Data ini hanya digunakan sebagai alamat pesanan'));
+ assert.ok(!index.includes('Data ini hanya digunakan sebagai alamat pesanan'));
  assert.ok(index.includes('runServer(\'checkoutCart\',state.token,recipient,selectedIds'));
  assert.ok(!index.includes('name="checkoutSantriId"'));
 });
