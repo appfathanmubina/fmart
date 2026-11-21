@@ -1596,7 +1596,7 @@ test('All UI server endpoints resolve and have server-side authorization or expl
   assert.ok(start>=0,'UI endpoint '+name+' must resolve to a backend function.');
   const end=code.indexOf('\nfunction ',start+10);
   const body=code.slice(start,end<0?code.length:end);
-  if(['login','registerWaliSantri','verifyAdminLoginOtp','requestWaliPasswordReset','resetWaliPassword'].includes(name))continue;
+  if(['login','registerWaliSantri','verifyWaliRegistrationOtp','verifyWaliEmail','verifyAdminLoginOtp','requestWaliPasswordReset','resetWaliPassword'].includes(name))continue;
   assert.ok(body.includes('requireSession_(')||body.includes('requireRole_('),'Endpoint '+name+' must validate a server-side session or role.');
  }
  const login=extractFunction(code,'login');
