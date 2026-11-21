@@ -1246,11 +1246,12 @@ function getOperationsOrderDetail(token, orderId) {
     return {id:String(d[0]),productId:String(d[2]),variationId:String(d[3]||''),sku:String(d[4]||''),name:String(d[5]||''),variationName:String(d[6]||''),price:Number(d[7])||0,qty:Number(d[8])||0,subtotal:Number(d[9])||0};
   });
   const recipient = getOrderRecipientSnapshot_(ss,r);
+  const visibleRecipient=session.role===FMART.ROLES.SUPERVISOR?{name:recipient.name,className:recipient.className,asrama:recipient.asrama,legacy:recipient.legacy}:recipient;
   const payments = readRows_(ss.getSheetByName('Pembayaran')).filter(function(p){return String(p[1])===orderId;}).sort(function(a,b){return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime();});
   const payment = payments.length ? {status:String(payments[0][5]||''),method:String(payments[0][2]||''),nominal:Number(payments[0][3])||0,verifiedAt:dateIso_(payments[0][7])} : null;
   const shipments = readRows_(ss.getSheetByName('Pengiriman')).filter(function(sh){return String(sh[1])===orderId;}).sort(function(a,b){return new Date(b[8]||0).getTime()-new Date(a[8]||0).getTime();});
   const shipment = shipments.length ? {status:String(shipments[0][4]||''),method:String(shipments[0][2]||''),destination:String(shipments[0][3]||'')} : null;
-  return {ok:true,order:{orderId:String(r[0]),number:String(r[1]),santriId:String(r[3]),childName:recipient.name||'Santri',className:recipient.className||'',recipient:recipient,subtotal:Number(r[4])||0,shipping:Number(r[5])||0,discount:Number(r[6])||0,total:Number(r[7])||0,status:String(r[8]||''),note:String(r[9]||''),createdAt:dateIso_(r[10]),updatedAt:dateIso_(r[11]),payment:payment,shipment:shipment,details:details}};
+  return {ok:true,order:{orderId:String(r[0]),number:String(r[1]),santriId:session.role===FMART.ROLES.SUPERVISOR?'':String(r[3]),childName:recipient.name||'Santri',className:recipient.className||'',recipient:visibleRecipient,subtotal:Number(r[4])||0,shipping:Number(r[5])||0,discount:Number(r[6])||0,total:Number(r[7])||0,status:String(r[8]||''),note:String(r[9]||''),createdAt:dateIso_(r[10]),updatedAt:dateIso_(r[11]),payment:payment,shipment:shipment,details:details}};
 }
 
 function submitPayment(token,orderId,method,nominal,fileName,mimeType,base64Data,requestKey){
@@ -1752,7 +1753,7 @@ function getStockCardReport(token, productId, variationId, startDate, endDate) {
 
 /** Fase 6: laporan operasional terhitung dari data transaksi aktual. */
 function getFMartReports(token,startDate,endDate){
- const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN]),ss=getSS_();ensureFMartCostingSchema_(ss);
+ const session=requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERVISOR,FMART.ROLES.SUPERADMIN]),ss=getSS_();if(session.role!==FMART.ROLES.SUPERVISOR)ensureFMartCostingSchema_(ss);
  const start=parseReportDate_(startDate,false),end=parseReportDate_(endDate,true);if(end<start)throw new Error('Periode laporan tidak valid.');
  const orderDetailSheet=ss.getSheetByName('DetailPesanan'),posDetailSheet=ss.getSheetByName('DetailPenjualanToko'),orderHppUnitIndex=getHeaderColumnIndex_(orderDetailSheet,'HPPUnit')-1,orderHppSubtotalIndex=getHeaderColumnIndex_(orderDetailSheet,'HPPSubtotal')-1,orderHppStatusIndex=getHeaderColumnIndex_(orderDetailSheet,'HPPStatus')-1,posHppUnitIndex=getHeaderColumnIndex_(posDetailSheet,'HPPUnit')-1,posHppSubtotalIndex=getHeaderColumnIndex_(posDetailSheet,'HPPSubtotal')-1,posHppStatusIndex=getHeaderColumnIndex_(posDetailSheet,'HPPStatus')-1;
  const orders=readRows_(ss.getSheetByName('Pesanan')).filter(r=>inReportRange_(r[10],start,end)),details=readRows_(orderDetailSheet),allPayments=readRows_(ss.getSheetByName('Pembayaran')),payments=allPayments.filter(r=>inReportRange_(r[8],start,end));
@@ -1832,8 +1833,8 @@ function setFMartIntegrationTabunganId(token, spreadsheetId){
 function getSettingValue_(key){const s=getSS_().getSheetByName('Pengaturan');const rows=readRows_(s);const r=rows.find(x=>String(x[0])===String(key));return r?String(r[1]||''):'';}
 
 function getAdminCatalog(token) {
-  requireRole_(token, [FMART.ROLES.ADMIN, FMART.ROLES.SUPERVISOR, FMART.ROLES.SUPERADMIN]);
-  const ss=getSS_();ensureFMartCostingSchema_(ss);
+  const session=requireRole_(token, [FMART.ROLES.ADMIN, FMART.ROLES.SUPERVISOR, FMART.ROLES.SUPERADMIN]);
+  const ss=getSS_();if(session.role!==FMART.ROLES.SUPERVISOR)ensureFMartCostingSchema_(ss);
   const categories=readRows_(ss.getSheetByName('Kategori')).map(r=>({id:String(r[0]),name:String(r[1]||''),description:String(r[2]||''),order:Number(r[3])||0,status:String(r[4]||'')}));
   const productSheet=ss.getSheetByName('Produk'),variationSheet=ss.getSheetByName('VariasiProduk'),productHppIndex=getHeaderColumnIndex_(productSheet,'HargaPokokRataRata')-1,variationHppIndex=getHeaderColumnIndex_(variationSheet,'HargaPokokRataRata')-1;
   const products=readRows_(productSheet).map(r=>({id:String(r[0]),categoryId:String(r[1]||''),sku:String(r[2]||''),name:String(r[3]||''),description:String(r[4]||''),price:Number(r[5])||0,minStock:Number(r[6])||0,photoUrl:String(r[7]||''),status:String(r[8]||''),hpp:Math.max(0,Number(r[productHppIndex])||0)}));
