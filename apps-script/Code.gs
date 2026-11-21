@@ -2014,7 +2014,13 @@ function uploadProductPhoto(token, payload) {
   const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif'})[mimeType];
   const name='FMart-Produk-'+Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyyMMdd-HHmmss')+'-'+original.replace(/\.[^.]+$/,'')+'.'+ext;
   const folder=getProductPhotoFolder_();
-  const file=folder.createFile(Utilities.newBlob(bytes,mimeType,name));
+  let file;
+  try {
+    file=folder.createFile(Utilities.newBlob(bytes,mimeType,name));
+  } catch(e) {
+    const detail=String(e&&e.message||e||'').slice(0,180);
+    throw new Error('Foto gagal disimpan ke Google Drive. Pastikan akun pemilik deployment memiliki akses Drive. Detail: '+detail);
+  }
   writeAudit_(session.userId,session.role,'UPLOAD_PRODUCT_PHOTO','PRODUK',file.getId(),'','',JSON.stringify({fileName:name,mimeType:mimeType,sizeBytes:bytes.length}));
   return {fileId:file.getId(),fileName:name,photoUrl:'https://drive.google.com/thumbnail?id='+encodeURIComponent(file.getId())+'&sz=w1200'};
 }

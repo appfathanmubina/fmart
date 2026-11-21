@@ -102,6 +102,23 @@ test('Product photos are served privately through an authenticated, folder-scope
  assert.ok(index.includes("runServer('getProductPhotoData',state.token,fileId)"));
  assert.ok(index.includes('data-drive-file-id'));
 });
+test('Product photo upload accepts Android files with missing or nonstandard MIME metadata',()=>{
+ const fn=index.match(/    function productPhotoMimeType_\(file\)\{[\s\S]*?\n    \}/)[0].trim(),sandbox={};
+ vm.runInNewContext(fn+'\nthis.detect=productPhotoMimeType_;',sandbox);
+ assert.equal(sandbox.detect({type:'image/jpeg',name:'photo.jpg'}),'image/jpeg');
+ assert.equal(sandbox.detect({type:'',name:'IMG_20261121.JPG'}),'image/jpeg');
+ assert.equal(sandbox.detect({type:'image/jpg',name:'photo.jpg'}),'image/jpeg');
+ assert.equal(sandbox.detect({type:'',name:'photo.png'}),'image/png');
+ assert.equal(sandbox.detect({type:'',name:'photo.heic'}),'');
+});
+test('Product photo upload allows large device originals but keeps the compressed upload capped at 500 KB',()=>{
+ assert.ok(index.includes('f.size>20*1024*1024'),'Device source photos should allow up to 20 MB before browser compression.');
+ assert.ok(index.includes('const maxBytes=500*1024;'),'Compressed photo must remain capped at 500 KB.');
+ assert.ok(index.includes('if(file.size<=maxBytes)'),'Small supported images may upload unchanged if the browser decoder cannot recompress them.');
+ assert.ok(index.includes('image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif'));
+ const upload=extractFunction(code,'uploadProductPhoto');
+ assert.ok(upload.includes('bytes.length>500*1024'),'Server must still enforce the 500 KB output limit.');
+});
 test('Product photo signature validation accepts GIF87a and GIF89a',()=>{
  const fn=extractFunction(code,'validateUploadedFileSignature_'),sandbox={};
  vm.runInNewContext(fn+'\nthis.validate=validateUploadedFileSignature_;',sandbox);
