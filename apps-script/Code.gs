@@ -564,55 +564,17 @@ function getMyProfile(token) {
 }
 
 /** Profil Wali dan status relasi santri. Identitas pengguna selalu berasal dari sesi. */
-function getWaliProfileManagement(token) {
-  const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
-  const ss = getSS_();
-  const wali = findWaliByUserId_(ss, session.userId);
-  if (!wali) throw new Error('Data Wali Santri tidak ditemukan.');
-  const santriSheet = ss.getSheetByName('Santri');
-  const santriMap = getSantriColumnMap_(santriSheet);
-  const santriById = {};
-  readSantriRows_(santriSheet).forEach(function(row) {
-    const child = santriRecord_(row, santriMap);
-    santriById[String(child.id)] = child;
-  });
-  const relationships = readRows_(ss.getSheetByName('WaliSantriSantri'))
-    .filter(function(row) {
-      return String(row[1] || '') === String(wali.waliId) &&
-        ['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(row[3] || '').toUpperCase()) !== -1;
-    })
-    .map(function(row) {
-      const child = santriById[String(row[2] || '')];
-      if (!child) return null;
-      const status = String(row[3] || '').toUpperCase();
-      return {
-        relationId:String(row[0] || ''),
-        santriId:String(row[2] || ''),
-        name:String(child.name || ''),
-        className:String(child.className || ''),
-        asrama:String(child.asrama || ''),
-        nis:status === 'AKTIF' ? String(child.nis || '') : maskNis_(child.nis),
-        hubungan:String(row[5] || ''),
-        status:status,
-        requestedAt:dateIso_(row[4]),
-        active:status === 'AKTIF' && String(child.status || '').toUpperCase() === 'AKTIF'
-      };
-    })
-    .filter(function(item) { return !!item; });
-  const users = getSS_().getSheetByName('Users');
-  const userRow = findRowById_(users, session.userId, 1);
-  return {
-    ok:true,
-    profile:{
-      nama:wali.nama,
-      noHp:wali.noHp,
-      email:wali.email,
-      alamat:wali.alamat,
-      status:String(wali.status || 'AKTIF'),
-      username:userRow ? String(userRow.values[1] || '') : String(wali.noHp || '')
-    },
-    relationships:relationships
-  };
+function getWaliProfileManagement(token){
+ const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]),ss=getSS_(),wali=findWaliByUserId_(ss,session.userId);
+ if(!wali)throw new Error('Data Wali Santri tidak ditemukan.');
+ const sheet=ss.getSheetByName('Santri'),map=getSantriColumnMap_(sheet),byId={};
+ readSantriRows_(sheet).forEach(r=>{const c=santriRecord_(r,map);byId[c.id]=c;});
+ const relationships=readRows_(ss.getSheetByName('WaliSantriSantri')).filter(r=>String(r[1]||'')===String(wali.waliId)&&['AKTIF','ALAMAT_PESANAN','MENUNGGU_VERIFIKASI'].includes(String(r[3]||'').toUpperCase())).map(r=>{
+  const c=byId[String(r[2]||'')];if(!c)return null;const status=String(r[3]||'').toUpperCase();
+  return {relationId:String(r[0]||''),santriId:String(r[2]||''),name:c.name,className:c.className,asrama:c.asrama,nis:status==='AKTIF'?c.nis:maskNis_(c.nis),hubungan:String(r[5]||''),status:status,requestedAt:dateIso_(r[4]),active:['AKTIF','ALAMAT_PESANAN'].includes(status)&&c.status.toUpperCase()==='AKTIF'};
+ }).filter(Boolean);
+ const user=findRowById_(ss.getSheetByName('Users'),session.userId,1);
+ return {ok:true,profile:{nama:wali.nama,noHp:wali.noHp,email:wali.email,alamat:wali.alamat,status:wali.status,username:user?String(user.values[1]||''):String(wali.noHp||'')},relationships:relationships,savedRecipients:relationships.filter(x=>x.active),pendingRelationships:relationships.filter(x=>x.status==='MENUNGGU_VERIFIKASI')};
 }
 
 /** Wali hanya dapat mengubah data kontak non-login miliknya sendiri. */
@@ -684,6 +646,14 @@ function cancelMyWaliSantriRequest(token, relationId) {
 }
 
 /** Mengambil ulang daftar anak dari server. Tidak menerima UserId dari browser. */
+function removeMyWaliSavedAddress(token,relationId){
+ const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);relationId=String(relationId||'').trim();if(!relationId)throw new Error('Alamat tidak valid.');
+ const lock=LockService.getScriptLock();lock.waitLock(10000);
+ try{const ss=getSS_(),wali=findWaliByUserId_(ss,session.userId),sheet=ss.getSheetByName('WaliSantriSantri'),row=findRowById_(sheet,relationId,1);
+  if(!wali||!row||String(row.values[1]||'')!==String(wali.waliId)||String(row.values[3]||'').toUpperCase()!=='ALAMAT_PESANAN')throw new Error('Alamat pemesanan tidak ditemukan.');
+  sheet.getRange(row.rowNumber,4).setValue('NONAKTIF');writeAudit_(session.userId,session.role,'REMOVE_WALI_ORDER_RECIPIENT','WALI_SANTRI_SANTRI',relationId,JSON.stringify({status:'ALAMAT_PESANAN'}),JSON.stringify({status:'NONAKTIF'}),'Wali menghapus alamat pemesanan tersimpan');SpreadsheetApp.flush();return {ok:true,message:'Alamat pemesanan dihapus.'};
+ }finally{lock.releaseLock();}
+}
 function getMyChildren(token) {
   const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
   return {ok:true, children:getChildrenForWali_(getSS_(), session.userId)};
@@ -1135,36 +1105,30 @@ function completeStockReceipt_(ss,receipt,payload,actor,actorRole){
 
 /** Satu checkout menghasilkan satu pesanan untuk satu snapshot penerima dan hanya item terpilih. */
 function checkoutCart(token,recipientData,selectedCartIds,catatan,metodePengiriman,tujuan,requestKey){
- const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
- const recipient=normalizeOrderRecipient_(recipientData,metodePengiriman,tujuan);selectedCartIds=Array.isArray(selectedCartIds)?Array.from(new Set(selectedCartIds.map(x=>String(x||'').trim()).filter(Boolean))):[];
+ const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);recipientData=recipientData&&typeof recipientData==='object'?recipientData:{};
+ const santriId=String(recipientData.santriId||'').trim();if(!santriId)throw new Error('Pilih Santri dari alamat pemesanan tersimpan.');
+ const child=assertWaliSavedRecipient_(getSS_(),session.userId,santriId),extra=String(recipientData.address||'').trim().slice(0,300);
+ const recipient={santriId:santriId,name:String(child.name||''),className:String(child.className||''),asrama:String(child.asrama||''),phone:'',address:[child.className?'Kelas '+child.className:'',child.asrama?'Asrama '+child.asrama:'',extra].filter(Boolean).join(' · ')};
+ selectedCartIds=Array.isArray(selectedCartIds)?Array.from(new Set(selectedCartIds.map(x=>String(x||'').trim()).filter(Boolean))):[];
  catatan=String(catatan||'').trim().slice(0,500);metodePengiriman=String(metodePengiriman||'AMBIL_FMART').trim().toUpperCase();tujuan=String(tujuan||'').trim().slice(0,500);requestKey=String(requestKey||'').trim();
  if(!/^[A-Za-z0-9_-]{12,80}$/.test(requestKey))throw new Error('Kunci checkout tidak valid. Muat ulang checkout dan coba kembali.');
  if(!selectedCartIds.length)throw new Error('Pilih minimal satu barang untuk checkout.');
- if(['AMBIL_FMART','ANTAR_PESANTREN'].indexOf(metodePengiriman)<0)throw new Error('Metode pengiriman tidak valid.');
- // Identitas penerima dan alamat dicatat sebagai snapshot pesanan; tidak membuat relasi Wali-Santri.
-
+ if(!['AMBIL_FMART','ANTAR_PESANTREN'].includes(metodePengiriman))throw new Error('Metode pengiriman tidak valid.');
+ if(metodePengiriman==='ANTAR_PESANTREN'&&!recipient.address&&!tujuan)throw new Error('Lokasi Santri belum tersedia. Tambahkan catatan titik penerimaan.');
  const fingerprint=sha256Hex_(JSON.stringify({userId:session.userId,recipient:recipient,selectedCartIds:selectedCartIds.slice().sort(),note:catatan,shippingMethod:metodePengiriman,requestedDestination:tujuan}));
  const lock=LockService.getScriptLock();lock.waitLock(15000);
  try{
   const ss=getSS_(),sheet=ss.getSheetByName('Pesanan'),rows=readRows_(sheet),prior=rows.map((r,i)=>({values:r,rowNumber:i+2})).find(x=>String(x.values[12]||'')===requestKey);
-  if(prior){
-   if(String(prior.values[2])!==String(session.userId))throw new Error('Kunci checkout sudah digunakan transaksi lain.');
-   if(String(prior.values[13]||'')!==fingerprint)throw new Error('Kunci checkout pernah dipakai untuk rincian berbeda. Muat ulang keranjang.');
-   let payload;try{payload=JSON.parse(String(prior.values[14]||'{}'));}catch(e){throw new Error('Payload pemulihan checkout tidak dapat dibaca. Hubungi Admin FMart.');}
-   const result=completeCheckoutOrder_(ss,prior,payload,session.userId,session.role);result.child=payload.recipientSnapshot||recipient;result.recovered=true;return result;
-  }
-  expireStockReservations_(ss,new Date());const cart=ss.getSheetByName('Keranjang'),cartRows=readRows_(cart),wanted=Object.create(null),selected=[];
-  selectedCartIds.forEach(x=>wanted[x]=true);cartRows.forEach((r,i)=>{if(String(r[1])===session.userId&&wanted[String(r[0])])selected.push(r);});
+  if(prior){if(String(prior.values[2])!==String(session.userId))throw new Error('Kunci checkout sudah digunakan transaksi lain.');if(String(prior.values[13]||'')!==fingerprint)throw new Error('Kunci checkout pernah dipakai untuk rincian berbeda. Muat ulang keranjang.');let payload;try{payload=JSON.parse(String(prior.values[14]||'{}'));}catch(e){throw new Error('Payload pemulihan checkout tidak dapat dibaca. Hubungi Admin FMart.');}const result=completeCheckoutOrder_(ss,prior,payload,session.userId,session.role);result.child=payload.recipientSnapshot||recipient;result.recovered=true;return result;}
+  expireStockReservations_(ss,new Date());const cart=ss.getSheetByName('Keranjang'),cartRows=readRows_(cart),wanted=Object.create(null),selected=[];selectedCartIds.forEach(x=>wanted[x]=true);cartRows.forEach(r=>{if(String(r[1])===session.userId&&wanted[String(r[0])])selected.push(r);});
   if(selected.length!==selectedCartIds.length)throw new Error('Sebagian barang keranjang tidak ditemukan. Muat ulang keranjang.');
-  const items=selected.map(r=>{const q=Math.max(0,Math.floor(Number(r[5])||0)),p=getProductSnapshot_(ss,r[3],r[4]);return {productId:String(r[3]),variationId:String(r[4]||''),qty:q,active:!!(p&&p.active),unitPrice:p?p.unitPrice:0,sku:p?p.sku:'',name:p?p.name:'Produk tidak tersedia',variationName:p?p.variationName:''};});
+  const items=selected.map(r=>{const qty=Math.max(0,Math.floor(Number(r[5])||0)),p=getProductSnapshot_(ss,r[3],r[4]);return {productId:String(r[3]),variationId:String(r[4]||''),qty:qty,active:!!(p&&p.active),unitPrice:p?p.unitPrice:0,sku:p?p.sku:'',name:p?p.name:'Produk tidak tersedia',variationName:p?p.variationName:''};});
   const invalid=items.find(x=>!x.active||x.qty<1);if(!items.length||invalid)throw new Error(invalid?'Produk "'+invalid.name+'" tidak tersedia. Silakan periksa keranjang.':'Barang yang dipilih tidak ditemukan di keranjang.');
-  const subtotal=items.reduce((n,x)=>n+x.unitPrice*x.qty,0),ongkir=0,diskon=0,total=subtotal+ongkir-diskon,now=new Date(),id=makeFMartId_('ORD');
-  const number='FM-'+Utilities.formatDate(now,FMART_DB.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Math.floor(1000+Math.random()*9000);
-  const recipientAddress=[recipient.name,recipient.className?'Kelas '+recipient.className:'',recipient.asrama?'Asrama '+recipient.asrama:'',recipient.address].filter(Boolean).join(' · ');
-  const destination=metodePengiriman==='ANTAR_PESANTREN'?[recipientAddress,tujuan?'Catatan titik penerimaan: '+tujuan:''].filter(Boolean).join(' — '):('Pengambilan langsung di FMart'+(tujuan?' — '+tujuan:''));
-  const payload={userId:session.userId,santriId:'',recipientSnapshot:recipient,selectedCartIds:selectedCartIds,orderNumber:number,total:total,shippingMethod:metodePengiriman,shippingDestination:destination,requestedDestination:tujuan,createdAt:now.toISOString(),items:items.map(x=>({detailId:makeFMartId_('DTL'),productId:x.productId,variationId:x.variationId,qty:x.qty,unitPrice:x.unitPrice,sku:x.sku,name:x.name,variationName:x.variationName})),shipmentId:makeFMartId_('SHP')};
-  const row=[id,number,session.userId,'',subtotal,ongkir,diskon,total,'MENUNGGU_PEMBAYARAN',catatan,now,now,requestKey,fingerprint,JSON.stringify(payload)];
-  sheet.appendRow(row);const result=completeCheckoutOrder_(ss,{values:row,rowNumber:sheet.getLastRow()},payload,session.userId,session.role);result.child=recipient;return result;
+  const subtotal=items.reduce((n,x)=>n+x.unitPrice*x.qty,0),ongkir=0,diskon=0,total=subtotal+ongkir-diskon,now=new Date(),id=makeFMartId_('ORD'),number='FM-'+Utilities.formatDate(now,FMART_DB.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Math.floor(1000+Math.random()*9000);
+  const recipientAddress=[recipient.name,recipient.className?'Kelas '+recipient.className:'',recipient.asrama?'Asrama '+recipient.asrama:'',extra].filter(Boolean).join(' · '),destination=metodePengiriman==='ANTAR_PESANTREN'?[recipientAddress,tujuan?'Catatan titik penerimaan: '+tujuan:''].filter(Boolean).join(' — '):'Pengambilan langsung di FMart'+(tujuan?' — '+tujuan:'');
+  const payload={userId:session.userId,santriId:santriId,recipientSnapshot:recipient,selectedCartIds:selectedCartIds,orderNumber:number,total:total,shippingMethod:metodePengiriman,shippingDestination:destination,requestedDestination:tujuan,createdAt:now.toISOString(),items:items.map(x=>({detailId:makeFMartId_('DTL'),productId:x.productId,variationId:x.variationId,qty:x.qty,unitPrice:x.unitPrice,sku:x.sku,name:x.name,variationName:x.variationName})),shipmentId:makeFMartId_('SHP')};
+  const row=[id,number,session.userId,santriId,subtotal,ongkir,diskon,total,'MENUNGGU_PEMBAYARAN',catatan,now,now,requestKey,fingerprint,JSON.stringify(payload)];sheet.appendRow(row);
+  const result=completeCheckoutOrder_(ss,{values:row,rowNumber:sheet.getLastRow()},payload,session.userId,session.role);result.child=recipient;return result;
  }finally{lock.releaseLock();}
 }
 
@@ -2548,29 +2512,15 @@ function getSantriClassesForWaliSelf(token){
 
 /** Fase 8.12.3: pencarian Wali real-time, opsional filter kelas. */
 function searchSantriForWaliSelf(token,query,className){
-  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
-  query=String(query||'').trim().toLowerCase();
-  className=String(className||'').trim().toLowerCase();
-  if(query.length<3) throw new Error('Ketik minimal 3 huruf nama Santri untuk mulai mencari.');
-  const searchCache=CacheService.getScriptCache();
-  const searchRateKey='FMART_WALI_SANTRI_SEARCH_'+Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(session.userId))).slice(0,40);
-  const searchCount=Number(searchCache.get(searchRateKey)||0);
-  if(searchCount>=30) throw new Error('Pencarian terlalu sering. Silakan tunggu sekitar satu menit sebelum mencoba lagi.');
-  searchCache.put(searchRateKey,String(searchCount+1),60);
-  const ss=getSS_(), wali=findWaliByUserId_(ss,session.userId);
-  if(!wali) throw new Error('Data Wali Santri tidak ditemukan.');
-  const relRows=readRows_(ss.getSheetByName('WaliSantriSantri'));
-  const blocked={};
-  relRows.forEach(function(r){if(String(r[1]||'')===String(wali.waliId) && ['AKTIF','MENUNGGU_VERIFIKASI'].indexOf(String(r[3]||'').toUpperCase())>=0) blocked[String(r[2]||'')]=true;});
-  const santriSheet=ss.getSheetByName('Santri'), santriMap=getSantriColumnMap_(santriSheet), rows=readSantriRows_(santriSheet), result=[];
-  rows.forEach(function(r){
-    const child=santriRecord_(r,santriMap),id=child.id,nis=child.nis,name=child.name,cls=child.className;
-    if(!id||child.status.toUpperCase()!=='AKTIF'||blocked[id])return;
-    if(className && cls.toLowerCase()!==className)return;
-    if(query && (name+' '+cls).toLowerCase().indexOf(query)===-1)return;
-    result.push({id:id,name:name,className:cls,nisMasked:maskNis_(nis)});
-  });
-  return {ok:true,santri:result.slice(0,30),searched:query,className:className};
+ const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);query=String(query||'').trim().toLowerCase();className=String(className||'').trim().toLowerCase();
+ if(query.length<3)throw new Error('Ketik minimal 3 huruf nama Santri untuk mulai mencari.');
+ const cache=CacheService.getScriptCache(),key='FMART_WALI_SANTRI_SEARCH_'+Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(session.userId))).slice(0,40),count=Number(cache.get(key)||0);
+ if(count>=30)throw new Error('Pencarian terlalu sering. Silakan tunggu sekitar satu menit sebelum mencoba lagi.');cache.put(key,String(count+1),60);
+ const ss=getSS_(),wali=findWaliByUserId_(ss,session.userId);if(!wali)throw new Error('Data Wali Santri tidak ditemukan.');
+ const blocked={};readRows_(ss.getSheetByName('WaliSantriSantri')).forEach(r=>{if(String(r[1]||'')===String(wali.waliId)&&['AKTIF','ALAMAT_PESANAN','MENUNGGU_VERIFIKASI'].includes(String(r[3]||'').toUpperCase()))blocked[String(r[2]||'')]=true;});
+ const sheet=ss.getSheetByName('Santri'),map=getSantriColumnMap_(sheet),result=[];
+ readSantriRows_(sheet).forEach(r=>{const c=santriRecord_(r,map);if(!c.id||c.status.toUpperCase()!=='AKTIF'||blocked[c.id])return;if(className&&c.className.toLowerCase()!==className)return;if(query&&(c.name+' '+c.className).toLowerCase().indexOf(query)===-1)return;result.push({id:c.id,name:c.name,className:c.className,nisMasked:maskNis_(c.nis)});});
+ return {ok:true,santri:result.slice(0,30),searched:query,className:className};
 }
 
 /** Fase 8.12.1: Wali dapat self-link bila no_wa_wali cocok; selain itu pengajuan menunggu Admin. */
@@ -2597,39 +2547,20 @@ function countDistinctActiveOrPendingWaliForSantri_(relationRows,santriId){
 }
 
 function requestWaliSantriLink(token,santriId,hubungan){
-  const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);
-  santriId=String(santriId||'').trim(); hubungan=String(hubungan||'').trim().toUpperCase();
-  if(!santriId) throw new Error('Santri tidak valid.');
-  if(['AYAH','IBU','WALI','LAINNYA'].indexOf(hubungan)===-1) throw new Error('Hubungan tidak valid.');
-  const lock=LockService.getScriptLock();lock.waitLock(10000);
-  try{
-    const ss=getSS_(), rs=ss.getSheetByName('WaliSantriSantri'), santriSheet=ss.getSheetByName('Santri');
-    if(!rs||!santriSheet) throw new Error('Database relasi belum siap. Jalankan setupFMartDatabase_().');
-    const wali=findWaliByUserId_(ss,session.userId); if(!wali) throw new Error('Data Wali Santri tidak ditemukan.');
-    const santri=findSantriRowById_(santriSheet,santriId), santriMap=getSantriColumnMap_(santriSheet);
-    if(!santri||santriRecord_(santri.values,santriMap).status.toUpperCase()!=='AKTIF') throw new Error('Data Santri tidak ditemukan atau tidak aktif.');
-    const guardianPhone=normalizePhone_(santriField_(santri.values,santriMap,'no_wa_wali'));
-    const waliPhone=normalizePhone_(wali.noHp);
-    const phoneMatched=!!guardianPhone&&!!waliPhone&&guardianPhone===waliPhone;
-    const nextStatus=phoneMatched?'AKTIF':'MENUNGGU_VERIFIKASI';
-    const relRows=readRows_(rs),pairRows=relRows.map(function(row,index){return {row:row,index:index};}).filter(function(item){return String(item.row[1]||'')===wali.waliId&&String(item.row[2]||'')===santriId;});
-    const activePair=pairRows.some(function(item){return String(item.row[3]||'').toUpperCase()==='AKTIF';});
-    if(activePair) throw new Error('Santri sudah terhubung dengan akun Anda.');
-    const existing=pairRows.length?pairRows[pairRows.length-1].row:null;
-    const pendingPair=pairRows.some(function(item){return String(item.row[3]||'').toUpperCase()==='MENUNGGU_VERIFIKASI';});
-    if(pendingPair&&!phoneMatched)return {ok:true,status:'MENUNGGU_VERIFIKASI',message:'Pengajuan hubungan Santri Anda sudah menunggu verifikasi Admin.'};
-    const linkedCount=countDistinctActiveOrPendingWaliForSantri_(relRows,santriId);
-    const otherWaliCount=linkedCount-((activePair||pendingPair)?1:0);
-    if(otherWaliCount>=2)throw new Error('Santri ini sudah memiliki maksimal 2 Wali Santri aktif/pengajuan.');
-    const now=new Date();
-    if(existing){const rowNum=relRows.indexOf(existing)+2;rs.getRange(rowNum,4,1,3).setValues([[nextStatus,now,hubungan]]);}
-    else{rs.appendRow([makeFMartId_('REL'),wali.waliId,santriId,nextStatus,now,hubungan]);}
-    const action=phoneMatched?'LINK_WALI_SANTRI_SELF':'REQUEST_WALI_SANTRI_SELF';
-    const message=phoneMatched?'Nomor HP cocok dengan data Wali pada master Santri. Hubungan berhasil diaktifkan.':'Nomor HP belum cocok dengan data Wali pada master Santri. Pengajuan dikirim ke Admin untuk verifikasi.';
-    writeAudit_(session.userId,session.role,action,'WALI_SANTRI_SANTRI',wali.waliId,'',JSON.stringify({waliId:wali.waliId,santriId:santriId,status:nextStatus,phoneMatched:phoneMatched,hubungan:hubungan}),message);
-    SpreadsheetApp.flush();
-    return {ok:true,status:nextStatus,message:message};
-  }finally{lock.releaseLock();}
+ const session=requireRole_(token,[FMART.ROLES.WALI_SANTRI]);santriId=String(santriId||'').trim();if(!santriId)throw new Error('Santri tidak valid.');
+ const lock=LockService.getScriptLock();lock.waitLock(10000);
+ try{
+  const ss=getSS_(),rs=ss.getSheetByName('WaliSantriSantri'),sheet=ss.getSheetByName('Santri'),wali=findWaliByUserId_(ss,session.userId);
+  if(!rs||!sheet||!wali)throw new Error('Data alamat Santri belum siap.');
+  const found=findSantriRowById_(sheet,santriId);if(!found||santriRecord_(found.values,getSantriColumnMap_(sheet)).status.toUpperCase()!=='AKTIF')throw new Error('Data Santri tidak ditemukan atau tidak aktif.');
+  const rows=readRows_(rs),pairs=rows.map((r,i)=>({r:r,i:i})).filter(x=>String(x.r[1]||'')===String(wali.waliId)&&String(x.r[2]||'')===santriId);
+  if(pairs.some(x=>['AKTIF','ALAMAT_PESANAN'].includes(String(x.r[3]||'').toUpperCase())))throw new Error('Santri sudah tersimpan di alamat pemesanan Anda.');
+  const prev=pairs[pairs.length-1],now=new Date();
+  if(prev)rs.getRange(prev.i+2,4,1,3).setValues([['ALAMAT_PESANAN',now,'ALAMAT_PESANAN']]);
+  else rs.appendRow([makeFMartId_('REL'),wali.waliId,santriId,'ALAMAT_PESANAN',now,'ALAMAT_PESANAN']);
+  writeAudit_(session.userId,session.role,'SAVE_WALI_ORDER_RECIPIENT','WALI_SANTRI_SANTRI',wali.waliId,'',JSON.stringify({santriId:santriId,status:'ALAMAT_PESANAN'}),'Wali menyimpan alamat pemesanan tanpa persetujuan Admin');
+  SpreadsheetApp.flush();return {ok:true,status:'ALAMAT_PESANAN',message:'Santri berhasil disimpan sebagai alamat pemesanan.'};
+ }finally{lock.releaseLock();}
 }
 
 
@@ -3127,6 +3058,13 @@ function normalizeOrderRecipient_(data, shippingMethod, note) {
   return recipient;
 }
 
+function assertWaliSavedRecipient_(ss,userId,santriId){
+ const wali=findWaliByUserId_(ss,userId);if(!wali)throw new Error('Data Wali Santri tidak ditemukan.');
+ const rel=readRows_(ss.getSheetByName('WaliSantriSantri')).find(r=>String(r[1]||'')===String(wali.waliId)&&String(r[2]||'')===String(santriId)&&['AKTIF','ALAMAT_PESANAN'].includes(String(r[3]||'').toUpperCase()));
+ if(!rel)throw new Error('Santri belum tersimpan sebagai alamat pemesanan pada akun Anda.');
+ const sheet=ss.getSheetByName('Santri'),found=findSantriRowById_(sheet,santriId);if(!found)throw new Error('Data Santri tidak ditemukan.');
+ const child=santriRecord_(found.values,getSantriColumnMap_(sheet));if(child.status.toUpperCase()!=='AKTIF')throw new Error('Santri tidak aktif dan tidak dapat dipilih.');return child;
+}
 function getOrderRecipientSnapshot_(ss, orderRow) {
   const row=orderRow&&orderRow.values?orderRow.values:orderRow||[];
   let payload={};try{payload=JSON.parse(String(row[14]||'{}'));}catch(e){}
