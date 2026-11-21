@@ -4225,6 +4225,60 @@ function logFMartReadinessAudit_(report) {
 }
 
 /** One-click, read-only readiness audit for Apps Script editor. */
+/**
+ * Rekonsiliasi read-only pengajuan pembayaran QRIS Wali dengan pesanan.
+ * Tidak membaca atau mengubah saldo bank/merchant; verifikasi dana tetap manual.
+ */
+function auditFMartPaymentIntegrity_() {
+  const ss = getSS_();
+  const payments = readRows_(ss.getSheetByName('Pembayaran'));
+  const orders = readRows_(ss.getSheetByName('Pesanan'));
+  const issues = [];
+  const maxIssues = 1000;
+  const orderById = Object.create(null);
+  const paymentIds = Object.create(null);
+  const requestKeys = Object.create(null);
+  const activeByOrder = Object.create(null);
+  const counts = { payments: payments.length, orders: orders.length, pending: 0, verified: 0, rejected: 0 };
+  orders.forEach(function(row, index) { const id = String(row[0] || '').trim(); if (id && !orderById[id]) orderById[id] = { row: index + 2, values: row }; });
+  function issue(code, row, paymentId, detail) { if (issues.length < maxIssues) issues.push({ code: code, sheet: 'Pembayaran', row: row || '', paymentId: paymentId || '', detail: detail || '' }); }
+  const paidOrderStatuses = ['MENUNGGU_STOK','DIBAYAR','DIPROSES','DISIAPKAN','SIAP_DIAMBIL','DIANTAR','DITERIMA'];
+  payments.forEach(function(payment, index) {
+    const rowNumber = index + 2, id = String(payment[0] || '').trim(), orderId = String(payment[1] || '').trim();
+    const method = String(payment[2] || '').trim().toUpperCase(), amount = Number(payment[3]);
+    const proofUrl = String(payment[4] || '').trim(), status = String(payment[5] || '').trim().toUpperCase();
+    const verifiedBy = String(payment[6] || '').trim(), verifiedAt = payment[7], ownerId = String(payment[11] || '').trim();
+    const requestKey = String(payment[13] || '').trim(), proofHash = String(payment[14] || '').trim(), order = orderById[orderId];
+    if (!id) issue('PAYMENT_ID_EMPTY', rowNumber, '', 'PaymentId kosong.');
+    else if (paymentIds[id]) issue('PAYMENT_ID_DUPLICATE', rowNumber, id, 'PaymentId duplikat; baris pertama ' + paymentIds[id] + '.');
+    else paymentIds[id] = rowNumber;
+    if (!order) issue('PAYMENT_ORDER_MISSING', rowNumber, id, 'Pesanan terkait tidak ditemukan: ' + orderId + '.');
+    else {
+      if (ownerId !== String(order.values[2] || '').trim()) issue('PAYMENT_OWNER_MISMATCH', rowNumber, id, 'UserId pengaju pembayaran tidak sama dengan pemilik pesanan.');
+      const orderTotal = Number(order.values[7]);
+      if (!Number.isSafeInteger(amount) || amount < 1 || !Number.isSafeInteger(orderTotal) || orderTotal < 1 || amount !== orderTotal) issue('PAYMENT_AMOUNT_MISMATCH', rowNumber, id, 'Nominal pembayaran tidak sama dengan total pesanan.');
+    }
+    if (requestKey) { if (requestKeys[requestKey]) issue('PAYMENT_REQUEST_KEY_DUPLICATE', rowNumber, id, 'RequestKey juga digunakan pada baris ' + requestKeys[requestKey] + '.'); else requestKeys[requestKey] = rowNumber; }
+    if (['MENUNGGU_VERIFIKASI','TERVERIFIKASI','DITOLAK'].indexOf(status) < 0) { issue('PAYMENT_STATUS_INVALID', rowNumber, id, 'Status pembayaran tidak dikenal: ' + status + '.'); return; }
+    if (status === 'MENUNGGU_VERIFIKASI') counts.pending++;
+    if (status === 'TERVERIFIKASI') counts.verified++;
+    if (status === 'DITOLAK') counts.rejected++;
+    if (['MENUNGGU_VERIFIKASI','TERVERIFIKASI'].indexOf(status) >= 0) {
+      activeByOrder[orderId] = (activeByOrder[orderId] || 0) + 1;
+      if (method !== 'QRIS') issue('PAYMENT_METHOD_NOT_QRIS', rowNumber, id, 'Pembayaran aktif/terverifikasi harus menggunakan QRIS.');
+      if (!proofUrl) issue('PAYMENT_PROOF_MISSING', rowNumber, id, 'Pembayaran aktif tidak memiliki referensi bukti.');
+      if (order && status === 'MENUNGGU_VERIFIKASI' && String(order.values[8] || '').toUpperCase() !== 'MENUNGGU_PEMBAYARAN') issue('PAYMENT_PENDING_ORDER_STATUS_MISMATCH', rowNumber, id, 'Pembayaran menunggu verifikasi tetapi status pesanan bukan MENUNGGU_PEMBAYARAN.');
+      if (status === 'MENUNGGU_VERIFIKASI' && (verifiedBy || verifiedAt)) issue('PAYMENT_PENDING_HAS_VERIFIER', rowNumber, id, 'Pembayaran masih pending tetapi kolom verifikator/waktu verifikasi sudah terisi.');
+      if (status === 'TERVERIFIKASI') {
+        if (!verifiedBy || !verifiedAt || !Number.isFinite(new Date(verifiedAt).getTime())) issue('PAYMENT_VERIFICATION_METADATA_MISSING', rowNumber, id, 'Pembayaran terverifikasi tidak memiliki verifikator dan waktu verifikasi yang valid.');
+        if (order && paidOrderStatuses.indexOf(String(order.values[8] || '').toUpperCase()) < 0) issue('PAYMENT_VERIFIED_ORDER_STATUS_MISMATCH', rowNumber, id, 'Pembayaran terverifikasi tetapi status pesanan belum berada pada alur setelah pembayaran.');
+      }
+      if (String(payment[10] || '').toUpperCase() === 'APLIKASI' && (!requestKey || !/^[a-f0-9]{64}$/i.test(proofHash))) issue('PAYMENT_IDEMPOTENCY_METADATA_MISSING', rowNumber, id, 'Pembayaran aplikasi tidak memiliki RequestKey atau hash bukti SHA-256 yang valid.');
+    }
+  });
+  Object.keys(activeByOrder).forEach(function(orderId) { if (activeByOrder[orderId] > 1) issue('PAYMENT_MULTIPLE_ACTIVE_FOR_ORDER', '', orderId, 'Lebih dari satu pembayaran pending/terverifikasi terkait pesanan yang sama.'); });
+  return { checkedAt: new Date().toISOString(), mode: 'READ_ONLY', counts: counts, issueCount: issues.length, issues: issues, truncated: issues.length >= maxIssues, policy: 'NO_PAYMENT_STATUS_NO_BANK_BALANCE_NO_STOCK_MUTATION' };
+}
 function runFMartReadinessAudit_() {
   const checks = {};
   function run_(name, callback) {
@@ -4233,6 +4287,7 @@ function runFMartReadinessAudit_() {
   }
   run_('database', auditFMartDatabaseIntegrity_);
   run_('runtime', auditFMartRuntime_);
+  run_('paymentIntegrity', auditFMartPaymentIntegrity_);
   run_('operationalSync', auditFMartOperationalSync_);
   run_('stockAndPOS', auditFMartStockReconciliation_);
   run_('cashierPOS', auditCashierPOSIntegrity_);
