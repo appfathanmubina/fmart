@@ -2079,3 +2079,25 @@ test('Wali login, registration and reset UI use native credential autofill and c
  assert.ok(index.includes("new URLSearchParams(window.location.search).get('reset')"));
  assert.ok(index.includes('id="loginOtpPanel"'),'Existing Admin OTP UI must remain intact.');
 });
+
+
+test('Wali profile updates normalize email and reject duplicate Wali identity before writing',()=>{
+ const fn=extractFunction(code,'updateMyWaliProfile');
+ assert.ok(fn.includes('normalizeEmail_(email)'));
+ assert.ok(fn.includes('isValidStaffEmail_(email)'));
+ assert.ok(fn.includes('duplicateWali')&&fn.includes('duplicateUser'));
+ assert.ok(fn.includes('Email sudah digunakan oleh akun Wali Santri lain.'));
+ assert.ok(fn.indexOf('findRowById_(usersSheet, session.userId, 1)')<fn.indexOf('waliSheet.getRange(waliRowNumber,3).setValue(nama)'),'Validate the account row before mutating either profile sheet.');
+ assert.ok(fn.includes("String(userRow.values[5] || '').toUpperCase() !== 'WALI_SANTRI'"));
+});
+
+test('Wali shopping screens avoid redundant instructional copy while preserving functional labels',()=>{
+ assert.ok(!index.includes('Periksa barang yang dipilih sebelum checkout.'));
+ assert.ok(!index.includes('Pilih anak yang akan menerima pesanan. Setiap keranjang'));
+ assert.ok(!index.includes('Keranjang ini berlaku untuk akun Wali.'));
+ assert.ok(!index.includes('Isi data Santri/penerima secara manual.'));
+ assert.ok(!index.includes('checkoutDestinationHint'));
+ assert.ok(index.includes('Nama Santri / penerima'));
+ assert.ok(index.includes('Metode pemenuhan'));
+ assert.ok(index.includes('Konfirmasi dan buat pesanan'));
+});
