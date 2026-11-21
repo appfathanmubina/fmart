@@ -3472,7 +3472,7 @@ function updateCheckoutFulfillmentUI(){
   if(method==='ANTAR_PESANTREN'){label.textContent='Catatan titik penerimaan (opsional)';field.required=false;field.placeholder='Petunjuk tambahan untuk petugas';if(addressField)addressField.querySelector('label').innerHTML='Alamat / lokasi pengiriman <strong style="color:#b91c1c">*</strong>';if(address)address.required=true;}
   else{label.textContent='Keterangan pengambilan (opsional)';field.required=false;field.placeholder='Perkiraan waktu atau nama pengambil';if(addressField)addressField.querySelector('label').textContent='Alamat / lokasi pengiriman (opsional)';if(address)address.required=false;}
 }
-async async async function submitCheckout(){
+async function submitCheckout(){
  const btn=$('submitCheckout');if(!btn)return;const santriId=$('checkoutSavedRecipient').value;if(!santriId){showToast('Pilih alamat Santri terlebih dahulu.');$('checkoutSavedRecipient').focus();return}
  const recipient={santriId:santriId,address:$('checkoutRecipientAddress').value.trim()},ids=getSelectedCartItems().map(i=>String(i.cartId));if(!ids.length){showToast('Pilih minimal satu barang.');return}
  const method=document.querySelector('input[name="shippingMethod"]:checked')?.value||'ANTAR_PESANTREN',tujuan=$('checkoutTujuan').value.trim();btn.disabled=true;loading(true,'Memproses checkout...');
