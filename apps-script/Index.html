@@ -2554,8 +2554,13 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
         margin-inline:auto;
       }
       .header {
-        width:100vw;
-        margin-left:calc(50% - 50vw);
+        width:100%;
+        max-width:100%;
+        margin-left:0;
+        margin-right:0;
+        box-sizing:border-box;
+        box-shadow:0 0 0 100vmax rgba(255,255,255,.94);
+        clip-path:inset(0 -100vmax);
       }
       .header-inner {
         width:100%;
@@ -2628,9 +2633,10 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
         top:0;
         left:auto;
         right:auto;
-        width:100vw;
-        max-width:none;
-        margin-left:calc(50% - 50vw);
+        width:100%;
+        max-width:100%;
+        margin-left:0;
+        margin-right:0;
         box-sizing:border-box;
       }
       body.admin-portal .header-inner {
@@ -2647,6 +2653,13 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
     }
 
     
+    /* Desktop scroll stability: gunakan lebar area konten, bukan 100vw yang memasukkan lebar scrollbar. */
+    @media (min-width:1101px) {
+      html,body{overscroll-behavior-y:none}
+      body.admin-portal #appView.app,
+      body.buyer-portal #appView.app{min-width:0}
+    }
+
     /* Admin PWA mobile — pulihkan lebar penuh tanpa mengubah layout desktop/tablet. */
     @media (max-width:760px) {
       body.admin-portal #appView.app {
