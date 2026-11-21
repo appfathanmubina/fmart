@@ -54,6 +54,7 @@ function login(username, password, portalMode) {
   username = normalizeUsername_(rawLogin);
   if (!username || typeof password !== 'string' || !password) return {ok:false, message:portalMode === 'ADMINFMART16720' ? 'Email atau password tidak valid.' : 'Nomor HP atau password tidak valid.'};
   const phoneKeyForRate = normalizePhone_(rawLogin);
+  const isWaliEmailLogin = portalMode !== 'ADMINFMART16720' && rawLogin.indexOf('@') >= 0;
   const rate = loginRateKey_(phoneKeyForRate || username);
   const cache = CacheService.getScriptCache();
   const failures = Number(cache.get(rate) || 0);
@@ -69,7 +70,7 @@ function login(username, password, portalMode) {
   let targetIndex = -1;
   for (let i=0;i<rows.length;i++) {
     const rowRole = String(rows[i][5] || '').toUpperCase();
-    const loginValue = portalMode === 'ADMINFMART16720'
+    const loginValue = portalMode === 'ADMINFMART16720' || isWaliEmailLogin
       ? normalizeEmail_(rows[i][10])
       : normalizeUsername_(rows[i][1]);
     if (loginValue === username && (portalMode !== 'ADMINFMART16720' || ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR'].indexOf(rowRole) >= 0)) {
@@ -83,20 +84,21 @@ function login(username, password, portalMode) {
 
   if (targetIndex === -1 && portalMode !== 'ADMINFMART16720') {
     const phoneKey = normalizePhone_(rawLogin);
-    if (phoneKey) {
-      const waliRows = readRows_(ss.getSheetByName('WaliSantri'));
-      const matches = waliRows.filter(function(r){
-        return normalizePhone_(r[3]) === phoneKey && String(r[6] || '').toUpperCase() === 'AKTIF';
-      });
-      if (matches.length > 1) {
-        recordLoginFailure_(rate);
-        return {ok:false, message:'Nomor HP/username atau password salah.'};
-      }
-      if (matches.length === 1) {
-        const userId = String(matches[0][1] || '');
-        for (let i=0;i<rows.length;i++) {
-          if (String(rows[i][0] || '') === userId && String(rows[i][5] || '').toUpperCase() === 'WALI_SANTRI') { targetIndex=i; break; }
-        }
+    const waliRows = readRows_(ss.getSheetByName('WaliSantri'));
+    const matches = waliRows.filter(function(r){
+      const matchesIdentity = isWaliEmailLogin
+        ? normalizeEmail_(r[4]) === username
+        : (!!phoneKey && normalizePhone_(r[3]) === phoneKey);
+      return matchesIdentity && String(r[6] || '').toUpperCase() === 'AKTIF';
+    });
+    if (matches.length > 1) {
+      recordLoginFailure_(rate);
+      return {ok:false, message:'Nomor HP/email atau password salah.'};
+    }
+    if (matches.length === 1) {
+      const userId = String(matches[0][1] || '');
+      for (let i=0;i<rows.length;i++) {
+        if (String(rows[i][0] || '') === userId && String(rows[i][5] || '').toUpperCase() === 'WALI_SANTRI') { targetIndex=i; break; }
       }
     }
   }
@@ -348,23 +350,131 @@ function registerWaliSantri(nama, noHp, password, email, alamat) {
   const lock = LockService.getScriptLock(); lock.waitLock(10000);
   try {
     nama = String(nama || '').trim(); noHp = normalizePhone_(noHp); password = String(password || '');
-    email = String(email || '').trim(); alamat = String(alamat || '').trim();
+    email = normalizeEmail_(email); alamat = String(alamat || '').trim();
     if (!nama) throw new Error('Nama wajib diisi.');
     if (!noHp) throw new Error('Nomor HP tidak valid. Gunakan format 08xxxxxxxxxx.');
     if (password.length < FMART.PASSWORD_MIN_LENGTH) throw new Error('Password minimal ' + FMART.PASSWORD_MIN_LENGTH + ' karakter.');
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) throw new Error('Format email tidak valid.');
+    if (!isValidStaffEmail_(email)) throw new Error('Email wajib diisi dengan format yang valid.');
     const ss=getSS_(), users=ss.getSheetByName('Users'), waliSheet=ss.getSheetByName('WaliSantri');
     if(!users||!waliSheet) throw new Error('Database FMart belum siap.');
     const userRows=readRows_(users), waliRows=readRows_(waliSheet);
     if(waliRows.some(r=>phoneEquals_(r[3],noHp))) throw new Error('Nomor HP sudah terdaftar. Silakan gunakan nomor lain atau login.');
     if(userRows.some(r=>String(r[1]||'').trim()===noHp)) throw new Error('Nomor HP sudah digunakan sebagai akun.');
+    if(waliRows.some(r=>normalizeEmail_(r[4])===email) || userRows.some(r=>String(r[5]||'').toUpperCase()==='WALI_SANTRI' && normalizeEmail_(r[10])===email)) throw new Error('Email sudah digunakan oleh akun Wali Santri lain.');
     const userId=makeFMartId_('USR'), waliId=makeFMartId_('WAL'), salt=Utilities.getUuid().replace(/-/g,''), hash=hashPassword_(password,salt), now=new Date();
-    users.getRange(users.getLastRow()+1,1,1,10).setValues([[userId,noHp,hash,salt,nama,'WALI_SANTRI','AKTIF',now,now,'']]);
+    users.getRange(users.getLastRow()+1,1,1,12).setValues([[userId,noHp,hash,salt,nama,'WALI_SANTRI','AKTIF',now,now,'',email,false]]);
     waliSheet.getRange(waliSheet.getLastRow()+1,1,1,9).setValues([[waliId,userId,nama,noHp,email,alamat,'AKTIF',now,now]]);
     users.getRange(users.getLastRow(),2).setNumberFormat('@'); waliSheet.getRange(waliSheet.getLastRow(),4).setNumberFormat('@');
     SpreadsheetApp.flush(); writeAudit_('', 'SYSTEM', 'REGISTER_WALI_SANTRI', 'USER', userId, '', JSON.stringify({username:noHp,role:'WALI_SANTRI'}), 'Pendaftaran mandiri Wali Santri');
     return {ok:true,userId:userId,waliId:waliId,message:'Pendaftaran berhasil. Silakan login menggunakan nomor HP dan password Anda.'};
   } finally { lock.releaseLock(); }
+}
+
+
+
+/** Mengirim tautan reset password hanya untuk akun Wali aktif; respons tidak membocorkan keberadaan email. */
+function requestWaliPasswordReset(email) {
+  email = normalizeEmail_(email);
+  const generic = {ok:true,message:'Jika email terdaftar, tautan reset password akan dikirim.'};
+  if (!isValidStaffEmail_(email)) return generic;
+  const cache = CacheService.getScriptCache();
+  const rateKey = waliPasswordResetRateKey_(email);
+  const cooldownKey = rateKey + '_COOLDOWN';
+  const lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  try {
+    if (cache.get(cooldownKey)) return generic;
+    const attempts = Number(cache.get(rateKey) || 0);
+    if (attempts >= 3) return generic;
+    cache.put(rateKey, String(attempts + 1), 3600);
+    cache.put(cooldownKey, '1', 60);
+  } finally {
+    lock.releaseLock();
+  }
+
+  const users = getSS_().getSheetByName('Users');
+  if (!users) return generic;
+  const matches = readRows_(users).filter(function(row) {
+    return String(row[5] || '').toUpperCase() === 'WALI_SANTRI' &&
+      String(row[6] || '').toUpperCase() === 'AKTIF' &&
+      normalizeEmail_(row[10]) === email;
+  });
+  if (matches.length !== 1) return generic;
+
+  const user = matches[0];
+  const token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  const tokenKey = waliPasswordResetTokenKey_(token);
+  const cachePayload = JSON.stringify({userId:String(user[0]),email:email});
+  const serviceUrl = ScriptApp.getService().getUrl();
+  if (!serviceUrl) return generic;
+  cache.put(tokenKey, cachePayload, 1800);
+  const resetUrl = serviceUrl + '?reset=' + encodeURIComponent(token);
+  const body = 'Kami menerima permintaan reset password FMart. Buka tautan berikut dalam 30 menit untuk membuat password baru:\n\n' +
+    resetUrl + '\n\nJika Anda tidak meminta reset password, abaikan email ini. Jangan bagikan tautan ini kepada siapa pun.';
+  const htmlBody = '<p>Kami menerima permintaan reset password FMart.</p><p><a href="' +
+    resetUrl + '">Buat password baru</a></p><p>Tautan berlaku 30 menit dan hanya dapat digunakan sekali. Jika Anda tidak meminta reset, abaikan email ini.</p>';
+  try {
+    MailApp.sendEmail({to:email,subject:'Reset password FMart',body:body,htmlBody:htmlBody});
+    writeAudit_(String(user[0]),'WALI_SANTRI','REQUEST_PASSWORD_RESET','USER',String(user[0]),'',JSON.stringify({email:maskEmail_(email)}),'Permintaan tautan reset password');
+  } catch (error) {
+    cache.remove(tokenKey);
+    console.warn('Pengiriman tautan reset password Wali gagal:', error);
+  }
+  return generic;
+}
+
+/** Mengganti password Wali dengan token email acak, berumur 30 menit dan sekali pakai. */
+function resetWaliPassword(token, newPassword, confirmPassword) {
+  token = String(token || '').trim();
+  newPassword = String(newPassword || '');
+  confirmPassword = String(confirmPassword || '');
+  if (!token || token.length > 120) throw new Error('Tautan reset tidak valid atau sudah kedaluwarsa.');
+  if (newPassword.length < FMART.PASSWORD_MIN_LENGTH) throw new Error('Password baru minimal ' + FMART.PASSWORD_MIN_LENGTH + ' karakter.');
+  if (newPassword !== confirmPassword) throw new Error('Konfirmasi password baru tidak sama.');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const cache = CacheService.getScriptCache();
+    const key = waliPasswordResetTokenKey_(token);
+    const payloadText = cache.get(key);
+    if (!payloadText) throw new Error('Tautan reset tidak valid atau sudah kedaluwarsa.');
+    let payload;
+    try { payload = JSON.parse(payloadText); } catch (error) { cache.remove(key); throw new Error('Tautan reset tidak valid atau sudah kedaluwarsa.'); }
+    const sheet = getSS_().getSheetByName('Users');
+    const row = findRowById_(sheet, payload.userId, 1);
+    if (!row || String(row.values[5] || '').toUpperCase() !== 'WALI_SANTRI' ||
+        String(row.values[6] || '').toUpperCase() !== 'AKTIF' ||
+        normalizeEmail_(row.values[10]) !== normalizeEmail_(payload.email)) {
+      cache.remove(key);
+      throw new Error('Tautan reset tidak valid atau sudah kedaluwarsa.');
+    }
+    const salt = Utilities.getUuid().replace(/-/g, '');
+    const hash = hashPassword_(newPassword, salt);
+    const now = new Date();
+    sheet.getRange(row.rowNumber, 3, 1, 2).setValues([[hash,salt]]);
+    sheet.getRange(row.rowNumber, 9).setValue(now);
+    sheet.getRange(row.rowNumber, 12).setValue(true);
+    SpreadsheetApp.flush();
+    const saved = findRowById_(sheet, payload.userId, 1);
+    if (!saved || String(saved.values[2] || '') !== hash || String(saved.values[3] || '') !== salt) {
+      throw new Error('Password belum dapat disimpan. Silakan coba kembali.');
+    }
+    cache.remove(key);
+    writeAudit_(String(payload.userId),'WALI_SANTRI','RESET_PASSWORD','USER',String(payload.userId),'',JSON.stringify({email:maskEmail_(payload.email)}),'Password direset melalui tautan email');
+    return {ok:true,message:'Password berhasil diubah. Silakan login kembali.'};
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function waliPasswordResetTokenKey_(token) {
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(token),Utilities.Charset.UTF_8);
+  return 'FMART_WALI_RESET_TOKEN_' + Utilities.base64EncodeWebSafe(digest).slice(0,48);
+}
+function waliPasswordResetRateKey_(email) {
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,'WALI_RESET|' + normalizeEmail_(email),Utilities.Charset.UTF_8);
+  return 'FMART_WALI_RESET_RATE_' + Utilities.base64EncodeWebSafe(digest).slice(0,42);
 }
 
 
