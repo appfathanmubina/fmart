@@ -364,12 +364,7 @@ function sendWaliEmailVerification_(userId,email){
   cache.put(key,JSON.stringify({userId:String(userId),email:email,hash:adminOtpHash_(challengeId,code),createdAt:Date.now(),attempts:0}),600);
   try{MailApp.sendEmail({to:email,subject:'Verifikasi Email FMart',body:'Kode verifikasi email FMart Anda: '+code+'\\n\\nKode berlaku 10 menit dan hanya dapat digunakan satu kali. Jangan berikan kode ini kepada siapa pun.',name:'FMart'});}
   catch(err){cache.remove(key);cache.remove(rateKey+'_COOLDOWN');console.error('Pengiriman OTP Wali gagal:',err);throw new Error('Email verifikasi belum dapat dikirim. Data email akun tidak diubah.');}
-  users.getRange(user.rowNumber,11,1,2).setValues([[email,false]]);
-  users.getRange(user.rowNumber,9).setValue(new Date());
-  const waliRow=findRowById_(waliSheet,String(waliRecord[0]),1);
-  if(waliRow)waliSheet.getRange(waliRow.rowNumber,5).setValue(email);
-  SpreadsheetApp.flush();
-  return {ok:true,challengeId:challengeId,maskedEmail:maskEmail_(email),message:'Kode verifikasi telah dikirim. Email baru aktif setelah kode diverifikasi.'};
+  return {ok:true,challengeId:challengeId,maskedEmail:maskEmail_(email),message:'Kode verifikasi telah dikirim. Email lama tetap digunakan sampai kode baru berhasil diverifikasi.'};
 }
 function verifyWaliEmail(challengeId,code){
   challengeId=String(challengeId||'').trim();code=String(code||'').trim();
@@ -384,10 +379,17 @@ function verifyWaliEmail(challengeId,code){
       ch.attempts++;if(ch.attempts>=5)cache.remove(key);else cache.put(key,JSON.stringify(ch),Math.max(1,600-Math.floor((Date.now()-ch.createdAt)/1000)));
       throw new Error('Kode verifikasi salah. Sisa percobaan: '+Math.max(0,5-ch.attempts)+'.');
     }
-    const ss=getSS_(),users=ss.getSheetByName('Users'),user=findRowById_(users,ch.userId,1);
-    if(!user||String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI'||String(user.values[6]||'').toUpperCase()!=='AKTIF'||normalizeEmail_(user.values[10])!==ch.email)throw new Error('Data akun berubah. Silakan minta kode baru.');
-    users.getRange(user.rowNumber,12).setValue(true);cache.remove(key);
-    writeAudit_(ch.userId,'WALI_SANTRI','VERIFY_WALI_EMAIL','USER',ch.userId,'',JSON.stringify({email:maskEmail_(ch.email)}),'Email Wali Santri berhasil diverifikasi');
+    const ss=getSS_(),users=ss.getSheetByName('Users'),waliSheet=ss.getSheetByName('WaliSantri'),user=findRowById_(users,ch.userId,1);
+    if(!user||String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI'||String(user.values[6]||'').toUpperCase()!=='AKTIF')throw new Error('Data akun berubah. Silakan minta kode baru.');
+    const currentRows=readRows_(users),waliRows=readRows_(waliSheet);
+    if(currentRows.some(function(r){return String(r[0]||'')!==ch.userId&&normalizeEmail_(r[10])===ch.email;})||waliRows.some(function(r){return String(r[1]||'')!==ch.userId&&normalizeEmail_(r[4])===ch.email;}))throw new Error('Email sudah digunakan akun lain. Minta kode verifikasi baru untuk email berbeda.');
+    const waliRecord=waliRows.find(function(r){return String(r[1]||'')===ch.userId;});
+    if(!waliRecord)throw new Error('Data Wali Santri tidak ditemukan.');
+    const waliRow=findRowById_(waliSheet,String(waliRecord[0]),1),now=new Date();
+    users.getRange(user.rowNumber,11,1,2).setValues([[ch.email,true]]);users.getRange(user.rowNumber,9).setValue(now);
+    if(waliRow){waliSheet.getRange(waliRow.rowNumber,5).setValue(ch.email);waliSheet.getRange(waliRow.rowNumber,9).setValue(now);}
+    cache.remove(key);
+    writeAudit_(ch.userId,'WALI_SANTRI','VERIFY_WALI_EMAIL','USER',ch.userId,'',JSON.stringify({email:maskEmail_(ch.email)}),'Email Wali Santri berhasil diverifikasi dan disinkronkan');
     SpreadsheetApp.flush();return {ok:true,message:'Email berhasil diverifikasi.'};
   }finally{lock.releaseLock();}
 }
@@ -663,7 +665,7 @@ function updateMyWaliProfile(token,nama,email,alamat){
     const rowNumber=index+2,before={nama:String(waliRows[index][2]||''),email:String(waliRows[index][4]||''),alamat:String(waliRows[index][5]||'')},now=new Date();
     waliSheet.getRange(rowNumber,3).setValue(nama);waliSheet.getRange(rowNumber,6).setValue(alamat);waliSheet.getRange(rowNumber,9).setValue(now);usersSheet.getRange(user.rowNumber,5).setValue(nama);
     writeAudit_(session.userId,session.role,'UPDATE_MY_WALI_PROFILE','WALI_SANTRI',String(waliRows[index][0]||''),JSON.stringify(before),JSON.stringify({nama:nama,email:email,alamat:alamat}),'Wali memperbarui profil pribadi');
-    SpreadsheetApp.flush();return {ok:true,requiresEmailOtp:!!verification,challengeId:verification&&verification.challengeId,maskedEmail:verification&&verification.maskedEmail,message:verification?verification.message:'Profil berhasil diperbarui.',profile:{nama:nama,noHp:String(waliRows[index][3]||''),email:email,alamat:alamat,status:'AKTIF',username:String(user.values[1]||'')}};
+    SpreadsheetApp.flush();return {ok:true,requiresEmailOtp:!!verification,challengeId:verification&&verification.challengeId,maskedEmail:verification&&verification.maskedEmail,message:verification?verification.message:'Profil berhasil diperbarui.',profile:{nama:nama,noHp:String(waliRows[index][3]||''),email:verification?oldEmail:email,alamat:alamat,status:'AKTIF',username:String(user.values[1]||'')}};
   }finally{lock.releaseLock();}
 }
 function cancelMyWaliSantriRequest(token, relationId) {
