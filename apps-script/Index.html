@@ -4197,7 +4197,39 @@ async function renderSupervisorCatalog(){
       const s=(state.cashierPOS.salesHistory||[]).find(x=>x.saleId===id);if(!s||s.paymentStatus!=='LUNAS')return;
       const w=window.open('','_blank','width=420,height=720');if(!w){showToast('Izinkan pop-up browser untuk mencetak struk.','error');return}
       const lines=(s.items||[]).map(it=>'<tr><td>'+escapeHtml(it.name)+(it.variationName?'<br>'+escapeHtml(it.variationName):'')+'<br><small>'+formatMoney(it.qty)+' × '+formatMoney(it.unitPrice)+'</small></td><td style="text-align:right">Rp '+formatMoney(it.subtotal)+'</td></tr>').join('');
-      const html='<!doctype html><html><head><meta charset="utf-8"><title>Struk '+escapeHtml(s.number)+'</title><style>body{font:12px Arial,sans-serif;color:#111;width:300px;margin:18px auto}h2,p{text-align:center;margin:4px 0}h2{font-size:17px}.line{border-top:1px dashed #555;margin:10px 0}table{width:100%;border-collapse:collapse}td{padding:5px 0;vertical-align:top}.total{font-weight:bold;font-size:14px}.right{text-align:right}.muted{color:#555}@media print{body{margin:0 auto}}</style></head><body onload="window.print()"><h2>FMART FATHAN MUBINA</h2><p>Struk Penjualan Toko</p><div class="line"></div><div>No: '+escapeHtml(s.number)+'</div><div>Tanggal: '+escapeHtml(formatDate(s.createdAt))+'</div><div>Kasir: '+escapeHtml(s.cashierName)+'</div><div>Pembeli: '+escapeHtml(s.buyerName||'Umum')+'</div><div class="line"></div><table>'+lines+'</table><div class="line"></div><table><tr><td>Subtotal</td><td class="right">Rp '+formatMoney(s.subtotal)+'</td></tr><tr><td>Diskon</td><td class="right">Rp '+formatMoney(s.discount)+'</td></tr><tr class="total"><td>TOTAL</td><td class="right">Rp '+formatMoney(s.total)+'</td></tr>'+(s.paymentMethod==='TUNAI'?'<tr><td>Tunai</td><td class="right">Rp '+formatMoney(s.amountReceived)+'</td></tr><tr><td>Kembalian</td><td class="right">Rp '+formatMoney(s.change)+'</td></tr>':'')+'</table><div class="line"></div><p>Pembayaran: '+escapeHtml(s.paymentMethod)+' · LUNAS</p>'+(s.paymentReference?'<p>Referensi: '+escapeHtml(s.paymentReference)+'</p>':'')+'<div class="line"></div><p>Terima kasih telah berbelanja</p><p class="muted">Pesantren Fathan Mubina</p></body></html>';
+      const html='<!doctype html><html><head><meta charset="utf-8"><title>Struk '+escapeHtml(s.number)+'</title><style>body{font:12px Arial,sans-serif;color:#111;width:300px;margin:18px auto}h2,p{text-align:center;margin:4px 0}h2{font-size:17px}.line{border-top:1px dashed #555;margin:10px 0}table{width:100%;border-collapse:collapse}td{padding:5px 0;vertical-align:top}.total{font-weight:bold;font-size:14px}.right{text-align:right}.muted{color:#555}@media print{body{margin:0 auto}}
+    
+    /* Admin PWA mobile — pulihkan lebar penuh tanpa mengubah layout desktop/tablet. */
+    @media (max-width:760px) {
+      body.admin-portal #appView.app {
+        width:100%!important;
+        max-width:none!important;
+        min-width:0!important;
+        margin-left:0!important;
+        margin-right:0!important;
+      }
+      body.admin-portal .header {
+        position:sticky;
+        left:0;
+        right:0;
+        width:100%!important;
+        max-width:none!important;
+        margin-left:0!important;
+        margin-right:0!important;
+        box-sizing:border-box;
+      }
+      body.admin-portal .header-inner {
+        width:100%!important;
+        max-width:none!important;
+        min-width:0!important;
+        min-height:60px;
+        margin-left:0!important;
+        margin-right:0!important;
+        padding:9px 12px!important;
+        box-sizing:border-box;
+      }
+    }
+</style></head><body onload="window.print()"><h2>FMART FATHAN MUBINA</h2><p>Struk Penjualan Toko</p><div class="line"></div><div>No: '+escapeHtml(s.number)+'</div><div>Tanggal: '+escapeHtml(formatDate(s.createdAt))+'</div><div>Kasir: '+escapeHtml(s.cashierName)+'</div><div>Pembeli: '+escapeHtml(s.buyerName||'Umum')+'</div><div class="line"></div><table>'+lines+'</table><div class="line"></div><table><tr><td>Subtotal</td><td class="right">Rp '+formatMoney(s.subtotal)+'</td></tr><tr><td>Diskon</td><td class="right">Rp '+formatMoney(s.discount)+'</td></tr><tr class="total"><td>TOTAL</td><td class="right">Rp '+formatMoney(s.total)+'</td></tr>'+(s.paymentMethod==='TUNAI'?'<tr><td>Tunai</td><td class="right">Rp '+formatMoney(s.amountReceived)+'</td></tr><tr><td>Kembalian</td><td class="right">Rp '+formatMoney(s.change)+'</td></tr>':'')+'</table><div class="line"></div><p>Pembayaran: '+escapeHtml(s.paymentMethod)+' · LUNAS</p>'+(s.paymentReference?'<p>Referensi: '+escapeHtml(s.paymentReference)+'</p>':'')+'<div class="line"></div><p>Terima kasih telah berbelanja</p><p class="muted">Pesantren Fathan Mubina</p></body></html>';
       w.document.open();w.document.write(html);w.document.close();
     }
     function cashierPOSCartTotal_(){return (state.cashierPOS.cart||[]).reduce((sum,x)=>sum+(Number(x.unitPrice)||0)*(Number(x.qty)||0),0)}
