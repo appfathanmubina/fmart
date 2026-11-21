@@ -2222,7 +2222,7 @@ test('Desktop workspace uses a centered 1360px shell while existing tablet/mobil
   assert.ok(start>=0,'The shared desktop layout layer must be present.');
   const end=index.indexOf('</style>',start);
   const desktopCss=index.slice(start,end);
-  assert.ok(desktopCss.includes('@media (min-width:1201px)'));
+  assert.ok(desktopCss.includes('@media (min-width:1101px)'));
   assert.ok(desktopCss.includes('width:min(1360px,calc(100% - 48px))'));
   assert.ok(desktopCss.includes('max-width:1360px'));
   assert.ok(desktopCss.includes('min-height:80px'));
