@@ -166,6 +166,25 @@ test('Superadmin can access Wali payment verification while other role navigatio
   assert.ok(workspace.includes("['ADMIN','SUPERADMIN','KASIR'].includes(role)"));
 });
 
+test('Superadmin account controls are server-only and cannot mutate the Superadmin account itself',()=>{
+ const create=extractFunction(code,'createStaffUser'),toggle=extractFunction(code,'toggleFMartUser'),reset=extractFunction(code,'resetFMartUserPassword'),update=extractFunction(code,'updateFMartUser');
+ for(const fn of [create,toggle,reset,update])assert.ok(fn.includes('FMART.ROLES.SUPERADMIN'),'Only Superadmin may invoke the account mutation endpoint.');
+ assert.ok(!create.includes("'SUPERADMIN'"),'Staff creation form endpoint must not create another Superadmin.');
+ assert.ok(toggle.includes("if(role==='SUPERADMIN')"),'Superadmin status cannot be toggled from staff management.');
+ assert.ok(reset.includes("if(role==='SUPERADMIN')"),'Superadmin password cannot be reset from staff management.');
+ assert.ok(update.includes("if(targetRole==='SUPERADMIN')"),'Superadmin identity cannot be edited from staff management.');
+});
+
+test('Audit Activity role filter includes every supported actor role',()=>{
+ const audit=extractFunction(index,'renderAuditWorkspace');
+ for(const role of ['ADMIN','SUPERADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR','WALI_SANTRI','SYSTEM'])assert.ok(audit.includes('<option>'+role+'</option>'),'Audit Activity must filter '+role+' records.');
+});
+
+test('Readiness runtime audit checks for an active account for every supported role',()=>{
+ const runtime=extractFunction(code,'auditFMartRuntime_');
+ for(const role of ['SUPERADMIN','ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR','WALI_SANTRI'])assert.ok(runtime.includes("'"+role+"'"),'Runtime audit must check active '+role+' account.');
+});
+
 test('Profile shortcuts keep the matching staff sidebar item active', () => {
   assert.ok(index.includes("async function openReportsFromProfile(){closeProfile();const role=state.data?.user?.role;if(!state.token||!role){showToast('Sesi pengguna belum siap. Silakan masuk kembali ke FMart.','error');return}if(!['ADMIN','SUPERADMIN','SUPERVISOR'].includes(role)){showToast('Menu laporan tidak tersedia untuk role Anda.','error');return}setStaffActiveNavigation('staffReports');"));
   assert.ok(index.includes("async function openUserManagement(){closeProfile();if(!state.token){showToast('Sesi pengguna belum siap. Silakan masuk kembali ke FMart.','error');return}setStaffActiveNavigation('staffUsers');"));
@@ -820,7 +839,7 @@ test('Role workflow authorization matrix protects sensitive endpoints server-sid
   pengantar:['getDeliveryDashboard','respondDeliveryAssignment','startDeliveryTrip','reportDeliveryFailure','updateDeliveryProgress','submitDeliveryProof'],
   admin:['getOperationsDashboard','getFMartReports','getFMartAuditLog','getDeliveryAssignmentWorkspace','assignDeliveryOrder','resolveDeliveryComplaint'],
   supervisor:['getOperationsDashboard','getOperationsOrderDetail','getAdminCatalog','getFMartReports'],
-  superadmin:['createStaffUser','savePaymentSettings','setStaffEmail','updateFMartUser','toggleFMartUser','resetFMartUserPassword']
+  superadmin:['createStaffUser','savePaymentSettings','setStaffEmail','updateFMartUser','toggleFMartUser','resetFMartUserPassword','getPaymentSettings','getPaymentProofData','getFMartAuditLog','getFMartReports','getAdminCatalog','getOperationsDashboard','getStockCatalog','getStockManagement','getStockReceivingData','getDeliveryAssignmentWorkspace','getDeliveryComplaintWorkspace','verifyPayment']
  };
  const roleNames={wali:'WALI_SANTRI',kasir:'KASIR',gudang:'GUDANG',pengantar:'PETUGAS_PENGANTAR',admin:'ADMIN',supervisor:'SUPERVISOR',superadmin:'SUPERADMIN'};
  for(const group of Object.keys(matrix)){
