@@ -354,7 +354,7 @@ function sendWaliEmailVerification_(userId,email){
   const ss=getSS_(),users=ss.getSheetByName('Users'),waliSheet=ss.getSheetByName('WaliSantri'),user=findRowById_(users,String(userId),1);
   if(!user||String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI')throw new Error('Akun Wali Santri tidak ditemukan.');
   const rows=readRows_(users),walis=readRows_(waliSheet),waliRecord=walis.find(function(r){return String(r[1]||'')===String(userId);});if(!waliRecord)throw new Error('Data Wali Santri tidak ditemukan.');
-  if(rows.some(r=>String(r[0]||'')!==String(userId)&&String(r[5]||'').toUpperCase()==='WALI_SANTRI'&&normalizeEmail_(r[10])===email)||
+  if(rows.some(r=>String(r[0]||'')!==String(userId)&&normalizeEmail_(r[10])===email)||
      walis.some(r=>String(r[1]||'')!==String(userId)&&normalizeEmail_(r[4])===email))throw new Error('Email sudah digunakan akun Wali Santri lain.');
   const challengeId=Utilities.getUuid()+Utilities.getUuid(),code=String(100000+(parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16)%900000));
   const cache=CacheService.getScriptCache(),key=waliEmailOtpKey_(challengeId),rateKey='FMART_WALI_EMAIL_RATE_'+Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(userId))).slice(0,36);
