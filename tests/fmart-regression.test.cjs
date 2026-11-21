@@ -1743,6 +1743,19 @@ test('Supervisor dashboard uses an oversight view and never routes to warehouse 
  assert.ok(!dashboard.includes('renderOpsWarehouseReports'));
 });
 
+test('Supervisor read-only catalog and reports do not run costing schema migration',()=>{
+ const catalog=extractFunction(code,'getAdminCatalog'),reports=extractFunction(code,'getFMartReports');
+ for(const fn of [catalog,reports])assert.ok(fn.includes('if(session.role!==FMART.ROLES.SUPERVISOR)ensureFMartCostingSchema_(ss);'),'Supervisor read-only endpoints must not mutate sheet schema.');
+});
+
+test('Supervisor order detail omits recipient contact data and raw Santri ID',()=>{
+ const detail=extractFunction(code,'getOperationsOrderDetail');
+ assert.ok(detail.includes("santriId:session.role===FMART.ROLES.SUPERVISOR?'':String(r[3])"));
+ assert.ok(detail.includes('recipient:visibleRecipient'));
+ assert.ok(detail.includes('className:recipient.className,asrama:recipient.asrama,legacy:recipient.legacy'));
+ assert.ok(!detail.includes('recipient:recipient'));
+});
+
 test('Supervisor can read all POS history without receiving POS mutation access',()=>{
  const history=extractFunction(code,'getCashierSalesHistory');
  assert.ok(history.includes('FMART.ROLES.SUPERVISOR'));
