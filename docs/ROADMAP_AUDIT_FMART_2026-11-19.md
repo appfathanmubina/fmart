@@ -1004,7 +1004,7 @@ Status produksi: **BELUM DISETUJUI** sampai Uji Runtime dan rekonsiliasi aktual 
 Audit source `main` setelah PR #186 mengonfirmasi enam role petugas/Admin: `SUPERADMIN`, `ADMIN`, `KASIR`, `GUDANG`, `PETUGAS_PENGANTAR`, dan `SUPERVISOR`, ditambah `WALI_SANTRI` pada portal Pembeli. Supervisor sudah diterima oleh `FMART.ROLES`, `portalRoleAllowed_()`, form pembuatan akun staf, konfigurasi navigasi, dan regression test. UI Supervisor menyediakan Dashboard pengawasan, Pesanan, Transaksi POS baca-saja, Produk baca-saja, dan Laporan. Pengujian source juga mengunci pembatasan Supervisor dari endpoint mutasi yang diperiksa.
 
 **Temuan hak akses untuk Tahap 41.2 (belum diubah pada Tahap 41.1):**
-- `verifyPayment()` mengizinkan `ADMIN`, `SUPERADMIN`, dan `KASIR`; tombol/menu `staffPaymentVerification` hanya muncul untuk `SUPERADMIN` dan `KASIR`.
-- `getCashierSalesHistory()` mengizinkan `ADMIN`, `SUPERADMIN`, `KASIR`, dan `SUPERVISOR`; menu `staffSalesHistory` hanya muncul untuk `SUPERVISOR`. Kasir dibatasi ke transaksi miliknya; Admin/Superadmin/Supervisor memperoleh seluruh riwayat pada endpoint.
+- `verifyPayment()` mengizinkan `ADMIN`, `SUPERADMIN`, dan `KASIR`. Admin mengakses antrean verifikasi Wali melalui workspace POS, sedangkan Kasir dan Superadmin memiliki tombol navigasi khusus.
+- `getCashierSalesHistory()` mengizinkan `ADMIN`, `SUPERADMIN`, `KASIR`, dan `SUPERVISOR`. Kasir dibatasi ke transaksi miliknya; Admin/Superadmin mengakses riwayat melalui workspace POS; Supervisor memiliki halaman riwayat lintas kasir yang baca-saja.
 
-Perbedaan UI/backend dicatat sebagai keputusan otorisasi, bukan otomatis dianggap bug atau diperbaiki tanpa konfirmasi pemilik proses. Uji langsung endpoint dengan akun terpisah tetap diperlukan. Catatan lama tentang Supervisor yang belum aktif tetap merupakan histori pada saat ditulis, bukan kondisi source saat ini.
+Perbedaan jalur UI ini tidak otomatis merupakan bug. Uji akses dan lingkup data masing-masing role pada runtime tetap diperlukan. Catatan lama tentang Supervisor yang belum aktif tetap merupakan histori pada saat ditulis, bukan kondisi source saat ini.
