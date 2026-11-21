@@ -619,10 +619,10 @@ function getWaliProfileManagement(token) {
 function updateMyWaliProfile(token, nama, email, alamat) {
   const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
   nama = String(nama || '').trim().slice(0,120);
-  email = String(email || '').trim().slice(0,160);
+  email = normalizeEmail_(email).slice(0,160);
   alamat = String(alamat || '').trim().slice(0,500);
   if (!nama) throw new Error('Nama wajib diisi.');
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email)) throw new Error('Format email tidak valid.');
+  if (email && !isValidStaffEmail_(email)) throw new Error('Format email tidak valid.');
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
@@ -634,14 +634,24 @@ function updateMyWaliProfile(token, nama, email, alamat) {
       return String(row[1] || '') === String(session.userId) && String(row[6] || '').toUpperCase() === 'AKTIF';
     });
     if (waliIndex < 0) throw new Error('Data Wali Santri tidak ditemukan atau tidak aktif.');
+    const userRow = findRowById_(usersSheet, session.userId, 1);
+    if (!userRow || String(userRow.values[5] || '').toUpperCase() !== 'WALI_SANTRI') throw new Error('Data akun pengguna tidak ditemukan.');
+    if (email) {
+      const duplicateWali = waliRows.some(function(row) {
+        return String(row[1] || '') !== String(session.userId) && normalizeEmail_(row[4]) === email;
+      });
+      const duplicateUser = readRows_(usersSheet).some(function(row) {
+        return String(row[0] || '') !== String(session.userId) &&
+          String(row[5] || '').toUpperCase() === 'WALI_SANTRI' && normalizeEmail_(row[10]) === email;
+      });
+      if (duplicateWali || duplicateUser) throw new Error('Email sudah digunakan oleh akun Wali Santri lain.');
+    }
     const waliRowNumber = waliIndex + 2;
     const before = {nama:String(waliRows[waliIndex][2] || ''),email:String(waliRows[waliIndex][4] || ''),alamat:String(waliRows[waliIndex][5] || '')};
     const now = new Date();
     waliSheet.getRange(waliRowNumber,3).setValue(nama);
     waliSheet.getRange(waliRowNumber,5,1,2).setValues([[email,alamat]]);
     waliSheet.getRange(waliRowNumber,9).setValue(now);
-    const userRow = findRowById_(usersSheet, session.userId, 1);
-    if (!userRow) throw new Error('Data akun pengguna tidak ditemukan.');
     usersSheet.getRange(userRow.rowNumber,5).setValue(nama);
     writeAudit_(session.userId,session.role,'UPDATE_MY_WALI_PROFILE','WALI_SANTRI',String(waliRows[waliIndex][0] || ''),JSON.stringify(before),JSON.stringify({nama:nama,email:email,alamat:alamat}),'Wali memperbarui profil pribadi');
     SpreadsheetApp.flush();
@@ -650,8 +660,6 @@ function updateMyWaliProfile(token, nama, email, alamat) {
     lock.releaseLock();
   }
 }
-
-/** Wali hanya dapat membatalkan pengajuan relasi miliknya yang masih menunggu. */
 function cancelMyWaliSantriRequest(token, relationId) {
   const session = requireRole_(token, [FMART.ROLES.WALI_SANTRI]);
   relationId = String(relationId || '').trim();
