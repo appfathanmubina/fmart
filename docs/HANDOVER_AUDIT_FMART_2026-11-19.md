@@ -161,3 +161,11 @@ Review ulang `main` setelah PR #186 menemukan bahwa beberapa pernyataan pada pak
 Dokumentasi terkini diperbarui melalui SOP, checklist UAT, README, dan roadmap Tahap 41.1. Dua perbedaan UI/backend dicatat untuk audit izin Tahap 41.2: Admin mengakses antrean verifikasi pembayaran Wali melalui workspace POS meskipun tidak memiliki tombol navigasi verifikasi khusus. Admin/Kasir juga memiliki riwayat POS melalui workspace POS, sedangkan Supervisor memiliki halaman riwayat lintas kasir yang baca-saja. Perbedaan lokasi menu tersebut bukan bukti ketidaksesuaian hak akses; pengujian runtime per role tetap diperlukan. Tidak ada perubahan data produksi.
 
 Status runtime UAT tetap **NOT RUN** dan produksi tetap **NOT APPROVED** sampai akun aktual, Apps Script deployment, Spreadsheet/Drive, seluruh alur role, dan perangkat diverifikasi.
+
+## Addendum — Tahap 41.2 Audit Superadmin (21 November 2026)
+
+Audit source Superadmin dilakukan pada apps-script/Code.gs, apps-script/Index.html, apps-script/SetupDatabase.gs, dan tests/fmart-regression.test.cjs. Kewenangan server untuk QRIS, manajemen staf, email OTP, bukti pembayaran, laporan, dan Audit Activity telah ditinjau. Dua perbaikan audit yang tidak mengubah alur transaksi disiapkan pada PR #189: pemeriksaan akun aktif Supervisor di audit runtime dan filter Aktivitas Audit untuk seluruh role.
+
+CI/check PR #189 belum melaporkan status yang dapat diverifikasi; jangan menyatakan regression lulus sebelum workflow benar-benar selesai. Uji runtime dengan akun Superadmin dan role pembanding belum dilakukan. Jalankan runFMartReadinessAudit_() serta auditFMartCostingIntegrity_() secara terpisah; audit costing belum termasuk dalam fungsi readiness gabungan. Tidak ada perubahan data produksi.
+
+**Status:** source review selesai; perubahan menunggu CI/review/merge; runtime NOT RUN; produksi NOT APPROVED.

@@ -1008,3 +1008,26 @@ Audit source `main` setelah PR #186 mengonfirmasi enam role petugas/Admin: `SUPE
 - `getCashierSalesHistory()` mengizinkan `ADMIN`, `SUPERADMIN`, `KASIR`, dan `SUPERVISOR`. Kasir dibatasi ke transaksi miliknya; Admin/Superadmin mengakses riwayat melalui workspace POS; Supervisor memiliki halaman riwayat lintas kasir yang baca-saja.
 
 Perbedaan jalur UI ini tidak otomatis merupakan bug. Uji akses dan lingkup data masing-masing role pada runtime tetap diperlukan. Catatan lama tentang Supervisor yang belum aktif tetap merupakan histori pada saat ditulis, bukan kondisi source saat ini.
+
+## Tahap 41.2 — Audit Superadmin (21 November 2026)
+
+**Status source:** review selesai pada main; dua perbaikan audit sumber disiapkan pada PR #189. **CI:** belum ada status workflow/check yang dapat diverifikasi pada commit PR. **Runtime:** NOT RUN. **Produksi:** NOT APPROVED.
+
+### Hasil pemeriksaan source
+- Role SUPERADMIN tercantum pada daftar role dan portal petugas.
+- Menu dan endpoint Superadmin mencakup dashboard, pesanan, POS, verifikasi pembayaran Wali, katalog, stok/penerimaan, distribusi, komplain, akun staf/Wali, laporan, Aktivitas Audit, dan pengaturan QRIS.
+- Pengaturan QRIS hanya dapat disimpan oleh Superadmin; endpoint baca pengaturan juga digunakan portal Wali untuk QRIS/WhatsApp.
+- Pembuatan akun staf, perubahan akun, status, reset password, dan perubahan email memiliki pemeriksaan role server. Akun Superadmin sendiri ditolak dari perubahan status, reset password, dan edit identitas melalui endpoint manajemen staf.
+- Perubahan email staf memakai OTP; tantangan kedaluwarsa, percobaan dibatasi, dan kegagalan pengiriman email tidak mengubah email akun.
+- Bukti pembayaran divalidasi terhadap folder Drive yang dikonfigurasi; akses Kasir dibatasi pada QRIS Wali.
+- Admin mengakses antrean verifikasi Wali dan riwayat POS dari workspace POS. Tombol navigasi terpisah khusus Supervisor untuk riwayat lintas kasir adalah tampilan baca-saja; ini bukan ketidaksesuaian endpoint.
+
+### Perbaikan source yang disiapkan
+1. auditFMartRuntime_() sebelumnya tidak memeriksa akun aktif SUPERVISOR; sekarang daftar role aktif mencakup seluruh enam role petugas dan WALI_SANTRI.
+2. Filter Aktivitas Audit sebelumnya tidak menyediakan PETUGAS_PENGANTAR, SUPERVISOR, dan WALI_SANTRI; opsi filter kini mencakup seluruh role dan SYSTEM.
+3. Regression test diperluas untuk cakupan endpoint Superadmin, perlindungan akun Superadmin sendiri, filter Audit Activity, dan pemeriksaan akun aktif seluruh role.
+
+### Catatan audit lanjutan
+- runFMartReadinessAudit_() masih menjalankan tujuh pemeriksaan umum dan tidak memanggil auditFMartCostingIntegrity_(). Jalankan audit costing secara terpisah sampai diputuskan apakah aman/tepat dimasukkan ke audit gabungan.
+- Akun aktif, email/OTP nyata, izin Drive, target Spreadsheet/Script Properties, QRIS merchant, dan deployment tidak dapat dipastikan dari source. Semua tetap harus diuji runtime pada lingkungan terisolasi.
+- Tidak ada perubahan transaksi, skema, harga/HPP, stok, akun produksi, pengaturan QRIS, Spreadsheet, atau Drive dalam Tahap 41.2.

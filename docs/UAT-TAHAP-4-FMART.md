@@ -86,6 +86,18 @@ Untuk setiap role:
 - Uji endpoint mutasi POS, verifikasi pembayaran, edit/tambah produk/kategori, mutasi/penerimaan stok, penugasan pengantaran, manajemen akun, pengaturan QRIS, dan Audit Activity; server harus menolak.
 - Pastikan Supervisor tidak dapat mengakses data Wali yang tidak relevan atau data rahasia akun.
 
+### 4.1.2 Uji khusus Superadmin
+- Pastikan Superadmin dapat membuka Dashboard, Pesanan, POS, Verifikasi QRIS Wali, Produk, Stok, Penerimaan, Riwayat Gudang, Distribusi, Komplain, Pengguna, Laporan, Aktivitas Audit, dan Pengaturan QRIS sesuai alur UI.
+- Buat akun uji untuk setiap role staf yang dibutuhkan; pastikan form staf tidak membuat akun Superadmin baru.
+- Uji ubah nama/role, aktif/nonaktif, reset password, dan perubahan email staf. Email baru hanya boleh berlaku setelah OTP benar; kode salah dibatasi lima percobaan, kedaluwarsa, dan tidak boleh mengubah email lama jika pengiriman email gagal.
+- Uji bahwa akun Superadmin sendiri tidak dapat diubah, dinonaktifkan, atau direset melalui endpoint manajemen staf.
+- Ubah pengaturan QRIS hanya pada lingkungan uji; verifikasi URL HTTPS, pratinjau gambar, WhatsApp opsional, dan tampilan QRIS pada portal Wali. Jangan mengubah konfigurasi produksi saat UAT.
+- Verifikasi pembayaran Wali hanya setelah dana benar-benar cocok pada merchant; uji bukti privat, penolakan, dan larangan akses untuk role yang tidak berhak.
+- Buka Laporan dan Aktivitas Audit. Uji filter ADMIN, SUPERADMIN, KASIR, GUDANG, PETUGAS_PENGANTAR, SUPERVISOR, WALI_SANTRI, dan SYSTEM.
+- Uji pemanggilan langsung seluruh endpoint khusus Superadmin menggunakan token Admin/Kasir/Gudang/Petugas Pengantar/Supervisor; server harus menolak.
+- Jalankan runFMartReadinessAudit_() untuk pemeriksaan umum dan auditFMartCostingIntegrity_() secara terpisah. Readiness audit belum memanggil audit costing secara otomatis. Jika migrasi kolom HPP memang diperlukan, fungsi internal migrateFMartCostingSchema_() hanya dijalankan dari Apps Script Editor; jangan membuka atau memanggilnya sebagai endpoint PWA.
+- Catat hasil source, CI, dan runtime secara terpisah. Source atau CI yang lulus tidak menggantikan UAT akun nyata.
+
 ## 5. Uji transaksi
 
 Jalankan hanya pada data uji yang terisolasi.

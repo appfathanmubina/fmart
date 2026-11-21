@@ -951,7 +951,7 @@ function ensureFMartCostingSchema_(ss){
   });
  });
 }
-function migrateFMartCostingSchema(){const lock=LockService.getScriptLock();lock.waitLock(10000);try{const ss=getSS_();ensureFMartCostingSchema_(ss);SpreadsheetApp.flush();return 'Kolom HPP dan biaya perolehan FMart siap. Data transaksi lama tidak diubah.';}finally{lock.releaseLock();}}
+function migrateFMartCostingSchema_(){const lock=LockService.getScriptLock();lock.waitLock(10000);try{const ss=getSS_();ensureFMartCostingSchema_(ss);SpreadsheetApp.flush();return 'Kolom HPP dan biaya perolehan FMart siap. Data transaksi lama tidak diubah.';}finally{lock.releaseLock();}}
 function getItemHpp_(ss,pid,vid){const name=vid?'VariasiProduk':'Produk',row=findRowById_(ss.getSheetByName(name),vid||pid,1);if(!row)return 0;const sh=ss.getSheetByName(name),h=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],c=h.indexOf('HargaPokokRataRata');return c<0?0:Math.max(0,Math.round(Number(row.values[c])||0));}
 function setItemHpp_(ss,pid,vid,value){const name=vid?'VariasiProduk':'Produk',row=findRowById_(ss.getSheetByName(name),vid||pid,1);if(!row)throw new Error('Master produk/variasi tidak ditemukan saat menyimpan HPP.');const sh=ss.getSheetByName(name),h=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],c=h.indexOf('HargaPokokRataRata');if(c<0)throw new Error('Kolom HPP belum tersedia. Jalankan migrasi skema HPP.');sh.getRange(row.rowNumber,c+1).setValue(Math.max(0,Math.round(Number(value)||0)));}
 function getTotalItemStock_(ss,pid,vid){let total=0;['Stok','StokKasir'].forEach(function(name){const sh=ss.getSheetByName(name);if(!sh)return;const m=readRows_(sh).filter(function(r){return String(r[1])===String(pid)&&String(r[2]||'')===String(vid||'');});if(m.length>1)throw new Error('Saldo stok ganda pada '+name+' untuk produk '+pid+'.');if(m.length){const q=Number(m[0][3]);if(!Number.isSafeInteger(q)||q<0)throw new Error('Saldo stok tidak valid pada '+name+'.');total+=q;}});return total;}
@@ -3300,7 +3300,7 @@ function auditFMartRuntime_() {
       const status = String(row[6] || '').trim().toUpperCase();
       if (status === 'AKTIF' && role) result.activeUsersByRole[role] = (result.activeUsersByRole[role] || 0) + 1;
     });
-    ['SUPERADMIN','ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','WALI_SANTRI'].forEach(function(role) {
+    ['SUPERADMIN','ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR','WALI_SANTRI'].forEach(function(role) {
       if (!result.activeUsersByRole[role]) result.issues.push({ code: 'NO_ACTIVE_ROLE_ACCOUNT', detail: 'Tidak ditemukan akun aktif untuk role ' + role + '.' });
     });
   } else {
