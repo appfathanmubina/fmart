@@ -2545,7 +2545,77 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
     body.buyer-portal .wali-profile-quick-actions .wali-logout-action{color:#b42318;border-color:#f1c7c4;background:#fff}
     @media(max-width:380px){body.buyer-portal .login-account-actions{gap:6px}body.buyer-portal .login-account-actions button{font-size:12px;padding:10px 5px}body.buyer-portal .wali-profile-quick-actions{gap:5px}body.buyer-portal .wali-profile-quick-actions button{font-size:11px;padding:9px 3px}}
 
-    </style>
+    
+    /* FMart Desktop Layout — centered workspace; mobile/tablet rules remain untouched. */
+    @media (min-width:1201px) {
+      .app {
+        width:min(1360px,calc(100% - 48px));
+        max-width:1360px;
+        margin-inline:auto;
+      }
+      .header {
+        width:100vw;
+        margin-left:calc(50% - 50vw);
+      }
+      .header-inner {
+        width:100%;
+        max-width:1360px;
+        min-height:80px;
+        margin-inline:auto;
+        padding:12px 28px;
+        box-sizing:border-box;
+      }
+
+      body.admin-portal #appView.app {
+        width:min(1360px,calc(100% - 48px));
+        max-width:1360px;
+        min-width:0;
+        margin-inline:auto;
+      }
+      body.admin-portal .header-inner {
+        padding:12px 28px!important;
+      }
+      body.admin-portal #staffNav.bottom-nav {
+        top:96px;
+        bottom:24px;
+        left:max(24px,calc((100vw - 1360px)/2));
+        right:auto;
+        width:250px;
+        max-width:250px;
+      }
+      body.admin-portal #operationsView {
+        width:calc(100% - 278px);
+        max-width:none;
+        min-width:0;
+        margin:0 0 0 278px;
+        padding:28px 28px 120px!important;
+        box-sizing:border-box;
+      }
+      body.admin-portal #opsMainSection,
+      body.admin-portal #opsMainBody {
+        width:100%;
+        max-width:100%;
+        min-width:0;
+        box-sizing:border-box;
+      }
+      body.admin-portal #opsMainBody .table-wrap,
+      body.admin-portal #opsMainBody .table-responsive {
+        max-width:100%;
+        overflow-x:auto;
+      }
+
+      body.buyer-portal .main {
+        padding:24px 28px 40px;
+      }
+      body.buyer-portal .header-inner {
+        padding:12px 28px;
+      }
+      body.buyer-portal #products.products {
+        grid-template-columns:repeat(6,minmax(0,1fr));
+        gap:18px;
+      }
+    }
+</style>
   
 
 
