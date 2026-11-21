@@ -67,7 +67,7 @@ URL deployment disimpan di `config.js`. Host shell melalui HTTPS (misalnya GitHu
 
 ## Pemisahan jalur Pembeli dan Admin
 
-- Jalur Pembeli memakai halaman utama PWA: `/`. Shell mengirim parameter portal `BUYER` ke Web App Apps Script.
+- Jalur Pembeli memakai halaman utama PWA: `/`. Shell mengirim parameter portal `BUYER` ke Web App Apps Script. Akun Wali dapat login menggunakan nomor HP atau email terdaftar dengan password yang sama.
 - Jalur petugas memakai alamat khusus: `/adminFMart16720/` (pada GitHub Pages project site, tambahkan prefiks path repository jika hosting menggunakannya). Halaman ini berada pada folder `adminFMart16720/` dan mengirim parameter portal `ADMINFMART16720`.
 - Login Pembeli hanya menerima role `WALI_SANTRI`. Jalur Admin menerima enam role petugas: `SUPERADMIN`, `ADMIN`, `KASIR`, `GUDANG`, `PETUGAS_PENGANTAR`, dan `SUPERVISOR`. Pemeriksaan dilakukan di backend pada saat login dan setiap pemulihan sesi; mengganti parameter dari browser tidak cukup untuk memperoleh role lain.
 - Tombol pendaftaran Wali Santri tidak ditampilkan pada jalur Admin.
