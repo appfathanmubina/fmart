@@ -2615,6 +2615,36 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
         gap:18px;
       }
     }
+
+    /* FMart Admin PWA header — full-bleed background with centered desktop contents. */
+    @media (min-width:1101px) {
+      body.admin-portal #appView.app {
+        width:min(1360px,calc(100% - 48px));
+        max-width:1360px;
+        margin-inline:auto;
+      }
+      body.admin-portal .header {
+        position:sticky;
+        top:0;
+        left:auto;
+        right:auto;
+        width:100vw;
+        max-width:none;
+        margin-left:calc(50% - 50vw);
+        box-sizing:border-box;
+      }
+      body.admin-portal .header-inner {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        width:min(1360px,calc(100% - 48px));
+        max-width:1360px;
+        min-height:80px;
+        margin-inline:auto;
+        padding:12px 28px!important;
+        box-sizing:border-box;
+      }
+    }
 </style>
   
 
