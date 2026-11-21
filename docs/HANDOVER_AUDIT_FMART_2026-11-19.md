@@ -179,3 +179,14 @@ PR #189 (Superadmin) dan PR #190 (Gudang) telah melewati workflow FMart Regressi
 **Status:** source review enam role selesai; PR #189/#190 merged; PR #192 menunggu CI/merge; runtime seluruh role NOT RUN; produksi NOT APPROVED.
 
 **Pemetaan urutan role Tahap 41:** 41.2 Superadmin (PR #189); 41.3 Admin; 41.4 Kasir; 41.5 Gudang (PR #190); 41.6 Petugas Pengantar; 41.7 Supervisor (PR #192). Tahap 41.8 berikutnya adalah audit visual lintas perangkat, bukan audit role.
+
+
+## Addendum — Tahap 41.8–41.10 (21 November 2026)
+
+PR #192 telah berhasil digabung ke main setelah workflow FMart Regression run #892 berstatus success. Merge commit: 7251aec0793ece67798e04cc89cba153055aaf79.
+
+Tahap 41.8 dilakukan sebagai source/CSS review. Struktur desktop/tablet/HP dan modul Admin telah ditelusuri; tidak ada perubahan visual tanpa bukti runtime. Screenshot/browser test lintas perangkat masih NOT RUN.
+
+Tahap 41.9 menambahkan pemeriksaan read-only auditFMartPaymentIntegrity_() ke runFMartReadinessAudit_() untuk memeriksa referensi pesanan, pemilik, nominal, status, bukti, dan metadata idempotency pembayaran. HPP tetap perlu diperiksa terpisah melalui auditFMartCostingIntegrity_(). Audit Drive membuktikan konfigurasi/akses/sharing folder serta folder-scoped proof endpoint dari source; rekonsiliasi file aktual menunggu runtime.
+
+Tahap 41.10: **produksi NOT APPROVED / BLOCKED**. Seluruh UAT runtime role, browser, pembayaran/settlement, stok fisik, Drive, trigger, dan Apps Script belum memiliki bukti aktual pada sesi ini. Tidak ada data produksi atau deployment yang diubah.

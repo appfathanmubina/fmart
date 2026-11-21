@@ -171,6 +171,9 @@ Jalankan fungsi privat `runFMartReadinessAudit_` dari daftar fungsi Apps Script 
 - `auditCashierPOSIntegrity_()` — total POS, request key, reservasi, dan mutasi.
 - `auditWarehouseReceivingIntegrity_()` — header/detail penerimaan, mutasi masuk, dan AuditLog.
 - `auditFMartTransactionRecovery_()` — transaksi yang mungkin terhenti.
+- `auditFMartPaymentIntegrity_()` — referensi pembayaran ke pesanan, pemilik, nominal, status, bukti, RequestKey, hash bukti, dan metadata verifikasi. Pemeriksaan ini read-only dan tidak membuktikan dana sudah settlement pada merchant.
+
+Setelah menjalankan `runFMartReadinessAudit_()`, jalankan `auditFMartCostingIntegrity_()` secara terpisah. HPP belum menjadi bagian dari readiness gabungan.
 
 Pemeriksaan Drive:
 - Pastikan `FMART_DELIVERY_PROOF_FOLDER_ID` dan `FMART_PAYMENT_PROOF_FOLDER_ID` berisi ID folder berbeda dan folder tidak dibagikan publik tanpa alasan.
@@ -179,7 +182,8 @@ Pemeriksaan Drive:
 - Folder bukti QRIS dan pengantaran tersedia dan ID-nya sesuai pengaturan.
 - File bukti dapat dibuka oleh role yang berhak dan ditolak bagi role yang tidak berhak.
 - Tidak ada folder bukti publik tanpa alasan yang disetujui.
-- Pastikan file orphan/duplikat yang ditemukan tidak dihapus sebelum referensi transaksi diperiksa.
+- Cocokkan referensi file pembayaran dan pengantaran dengan folder yang dikonfigurasi; endpoint pembacaan bukti harus menolak file di luar folder yang benar.
+- Lakukan pemeriksaan file orphan/duplikat secara manual atau melalui inventaris Drive terkontrol; jangan menghapus file sebelum referensi transaksi diperiksa.
 
 Pemeriksaan trigger:
 - Cocokkan daftar trigger pada hasil `auditFMartRuntime_()` dengan trigger yang memang diperlukan.
@@ -229,3 +233,20 @@ Catat minimal:
 **Kriteria siap produksi:** seluruh audit database/runtime/Drive/stok/POS/penerimaan bersih atau memiliki pengecualian yang disetujui tertulis; semua skenario kritis transaksi lulus di lingkungan uji; tidak ada duplikasi, stok negatif, akses lintas role, trigger duplikat, atau bukti file yang bocor; dan seluruh regresi CI lulus.
 
 Jangan mengaktifkan PBKDF2 atau mengubah konfigurasi produksi sampai hasil benchmark Apps Script, backup, dan UAT login/OTP dinyatakan aman. Fitur PBKDF2 tetap dalam mode runtime-gated.
+
+
+## 9. Gerbang Tahap 41.8–41.10
+
+### 41.8 — Admin visual lintas perangkat
+Audit source/CSS telah menelusuri Dashboard, Pesanan, POS, Produk/Kategori, Stok/HPP, Penerimaan, Riwayat Gudang, Distribusi, Komplain, Pengguna, Laporan, dan Aktivitas Audit. Source memiliki layout desktop, tablet, dan HP; status screenshot/browser aktual tetap NOT RUN. Jalankan viewport desktop 1440x900 dan 1280x720, tablet 768x1024, HP 390x844 dan 360x800. Catat screenshot untuk setiap menu, modal utama, dan tabel yang dapat digeser.
+
+### 41.9 — Rekonsiliasi
+1. Jalankan `runFMartReadinessAudit_()` dari Apps Script Editor dan simpan Execution ID serta output JSON lengkap. Fungsi ini kini mencakup `paymentIntegrity`.
+2. Jalankan `auditFMartCostingIntegrity_()` secara terpisah.
+3. Cocokkan saldo fisik Gudang dan Kasir dengan sheet `Stok`/`StokKasir`, rantai `MutasiStok`/`MutasiStokKasir`, reservasi aktif, penerimaan, penjualan POS, dan pesanan yang telah dibayar.
+4. Untuk QRIS Wali, cocokkan PaymentId, PesananId, pemilik, nominal persis, status, bukti, dan status pesanan. Keputusan `TERVERIFIKASI` hanya setelah dana benar-benar terlihat/settlement pada merchant QRIS.
+5. Untuk Drive, cocokkan Script Properties folder bukti, akses folder, sharing, pemisahan folder, file bukti yang direferensikan, dan file orphan. Jangan menghapus/memindahkan bukti sebelum referensi diperiksa.
+6. Cocokkan laporan penjualan dan pembayaran dengan pesanan/POS; pastikan laba kotor hanya dianggap valid bila `hppComplete=true`.
+
+### 41.10 — Keputusan UAT final
+Status akhir hanya PASS jika seluruh role (SUPERADMIN, ADMIN, KASIR, GUDANG, PETUGAS_PENGANTAR, SUPERVISOR, WALI_SANTRI) lulus login/OTP, menu, endpoint langsung, dan alur sesuai kewenangannya; semua rekonsiliasi bersih atau pengecualian disetujui tertulis; seluruh skenario kritis transaksi dan Drive memiliki bukti; serta visual perangkat lulus. Jika ada runtime yang belum dijalankan, hasil keseluruhan tetap BLOCKED/NOT APPROVED untuk produksi.

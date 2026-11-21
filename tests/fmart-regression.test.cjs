@@ -1988,3 +1988,33 @@ test('Global dashboard summary is visible only while the staff dashboard is acti
   assert.ok(index.includes('opsStatsNode.classList.toggle(\'hidden\',!dashboardActive);'));
   assert.ok(!index.includes("$('opsStats').classList.remove('hidden');"));
 });
+
+
+test('Readiness audit reconciles QRIS payment rows with order owner, exact total, state and idempotency', () => {
+  const fn = extractFunction(code, 'auditFMartPaymentIntegrity_');
+  const sandbox = { getSS_: () => ({ getSheetByName: name => name }), readRows_: name => name === 'Pembayaran' ? sandbox.payments : sandbox.orders, payments: [], orders: [] };
+  vm.runInNewContext(fn + '\nthis.audit = auditFMartPaymentIntegrity_;', sandbox);
+  const order = ['ORD-1','FM-0001','WALI-1','SANTRI-1',0,0,0,125000,'MENUNGGU_PEMBAYARAN'];
+  const pending = ['PAY-1','ORD-1','QRIS',125000,'https://drive.google.com/file/d/FILE1/view','MENUNGGU_VERIFIKASI','','',new Date(),new Date(),'APLIKASI','WALI-1','', 'request_key_123456', 'a'.repeat(64)];
+  sandbox.orders = [order]; sandbox.payments = [pending];
+  let result = sandbox.audit();
+  assert.equal(result.mode, 'READ_ONLY'); assert.equal(result.issueCount, 0); assert.equal(result.counts.pending, 1);
+  sandbox.payments = [pending.slice(0,3).concat([124999],pending.slice(4))];
+  result = sandbox.audit(); assert.ok(result.issues.some(x => x.code === 'PAYMENT_AMOUNT_MISMATCH'));
+  const verifiedOrder = order.slice(); verifiedOrder[8] = 'MENUNGGU_STOK';
+  const verified = pending.slice(); verified[5] = 'TERVERIFIKASI'; verified[6] = 'ADMIN-1'; verified[7] = new Date();
+  sandbox.orders = [verifiedOrder]; sandbox.payments = [verified];
+  result = sandbox.audit(); assert.equal(result.issueCount, 0); assert.equal(result.counts.verified, 1);
+  sandbox.payments = [pending, pending.slice(0, 13).concat(['request_key_123456', 'b'.repeat(64)])];
+  result = sandbox.audit(); assert.ok(result.issues.some(x => x.code === 'PAYMENT_REQUEST_KEY_DUPLICATE')); assert.ok(result.issues.some(x => x.code === 'PAYMENT_MULTIPLE_ACTIVE_FOR_ORDER'));
+});
+
+test('Admin responsive source defines desktop sidebar, tablet layout, mobile scroll navigation and contained tables', () => {
+  assert.ok(index.includes('@media (min-width:761px)'));
+  assert.ok(index.includes('@media (min-width:761px) and (max-width:1100px)'));
+  assert.ok(index.includes('@media (max-width:760px)'));
+  assert.ok(index.includes('body.admin-portal #staffNav.bottom-nav{position:fixed'));
+  assert.ok(index.includes('body.admin-portal #staffNav{overflow-x:auto'));
+  assert.ok(index.includes('body.admin-portal #opsMainBody .table-wrap{width:100%;max-width:100%;min-width:0;overflow-x:auto'));
+  assert.ok(index.includes('body.admin-portal .modal-card{max-height:min(88vh,900px)'));
+});
