@@ -995,3 +995,16 @@ Cakupan audit source yang ditutup meliputi konsistensi role/navigasi, petunjuk r
 **Gerbang berikutnya adalah Uji Runtime, bukan tahap audit source tambahan.** Uji Runtime belum dimulai dan tidak boleh dianggap lulus dari hasil CI atau deployment GitHub Pages. Jalankan sesuai handover/UAT: pastikan target Script Properties, gunakan salinan Spreadsheet/Drive terisolasi, jalankan audit read-only, verifikasi akun dan role, uji seluruh alur transaksi/stok/HPP/QRIS/PWA/Drive, rekonsiliasi hasil, lalu minta persetujuan pemilik proses sebelum perubahan produksi.
 
 Status produksi: **BELUM DISETUJUI** sampai Uji Runtime dan rekonsiliasi aktual selesai.
+
+
+## Tahap 41.1 — Sinkronisasi dokumentasi dan matriks role (21 November 2026)
+
+**Status:** perubahan dokumentasi disiapkan pada branch `audit/tahap-41-1-sinkronisasi-dokumentasi`; menunggu review PR dan CI.
+
+Audit source `main` setelah PR #186 mengonfirmasi enam role petugas/Admin: `SUPERADMIN`, `ADMIN`, `KASIR`, `GUDANG`, `PETUGAS_PENGANTAR`, dan `SUPERVISOR`, ditambah `WALI_SANTRI` pada portal Pembeli. Supervisor sudah diterima oleh `FMART.ROLES`, `portalRoleAllowed_()`, form pembuatan akun staf, konfigurasi navigasi, dan regression test. UI Supervisor menyediakan Dashboard pengawasan, Pesanan, Transaksi POS baca-saja, Produk baca-saja, dan Laporan. Pengujian source juga mengunci pembatasan Supervisor dari endpoint mutasi yang diperiksa.
+
+**Temuan hak akses untuk Tahap 41.2 (belum diubah pada Tahap 41.1):**
+- `verifyPayment()` mengizinkan `ADMIN`, `SUPERADMIN`, dan `KASIR`; tombol/menu `staffPaymentVerification` hanya muncul untuk `SUPERADMIN` dan `KASIR`.
+- `getCashierSalesHistory()` mengizinkan `ADMIN`, `SUPERADMIN`, `KASIR`, dan `SUPERVISOR`; menu `staffSalesHistory` hanya muncul untuk `SUPERVISOR`. Kasir dibatasi ke transaksi miliknya; Admin/Superadmin/Supervisor memperoleh seluruh riwayat pada endpoint.
+
+Perbedaan UI/backend dicatat sebagai keputusan otorisasi, bukan otomatis dianggap bug atau diperbaiki tanpa konfirmasi pemilik proses. Uji langsung endpoint dengan akun terpisah tetap diperlukan. Catatan lama tentang Supervisor yang belum aktif tetap merupakan histori pada saat ditulis, bukan kondisi source saat ini.
