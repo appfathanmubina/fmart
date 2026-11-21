@@ -67,7 +67,7 @@ Untuk setiap role:
 - Coba panggil endpoint terlarang secara langsung dari UI console/test harness. Backend harus tetap menolak meskipun menu disembunyikan.
 - Kasir hanya boleh melihat/memeriksa antrean QRIS Wali; untuk POS, riwayat dan aksi QRIS dibatasi pada transaksi milik akun sendiri. Kasir tidak boleh mengubah konfigurasi QRIS.
 - Supervisor harus dapat membaca seluruh riwayat POS, tetapi tidak dapat membuat, mengubah, membatalkan, atau mengonfirmasi transaksi.
-- Catat perbedaan UI/backend: `verifyPayment()` menerima ADMIN/SUPERADMIN/KASIR, sedangkan menu Verifikasi QRIS Wali hanya muncul untuk SUPERADMIN/KASIR. `getCashierSalesHistory()` menerima ADMIN/SUPERADMIN/KASIR/SUPERVISOR, tetapi menu riwayat POS hanya muncul untuk Supervisor. Putuskan apakah perbedaan ini disengaja sebelum mengubah izin.
+- Verifikasi jalur UI yang berbeda: Kasir dan Superadmin membuka antrean Verifikasi QRIS Wali melalui navigasi khusus; Admin membuka antrean dan aksi verifikasi dari workspace POS. Riwayat POS Kasir/Admin berada di workspace POS sesuai batas transaksi, sedangkan Supervisor memakai halaman riwayat lintas kasir yang baca-saja. Pastikan pemanggilan endpoint dan menu yang tampil sesuai dengan jalur role; jangan menyamakan perbedaan tombol navigasi dengan perbedaan kewenangan.
 - Pengaturan QRIS hanya dapat dibuka dan diubah oleh Superadmin.
 
 ### 4.1 Relasi Wali–Santri berdasarkan nomor wali
