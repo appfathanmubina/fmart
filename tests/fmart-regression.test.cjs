@@ -2014,12 +2014,14 @@ test('New Wali registration requires email OTP before creating the account',()=>
 test('Wali email changes synchronize Users and WaliSantri but remain unverified until OTP succeeds',()=>{
  const helper=extractFunction(code,'sendWaliEmailVerification_'),verify=extractFunction(code,'verifyWaliEmail');
  const profile=extractFunction(code,'updateMyWaliProfile'),adminEdit=extractFunction(code,'updateWaliSantri');
- assert.ok(helper.includes("users.getRange(user.rowNumber,11,1,2).setValues([[email,false]])"));
- assert.ok(helper.includes("waliSheet.getRange(waliRow.rowNumber,5).setValue(email)"));
+ assert.ok(!helper.includes("users.getRange(user.rowNumber,11,1,2).setValues([[email,false]])"),'The current login email must remain untouched until OTP succeeds.');
+ assert.ok(!helper.includes("waliSheet.getRange(waliRow.rowNumber,5).setValue(email)"));
  assert.ok(helper.includes('MailApp.sendEmail'));
  assert.ok(verify.includes('constantTimeEqual_')&&verify.includes('attempts>=5'));
- assert.ok(verify.includes('users.getRange(user.rowNumber,12).setValue(true)'));
+ assert.ok(verify.includes("setValues([[ch.email,true]])"));
+ assert.ok(verify.includes("waliSheet.getRange(waliRow.rowNumber,5).setValue(ch.email)"));
  assert.ok(profile.includes('sendWaliEmailVerification_(session.userId,email)'));
+ assert.ok(profile.includes('email:verification?oldEmail:email'),'Profile must retain the current email until the new address is verified.');
  assert.ok(adminEdit.includes('sendWaliEmailVerification_(userId,email)'));
  assert.ok(adminEdit.includes('requireRole_(token,[FMART.ROLES.SUPERADMIN])'));
 });
