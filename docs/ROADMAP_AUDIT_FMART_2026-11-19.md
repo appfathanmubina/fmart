@@ -1095,3 +1095,24 @@ Perbedaan jalur UI ini tidak otomatis merupakan bug. Uji akses dan lingkup data 
 - UAT runtime seluruh role, alur pembayaran QRIS dengan settlement merchant, transaksi bersamaan, kamera/upload, bukti Drive, trigger, dan pemeriksaan perangkat nyata belum dijalankan pada sesi ini.
 - **Keputusan: NOT APPROVED / BLOCKED untuk produksi** sampai checklist UAT dilaksanakan dengan akun, Spreadsheet, Drive, deployment Apps Script, dan bukti screenshot/log aktual. Kelulusan CI tidak menggantikan UAT.
 - Tidak ada perubahan data produksi atau deployment Apps Script yang dilakukan oleh tahapan audit ini.
+
+
+
+## Tahap 42 — Autentikasi Wali dengan email dan pemulihan password (21 November 2026)
+
+**Status:** implementasi source disiapkan pada branch `audit/tahap-42-wali-email-login-reset`; menunggu regression CI dan review PR. **Runtime Apps Script:** NOT RUN. **Produksi:** tidak berubah.
+
+Keputusan pemilik proses:
+- Wali login dengan nomor HP atau email terdaftar menggunakan password yang sama.
+- OTP tidak digunakan untuk pendaftaran maupun login Wali.
+- Email wajib pada pendaftaran baru dan harus unik di antara akun Wali.
+- Lupa password menggunakan tautan reset melalui email; tidak menggunakan SMS/WhatsApp gateway berbayar.
+- Password reset membuktikan akses ke email dengan token acak, sekali pakai, dan kedaluwarsa setelah 30 menit.
+- Perubahan password memperbarui timestamp autentikasi agar sesi lama tidak berlaku.
+- Admin tetap menggunakan login email + password + OTP yang sudah ada; jalur dan OTP Admin tidak diubah.
+- Form login memakai autocomplete username/password dan opsi penyimpanan kredensial browser; tidak menyimpan password plaintext di localStorage/sessionStorage.
+- Copy login/registrasi dibuat ringkas. Relasi Wali–Santri dan snapshot penerima checkout tidak diubah.
+
+**Catatan data lama:** akun Wali yang sudah ada tetapi belum memiliki email tetap dapat login dengan nomor HP. Fitur lupa password baru dapat digunakan setelah email yang valid ditambahkan ke akun Wali tersebut.
+
+**Batas pemeriksaan:** source dan regression CI tidak membuktikan pengiriman email aktual, kuota MailApp, URL deployment Apps Script, tampilan browser, atau proses reset pada akun nyata. Uji tersebut harus dilakukan pada runtime yang benar sebelum produksi.
