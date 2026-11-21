@@ -3300,7 +3300,7 @@ function auditFMartRuntime_() {
       const status = String(row[6] || '').trim().toUpperCase();
       if (status === 'AKTIF' && role) result.activeUsersByRole[role] = (result.activeUsersByRole[role] || 0) + 1;
     });
-    ['SUPERADMIN','ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','WALI_SANTRI'].forEach(function(role) {
+    ['SUPERADMIN','ADMIN','KASIR','GUDANG','PETUGAS_PENGANTAR','SUPERVISOR','WALI_SANTRI'].forEach(function(role) {
       if (!result.activeUsersByRole[role]) result.issues.push({ code: 'NO_ACTIVE_ROLE_ACCOUNT', detail: 'Tidak ditemukan akun aktif untuk role ' + role + '.' });
     });
   } else {
