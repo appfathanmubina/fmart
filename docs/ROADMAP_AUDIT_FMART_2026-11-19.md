@@ -1135,3 +1135,29 @@ Urutan:
 **Kriteria lulus:** seluruh skenario bagian 10 memiliki bukti aktual; email reset benar-benar diterima; token hanya sekali pakai dan tidak dapat dipakai setelah kedaluwarsa; sesi lama ditolak setelah reset; login Admin/OTP tidak terganggu. Jika deployment/runtime belum tersedia, tetap BLOCKED dan jangan menyatakan siap produksi.
 
 **Batasan:** ChatGPT tidak memiliki akses ke project Apps Script, akun Gmail, Script Properties, Spreadsheet, atau Drive produksi dari repository GitHub. Jangan melakukan deployment atau mengubah Script Properties produksi sebagai bagian tahap ini.
+
+
+## Tahap 44 — Audit final portal Wali dan penyederhanaan pengalaman belanja (21 November 2026)
+
+**Status:** perubahan source disiapkan pada branch `audit/tahap-44-wali-portal-final`; menunggu PR review dan CI. Runtime Apps Script tetap NOT RUN karena tidak tersedia deployment pengujian.
+
+### Audit endpoint dan kepemilikan data
+- Login Wali memakai nomor HP/email dan password yang sama; reset password tetap melalui email. Admin OTP tidak diubah.
+- Profil: `getMyProfile` terikat pada sesi; `getWaliProfileManagement` dan `updateMyWaliProfile` khusus role WALI_SANTRI. Perbaikan Tahap 44 menormalisasi email dan menolak email yang sudah dipakai akun Wali lain sebelum menulis data. Baris akun Wali juga divalidasi sebelum perubahan profil.
+- Relasi: pencarian/pengajuan dilakukan dari sesi Wali; daftar anak aktif diambil dari relasi aktif; pengajuan pending tidak masuk daftar anak aktif. Endpoint persetujuan/perubahan relasi tetap dibatasi Admin/Superadmin.
+- Keranjang: baca dibatasi pada userId sesi; update/hapus memeriksa pemilik baris keranjang.
+- Checkout: role Wali, baris keranjang harus dimiliki akun aktif, selectedCartIds harus cocok seluruhnya, request key/fingerprint mencegah replay dengan payload berbeda. Checkout menggunakan snapshot penerima manual sesuai kontrak source dan regresi yang sudah ada; tidak mengubah relasi Wali–Santri.
+- Pembayaran: pengajuan QRIS memeriksa pemilik pesanan, status MENUNGGU_PEMBAYARAN, nominal total, signature/ukuran/jenis bukti, folder bukti, dan request key. Detail pesanan serta bukti pengantaran memeriksa pemilik order.
+- Status/notifikasi: daftar pesanan dibatasi pemilik; notifikasi dibatasi userId dan tandai baca memeriksa kepemilikan notifikasi. Komplain dan konfirmasi diterima memeriksa pemilik serta state transition.
+- Bukti pengantaran: endpoint Wali hanya mengembalikan bukti dari pesanan milik Wali dan folder khusus yang berbeda dari folder bukti pembayaran, termasuk validasi parent folder dan tipe/ukuran file.
+
+### Penyederhanaan UI Wali
+- Menghapus petunjuk berulang pada Keranjang, pemilihan anak, dan checkout.
+- Mempertahankan nama field, pilihan metode, rincian barang, total tagihan, status pesanan, dan pesan validasi yang dibutuhkan untuk transaksi.
+- Tidak mengubah katalog produk, alur checkout, snapshot penerima, pembayaran QRIS, atau navigasi.
+- Menambahkan regression test untuk copy ringkas dan validasi email profil.
+
+### Batas validasi
+- Semua temuan di atas adalah hasil pembacaan source; tes otomatis hanya mengunci kontrak source.
+- Tidak membuktikan pengiriman email, akses Spreadsheet/Drive, QRIS merchant, tampilan browser/perangkat, atau transaksi runtime.
+- Tidak ada perubahan database, akun, Script Properties, Drive, atau deployment Apps Script.
