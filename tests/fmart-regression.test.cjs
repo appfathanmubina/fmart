@@ -2094,7 +2094,8 @@ test('Wali shopping screens avoid redundant instructional copy while preserving 
  assert.ok(!index.includes('Keranjang ini berlaku untuk akun Wali.'));
  assert.ok(!index.includes('Isi data Santri/penerima secara manual.'));
  assert.ok(!index.includes('checkoutDestinationHint'));
- assert.ok(index.includes('Nama Santri / penerima'));
+ assert.ok(index.includes('checkoutSavedRecipient'));
+ assert.ok(index.includes('Tambah Alamat Santri'));
  assert.ok(index.includes('Metode pemenuhan'));
  assert.ok(index.includes('Konfirmasi dan buat pesanan'));
 });
@@ -2104,4 +2105,17 @@ test('Saved order address status never grants access to the formal Wali-Santri c
  const children=extractFunction(code,'getChildrenForWali_');
  assert.ok(children.includes("String(r[3]).toUpperCase()==='AKTIF'"));
  assert.ok(!children.includes('ALAMAT_PESANAN'));
+});
+
+
+test('Wali saved address selection and management stay independent from formal child access',()=>{
+ const profile=extractFunction(code,'getWaliProfileManagement'),save=extractFunction(code,'requestWaliSantriLink'),remove=extractFunction(code,'removeMyWaliSavedAddress'),guard=extractFunction(code,'assertWaliSavedRecipient_');
+ assert.ok(profile.includes('savedRecipients'));
+ assert.ok(profile.includes('ALAMAT_PESANAN'));
+ assert.ok(save.includes('ALAMAT_PESANAN'));
+ assert.ok(remove.includes('ALAMAT_PESANAN'));
+ assert.ok(guard.includes("String(r[1]||'')===String(wali.waliId)"));
+ assert.ok(index.includes('data-remove-saved-address'));
+ assert.ok(index.includes('removeMyWaliSavedAddress'));
+ assert.ok(index.includes('Simpan Alamat Pemesanan'));
 });
