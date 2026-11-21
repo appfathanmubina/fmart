@@ -95,8 +95,8 @@ Dokumen ini melengkapi [Checklist UAT Tahap 4](UAT-TAHAP-4-FMART.md). SOP menjel
 3. Transaksi tunai diselesaikan berdasarkan uang diterima dan kembalian yang dihitung sistem.
 4. Transaksi QRIS berstatus menunggu konfirmasi sampai pembayaran benar-benar diterima. Jangan menyerahkan barang atau menganggap lunas hanya dari screenshot.
 5. Kasir hanya dapat membatalkan/mengonfirmasi transaksi QRIS yang dibuat oleh akunnya sendiri. Minta bantuan Admin/Superadmin jika transaksi dibuat akun lain.
-6. Pada source saat ini, endpoint verifikasi pembayaran pesanan Wali (`verifyPayment`) mengizinkan ADMIN, SUPERADMIN, dan KASIR, tetapi menu UI Verifikasi QRIS Wali hanya ditampilkan untuk SUPERADMIN dan KASIR. Admin tidak mendapat menu tersebut. Ketidaksesuaian UI/backend ini adalah temuan audit yang harus diputuskan pada Tahap 41.2; jangan menggunakan pemanggilan endpoint langsung sebagai pengganti prosedur kerja sebelum keputusan pemilik proses.
-6. Jika transaksi ganda atau stok tidak sesuai, hentikan transaksi terkait dan minta Admin/Superadmin memeriksa AuditLog serta ledger stok.
+6. Pada source saat ini, Kasir dan Superadmin memiliki tombol navigasi khusus Verifikasi QRIS Wali. Admin tidak memiliki tombol terpisah, tetapi antrean dan aksi verifikasi pembayaran Wali tersedia di dalam workspace POS Admin. Kasir hanya menangani antrean yang diizinkan oleh alur POS, sedangkan Admin/Superadmin dapat memeriksa antrean sesuai kewenangannya. Uji jalur masing-masing role pada runtime; jangan mengandalkan pemanggilan endpoint langsung sebagai pengganti alur kerja aplikasi.
+7. Jika transaksi ganda atau stok tidak sesuai, hentikan transaksi terkait dan minta Admin/Superadmin memeriksa AuditLog serta ledger stok.
 
 ## 10. Backup, pemulihan, dan insiden
 
@@ -144,7 +144,7 @@ Repository saat ini tidak menyediakan fungsi backup/restore otomatis yang dapat 
 ## 12. Prasyarat persetujuan SOP
 
 SOP ini baru dapat disahkan setelah:
-- akun ADMIN dan PETUGAS_PENGANTAR tersedia dan diuji oleh pemiliknya;
+- akun SUPERADMIN, ADMIN, KASIR, GUDANG, PETUGAS_PENGANTAR, dan SUPERVISOR tersedia serta diuji oleh pemilik masing-masing;
 - konfigurasi Spreadsheet, Script Properties, folder Drive, dan trigger terverifikasi pada runtime;
 - saldo awal seluruh produk Gudang diinput berdasarkan bukti fisik/dokumen dan direkonsiliasi;
 - alur Wali, Kasir, Gudang, Admin, Superadmin, Supervisor, dan Petugas Pengantar lulus UAT pada lingkungan terkontrol;
