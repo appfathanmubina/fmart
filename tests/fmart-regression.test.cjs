@@ -1596,7 +1596,7 @@ test('All UI server endpoints resolve and have server-side authorization or expl
   assert.ok(start>=0,'UI endpoint '+name+' must resolve to a backend function.');
   const end=code.indexOf('\nfunction ',start+10);
   const body=code.slice(start,end<0?code.length:end);
-  if(['login','registerWaliSantri','verifyAdminLoginOtp','requestWaliPasswordReset','resetWaliPassword'].includes(name))continue;
+  if(['login','registerWaliSantri','verifyWaliRegistrationOtp','verifyWaliEmail','verifyAdminLoginOtp','requestWaliPasswordReset','resetWaliPassword'].includes(name))continue;
   assert.ok(body.includes('requireSession_(')||body.includes('requireRole_('),'Endpoint '+name+' must validate a server-side session or role.');
  }
  const login=extractFunction(code,'login');
@@ -1718,11 +1718,11 @@ test('Supervisor catalog is read-only and Drive QRIS uses an embeddable thumbnai
  assert.ok(paymentUi.includes('qrisImageSrc')&&paymentUi.includes('paymentQrisImage'));
 });
 
-test('Wali saved order address guidance is separate from Admin-managed formal relationships',()=>{
+test('Wali saved order address guidance clearly separates order addresses from formal Admin-approved relationships',()=>{
  const adminView=extractFunction(index,'renderWaliSantriManagementHtml');
- assert.ok(adminView.includes('nomor HP akun Wali cocok dengan nomor Wali pada master Santri'));
- assert.ok(adminView.includes('pengajuan menunggu verifikasi Admin'));
- assert.ok(!adminView.includes('langsung aktif tanpa persetujuan Admin'));
+ assert.ok(adminView.includes('Relasi resmi Santri hanya aktif setelah disetujui Admin'));
+ assert.ok(adminView.includes('Alamat Pemesanan'));
+ assert.ok(!adminView.includes('Hubungan aktif otomatis jika nomor HP akun Wali'));
  assert.ok(index.includes('Pilih Santri dari data master untuk disimpan sebagai alamat pemesanan.'));
  const request=extractFunction(code,'requestWaliSantriLink');
  assert.ok(request.includes("'ALAMAT_PESANAN'"));
@@ -1994,15 +1994,74 @@ test('Wali can authenticate with either registered phone or email while Admin po
  assert.ok(login.includes('issueAdminLoginOtp_'),'Admin login must continue to require email OTP.');
 });
 
-test('New Wali registration requires a unique email and stores it in the existing Users schema',()=>{
- const registration=extractFunction(code,'registerWaliSantri');
- assert.ok(registration.includes('email = normalizeEmail_(email)'));
+test('New Wali registration requires email OTP before creating the account',()=>{
+ const registration=extractFunction(code,'registerWaliSantri'),verify=extractFunction(code,'verifyWaliRegistrationOtp');
+ assert.ok(registration.includes('email=normalizeEmail_(email)'));
  assert.ok(registration.includes('isValidStaffEmail_(email)'));
  assert.ok(registration.includes('Email wajib diisi'));
  assert.ok(registration.includes('normalizeEmail_(r[4])===email'));
  assert.ok(registration.includes('normalizeEmail_(r[10])===email'));
- assert.ok(registration.includes('getRange(users.getLastRow()+1,1,1,12)'));
- assert.ok(registration.includes("'WALI_SANTRI','AKTIF',now,now,'',email,false"));
+ assert.ok(registration.includes('MailApp.sendEmail'));
+ assert.ok(registration.includes('requiresOtp:true'));
+ assert.ok(!registration.includes("users.getRange(users.getLastRow()+1"));
+ assert.ok(verify.includes('constantTimeEqual_'));
+ assert.ok(verify.includes('attempts>=5'));
+ assert.ok(verify.includes("ch.email,true"));
+ assert.ok(verify.includes('cache.remove(key)'));
+});
+
+
+test('Wali email changes synchronize Users and WaliSantri but remain unverified until OTP succeeds',()=>{
+ const helper=extractFunction(code,'sendWaliEmailVerification_'),verify=extractFunction(code,'verifyWaliEmail');
+ const profile=extractFunction(code,'updateMyWaliProfile'),adminEdit=extractFunction(code,'updateWaliSantri');
+ assert.ok(!helper.includes("users.getRange(user.rowNumber,11,1,2).setValues([[email,false]])"),'The current login email must remain untouched until OTP succeeds.');
+ assert.ok(!helper.includes("waliSheet.getRange(waliRow.rowNumber,5).setValue(email)"));
+ assert.ok(helper.includes('MailApp.sendEmail'));
+ assert.ok(verify.includes('constantTimeEqual_')&&verify.includes('attempts>=5'));
+ assert.ok(verify.includes("setValues([[ch.email,true]])"));
+ assert.ok(verify.includes("waliSheet.getRange(waliRow.rowNumber,5).setValue(ch.email)"));
+ assert.ok(profile.includes('sendWaliEmailVerification_(session.userId,email)'));
+ assert.ok(profile.includes('email:verification?oldEmail:email'),'Profile must retain the current email until the new address is verified.');
+ assert.ok(adminEdit.includes('sendWaliEmailVerification_(userId,email)'));
+ assert.ok(adminEdit.includes('requireRole_(token,[FMART.ROLES.SUPERADMIN])'));
+});
+
+test('Wali login remains password-only while password recovery requires a verified email',()=>{
+ const login=extractFunction(code,'login'),reset=extractFunction(code,'requestWaliPasswordReset');
+ assert.ok(login.includes("rowRole === 'WALI_SANTRI'"));
+ assert.ok(!login.includes('emailVerified')&&!login.includes('verifyWaliEmail'));
+ assert.ok(reset.includes("row[11] || '').toUpperCase() === 'TRUE'")||reset.includes('row[11] === true'));
+});
+
+test('Admin distinguishes formal active links, pending requests and order-only saved addresses',()=>{
+ const admin=extractFunction(code,'getUserManagement');
+ assert.ok(admin.includes("==='AKTIF'"));
+ assert.ok(admin.includes("==='MENUNGGU_VERIFIKASI'"));
+ assert.ok(admin.includes("==='ALAMAT_PESANAN'"));
+ assert.ok(admin.includes('savedAddresses:savedAddresses'));
+ assert.ok(admin.includes('emailVerified:!!u.emailVerified'));
+ assert.ok(index.includes('Relasi resmi · Aktif:'));
+ assert.ok(index.includes('Menunggu verifikasi Admin'));
+ assert.ok(index.includes('Alamat Pemesanan'));
+ assert.ok(index.includes('data-wali-request="approve"'));
+ assert.ok(index.includes('data-wali-request="reject"'));
+ assert.ok(!index.includes('Hubungan aktif otomatis jika nomor HP akun Wali'));
+});
+
+test('Only Admin and Superadmin can approve formal Wali-Santri relationships',()=>{
+ const approve=extractFunction(code,'approveWaliSantriRequest'),reject=extractFunction(code,'rejectWaliSantriRequest'),link=extractFunction(code,'linkWaliSantri');
+ for(const fn of [approve,reject,link])assert.ok(fn.includes('requireRole_(token,[FMART.ROLES.ADMIN,FMART.ROLES.SUPERADMIN])'));
+ assert.ok(approve.includes("setValue('AKTIF')"));
+ assert.ok(reject.includes("setValue('NONAKTIF')"));
+});
+
+test('Wali registration and profile interfaces provide OTP verification without requiring OTP at login',()=>{
+ assert.ok(index.includes('verifyWaliRegistrationOtp'));
+ assert.ok(index.includes('verifyWaliEmail'));
+ assert.ok(index.includes('Verifikasi Email Pendaftaran'));
+ assert.ok(index.includes('Verifikasi Email Wali'));
+ assert.ok(index.includes('async function saveWaliProfile(event)'));
+ assert.ok(index.includes('autocomplete="current-password"'));
 });
 
 test('Wali password recovery uses a rate-limited, expiring, one-time email link without revealing account existence',()=>{
@@ -2040,14 +2099,15 @@ test('Wali login, registration and reset UI use native credential autofill and c
 });
 
 
-test('Wali profile updates normalize email and reject duplicate Wali identity before writing',()=>{
- const fn=extractFunction(code,'updateMyWaliProfile');
+test('Wali profile changes validate the account and synchronize email through verification',()=>{
+ const fn=extractFunction(code,'updateMyWaliProfile'),helper=extractFunction(code,'sendWaliEmailVerification_');
  assert.ok(fn.includes('normalizeEmail_(email)'));
  assert.ok(fn.includes('isValidStaffEmail_(email)'));
- assert.ok(fn.includes('duplicateWali')&&fn.includes('duplicateUser'));
- assert.ok(fn.includes('Email sudah digunakan oleh akun Wali Santri lain.'));
- assert.ok(fn.indexOf('findRowById_(usersSheet, session.userId, 1)')<fn.indexOf('waliSheet.getRange(waliRowNumber,3).setValue(nama)'),'Validate the account row before mutating either profile sheet.');
- assert.ok(fn.includes("String(userRow.values[5] || '').toUpperCase() !== 'WALI_SANTRI'"));
+ assert.ok(fn.includes('findRowById_(usersSheet,session.userId,1)'));
+ assert.ok(fn.includes("String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI'"));
+ assert.ok(fn.includes('sendWaliEmailVerification_(session.userId,email)'));
+ assert.ok(helper.includes('normalizeEmail_(r[10])===email'));
+ assert.ok(helper.includes('normalizeEmail_(r[4])===email'));
 });
 
 test('Wali shopping screens avoid redundant instructional copy while preserving functional labels',()=>{
