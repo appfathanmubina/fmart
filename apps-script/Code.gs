@@ -466,7 +466,7 @@ function requestWaliPasswordReset(email) {
   const matches = readRows_(users).filter(function(row) {
     return String(row[5] || '').toUpperCase() === 'WALI_SANTRI' &&
       String(row[6] || '').toUpperCase() === 'AKTIF' &&
-      normalizeEmail_(row[10]) === email;
+      (String(row[11] || '').toUpperCase() === 'TRUE' || row[11] === true) && normalizeEmail_(row[10]) === email;
   });
   if (matches.length !== 1) return generic;
 
@@ -2521,7 +2521,7 @@ function getUserManagement(token) {
   const santriSheet=ss.getSheetByName('Santri'), santriColumnMap=getSantriColumnMap_(santriSheet);
   const userRows=readRows_(usersSheet), waliRows=readRows_(waliSheet), relRows=relSheet?readRows_(relSheet):[], santriRows=readSantriRows_(santriSheet);
   const userMap={};
-  userRows.forEach(function(r){const uid=String(r[0]||'');if(uid) userMap[uid]={userId:uid,username:String(r[1]||''),nama:String(r[4]||''),role:String(r[5]||''),status:String(r[6]||''),createdAt:dateIso_(r[7]),lastLoginAt:dateIso_(r[9])};});
+  userRows.forEach(function(r){const uid=String(r[0]||'');if(uid) userMap[uid]={userId:uid,username:String(r[1]||''),nama:String(r[4]||''),role:String(r[5]||''),status:String(r[6]||''),emailVerified:(String(r[11]||'').toUpperCase()==='TRUE'||r[11]===true),createdAt:dateIso_(r[7]),lastLoginAt:dateIso_(r[9])};});
   const santriMap={};
   santriRows.forEach(function(r){const child=santriRecord_(r,santriColumnMap);if(child.id)santriMap[child.id]=child;});
   const waliSantri=waliRows.map(function(r){
@@ -2529,7 +2529,7 @@ function getUserManagement(token) {
     const own=relRows.filter(function(x){return String(x[1]||'')===waliId;});
     const children=own.filter(function(x){return String(x[3]||'').toUpperCase()==='AKTIF';}).map(function(x){const c=santriMap[String(x[2]||'')];return c?{id:c.id,nis:c.nis,name:c.name,className:c.className,hubungan:String(x[5]||'')} : null;}).filter(Boolean);
     const pendingRequests=own.filter(function(x){return String(x[3]||'').toUpperCase()==='MENUNGGU_VERIFIKASI';}).map(function(x){const c=santriMap[String(x[2]||'')];return c?{relasiId:String(x[0]||''),id:c.id,nis:c.nis,name:c.name,className:c.className,hubungan:String(x[5]||'')} : null;}).filter(Boolean);\n    const savedAddresses=own.filter(function(x){return String(x[3]||'').toUpperCase()==='ALAMAT_PESANAN';}).map(function(x){const c=santriMap[String(x[2]||'')];return c?{relasiId:String(x[0]||''),id:c.id,nis:c.nis,name:c.name,className:c.className,hubungan:String(x[5]||'')} : null;}).filter(Boolean);
-    return {waliId:waliId,userId:userId,username:String(u.username||''),nama:String(r[2]||u.nama||''),noHp:String(r[3]||''),email:String(r[4]||''),alamat:String(r[5]||''),status:String(r[6]||u.status||''),createdAt:dateIso_(r[7]),updatedAt:dateIso_(r[8]),lastLoginAt:dateIso_(u.lastLoginAt),children:children,pendingRequests:pendingRequests,savedAddresses:savedAddresses};
+    return {waliId:waliId,userId:userId,username:String(u.username||''),nama:String(r[2]||u.nama||''),noHp:String(r[3]||''),email:String(r[4]||''),alamat:String(r[5]||''),status:String(r[6]||u.status||''),createdAt:dateIso_(r[7]),updatedAt:dateIso_(r[8]),lastLoginAt:dateIso_(u.lastLoginAt),emailVerified:!!u.emailVerified,children:children,pendingRequests:pendingRequests,savedAddresses:savedAddresses};
   }).filter(function(w){return w.waliId;});
   return {ok:true,waliSantri:waliSantri,canManage:['ADMIN','SUPERADMIN'].indexOf(session.role)!==-1,canEditAccount:session.role==='SUPERADMIN'};
 }
