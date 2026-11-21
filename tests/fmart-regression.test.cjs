@@ -2272,3 +2272,18 @@ test('Admin PWA mobile keeps app and header full width while desktop centering r
  assert.ok(desktopStart>=0 && desktopStart<start,'Desktop header rules must remain present and separately scoped.');
  assert.ok(index.slice(desktopStart,start).includes('@media (min-width:1101px)'),'Desktop centering must remain restricted to desktop widths.');
 });
+
+
+test('All desktop user headers extend their own background full width while keeping header contents centered',()=>{
+  const marker='/* FMart Desktop Layout — centered workspace; mobile/tablet rules remain untouched. */';
+  const start=index.indexOf(marker);
+  assert.ok(start>=0,'The shared desktop layout layer must be present.');
+  const end=index.indexOf('</style>',start);
+  const css=index.slice(start,end);
+  assert.match(css,/\.header\s*\{[\s\S]*?isolation:isolate;[\s\S]*?clip-path:inset\(0 -100vmax\);/);
+  assert.match(css,/\.header::before\s*\{[\s\S]*?position:absolute;[\s\S]*?inset:0 -100vmax;[\s\S]*?background:inherit;/);
+  assert.match(css,/\.header-inner\s*\{[\s\S]*?max-width:1360px;[\s\S]*?margin-inline:auto;/);
+  assert.ok(css.includes('@media (min-width:1101px)'),'The full-bleed background must be desktop-only.');
+  assert.ok(index.includes('body.admin-portal .header{background:linear-gradient'),'Admin keeps its own header theme.');
+  assert.ok(index.includes('body.buyer-portal .header{background:linear-gradient'),'Buyer keeps its own header theme.');
+});
