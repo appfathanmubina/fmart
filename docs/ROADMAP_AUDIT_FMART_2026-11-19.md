@@ -1069,3 +1069,29 @@ Perbedaan jalur UI ini tidak otomatis merupakan bug. Uji akses dan lingkup data 
 - CI lulus bukan bukti runtime lulus. Seluruh role tetap memerlukan akun nyata, pengujian endpoint langsung, Drive/Spreadsheet, dan perangkat HP/Desktop.
 
 **Pemetaan urutan role Tahap 41:** 41.2 Superadmin (PR #189); 41.3 Admin; 41.4 Kasir; 41.5 Gudang (PR #190); 41.6 Petugas Pengantar; 41.7 Supervisor (PR #192). Tahap 41.8 berikutnya adalah audit visual lintas perangkat, bukan audit role.
+
+
+## Addendum — Tahap 41.8–41.10: audit visual, rekonsiliasi, dan gerbang produksi (21 November 2026)
+
+### Tahap 41.8 — Audit visual Admin lintas perangkat (source/CSS review)
+- Snapshot yang ditinjau: apps-script/Index.html pada main, setelah PR #192 merge.
+- Desktop (>=761 px): sidebar tetap di kiri, header sticky, area kerja fleksibel dan tabel dibatasi dalam wrapper scroll.
+- Tablet (761–1100 px): sidebar dipersempit menjadi 194 px; statistik stok/dashboard dan grid kategori menyesuaikan kolom. Pada 768 px ruang konten relatif sempit sehingga tabel/filter tetap perlu dicek pada browser.
+- HP (<=760 px): navigasi petugas berada di bawah dan dapat digeser horizontal; statistik menjadi dua kolom; tabel memiliki scroll internal; modal dibatasi tinggi viewport dan dapat discroll.
+- Halaman Admin yang ditelusuri: Dashboard, Pesanan, POS, Produk/Kategori, Stok/HPP, Penerimaan, Riwayat Gudang, Distribusi, Komplain, Pengguna, Laporan, dan Aktivitas Audit (tab di Laporan).
+- Tidak ditemukan bukti source yang cukup untuk membenarkan perubahan visual yang berisiko mengubah layout aktif. Tidak ada perubahan CSS/markup.
+- Screenshot/browser interaktif pada 1440x900, 1280x720, 768x1024, 390x844, dan 360x800 belum dijalankan. Status visual runtime = NOT RUN.
+
+### Tahap 41.9 — Rekonsiliasi source dan audit read-only
+- Pemeriksaan source mencakup alur stok Gudang/Kasir, mutasi, reservasi, POS tunai/QRIS, pembayaran QRIS Wali, snapshot HPP, laporan, folder bukti Drive, dan pemulihan transaksi.
+- Readiness gabungan sebelumnya tidak memiliki pemeriksaan rekonsiliasi baris Pembayaran terhadap pemilik pesanan, nominal, status pesanan, bukti, dan metadata idempotency. Ditambahkan auditFMartPaymentIntegrity_() sebagai pemeriksaan read-only dan dimasukkan ke runFMartReadinessAudit_(). Fungsi ini tidak mengubah status pembayaran, saldo bank/merchant, stok, atau file.
+- Audit HPP tetap dijalankan terpisah melalui auditFMartCostingIntegrity_(); readiness gabungan tidak mencakup HPP.
+- Audit Drive runtime memeriksa konfigurasi, akses, sharing publik, dan pemisahan folder bukti. Endpoint pembacaan bukti membatasi parent folder. Pemeriksaan file-by-file/orphan/duplikasi Drive masih memerlukan hasil runtime dan penelusuran referensi aktual.
+- Laporan source menghitung pesanan, POS, metode pembayaran, mutasi stok, dan laba kotor; bila snapshot HPP belum lengkap, laba kotor/margin dikembalikan null, bukan angka estimasi.
+- Tidak ada akses eksekusi Apps Script/Spreadsheet/Drive produksi pada audit ini. Saldo aktual, transaksi aktual, file aktual, dan hasil audit runtime belum direkonsiliasi; status runtime = NOT RUN.
+
+### Tahap 41.10 — UAT final dan keputusan produksi
+- Source review enam role dan perubahan yang diperlukan telah selesai; CI untuk PR #189, #190, dan #192 tercatat lulus.
+- UAT runtime seluruh role, alur pembayaran QRIS dengan settlement merchant, transaksi bersamaan, kamera/upload, bukti Drive, trigger, dan pemeriksaan perangkat nyata belum dijalankan pada sesi ini.
+- **Keputusan: NOT APPROVED / BLOCKED untuk produksi** sampai checklist UAT dilaksanakan dengan akun, Spreadsheet, Drive, deployment Apps Script, dan bukti screenshot/log aktual. Kelulusan CI tidak menggantikan UAT.
+- Tidak ada perubahan data produksi atau deployment Apps Script yang dilakukan oleh tahapan audit ini.
