@@ -2706,6 +2706,13 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0f5!important;co
     function showLogin(message){$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginError').textContent=message||'';restoreRememberedLoginCredential()}
     function showApp(){ $('loginView').classList.add('hidden');$('appView').classList.remove('hidden'); }
     async function boot(){
+      const resetToken=new URLSearchParams(window.location.search).get('reset');
+      if(resetToken&&FMART_PORTAL_MODE!=='ADMINFMART16720'){
+        state.token='';sessionStorage.removeItem(FMART_SESSION_TOKEN_KEY);
+        $('appView').classList.add('hidden');$('loginView').classList.remove('hidden');
+        $('resetPasswordToken').value=resetToken;$('resetPasswordModal').classList.remove('hidden');$('resetPasswordNew').focus();
+        return;
+      }
       if(!state.token){
         const legacyToken=sessionStorage.getItem('fmartToken');
         if(legacyToken){
@@ -4867,14 +4874,7 @@ $('viewAllProducts').addEventListener('click',()=>{setCustomerNav('navHome');sho
       let queued=false;const observer=new MutationObserver(records=>{if(queued||!records.some(record=>record.addedNodes&&record.addedNodes.length))return;queued=true;Promise.resolve().then(()=>{queued=false;refresh(document)});});
       refresh(document);if(document.body)observer.observe(document.body,{childList:true,subtree:true});
     })();
-window.addEventListener('load',()=>{
-      const resetToken=new URLSearchParams(window.location.search).get('reset');
-      if(resetToken&&FMART_PORTAL_MODE!=='ADMINFMART16720'){
-        state.token='';sessionStorage.removeItem(FMART_SESSION_TOKEN_KEY);
-        $('appView').classList.add('hidden');$('loginView').classList.remove('hidden');
-        $('resetPasswordToken').value=resetToken;$('resetPasswordModal').classList.remove('hidden');$('resetPasswordNew').focus();
-      }else boot();
-    });
+window.addEventListener('load',boot);
 
     /* Fase 8 — non-invasive interaction enhancements */
     (function enhanceMobileExperience(){
