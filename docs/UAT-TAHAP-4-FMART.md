@@ -82,6 +82,8 @@ Untuk setiap role:
 
 ### 4.1.1 Uji khusus Supervisor
 - Login sebagai Supervisor dan pastikan hanya menu Dashboard, Pesanan, Transaksi POS, Produk, dan Laporan yang tersedia.
+- Pastikan halaman Produk dan Laporan Supervisor tidak menjalankan migrasi skema HPP; jika kolom HPP belum tersedia, Admin/Superadmin harus menyiapkan skema sebelum UAT Supervisor.
+- Pada detail pesanan Supervisor, pastikan nomor kontak dan alamat pribadi penerima tidak dikirim sebagai field recipient; informasi tujuan pengantaran yang memang diperlukan untuk pengawasan tetap tersedia.
 - Baca detail pesanan, seluruh riwayat POS, katalog lengkap, dan laporan.
 - Uji endpoint mutasi POS, verifikasi pembayaran, edit/tambah produk/kategori, mutasi/penerimaan stok, penugasan pengantaran, manajemen akun, pengaturan QRIS, dan Audit Activity; server harus menolak.
 - Pastikan Supervisor tidak dapat mengakses data Wali yang tidak relevan atau data rahasia akun.
@@ -97,6 +99,15 @@ Untuk setiap role:
 - Uji pemanggilan langsung seluruh endpoint khusus Superadmin menggunakan token Admin/Kasir/Gudang/Petugas Pengantar/Supervisor; server harus menolak.
 - Jalankan runFMartReadinessAudit_() untuk pemeriksaan umum dan auditFMartCostingIntegrity_() secara terpisah. Readiness audit belum memanggil audit costing secara otomatis. Jika migrasi kolom HPP memang diperlukan, fungsi internal migrateFMartCostingSchema_() hanya dijalankan dari Apps Script Editor; jangan membuka atau memanggilnya sebagai endpoint PWA.
 - Catat hasil source, CI, dan runtime secara terpisah. Source atau CI yang lulus tidak menggantikan UAT akun nyata.
+
+### 4.1.3 Uji silang batas akses seluruh role petugas
+- Admin: antrean pembayaran Wali dan riwayat POS tersedia di workspace POS; daftar staf hanya baca; relasi Wali–Santri dapat dikelola tetapi akun Wali tidak dapat diedit; pengaturan QRIS ditolak.
+- Kasir: dashboard, penjualan, riwayat dan antrean QRIS POS hanya untuk akun sendiri; konfirmasi/pembatalan transaksi Kasir lain harus ditolak; verifikasi Wali hanya QRIS; detail pesanan dan bukti pembayaran non-QRIS harus ditolak.
+- Gudang: stok, HPP, penerimaan, transfer ke Kasir, riwayat, dan distribusi dapat dilakukan sesuai transisi; antrean detail pembayaran Wali tidak boleh dikirim ke dashboard; endpoint verifikasi harus ditolak.
+- Petugas Pengantar: hanya penugasan akun sendiri yang tampil; semua aksi terikat pada penugasan sendiri; bukti JPG/PNG/WEBP maksimal 10 MB; petugas tidak dapat mengonfirmasi penerimaan.
+- Supervisor: hanya Dashboard, Pesanan, Transaksi POS, Produk, dan Laporan baca-saja; antrean pembayaran Wali, kontak/alamat pribadi penerima, Audit Activity, dan seluruh endpoint mutasi harus ditolak/tidak dikirim.
+- Untuk setiap role, ulangi pengujian melalui UI dan pemanggilan endpoint langsung menggunakan token role tersebut. Simpan bukti respons server; menyembunyikan tombol saja tidak dianggap lulus.
+- Jalankan UAT dengan akun aktif masing-masing role. Jika akun tidak tersedia, tandai BLOCKED, jangan menggantinya dengan asumsi source.
 
 ## 5. Uji transaksi
 

@@ -1031,3 +1031,41 @@ Perbedaan jalur UI ini tidak otomatis merupakan bug. Uji akses dan lingkup data 
 - runFMartReadinessAudit_() masih menjalankan tujuh pemeriksaan umum dan tidak memanggil auditFMartCostingIntegrity_(). Jalankan audit costing secara terpisah sampai diputuskan apakah aman/tepat dimasukkan ke audit gabungan.
 - Akun aktif, email/OTP nyata, izin Drive, target Spreadsheet/Script Properties, QRIS merchant, dan deployment tidak dapat dipastikan dari source. Semua tetap harus diuji runtime pada lingkungan terisolasi.
 - Tidak ada perubahan transaksi, skema, harga/HPP, stok, akun produksi, pengaturan QRIS, Spreadsheet, atau Drive dalam Tahap 41.2.
+
+## Tahap 41.3–41.8 — Audit lima role lanjutan (21 November 2026)
+
+**Batas hasil:** pemeriksaan source dan regression CI; tidak ada uji akun nyata, browser perangkat, transaksi, atau runtime Apps Script. Runtime seluruh role tetap NOT RUN.
+
+### Admin — source review PASS
+- Dashboard, pesanan, POS, antrean verifikasi pembayaran Wali, riwayat POS, katalog/foto, stok/HPP, penerimaan, distribusi, komplain, pengguna, laporan, Audit Activity, dan integrasi Tabungan memiliki jalur UI/backend yang sesuai.
+- Admin dapat melihat daftar akun staf tetapi tidak membuat/mengubah/menonaktifkan/reset akun staf. Admin dapat mengelola relasi Wali–Santri tetapi tidak mengubah akun Wali. Pengaturan QRIS tetap khusus Superadmin.
+- Tidak ditemukan kebutuhan perubahan kode pada review source Admin.
+
+### Kasir — source review PASS
+- Dashboard dan riwayat penjualan membatasi transaksi POS pada akun Kasir sendiri; antrean QRIS POS, konfirmasi, dan pembatalan juga dibatasi pada transaksi milik akun tersebut.
+- Kasir tetap dapat menangani antrean QRIS Wali yang menjadi kewenangannya, tetapi tidak dapat membuka detail pesanan Wali atau bukti pembayaran metode lain.
+- Tidak ditemukan kebutuhan perubahan kode pada review source Kasir.
+
+### Gudang — source review PASS setelah perbaikan PR #190
+- Penerimaan, HPP rata-rata tertimbang, mutasi, transfer Gudang–Kasir, reservasi, dan pemulihan transaksi memiliki validasi serta idempotensi.
+- Dashboard sebelumnya mengirim detail antrean pembayaran Wali ke GUDANG dan SUPERVISOR walaupun tidak digunakan UI dan tidak diperlukan untuk tugas mereka. PR #190 membatasi antrean penuh untuk ADMIN/SUPERADMIN; Kasir tetap menerima antrean QRIS Wali; Gudang/Supervisor menerima array kosong.
+- Transisi pesanan Gudang tidak mengizinkan pembatalan; penugasan pengantaran mensyaratkan pembayaran terverifikasi dan pesanan siap.
+
+### Petugas Pengantar — source review PASS
+- Dashboard hanya mengembalikan penugasan milik akun sendiri; terima/tolak, mulai perjalanan, progres, gagal, dan unggah bukti memvalidasi kepemilikan penugasan.
+- Bukti dibatasi ke JPG/PNG/WEBP maksimal 10 MB, signature file diperiksa, folder pengantaran privat dipisah dari bukti pembayaran, dan konfirmasi penerimaan tetap milik Wali.
+- Tidak ditemukan kebutuhan perubahan kode pada review source; kamera, jaringan, upload, dan retry tetap memerlukan runtime UAT.
+
+### Supervisor — source review PASS setelah perbaikan yang disiapkan pada PR #192
+- Navigasi dan endpoint hanya memberi akses baca Dashboard, Pesanan, riwayat POS lintas kasir, katalog, dan laporan. Tidak ada akses mutasi, pembayaran, stok, pengguna, pengaturan QRIS, atau Audit Activity.
+- `getAdminCatalog()` dan `getFMartReports()` sebelumnya dapat menjalankan migrasi skema HPP saat Supervisor membuka halaman baca-saja. PR #192 memindahkan migrasi ke jalur Admin/Superadmin saja.
+- Detail pesanan sebelumnya mengirim nomor telepon, alamat, dan ID Santri kepada Supervisor walaupun tidak digunakan UI. PR #192 menghilangkan field tersebut dari respons Supervisor.
+- Antrean pembayaran Wali pada dashboard juga dibatasi oleh PR #190.
+
+### CI dan gerbang
+- PR #189 (Superadmin): FMart Regression berhasil; pemeriksaan sintaks Code.gs/service worker dan patch whitespace berhasil.
+- PR #190 (Gudang): FMart Regression berhasil; pemeriksaan sintaks dan patch whitespace berhasil.
+- PR #192 (Supervisor): menunggu hasil CI setelah pembaruan branch.
+- CI lulus bukan bukti runtime lulus. Seluruh role tetap memerlukan akun nyata, pengujian endpoint langsung, Drive/Spreadsheet, dan perangkat HP/Desktop.
+
+**Pemetaan urutan role Tahap 41:** 41.2 Superadmin (PR #189); 41.3 Admin; 41.4 Kasir; 41.5 Gudang (PR #190); 41.6 Petugas Pengantar; 41.7 Supervisor (PR #192). Tahap 41.8 berikutnya adalah audit visual lintas perangkat, bukan audit role.
