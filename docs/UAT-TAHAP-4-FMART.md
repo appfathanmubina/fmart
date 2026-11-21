@@ -54,17 +54,20 @@ Siapkan akun uji terpisah untuk setiap role. Jangan berbagi password atau OTP me
 | Kasir | Dashboard Kasir, POS, antrean verifikasi QRIS Wali | Pengaturan QRIS, menu Gudang/Admin, verifikasi metode non-QRIS |
 | Gudang | Dashboard, pesanan/pemenuhan, stok Gudang, penerimaan, laporan Gudang, penugasan pengantaran | Pengaturan QRIS, pengguna, data pembayaran yang tidak diperlukan |
 | Petugas Pengantar | Dashboard dan tugas pengantaran miliknya | Tugas petugas lain, stok, POS, pembayaran, pengaturan |
+| Supervisor | Dashboard pengawasan, semua Pesanan, semua Transaksi POS, seluruh Produk, Laporan & Pencapaian (baca-saja) | Mutasi POS, verifikasi pembayaran, edit katalog/kategori/harga, mutasi/penerimaan stok, penugasan/status pengantaran, manajemen akun, pengaturan QRIS, Audit Activity |
 | Wali Santri | Katalog, keranjang, pesanan anak yang terhubung, pembayaran QRIS, bukti pengantaran/konfirmasi | Pesanan wali lain, menu staf, pengaturan QRIS |
 
 Catatan role:
-- Role `SUPERVISOR` belum didefinisikan di backend saat ini. Jangan membuat akun uji atau memberi akses Supervisor sampai ada keputusan dan implementasi eksplisit.
+- Role `SUPERVISOR` sudah didefinisikan pada backend, portal Admin, form akun, navigasi, dan regression test. Uji bahwa seluruh halaman Supervisor bersifat baca-saja dan semua endpoint mutasi/administrasi tetap ditolak. Status akun aktual tetap diverifikasi pada runtime.
 - Hubungan Wali–Santri yang berstatus `MENUNGGU_VERIFIKASI` belum memberi akses sebagai Santri terhubung; hanya relasi `AKTIF` yang boleh digunakan untuk akses data/checkout sebagai Santri terhubung.
 
 Untuk setiap role:
 - Login berhasil dan identitas/role benar.
 - Menu yang tidak berhak tidak muncul dan tidak dapat difokuskan dengan keyboard.
 - Coba panggil endpoint terlarang secara langsung dari UI console/test harness. Backend harus tetap menolak meskipun menu disembunyikan.
-- Kasir hanya boleh melihat/memeriksa bukti QRIS Wali sesuai batas akses; Kasir tidak boleh mengubah konfigurasi QRIS.
+- Kasir hanya boleh melihat/memeriksa antrean QRIS Wali; untuk POS, riwayat dan aksi QRIS dibatasi pada transaksi milik akun sendiri. Kasir tidak boleh mengubah konfigurasi QRIS.
+- Supervisor harus dapat membaca seluruh riwayat POS, tetapi tidak dapat membuat, mengubah, membatalkan, atau mengonfirmasi transaksi.
+- Verifikasi jalur UI yang berbeda: Kasir dan Superadmin membuka antrean Verifikasi QRIS Wali melalui navigasi khusus; Admin membuka antrean dan aksi verifikasi dari workspace POS. Riwayat POS Kasir/Admin berada di workspace POS sesuai batas transaksi, sedangkan Supervisor memakai halaman riwayat lintas kasir yang baca-saja. Pastikan pemanggilan endpoint dan menu yang tampil sesuai dengan jalur role; jangan menyamakan perbedaan tombol navigasi dengan perbedaan kewenangan.
 - Pengaturan QRIS hanya dapat dibuka dan diubah oleh Superadmin.
 
 ### 4.1 Relasi Wali–Santri berdasarkan nomor wali
@@ -76,6 +79,12 @@ Untuk setiap role:
 - Pastikan Admin dapat memeriksa dan menyetujui melalui jalur verifikasi manual.
 - Pastikan maksimal dua akun Wali unik dalam gabungan status aktif/pending. Jika data lama sudah melampaui batas, persetujuan Admin harus ditolak sampai relasi direkonsiliasi.
 - Relasi aktif lama tidak boleh dicabut otomatis oleh perubahan ini.
+
+### 4.1.1 Uji khusus Supervisor
+- Login sebagai Supervisor dan pastikan hanya menu Dashboard, Pesanan, Transaksi POS, Produk, dan Laporan yang tersedia.
+- Baca detail pesanan, seluruh riwayat POS, katalog lengkap, dan laporan.
+- Uji endpoint mutasi POS, verifikasi pembayaran, edit/tambah produk/kategori, mutasi/penerimaan stok, penugasan pengantaran, manajemen akun, pengaturan QRIS, dan Audit Activity; server harus menolak.
+- Pastikan Supervisor tidak dapat mengakses data Wali yang tidak relevan atau data rahasia akun.
 
 ## 5. Uji transaksi
 

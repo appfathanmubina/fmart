@@ -152,3 +152,12 @@ Regression CI pada PR lulus. Tidak ada perubahan data, skema, atau endpoint muta
 Audit source repository Tahap 40.1–40.13 telah ditutup. Baseline source `main` sebelum penutupan dokumentasi adalah `89acaaddfd8349825c5561479f49c8ca174847bd`; PR dokumentasi penutupan #149 di-merge menjadi `77c60d5e953408981dcf3629f5c9bf6f91e5ea84`. Regression CI pada kedua commit lulus **130/130 tes** dan build/deployment GitHub Pages berstatus success. Tidak ada PR terbuka. Perbaikan terakhir memastikan Supervisor mempunyai dashboard pengawasan yang tepat serta akses baca-saja ke seluruh riwayat POS, di samping pesanan, produk, dan laporan.
 
 Tidak ada migrasi, penulisan data, atau rekonsiliasi Spreadsheet produksi yang dilakukan selama audit source. **Uji Runtime belum dimulai dan produksi belum disetujui.** Tahap selanjutnya adalah menjalankan checklist UAT secara terisolasi: verifikasi Script Properties dan target, gunakan salinan Spreadsheet/Drive, jalankan seluruh audit read-only, uji akun/role dan alur nyata, rekonsiliasi stok/HPP/laba/transaksi, lalu minta persetujuan pemilik proses.
+
+
+## Addendum — Tahap 41.1 sinkronisasi dokumentasi dan role (21 November 2026)
+
+Review ulang `main` setelah PR #186 menemukan bahwa beberapa pernyataan pada paket serah-terima ini adalah snapshot historis dan kini sudah kedaluwarsa. Secara khusus, butir lama bahwa Supervisor belum ada di backend sudah tidak berlaku: Supervisor telah diimplementasikan dan diuji secara statis pada PR #133, #145, #147, serta perbaikan form akun #175. Matriks terkini terdiri dari enam role petugas/Admin dan satu role Wali Santri.
+
+Dokumentasi terkini diperbarui melalui SOP, checklist UAT, README, dan roadmap Tahap 41.1. Dua perbedaan UI/backend dicatat untuk audit izin Tahap 41.2: Admin mengakses antrean verifikasi pembayaran Wali melalui workspace POS meskipun tidak memiliki tombol navigasi verifikasi khusus. Admin/Kasir juga memiliki riwayat POS melalui workspace POS, sedangkan Supervisor memiliki halaman riwayat lintas kasir yang baca-saja. Perbedaan lokasi menu tersebut bukan bukti ketidaksesuaian hak akses; pengujian runtime per role tetap diperlukan. Tidak ada perubahan data produksi.
+
+Status runtime UAT tetap **NOT RUN** dan produksi tetap **NOT APPROVED** sampai akun aktual, Apps Script deployment, Spreadsheet/Drive, seluruh alur role, dan perangkat diverifikasi.

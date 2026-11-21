@@ -69,7 +69,7 @@ URL deployment disimpan di `config.js`. Host shell melalui HTTPS (misalnya GitHu
 
 - Jalur Pembeli memakai halaman utama PWA: `/`. Shell mengirim parameter portal `BUYER` ke Web App Apps Script.
 - Jalur petugas memakai alamat khusus: `/adminFMart16720/` (pada GitHub Pages project site, tambahkan prefiks path repository jika hosting menggunakannya). Halaman ini berada pada folder `adminFMart16720/` dan mengirim parameter portal `ADMINFMART16720`.
-- Login Pembeli hanya menerima role `WALI_SANTRI`. Jalur Admin menerima role petugas `ADMIN`, `SUPERADMIN`, `KASIR`, `GUDANG`, dan `PETUGAS_PENGANTAR`. Pemeriksaan dilakukan di backend pada saat login dan setiap pemulihan sesi; mengganti parameter dari browser tidak cukup untuk memperoleh role lain.
+- Login Pembeli hanya menerima role `WALI_SANTRI`. Jalur Admin menerima enam role petugas: `SUPERADMIN`, `ADMIN`, `KASIR`, `GUDANG`, `PETUGAS_PENGANTAR`, dan `SUPERVISOR`. Pemeriksaan dilakukan di backend pada saat login dan setiap pemulihan sesi; mengganti parameter dari browser tidak cukup untuk memperoleh role lain.
 - Tombol pendaftaran Wali Santri tidak ditampilkan pada jalur Admin.
 - Nama path yang tidak mudah ditebak hanya lapisan pengurangan paparan, bukan autentikasi. Keamanan tetap bergantung pada password, sesi, dan pemeriksaan role pada setiap fungsi backend. Jangan membagikan alamat Admin secara terbuka.
 - Setelah perubahan ini, salin ulang `apps-script/Code.gs` dan `apps-script/Index.html` ke proyek Apps Script, lalu buat deployment version baru. PWA GitHub Pages juga harus memuat commit terbaru. URL Web App di `config.js` tidak berubah.
@@ -85,8 +85,15 @@ Sidebar workspace Admin memakai satu pola visual untuk desktop dan HP, tetapi it
 - `KASIR`: Dashboard dan Kasir (workspace transaksi/verifikasi pembayaran).
 - `GUDANG`: Dashboard, Pesanan, Stok, Penerimaan, Riwayat Gudang, dan Distribusi.
 - `PETUGAS_PENGANTAR`: Dashboard dan Pengantaran saja.
+- `SUPERVISOR`: Dashboard pengawasan, Pesanan, Transaksi POS baca-saja, katalog produk baca-saja, dan Laporan & Pencapaian. Tidak memiliki menu Audit, mutasi operasional, verifikasi pembayaran, pengelolaan akun, atau pengaturan QRIS.
 
 Pembatasan menu di sidebar hanya untuk pengalaman pengguna; setiap endpoint backend tetap harus memeriksa sesi dan role agar pemanggilan langsung dari browser tidak melewati hak akses.
+
+### Catatan sinkronisasi hak akses Tahap 41.1
+
+Matriks enam role petugas di atas mengikuti navigasi `configureStaffNavigation()` dan daftar role backend pada `apps-script/Code.gs`. Supervisor telah terdaftar pada source, form akun, navigasi, dan regression test. Catatan historis README yang menyebut Supervisor belum tersedia adalah kondisi saat catatan itu dibuat dan telah digantikan oleh dokumentasi Tahap 40.5–40.12 serta addendum Tahap 41.1.
+
+**Temuan untuk audit hak akses Tahap 41.2 (belum diubah pada Tahap 41.1):** endpoint backend `verifyPayment()` mengizinkan `ADMIN`, `SUPERADMIN`, dan `KASIR`. Admin tidak memiliki tombol navigasi terpisah `staffPaymentVerification`, tetapi antrean dan aksi verifikasi pembayaran Wali tersedia di dalam workspace POS Admin. Demikian pula `getCashierSalesHistory()` mendukung riwayat sesuai role: Kasir melihat transaksi sendiri, Admin/Superadmin dapat melihat riwayat melalui workspace POS, dan Supervisor memiliki halaman riwayat lintas kasir yang khusus baca-saja. Karena itu, perbedaan tombol navigasi bukan bukti ketidaksesuaian hak akses; seluruh jalur tetap perlu diuji pada runtime.
 
 ## Migrasi hash password (bertahap)
 
@@ -788,6 +795,8 @@ Tahap ini menyamakan aturan pembacaan stok lintas katalog Wali, POS Kasir, dashb
 Tahap ini mempertegas pembatasan menu dan otorisasi server. Pemeriksaan role di antarmuka hanya membantu navigasi; setiap endpoint sensitif tetap memvalidasi sesi dan role pada server.
 
 ### Matriks akses operasional
+
+> **Catatan versi:** matriks di bawah ini adalah snapshot historis Tahap 9. Setelah pengembangan berikutnya (termasuk role Supervisor, dashboard pengawasan, dan akses baca-saja riwayat POS), gunakan matriks terkini pada bagian **Navigasi sidebar berdasarkan role** di awal README serta addendum Tahap 41.1. Jika uraian historis bertentangan dengan source saat ini, source dan matriks terkini menjadi acuan audit; perbedaan endpoint/UI tetap dicatat untuk diputuskan, bukan diasumsikan.
 
 | Fitur | Kasir | Admin | Superadmin |
 |---|---|---|---|
