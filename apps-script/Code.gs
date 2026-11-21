@@ -358,10 +358,13 @@ function sendWaliEmailVerification_(userId,email){
   if(rows.some(r=>String(r[0]||'')!==String(userId)&&String(r[5]||'').toUpperCase()==='WALI_SANTRI'&&normalizeEmail_(r[10])===email)||
      walis.some(r=>String(r[1]||'')!==String(userId)&&normalizeEmail_(r[4])===email))throw new Error('Email sudah digunakan akun Wali Santri lain.');
   const challengeId=Utilities.getUuid()+Utilities.getUuid(),code=String(100000+(parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16)%900000));
-  const cache=CacheService.getScriptCache(),key=waliEmailOtpKey_(challengeId);
+  const cache=CacheService.getScriptCache(),key=waliEmailOtpKey_(challengeId),rateKey='FMART_WALI_EMAIL_RATE_'+Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(userId))).slice(0,36);
+  if(cache.get(rateKey+'_COOLDOWN'))throw new Error('Kode verifikasi baru saja dikirim. Tunggu satu menit sebelum meminta kode lagi.');
+  const rateCount=Number(cache.get(rateKey)||0);if(rateCount>=5)throw new Error('Batas pengiriman kode verifikasi tercapai. Coba kembali satu jam lagi.');
+  cache.put(rateKey,String(rateCount+1),3600);cache.put(rateKey+'_COOLDOWN','1',60);
   cache.put(key,JSON.stringify({userId:String(userId),email:email,hash:adminOtpHash_(challengeId,code),createdAt:Date.now(),attempts:0}),600);
   try{MailApp.sendEmail({to:email,subject:'Verifikasi Email FMart',body:'Kode verifikasi email FMart Anda: '+code+'\\n\\nKode berlaku 10 menit dan hanya dapat digunakan satu kali. Jangan berikan kode ini kepada siapa pun.',name:'FMart'});}
-  catch(err){cache.remove(key);console.error('Pengiriman OTP Wali gagal:',err);throw new Error('Email verifikasi belum dapat dikirim. Data email akun tidak diubah.');}
+  catch(err){cache.remove(key);cache.remove(rateKey+'_COOLDOWN');console.error('Pengiriman OTP Wali gagal:',err);throw new Error('Email verifikasi belum dapat dikirim. Data email akun tidak diubah.');}
   users.getRange(user.rowNumber,11,1,2).setValues([[email,false]]);
   users.getRange(user.rowNumber,9).setValue(new Date());
   const waliRow=findRowById_(waliSheet,String(wali.waliId),1);
@@ -431,10 +434,11 @@ function registerWaliSantri(nama,noHp,password,email,alamat){
     if(userRows.some(r=>String(r[1]||'').trim()===noHp))throw new Error('Nomor HP sudah digunakan sebagai akun.');
     if(waliRows.some(r=>normalizeEmail_(r[4])===email)||userRows.some(r=>String(r[5]||'').toUpperCase()==='WALI_SANTRI'&&normalizeEmail_(r[10])===email))throw new Error('Email sudah digunakan oleh akun Wali Santri lain.');
     const salt=Utilities.getUuid().replace(/-/g,''),hash=hashPassword_(password,salt),challengeId=Utilities.getUuid()+Utilities.getUuid();
-    const code=String(100000+(parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16)%900000)),key=waliEmailOtpKey_('REGISTER_'+challengeId);
-    CacheService.getScriptCache().put(key,JSON.stringify({nama:nama,noHp:noHp,email:email,alamat:alamat,salt:salt,hash:hash,otpHash:adminOtpHash_(challengeId,code),attempts:0,createdAt:Date.now()}),600);
+    const code=String(100000+(parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,8),16)%900000)),key=waliEmailOtpKey_('REGISTER_'+challengeId),cache=CacheService.getScriptCache(),rateKey='FMART_WALI_REGISTER_RATE_'+Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,email+'|'+noHp)).slice(0,36);
+    if(cache.get(rateKey+'_COOLDOWN'))throw new Error('Kode OTP baru saja dikirim. Tunggu satu menit sebelum meminta kode lagi.');const rateCount=Number(cache.get(rateKey)||0);if(rateCount>=3)throw new Error('Batas pengiriman OTP tercapai. Coba kembali satu jam lagi.');cache.put(rateKey,String(rateCount+1),3600);cache.put(rateKey+'_COOLDOWN','1',60);
+    cache.put(key,JSON.stringify({nama:nama,noHp:noHp,email:email,alamat:alamat,salt:salt,hash:hash,otpHash:adminOtpHash_(challengeId,code),attempts:0,createdAt:Date.now()}),600);
     try{MailApp.sendEmail({to:email,subject:'Verifikasi Pendaftaran FMart',body:'Kode OTP pendaftaran FMart Anda: '+code+'\\n\\nKode berlaku 10 menit. Masukkan kode ini untuk menyelesaikan pendaftaran.',name:'FMart'});}
-    catch(err){CacheService.getScriptCache().remove(key);console.error('OTP pendaftaran Wali gagal:',err);throw new Error('Email OTP belum dapat dikirim. Pendaftaran belum disimpan. Periksa email atau coba kembali.');}
+    catch(err){cache.remove(key);cache.remove(rateKey+'_COOLDOWN');console.error('OTP pendaftaran Wali gagal:',err);throw new Error('Email OTP belum dapat dikirim. Pendaftaran belum disimpan. Periksa email atau coba kembali.');}
     return {ok:true,requiresOtp:true,challengeId:challengeId,maskedEmail:maskEmail_(email),message:'Kode OTP telah dikirim. Masukkan kode untuk menyelesaikan pendaftaran.'};
   }finally{lock.releaseLock();}
 }
@@ -655,7 +659,7 @@ function updateMyWaliProfile(token,nama,email,alamat){
     if(index<0)throw new Error('Data Wali Santri tidak ditemukan atau tidak aktif.');
     const user=findRowById_(usersSheet,session.userId,1);if(!user||String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI')throw new Error('Data akun pengguna tidak ditemukan.');
     const oldEmail=normalizeEmail_(user.values[10]);let verification=null;
-    if(email!==oldEmail){if(!email)throw new Error('Email tidak boleh dikosongkan.');verification=sendWaliEmailVerification_(session.userId,email);}
+    if(email!==oldEmail||normalizeEmail_(waliRows[index][4])!==email){if(!email)throw new Error('Email tidak boleh dikosongkan.');verification=sendWaliEmailVerification_(session.userId,email);}
     const rowNumber=index+2,before={nama:String(waliRows[index][2]||''),email:String(waliRows[index][4]||''),alamat:String(waliRows[index][5]||'')},now=new Date();
     waliSheet.getRange(rowNumber,3).setValue(nama);waliSheet.getRange(rowNumber,6).setValue(alamat);waliSheet.getRange(rowNumber,9).setValue(now);usersSheet.getRange(user.rowNumber,5).setValue(nama);
     writeAudit_(session.userId,session.role,'UPDATE_MY_WALI_PROFILE','WALI_SANTRI',String(waliRows[index][0]||''),JSON.stringify(before),JSON.stringify({nama:nama,email:email,alamat:alamat}),'Wali memperbarui profil pribadi');
@@ -2661,7 +2665,7 @@ function updateWaliSantri(token,waliId,nama,noHp,email,alamat){
     const userId=String(row.values[1]||''),user=findRowById_(us,userId,1);if(!user||String(user.values[5]||'').toUpperCase()!=='WALI_SANTRI')throw new Error('Akun pengguna Wali Santri tidak ditemukan.');
     const walis=readRows_(ws);if(walis.some(r=>String(r[0]||'')!==waliId&&phoneEquals_(r[3],noHp)))throw new Error('No. HP sudah digunakan oleh Wali Santri lain.');
     const allUsers=readRows_(us);if(allUsers.some(u=>String(u[0]||'')!==userId&&(String(u[1]||'').trim()===noHp||normalizePhone_(u[1])===noHp)))throw new Error('Nomor HP sudah digunakan sebagai username akun lain.');
-    let verification=null;if(email!==normalizeEmail_(user.values[10])){if(!email)throw new Error('Email tidak boleh dikosongkan.');verification=sendWaliEmailVerification_(userId,email);}
+    let verification=null;if(email!==normalizeEmail_(user.values[10])||normalizeEmail_(row.values[4])!==email){if(!email)throw new Error('Email tidak boleh dikosongkan.');verification=sendWaliEmailVerification_(userId,email);}
     const now=new Date();ws.getRange(row.rowNumber,3).setValue(nama);ws.getRange(row.rowNumber,4).setNumberFormat('@');ws.getRange(row.rowNumber,4).setValue(noHp);ws.getRange(row.rowNumber,6,1,4).setValues([[alamat,String(row.values[6]||'AKTIF'),row.values[7]||now,now]]);
     us.getRange(user.rowNumber,2).setNumberFormat('@');us.getRange(user.rowNumber,2).setValue(noHp);us.getRange(user.rowNumber,5).setValue(nama);us.getRange(user.rowNumber,9).setValue(now);
     writeAudit_(session.userId,session.role,'UPDATE_WALI_SANTRI','WALI_SANTRI',waliId,JSON.stringify({nama:String(row.values[2]||''),noHp:String(row.values[3]||''),email:String(row.values[4]||''),alamat:String(row.values[5]||'')}),JSON.stringify({nama:nama,noHp:noHp,username:noHp,email:email,alamat:alamat}),'Memperbarui data Wali Santri');
