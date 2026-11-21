@@ -250,3 +250,37 @@ Audit source/CSS telah menelusuri Dashboard, Pesanan, POS, Produk/Kategori, Stok
 
 ### 41.10 — Keputusan UAT final
 Status akhir hanya PASS jika seluruh role (SUPERADMIN, ADMIN, KASIR, GUDANG, PETUGAS_PENGANTAR, SUPERVISOR, WALI_SANTRI) lulus login/OTP, menu, endpoint langsung, dan alur sesuai kewenangannya; semua rekonsiliasi bersih atau pengecualian disetujui tertulis; seluruh skenario kritis transaksi dan Drive memiliki bukti; serta visual perangkat lulus. Jika ada runtime yang belum dijalankan, hasil keseluruhan tetap BLOCKED/NOT APPROVED untuk produksi.
+
+
+## 10. UAT autentikasi Wali — Tahap 42/43
+
+**Prasyarat:** gunakan deployment Apps Script uji yang source-nya sudah disinkronkan ke commit Tahap 42; satu akun Wali uji dengan email yang dapat diakses; akses ke kotak masuk email tersebut; dan persetujuan operator untuk mengirim email melalui MailApp. Jangan gunakan data atau email Wali nyata tanpa izin. Catat waktu, zona waktu, deployment/version, commit source, browser, dan akun uji (tanpa password/token).
+
+| ID | Skenario | Hasil yang diharapkan | Status |
+|---|---|---|---|
+| AUTH-01 | Login Wali dengan nomor HP terdaftar + password | Login berhasil ke portal Pembeli | NOT RUN |
+| AUTH-02 | Login Wali dengan email terdaftar + password yang sama | Login berhasil ke akun Wali yang sama | NOT RUN |
+| AUTH-03 | Email dengan huruf besar/kecil berbeda | Tetap menemukan akun yang sama setelah normalisasi | NOT RUN |
+| AUTH-04 | Email milik akun non-Wali dicoba pada portal Pembeli | Ditolak; tidak membuka portal staf | NOT RUN |
+| AUTH-05 | Nomor HP/email salah atau password salah berulang | Rate limit berlaku; tidak membocorkan akun | NOT RUN |
+| AUTH-06 | Pendaftaran Wali tanpa email | Ditolak dengan validasi ringkas | NOT RUN |
+| AUTH-07 | Pendaftaran dengan email duplikat (akun Wali lain) | Ditolak tanpa membuat akun/relasi ganda | NOT RUN |
+| AUTH-08 | Pendaftaran dengan email milik akun lain | Ditolak; tidak mengambil alih email akun lain | NOT RUN |
+| AUTH-09 | Minta reset untuk email Wali terdaftar | Email berisi tautan reset yang dapat dibuka | NOT RUN |
+| AUTH-10 | Minta reset untuk email yang tidak terdaftar | Respons UI generik; tidak mengungkap keberadaan akun | NOT RUN |
+| AUTH-11 | Minta reset berulang dengan email yang sama | Cooldown/rate limit bekerja | NOT RUN |
+| AUTH-12 | Buka tautan reset yang valid sebelum 30 menit | Form password baru tampil; tidak otomatis login | NOT RUN |
+| AUTH-13 | Password baru kurang dari 10 karakter | Ditolak di UI dan server | NOT RUN |
+| AUTH-14 | Konfirmasi password tidak sama | Ditolak; password lama tetap berlaku | NOT RUN |
+| AUTH-15 | Simpan password baru dengan token valid | Password berubah, token tidak dapat digunakan ulang | NOT RUN |
+| AUTH-16 | Gunakan ulang tautan reset setelah berhasil | Ditolak sebagai token sudah dipakai/tidak valid | NOT RUN |
+| AUTH-17 | Gunakan token setelah 30 menit | Ditolak sebagai token kedaluwarsa | NOT RUN |
+| AUTH-18 | Login ulang dengan password lama setelah reset | Ditolak | NOT RUN |
+| AUTH-19 | Login ulang dengan password baru setelah reset | Berhasil | NOT RUN |
+| AUTH-20 | Gunakan sesi Wali lama setelah reset | Sesi lama tidak lagi memiliki otorisasi | NOT RUN |
+| AUTH-21 | Login Admin dengan email/password/OTP | Alur OTP Admin tetap bekerja seperti baseline | NOT RUN |
+| AUTH-22 | Autofill/password manager desktop dan HP | Username/email dan password ditawarkan oleh browser; tidak ada password plaintext di storage aplikasi | NOT RUN |
+
+**Bukti wajib:** screenshot halaman login/reset (token disamarkan), email reset (tautan/token disamarkan), hasil percobaan token kedua/kedaluwarsa, status login lama/baru, dan Execution ID Apps Script untuk permintaan/reset. Jangan menaruh password, OTP, token, alamat email pribadi, atau nomor HP lengkap di laporan.
+
+**Aturan hasil:** PASS hanya jika bukti aktual tersedia; FAIL jika hasil berbeda; BLOCKED jika prasyarat belum tersedia; NOT RUN jika belum dicoba. Seluruh AUTH-01 sampai AUTH-22 harus lulus sebelum fitur ini dinyatakan lulus runtime.
