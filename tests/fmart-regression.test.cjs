@@ -853,11 +853,12 @@ test('Role workflow authorization matrix protects sensitive endpoints server-sid
  }
 });
 
-test('Manual recipient checkout remains separate from official Wali-Santri linking workflows',()=>{
- const checkout=extractFunction(code,'checkoutCart');
- const link=extractFunction(code,'requestWaliSantriLink');
- assert.ok(checkout.includes('normalizeOrderRecipient_'));
- assert.ok(!checkout.includes('requestWaliSantriLink('),'Checkout must not create official Wali-Santri relationships.');
+test('Saved order recipient checkout is separated from formal Wali-Santri authorization',()=>{
+ const checkout=extractFunction(code,'checkoutCart'),guard=extractFunction(code,'assertWaliSavedRecipient_'),link=extractFunction(code,'requestWaliSantriLink');
+ assert.ok(checkout.includes('assertWaliSavedRecipient_'));
+ assert.ok(checkout.includes('recipientSnapshot:recipient'));
+ assert.ok(!checkout.includes('requestWaliSantriLink('),'Checkout must validate an already saved address and must not create a relationship.');
+ assert.ok(guard.includes('ALAMAT_PESANAN'));
  assert.ok(link.includes("requireRole_(token,[FMART.ROLES.WALI_SANTRI])"));
 });
 
